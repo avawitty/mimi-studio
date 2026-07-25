@@ -2350,6 +2350,7 @@ export const App: React.FC = () => {
                         )}
                         {viewMode === "quiet-studio" && <QuietStudioView />}
                         {viewMode === "moodboard" && <MoodBoardChamber />}
+                        {viewMode === "dossier" && <DossierView />}
                         {viewMode === "thimble" && <ThimbleDashboard />}
                         {viewMode === "loom" && <StrategyStudio />}
                         {viewMode === "action-board" && <ActionBoard />}

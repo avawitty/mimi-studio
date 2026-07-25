@@ -1,516 +1,812 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChamberShell } from './ChamberShell';
-import { 
-  Plus, 
-  Trash2, 
-  Image as ImageIcon, 
-  Type, 
-  Palette, 
-  Maximize2, 
-  Sparkles, 
-  Download, 
-  Upload, 
-  FolderPlus,
-  RefreshCw,
-  X,
-  FileImage
-} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Briefcase,
+  Calendar,
+  FileText,
+  FolderOpen,
+  Globe,
+  LayoutGrid,
+  List,
+  ListChecks,
+  Loader2,
+  Monitor,
+  Plus,
+  Save,
+  Search,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { useUser } from "../../contexts/UserContext";
+import { hasAccess } from "../../constants";
+import {
+  createDossierArtifactFromImage,
+  createDossierArtifactFromText,
+  createDossierFolder,
+  deleteDossierArtifact,
+  fetchDossierArtifacts,
+  fetchDossierFolders,
+  updateDossierFolder,
+} from "../../services/firebase";
+import type { DossierArtifact, DossierFolder, Task } from "../../types";
+import { generateFolderTasks } from "../../services/geminiService";
 
-interface MoodBoardItem {
-  id: string;
-  type: 'image' | 'text' | 'color';
-  x: number; // percentage (0-100)
-  y: number; // percentage (0-100)
-  width: number; // pixels
-  height: number; // pixels
-  content: string; // Base64 or Unsplash URL, text, or hex color
-  title?: string;
-  colorTheme?: string; // for sticky notes
-}
-
-const PRESET_TEMPLATES = [
-  {
-    name: "Architectural Noir",
-    items: [
-      { id: "p1", type: "image", x: 10, y: 15, width: 240, height: 300, content: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80", title: "Brutalist Shadow" },
-      { id: "p2", type: "text", x: 45, y: 12, width: 220, height: 140, content: "Form follows silhouette. Deep charcoal textures, brushed concrete, and razor-sharp linear grids.", title: "Design Manifesto", colorTheme: "stone" },
-      { id: "p3", type: "color", x: 45, y: 55, width: 140, height: 160, content: "#1A1A1A", title: "Carbon Black" },
-      { id: "p4", type: "color", x: 62, y: 55, width: 140, height: 160, content: "#E5E5E0", title: "Raw Plaster" },
-      { id: "p5", type: "image", x: 70, y: 20, width: 220, height: 260, content: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80", title: "Interior Void" }
-    ]
-  },
-  {
-    name: "Tactile Neutral",
-    items: [
-      { id: "t1", type: "image", x: 12, y: 10, width: 260, height: 260, content: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80", title: "Linen Drapery" },
-      { id: "t2", type: "color", x: 12, y: 62, width: 130, height: 150, content: "#DFD5C6", title: "Warm Oat" },
-      { id: "t3", type: "color", x: 27, y: 62, width: 130, height: 150, content: "#CBBFA8", title: "Soft Travertine" },
-      { id: "t4", type: "text", x: 48, y: 15, width: 240, height: 160, content: "An exploration of sensory quietude. Heavy linens, raw ceramic edges, unlacquered brass, and daylight filtration.", title: "Quiet Luxury", colorTheme: "amber" },
-      { id: "t5", type: "image", x: 48, y: 52, width: 220, height: 280, content: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&q=80", title: "Sculptural Vase" }
-    ]
-  }
-];
+type EvidenceView = "grid" | "list";
 
 export const MoodBoardChamber: React.FC = () => {
-  const [items, setItems] = useState<MoodBoardItem[]>([]);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  
-  // Dragging state helper
-  const dragInfo = useRef<{
-    itemId: string;
-    startX: number;
-    startY: number;
-    startLeft: number;
-    startTop: number;
-  } | null>(null);
-
-  const containerRef = useRef<HTMLDivElement>(null);
+  const { user, profile } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load from local storage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('mimi_moodboard_items');
-    if (saved) {
-      try {
-        setItems(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse moodboard items", e);
-        setItems(PRESET_TEMPLATES[0].items as MoodBoardItem[]);
-      }
-    } else {
-      setItems(PRESET_TEMPLATES[0].items as MoodBoardItem[]);
+  const [folders, setFolders] = useState<DossierFolder[]>([]);
+  const [activeFolder, setActiveFolder] = useState<DossierFolder | null>(null);
+  const [artifacts, setArtifacts] = useState<DossierArtifact[]>([]);
+  const [folderSearchTerm, setFolderSearchTerm] = useState("");
+  const [loadingFolders, setLoadingFolders] = useState(true);
+  const [loadingArtifacts, setLoadingArtifacts] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [folderMemo, setFolderMemo] = useState("");
+  const [isSavingMemo, setIsSavingMemo] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [newTaskText, setNewTaskText] = useState("");
+  const [newTaskDate, setNewTaskDate] = useState("");
+  const [isSavingTasks, setIsSavingTasks] = useState(false);
+  const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
+  const [evidenceView, setEvidenceView] = useState<EvidenceView>("grid");
+
+  const loadFolders = useCallback(async () => {
+    setLoadingFolders(true);
+    try {
+      const next = await fetchDossierFolders(user?.uid || "ghost");
+      setFolders(next);
+      setActiveFolder((prev) => {
+        if (!prev) return next[0] || null;
+        return next.find((folder) => folder.id === prev.id) || next[0] || null;
+      });
+    } catch (error) {
+      console.error("Failed to load dossiers", error);
+    } finally {
+      setLoadingFolders(false);
     }
-  }, []);
-
-  // Save to local storage
-  const saveBoard = (newItems: MoodBoardItem[]) => {
-    setItems(newItems);
-    localStorage.setItem('mimi_moodboard_items', JSON.stringify(newItems));
-  };
-
-  // Add Item actions
-  const addStickyNote = () => {
-    const id = "sticky_" + Math.random().toString(36).substring(2, 9);
-    const newItem: MoodBoardItem = {
-      id,
-      type: 'text',
-      x: 30 + Math.random() * 20,
-      y: 30 + Math.random() * 20,
-      width: 220,
-      height: 150,
-      content: "Double-click to write down your concept, quote, or design guidelines.",
-      title: "Design Note",
-      colorTheme: ['stone', 'slate', 'amber', 'rose'][Math.floor(Math.random() * 4)]
-    };
-    saveBoard([...items, newItem]);
-    setSelectedItemId(id);
-  };
-
-  const addColorSwatch = () => {
-    const id = "color_" + Math.random().toString(36).substring(2, 9);
-    const hexColors = ["#1E293B", "#F1F5F9", "#D97706", "#BE123C", "#0F766E", "#475569", "#E2E8F0"];
-    const newItem: MoodBoardItem = {
-      id,
-      type: 'color',
-      x: 35 + Math.random() * 20,
-      y: 35 + Math.random() * 20,
-      width: 140,
-      height: 160,
-      content: hexColors[Math.floor(Math.random() * hexColors.length)],
-      title: "Palette Accent"
-    };
-    saveBoard([...items, newItem]);
-    setSelectedItemId(id);
-  };
-
-  const addImageFromUrl = (url: string) => {
-    const id = "img_" + Math.random().toString(36).substring(2, 9);
-    const newItem: MoodBoardItem = {
-      id,
-      type: 'image',
-      x: 20 + Math.random() * 20,
-      y: 20 + Math.random() * 20,
-      width: 240,
-      height: 280,
-      content: url,
-      title: "Visual Reference"
-    };
-    saveBoard([...items, newItem]);
-    setSelectedItemId(id);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files[0]) {
-      const file = files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          addImageFromUrl(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Drag and drop file handling
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      const file = files[0];
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            addImageFromUrl(event.target.result as string);
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
-
-  // Mouse drag operations for moving cards
-  const handleItemMouseDown = (e: React.MouseEvent, item: MoodBoardItem) => {
-    if ((e.target as HTMLElement).closest('.action-btn') || (e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
-      return; // Ignore if clicking button or input
-    }
-    
-    e.preventDefault();
-    setSelectedItemId(item.id);
-    setIsDragging(true);
-
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      // Store start position
-      dragInfo.current = {
-        itemId: item.id,
-        startX: e.clientX,
-        startY: e.clientY,
-        startLeft: item.x,
-        startTop: item.y
-      };
-    }
-  };
+  }, [user?.uid]);
 
   useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (!isDragging || !dragInfo.current || !containerRef.current) return;
-      
-      const info = dragInfo.current;
-      const rect = containerRef.current.getBoundingClientRect();
-      
-      // Calculate delta in pixels
-      const dxPixels = e.clientX - info.startX;
-      const dyPixels = e.clientY - info.startY;
-      
-      // Convert to percentage
-      const dxPercent = (dxPixels / rect.width) * 100;
-      const dyPercent = (dyPixels / rect.height) * 100;
-      
-      // Compute new values
-      const newX = Math.max(0, Math.min(95, info.startLeft + dxPercent));
-      const newY = Math.max(0, Math.min(95, info.startTop + dyPercent));
-      
-      setItems(prev => prev.map(item => {
-        if (item.id === info.itemId) {
-          return { ...item, x: newX, y: newY };
-        }
-        return item;
-      }));
-    };
+    void loadFolders();
+  }, [loadFolders]);
 
-    const handleGlobalMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        dragInfo.current = null;
-        // Save current positions to local storage
-        localStorage.setItem('mimi_moodboard_items', JSON.stringify(items));
-      }
-    };
-
-    if (isDragging) {
-      window.addEventListener('mousemove', handleGlobalMouseMove);
-      window.addEventListener('mouseup', handleGlobalMouseUp);
+  useEffect(() => {
+    if (!activeFolder) {
+      setArtifacts([]);
+      setFolderMemo("");
+      setTasks([]);
+      return;
     }
+
+    setFolderMemo(activeFolder.notes || "");
+    setTasks(activeFolder.tasks || []);
+    setLoadingArtifacts(true);
+
+    let cancelled = false;
+    void fetchDossierArtifacts(activeFolder.id)
+      .then((next) => {
+        if (!cancelled) setArtifacts(next);
+      })
+      .catch((error) => {
+        console.error("Failed to load artifacts", error);
+        if (!cancelled) setArtifacts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingArtifacts(false);
+      });
 
     return () => {
-      window.removeEventListener('mousemove', handleGlobalMouseMove);
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
+      cancelled = true;
     };
-  }, [isDragging, items]);
+  }, [activeFolder]);
 
-  const deleteItem = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const filtered = items.filter(item => item.id !== id);
-    saveBoard(filtered);
-    if (selectedItemId === id) setSelectedItemId(null);
-  };
+  const filteredFolders = useMemo(() => {
+    const query = folderSearchTerm.trim().toLowerCase();
+    if (!query) return folders;
+    return folders.filter((folder) => folder.name.toLowerCase().includes(query));
+  }, [folderSearchTerm, folders]);
 
-  const updateItemContent = (id: string, updates: Partial<MoodBoardItem>) => {
-    const updated = items.map(item => {
-      if (item.id === id) {
-        return { ...item, ...updates };
-      }
-      return item;
-    });
-    saveBoard(updated);
-  };
-
-  const clearCanvas = () => {
-    if (window.confirm("Are you sure you want to clear your current mood board?")) {
-      saveBoard([]);
+  const persistTasks = async (nextTasks: Task[]) => {
+    if (!activeFolder) return;
+    setIsSavingTasks(true);
+    try {
+      await updateDossierFolder(activeFolder.id, { tasks: nextTasks });
+      setTasks(nextTasks);
+      setActiveFolder((prev) => (prev ? { ...prev, tasks: nextTasks } : null));
+      setFolders((prev) =>
+        prev.map((folder) =>
+          folder.id === activeFolder.id ? { ...folder, tasks: nextTasks } : folder,
+        ),
+      );
+    } catch (error) {
+      console.error(error);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message: "Could not save execution plan.", type: "error" },
+        }),
+      );
+    } finally {
+      setIsSavingTasks(false);
     }
   };
 
-  const loadTemplate = (templateIndex: number) => {
-    saveBoard(PRESET_TEMPLATES[templateIndex].items as MoodBoardItem[]);
+  const handleInitializeProject = async () => {
+    if (!newFolderName.trim()) return;
+    if (!hasAccess(profile?.plan, "pro") && folders.length >= 1) {
+      window.dispatchEvent(new CustomEvent("mimi:open_patron_modal"));
+      return;
+    }
+    try {
+      const id = await createDossierFolder(user?.uid || "ghost", newFolderName.trim());
+      setNewFolderName("");
+      setShowNewFolder(false);
+      await loadFolders();
+      setActiveFolder((prev) => {
+        const match = folders.find((folder) => folder.id === id);
+        return match || prev;
+      });
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message: "Project space initialized.", type: "success" },
+        }),
+      );
+      // Reload to select the new folder by name if id lookup races
+      const refreshed = await fetchDossierFolders(user?.uid || "ghost");
+      setFolders(refreshed);
+      const created = refreshed.find((folder) => folder.id === id) || refreshed[0] || null;
+      setActiveFolder(created);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleSaveMemo = async () => {
+    if (!activeFolder) return;
+    setIsSavingMemo(true);
+    try {
+      await updateDossierFolder(activeFolder.id, { notes: folderMemo });
+      setActiveFolder((prev) => (prev ? { ...prev, notes: folderMemo } : null));
+      setFolders((prev) =>
+        prev.map((folder) =>
+          folder.id === activeFolder.id ? { ...folder, notes: folderMemo } : folder,
+        ),
+      );
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message: "Strategic memo saved.", type: "success" },
+        }),
+      );
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSavingMemo(false);
+    }
+  };
+
+  const handleAddTask = async () => {
+    const text = newTaskText.trim();
+    if (!text || !activeFolder) return;
+    const next: Task = {
+      id: `task_${Date.now()}`,
+      text,
+      completed: false,
+      dueDate: newTaskDate || undefined,
+      createdAt: Date.now(),
+    };
+    setNewTaskText("");
+    setNewTaskDate("");
+    await persistTasks([next, ...tasks]);
+  };
+
+  const toggleTask = async (taskId: string) => {
+    const next = tasks.map((task) =>
+      task.id === taskId ? { ...task, completed: !task.completed } : task,
+    );
+    await persistTasks(next);
+  };
+
+  const handleGenerateTasks = async () => {
+    if (!activeFolder) return;
+    setIsGeneratingTasks(true);
+    try {
+      const generated = await generateFolderTasks(
+        activeFolder.name,
+        folderMemo || activeFolder.notes || "",
+        artifacts,
+      );
+      const mapped: Task[] = (generated || []).map((item, index) => ({
+        id: `gen_${Date.now()}_${index}`,
+        text: item.title,
+        description: item.description,
+        dueDate: item.dueDate || undefined,
+        completed: false,
+        createdAt: Date.now(),
+      }));
+      if (mapped.length === 0) {
+        window.dispatchEvent(
+          new CustomEvent("mimi:registry_alert", {
+            detail: { message: "No mandates generated.", type: "warning" },
+          }),
+        );
+        return;
+      }
+      await persistTasks([...mapped, ...tasks]);
+    } catch (error) {
+      console.error(error);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message: "Could not generate execution plan.", type: "error" },
+        }),
+      );
+    } finally {
+      setIsGeneratingTasks(false);
+    }
+  };
+
+  const handleAddTextArtifact = async () => {
+    if (!activeFolder) return;
+    try {
+      await createDossierArtifactFromText(
+        user?.uid || "ghost",
+        activeFolder.id,
+        "Untitled Note",
+        "Double-click intent or paste a reference note here.",
+      );
+      const next = await fetchDossierArtifacts(activeFolder.id);
+      setArtifacts(next);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleUploadArtifacts = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files?.length || !activeFolder) return;
+    setIsUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        await createDossierArtifactFromImage(
+          user?.uid || "ghost",
+          activeFolder.id,
+          file.name.replace(/\.[^.]+$/, "") || "Untitled Plate",
+          dataUrl,
+        );
+      }
+      const next = await fetchDossierArtifacts(activeFolder.id);
+      setArtifacts(next);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message: "Artifact added to visual evidence.", type: "success" },
+        }),
+      );
+    } catch (error) {
+      console.error(error);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message: "Artifact upload failed.", type: "error" },
+        }),
+      );
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteArtifact = async (artifactId: string) => {
+    if (!activeFolder) return;
+    try {
+      await deleteDossierArtifact(artifactId);
+      setArtifacts((prev) => prev.filter((artifact) => artifact.id !== artifactId));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleDeleteFolder = async () => {
+    if (!activeFolder) return;
+    // Soft-clear local selection; full folder delete may not exist — clear memo/tasks and leave entry
+    setActiveFolder(null);
   };
 
   return (
-    <ChamberShell 
-      moduleId="mood-board"
-      actions={
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={addStickyNote}
-            className="px-3 py-1.5 bg-white border border-nous-border hover:bg-stone-50 text-nous-text font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5 transition-colors"
-            title="Add Sticky Note"
-          >
-            <Type size={12} />
-            <span>Note</span>
-          </button>
-          <button 
-            onClick={addColorSwatch}
-            className="px-3 py-1.5 bg-white border border-nous-border hover:bg-stone-50 text-nous-text font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5 transition-colors"
-            title="Add Color Swatch"
-          >
-            <Palette size={12} />
-            <span>Color</span>
-          </button>
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 bg-white border border-nous-border hover:bg-stone-50 text-nous-text font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5 transition-colors"
-            title="Upload Image"
-          >
-            <Upload size={12} />
-            <span>Upload Image</span>
-          </button>
-          <button 
-            onClick={clearCanvas}
-            className="px-3 py-1.5 bg-stone-100 hover:bg-red-50 text-stone-600 hover:text-red-600 border border-nous-border font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5 transition-colors"
-            title="Clear Board"
-          >
-            <Trash2 size={12} />
-            <span>Clear</span>
-          </button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            accept="image/*" 
-            className="hidden" 
-          />
-        </div>
-      }
-    >
-      <div className="flex h-full min-h-0 bg-stone-50">
-        {/* Left Sidebar - Templates and Gallery */}
-        <div className="w-64 border-r border-nous-border bg-white flex flex-col min-h-0 select-none">
-          <div className="p-4 border-b border-nous-border">
-            <h3 className="font-serif italic text-base">Mood Board Maker</h3>
-            <p className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle mt-1">Creative Canvas</p>
+    <div className="flex h-full min-h-0 w-full overflow-hidden bg-[#0B0B0A] text-stone-200">
+      {/* PROJECT REGISTRY */}
+      <aside className="hidden md:flex w-72 shrink-0 flex-col border-r border-emerald-500/20 bg-[#11110F]">
+        <div className="space-y-5 border-b border-emerald-500/15 p-5">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <Briefcase size={13} />
+            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.28em]">
+              Project Registry
+            </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {/* Quick Templates */}
-            <div>
-              <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-3">TEMPLATES</span>
-              <div className="space-y-2">
-                {PRESET_TEMPLATES.map((tpl, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => loadTemplate(idx)}
-                    className="w-full text-left p-3 border border-nous-border bg-stone-50 hover:bg-stone-100/50 hover:border-stone-400 transition-all group"
-                  >
-                    <span className="font-serif italic text-sm text-stone-800 group-hover:text-stone-900 block">{tpl.name}</span>
-                    <span className="font-mono text-[8px] text-stone-500 uppercase mt-1 block">{tpl.items.length} Elements</span>
-                  </button>
-                ))}
+          <div className="relative">
+            <Search
+              size={12}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-500"
+            />
+            <input
+              type="text"
+              value={folderSearchTerm}
+              onChange={(e) => setFolderSearchTerm(e.target.value)}
+              placeholder="Filter Dossiers..."
+              className="w-full border border-stone-800 bg-[#0B0B0A] py-2.5 pl-9 pr-3 font-mono text-[10px] text-stone-300 outline-none placeholder:text-stone-600 focus:border-emerald-500/40"
+            />
+          </div>
+
+          {showNewFolder ? (
+            <div className="space-y-2">
+              <input
+                autoFocus
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleInitializeProject();
+                  if (e.key === "Escape") setShowNewFolder(false);
+                }}
+                placeholder="Project name..."
+                className="w-full border border-emerald-500/40 bg-[#0B0B0A] px-3 py-2 font-serif text-sm italic text-stone-100 outline-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleInitializeProject()}
+                  className="flex-1 bg-emerald-400 py-2 font-mono text-[8px] font-bold uppercase tracking-widest text-black"
+                >
+                  Create
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewFolder(false)}
+                  className="flex-1 border border-stone-700 py-2 font-mono text-[8px] uppercase tracking-widest text-stone-400"
+                >
+                  Cancel
+                </button>
               </div>
-            </div>
-
-            {/* Quick Presets */}
-            <div>
-              <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-3">QUICK IMAGES</span>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?auto=format&fit=crop&w=300&q=80",
-                  "https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=300&q=80",
-                  "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=300&q=80",
-                  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80",
-                  "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=300&q=80",
-                  "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=300&q=80"
-                ].map((url, i) => (
-                  <button
-                    key={i}
-                    onClick={() => addImageFromUrl(url)}
-                    className="aspect-square w-full border border-nous-border overflow-hidden hover:border-stone-400 active:scale-95 transition-all relative group"
-                  >
-                    <img src={url} alt="Preset image" className="object-cover w-full h-full transition-transform group-hover:scale-105" referrerPolicy="no-referrer" />
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <Plus className="text-white" size={14} />
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <p className="font-mono text-[8px] text-stone-400 mt-2 text-center">Click preset to drop on canvas</p>
-            </div>
-          </div>
-
-          <div className="p-4 border-t border-nous-border bg-stone-50 font-mono text-[9px] text-stone-500 leading-relaxed space-y-1">
-            <p>💡 Drag elements to position them.</p>
-            <p>💡 Double-click text to edit.</p>
-            <p>💡 Drop local images directly onto the canvas.</p>
-          </div>
-        </div>
-
-        {/* Mood Board Canvas */}
-        <div 
-          ref={containerRef}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          className="flex-1 relative overflow-hidden bg-stone-100 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] p-8 h-full"
-          onClick={() => setSelectedItemId(null)}
-        >
-          {items.length === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center pointer-events-none">
-              <FileImage size={40} className="text-stone-300 mb-4 animate-pulse" />
-              <h4 className="font-serif italic text-lg text-stone-400">Your Canvas is Waiting</h4>
-              <p className="font-mono text-[9px] text-stone-400 uppercase mt-2 max-w-sm leading-relaxed">
-                Add elements using the top toolbar, click templates on the left, or drag-and-drop raw images from your desktop.
-              </p>
             </div>
           ) : (
-            items.map((item) => {
-              const isSelected = selectedItemId === item.id;
-              
+            <button
+              type="button"
+              onClick={() => setShowNewFolder(true)}
+              className="flex w-full items-center justify-center gap-2 border border-dashed border-emerald-500/35 py-3 font-mono text-[9px] font-bold uppercase tracking-widest text-emerald-400 transition-colors hover:border-emerald-400 hover:bg-emerald-500/5"
+            >
+              <Plus size={12} /> Initialize Project
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1 space-y-1 overflow-y-auto p-2 no-scrollbar">
+          {loadingFolders ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-stone-500">
+              <Loader2 size={14} className="animate-spin" />
+              <span className="font-mono text-[8px] uppercase tracking-widest">Loading</span>
+            </div>
+          ) : filteredFolders.length === 0 ? (
+            <p className="px-4 py-8 text-center font-mono text-[9px] uppercase tracking-widest text-stone-600">
+              No dossiers yet
+            </p>
+          ) : (
+            filteredFolders.map((folder) => {
+              const active = activeFolder?.id === folder.id;
               return (
-                <div
-                  key={item.id}
-                  style={{
-                    position: 'absolute',
-                    left: `${item.x}%`,
-                    top: `${item.y}%`,
-                    width: `${item.width}px`,
-                    zIndex: isSelected ? 40 : 10,
-                  }}
-                  onMouseDown={(e) => handleItemMouseDown(e, item)}
-                  className={`group bg-white border transition-shadow flex flex-col overflow-hidden shadow-sm ${
-                    isSelected ? 'border-stone-800 shadow-xl' : 'border-nous-border hover:border-stone-400 hover:shadow-md'
+                <button
+                  key={folder.id}
+                  type="button"
+                  onClick={() => setActiveFolder(folder)}
+                  className={`relative w-full overflow-hidden px-4 py-3 text-left transition-colors ${
+                    active
+                      ? "bg-emerald-500/10 text-emerald-100"
+                      : "text-stone-400 hover:bg-stone-900 hover:text-stone-200"
                   }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedItemId(item.id);
-                  }}
                 >
-                  {/* Card Header */}
-                  <div className="px-3 py-1.5 border-b border-nous-border bg-stone-50 select-none flex items-center justify-between cursor-move">
-                    <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle font-black">
-                      {item.type}
+                  {active && (
+                    <span className="absolute bottom-0 left-0 top-0 w-0.5 bg-emerald-400" />
+                  )}
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="truncate font-serif text-sm italic">{folder.name}</h4>
+                    <span className="shrink-0 font-mono text-[8px] opacity-50">
+                      {new Date(folder.createdAt).toLocaleDateString(undefined, {
+                        month: "numeric",
+                        day: "numeric",
+                      })}
                     </span>
-                    <button
-                      onClick={(e) => deleteItem(item.id, e)}
-                      className="action-btn p-0.5 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors"
-                      title="Delete"
-                    >
-                      <X size={10} />
-                    </button>
                   </div>
-
-                  {/* Card Body based on item type */}
-                  <div className="flex-grow p-1">
-                    {item.type === 'image' && (
-                      <div className="relative overflow-hidden w-full h-full min-h-[160px]">
-                        <img 
-                          src={item.content} 
-                          alt={item.title || "Moodboard image"} 
-                          className="object-cover w-full h-full pointer-events-none select-none max-h-[400px]"
-                          referrerPolicy="no-referrer"
-                        />
-                        <input
-                          type="text"
-                          value={item.title || ''}
-                          placeholder="Caption..."
-                          onChange={(e) => updateItemContent(item.id, { title: e.target.value })}
-                          className="w-full text-center py-1 text-[10px] font-sans font-medium bg-white text-stone-700 border-t border-nous-border focus:outline-none focus:bg-stone-50"
-                        />
-                      </div>
-                    )}
-
-                    {item.type === 'text' && (
-                      <div className={`p-4 min-h-[100px] flex flex-col justify-between ${
-                        item.colorTheme === 'amber' ? 'bg-amber-50/50' :
-                        item.colorTheme === 'rose' ? 'bg-rose-50/50' :
-                        item.colorTheme === 'slate' ? 'bg-slate-50' : 'bg-stone-50/50'
-                      }`}>
-                        <input 
-                          type="text"
-                          value={item.title || ''}
-                          placeholder="Note Title..."
-                          onChange={(e) => updateItemContent(item.id, { title: e.target.value })}
-                          className="font-serif italic font-semibold text-xs border-b border-transparent focus:border-stone-300 focus:outline-none bg-transparent pb-1 mb-2 text-stone-800 w-full"
-                        />
-                        <textarea
-                          value={item.content}
-                          onChange={(e) => updateItemContent(item.id, { content: e.target.value })}
-                          placeholder="Write something..."
-                          className="font-sans text-[11px] leading-relaxed text-stone-600 bg-transparent resize-none focus:outline-none h-24 w-full"
-                        />
-                      </div>
-                    )}
-
-                    {item.type === 'color' && (
-                      <div className="p-3 bg-white">
-                        <div 
-                          className="w-full h-24 border border-nous-border shadow-inner"
-                          style={{ backgroundColor: item.content }}
-                        />
-                        <div className="mt-2.5 space-y-1.5 select-none">
-                          <input 
-                            type="text"
-                            value={item.title || ''}
-                            placeholder="Color Name..."
-                            onChange={(e) => updateItemContent(item.id, { title: e.target.value })}
-                            className="font-sans text-[10px] font-semibold tracking-wider text-stone-700 border-b border-transparent focus:border-stone-300 focus:outline-none bg-transparent w-full"
-                          />
-                          <div className="flex gap-2 items-center">
-                            <input 
-                              type="color"
-                              value={item.content}
-                              onChange={(e) => updateItemContent(item.id, { content: e.target.value })}
-                              className="w-5 h-5 border border-nous-border cursor-pointer bg-transparent"
-                            />
-                            <span className="font-mono text-[9px] text-stone-400 font-bold uppercase tracking-wider">
-                              {item.content}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                </button>
               );
             })
           )}
         </div>
-      </div>
-    </ChamberShell>
+      </aside>
+
+      {/* ACTIVE DOSSIER */}
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#F2F0E9] text-[#1C1917]">
+        {!activeFolder ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
+            <FolderOpen size={36} className="text-stone-400" strokeWidth={1.25} />
+            <div>
+              <h2 className="font-serif text-3xl italic">No active dossier</h2>
+              <p className="mt-2 max-w-md font-sans text-sm text-stone-500">
+                Initialize a project in the registry to open Strategic Memo, Execution Plan, and
+                Visual Evidence.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowNewFolder(true)}
+              className="bg-[#1C1917] px-5 py-3 font-mono text-[9px] font-bold uppercase tracking-widest text-[#F2F0E9]"
+            >
+              + Initialize Project
+            </button>
+          </div>
+        ) : (
+          <>
+            <header className="flex flex-col gap-4 border-b border-stone-300/80 px-6 py-5 md:flex-row md:items-end md:justify-between md:px-8">
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-emerald-700">
+                  <FolderOpen size={13} />
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-[0.32em]">
+                    Active Dossier
+                  </span>
+                </div>
+                <h1 className="font-serif text-4xl italic tracking-tight md:text-5xl">
+                  {activeFolder.name}
+                </h1>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  {[
+                    { icon: Trash2, title: "Clear selection", onClick: handleDeleteFolder },
+                    {
+                      icon: Upload,
+                      title: "Upload artifact",
+                      onClick: () => fileInputRef.current?.click(),
+                    },
+                    { icon: Monitor, title: "Presentation view", onClick: () => undefined },
+                    {
+                      icon: Globe,
+                      title: "Send context to Studio",
+                      onClick: () => {
+                        window.dispatchEvent(
+                          new CustomEvent("mimi:change_view", { detail: "studio" }),
+                        );
+                      },
+                    },
+                    {
+                      icon: FileText,
+                      title: "Add text note",
+                      onClick: () => void handleAddTextArtifact(),
+                    },
+                  ].map(({ icon: Icon, title, onClick }) => (
+                    <button
+                      key={title}
+                      type="button"
+                      title={title}
+                      onClick={onClick}
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-400/70 text-stone-600 transition-colors hover:border-stone-800 hover:text-stone-900"
+                    >
+                      <Icon size={14} />
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 bg-emerald-400 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-widest text-black transition-colors hover:bg-emerald-300 disabled:opacity-60"
+                >
+                  {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                  Add Artifact
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleUploadArtifacts}
+                />
+              </div>
+            </header>
+
+            <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-2">
+              {/* Left column */}
+              <section className="flex min-h-0 flex-col overflow-y-auto border-b border-stone-300/80 no-scrollbar lg:border-b-0 lg:border-r">
+                <div className="space-y-8 p-6 md:p-8">
+                  {/* Strategic Memo */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <FileText size={13} className="text-stone-500" />
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.28em] text-stone-500">
+                          Strategic Memo
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveMemo()}
+                        disabled={isSavingMemo}
+                        className="flex items-center gap-1.5 text-stone-500 transition-colors hover:text-stone-900 disabled:opacity-50"
+                        title="Save memo"
+                      >
+                        {isSavingMemo ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Save size={13} />
+                        )}
+                      </button>
+                    </div>
+                    <textarea
+                      value={folderMemo}
+                      onChange={(e) => setFolderMemo(e.target.value)}
+                      onBlur={() => void handleSaveMemo()}
+                      placeholder="Define the project intent, core pillars, and desired outcomes..."
+                      className="min-h-[160px] w-full resize-none border border-stone-300 bg-white/70 p-4 font-sans text-sm leading-relaxed text-stone-800 outline-none placeholder:text-stone-400 focus:border-stone-500"
+                    />
+                  </div>
+
+                  {/* Execution Plan */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <ListChecks size={13} className="text-stone-500" />
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.28em] text-stone-500">
+                          Execution Plan
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void persistTasks(tasks)}
+                          disabled={isSavingTasks}
+                          className="text-stone-500 hover:text-stone-900 disabled:opacity-50"
+                          title="Save plan"
+                        >
+                          {isSavingTasks ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <Save size={13} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleGenerateTasks()}
+                          disabled={isGeneratingTasks}
+                          className="text-emerald-700 hover:text-emerald-900 disabled:opacity-50"
+                          title="Generate mandates"
+                        >
+                          {isGeneratingTasks ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <Sparkles size={13} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        value={newTaskText}
+                        onChange={(e) => setNewTaskText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void handleAddTask();
+                        }}
+                        placeholder="Add imperative..."
+                        className="min-w-0 flex-1 border border-stone-300 bg-white px-3 py-2 font-mono text-[10px] uppercase tracking-wider outline-none focus:border-stone-500"
+                      />
+                      <div className="relative">
+                        <Calendar
+                          size={12}
+                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+                        />
+                        <input
+                          type="date"
+                          value={newTaskDate}
+                          onChange={(e) => setNewTaskDate(e.target.value)}
+                          className="w-full border border-stone-300 bg-white py-2 pl-8 pr-3 font-mono text-[10px] outline-none focus:border-stone-500 sm:w-40"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleAddTask()}
+                        className="flex items-center justify-center border border-stone-800 bg-[#1C1917] px-3 py-2 text-[#F2F0E9]"
+                        title="Add mandate"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+
+                    {tasks.length === 0 ? (
+                      <p className="py-6 text-center font-serif text-sm italic text-stone-400">
+                        No active mandates.
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {tasks.map((task) => (
+                          <li
+                            key={task.id}
+                            className="flex items-start gap-3 border border-stone-300/80 bg-white/60 px-3 py-2.5"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => void toggleTask(task.id)}
+                              className="mt-0.5 font-mono text-[11px] text-stone-700"
+                            >
+                              {task.completed ? "[x]" : "[ ]"}
+                            </button>
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={`font-mono text-[11px] uppercase tracking-wider ${
+                                  task.completed ? "text-stone-400 line-through" : "text-stone-800"
+                                }`}
+                              >
+                                {task.text}
+                              </p>
+                              {task.dueDate && (
+                                <p className="mt-1 font-mono text-[8px] uppercase tracking-widest text-stone-400">
+                                  Due {task.dueDate}
+                                </p>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* Right column — Visual Evidence */}
+              <section className="flex min-h-0 flex-col overflow-hidden">
+                <div className="flex items-center justify-between gap-3 border-b border-stone-300/80 px-6 py-4 md:px-8">
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-[0.28em] text-stone-500">
+                    Visual Evidence ({artifacts.length})
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEvidenceView("grid")}
+                      className={`p-1.5 ${
+                        evidenceView === "grid" ? "text-stone-900" : "text-stone-400"
+                      }`}
+                      title="Grid view"
+                    >
+                      <LayoutGrid size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEvidenceView("list")}
+                      className={`p-1.5 ${
+                        evidenceView === "list" ? "text-stone-900" : "text-stone-400"
+                      }`}
+                      title="List view"
+                    >
+                      <List size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto p-6 no-scrollbar md:p-8">
+                  {loadingArtifacts ? (
+                    <div className="flex h-full items-center justify-center gap-2 text-stone-400">
+                      <Loader2 size={16} className="animate-spin" />
+                      <span className="font-mono text-[8px] uppercase tracking-widest">
+                        Loading evidence
+                      </span>
+                    </div>
+                  ) : artifacts.length === 0 ? (
+                    <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 text-stone-400">
+                      <LayoutGrid size={48} strokeWidth={1} className="opacity-30" />
+                      <p className="font-serif text-sm italic">No artifacts found</p>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-2 border border-stone-400 px-4 py-2 font-mono text-[8px] uppercase tracking-widest text-stone-600 hover:border-stone-800 hover:text-stone-900"
+                      >
+                        Add first plate
+                      </button>
+                    </div>
+                  ) : evidenceView === "grid" ? (
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                      {artifacts.map((artifact) => {
+                        const element = artifact.elements?.[0];
+                        return (
+                          <div
+                            key={artifact.id}
+                            className="group relative border border-stone-300 bg-white"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteArtifact(artifact.id)}
+                              className="absolute right-2 top-2 z-10 hidden rounded-full bg-white/90 p-1 text-stone-500 hover:text-red-600 group-hover:block"
+                              title="Remove artifact"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                            {element?.type === "image" ? (
+                              <div className="aspect-square overflow-hidden bg-stone-100">
+                                <img
+                                  src={element.content}
+                                  alt={artifact.title}
+                                  className="h-full w-full object-cover"
+                                  referrerPolicy="no-referrer"
+                                />
+                              </div>
+                            ) : (
+                              <div className="flex aspect-square items-center justify-center bg-stone-50 p-4">
+                                <p className="line-clamp-6 text-center font-serif text-sm italic text-stone-700">
+                                  {element?.content || artifact.title}
+                                </p>
+                              </div>
+                            )}
+                            <div className="border-t border-stone-200 px-2 py-2">
+                              <p className="truncate font-mono text-[8px] uppercase tracking-widest text-stone-400">
+                                Plate
+                              </p>
+                              <p className="truncate font-serif text-sm italic">{artifact.title}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {artifacts.map((artifact) => {
+                        const element = artifact.elements?.[0];
+                        return (
+                          <div
+                            key={artifact.id}
+                            className="flex items-center gap-3 border border-stone-300 bg-white p-2"
+                          >
+                            <div className="h-14 w-14 shrink-0 overflow-hidden border border-stone-200 bg-stone-100">
+                              {element?.type === "image" ? (
+                                <img
+                                  src={element.content}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center">
+                                  <FileText size={14} className="text-stone-400" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-serif italic">{artifact.title}</p>
+                              <p className="font-mono text-[8px] uppercase tracking-widest text-stone-400">
+                                {element?.type || "artifact"}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteArtifact(artifact.id)}
+                              className="p-2 text-stone-400 hover:text-red-600"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+          </>
+        )}
+      </main>
+    </div>
   );
 };

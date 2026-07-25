@@ -114,8 +114,8 @@ export const MENU_STRUCTURE: NavigationSection[] = [
       {
         mode: "moodboard",
         label: "Mood Board",
-        note: "moodboard and visual workspace",
-        keywords: ["moodboard", "canvas", "board", "visual", "infinite", "workspace", "dossier"],
+        note: "project registry and visual evidence",
+        keywords: ["moodboard", "canvas", "board", "visual", "dossier", "project", "registry", "artifacts"],
       },
       {
         mode: "tailor",
