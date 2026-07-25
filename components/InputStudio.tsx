@@ -111,7 +111,6 @@ import { useStudioTheme } from "../hooks/useStudioTheme";
 import { useTheme } from "../contexts/ThemeContext";
 import { useStudioDollSelection } from "../hooks/useStudioDollSelection";
 import { StudioDollToggle } from "./StudioDollToggle";
-import { PearlButton } from "./ui/PearlButton";
 
 const TOOLTIPS: Record<string, string> = {
   signal: "Signal Panel: Direct inputs and uploads",
