@@ -10,6 +10,7 @@ import {
 import { modulateSemioticContext } from "./semioticModulator";
 import { fetchUserZines, fetchLatestLineageEntry } from "./firebaseUtils";
 import { getClient, withResilience, tryModels, ORACLE_PERSONA as CLIENT_PERSONA } from "./geminiClient";
+import { coerceToString } from "../lib/utils";
 
 export { getClient, withResilience, tryModels };
 
@@ -2455,11 +2456,19 @@ export const shapeBrief = async (
       }
     });
     const parsed = cleanAndParse(response.text);
-    return parsed || {
+    // Models sometimes return string[] for list-like fields despite a STRING schema.
+    const fallback = {
       preservedLanguage: input,
       proposedDirection: "An investigation of latent spaces.",
       inferredAnchors: "[INFERRED] Minimalist design, stark concrete",
       openQuestions: "What silence is left unbroken?"
+    };
+    if (!parsed) return fallback;
+    return {
+      preservedLanguage: coerceToString(parsed.preservedLanguage) || fallback.preservedLanguage,
+      proposedDirection: coerceToString(parsed.proposedDirection) || fallback.proposedDirection,
+      inferredAnchors: coerceToString(parsed.inferredAnchors) || fallback.inferredAnchors,
+      openQuestions: coerceToString(parsed.openQuestions) || fallback.openQuestions,
     };
   }, apiKey);
 };

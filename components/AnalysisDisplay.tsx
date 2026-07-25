@@ -18,6 +18,7 @@ import { useUser } from '../contexts/UserContext';
 import { resolveApiKey } from '../services/apiKeyService';
 import { fetchMemoryAtoms } from '../services/memoryService';
 import { hasAccess } from '../constants';
+import { coerceToString } from '../lib/utils';
 import { useRecorder } from '../hooks/useRecorder';
 import { ZineFlipbookShell, type ZineReadingMode } from './ZineFlipbookShell';
 import { useZineSEO } from '../utils/seoHelper';
@@ -86,7 +87,7 @@ const ZineTextContent: React.FC<{
 }> = ({ content, className = '', enableDropCap = true, isReadingMode = false }) => {
   if (!content) return null;
 
-  const paragraphs = content
+  const paragraphs = coerceToString(content)
     .split(/\n\n+/)
     .map((p) => p.trim())
     .filter(Boolean);

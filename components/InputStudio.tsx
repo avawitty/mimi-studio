@@ -91,6 +91,7 @@ import {
 } from "../services/studioCoverService";
 import type { StudioCoverProvider } from "../services/studioCoverService";
 import { buildStudioCoverExportMeta } from "../lib/studioCoverExport";
+import { coerceToString, coerceToStringArray, splitInferredAnchors } from "../lib/utils";
 import { DeltaVerdictCard } from "./DeltaVerdictCard";
 import { ZineConfiguration } from "./ZineConfiguration";
 import { ZineInspoCarousel } from "./ZineInspoCarousel";
@@ -940,7 +941,12 @@ export const InputStudio: React.FC<{
       if (outputWanted) combinedInput += `OUTPUT WANTED:\n${outputWanted}\n\n`;
 
       const result = await shapeBrief(combinedInput.trim(), apiKeys?.gemini || undefined);
-      setShapedBriefResult(result);
+      setShapedBriefResult({
+        preservedLanguage: coerceToString(result.preservedLanguage),
+        proposedDirection: coerceToString(result.proposedDirection),
+        inferredAnchors: coerceToString(result.inferredAnchors),
+        openQuestions: coerceToString(result.openQuestions),
+      });
       setIsEditingReview(false);
       setShowShapeReview(true);
     } catch (err) {
@@ -1039,7 +1045,7 @@ ${finalInput}`;
         (t) => t.id === activeTreatmentId,
       );
       if (treatment) {
-        finalInput = `[TREATMENT FILTER ACTIVE: ${treatment.treatmentName}]\nMotifs: ${treatment.canonicalTaste?.motifs?.join(", ")}\nPalette: ${treatment.canonicalTaste?.palette?.join(", ")}\nMood: ${treatment.canonicalTaste?.mood?.join(", ")}\n\n${finalInput}`;
+        finalInput = `[TREATMENT FILTER ACTIVE: ${treatment.treatmentName}]\nMotifs: ${coerceToString(treatment.canonicalTaste?.motifs)}\nPalette: ${coerceToString(treatment.canonicalTaste?.palette)}\nMood: ${coerceToString(treatment.canonicalTaste?.mood)}\n\n${finalInput}`;
       }
     }
 
@@ -1646,9 +1652,9 @@ ${finalInput}`;
       if (media.type !== "image") continue;
       try {
         const base64 = media.data.split(",")[1] || media.data;
-        const stylePrompt =
-          mediaAnalysis[index]?.aesthetic?.culturalReferences?.join(", ") ||
-          "avant-garde";
+        const stylePrompt = coerceToString(
+          mediaAnalysis[index]?.aesthetic?.culturalReferences,
+        ) || "avant-garde";
         const transformed = await applyAestheticRefraction(
           media.data,
           stylePrompt,
@@ -2774,7 +2780,7 @@ ${finalInput}`;
                         <div className="space-y-1 border-l border-blue-500/40 pl-3.5">
                           <span className="font-mono text-[7px] uppercase tracking-widest text-blue-400 font-extrabold block">Inferred Anchors</span>
                           <div className="flex flex-wrap gap-1.5 pt-0.5">
-                            {shapedBriefResult.inferredAnchors.split(/,\s*/).map((anchor, i) => (
+                            {splitInferredAnchors(shapedBriefResult.inferredAnchors).map((anchor, i) => (
                               <span key={i} className="font-mono text-[7.5px] uppercase bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2 py-0.5">
                                 {anchor.replace(/^\[INFERRED\]\s*/i, "")}
                               </span>
@@ -2843,8 +2849,7 @@ ${finalInput}`;
                           if (shapedBriefResult.preservedLanguage) {
                             setEditorialIntention(shapedBriefResult.preservedLanguage);
                           }
-                          const parsedAnchors = shapedBriefResult.inferredAnchors
-                            .split(/,\s*/)
+                          const parsedAnchors = splitInferredAnchors(shapedBriefResult.inferredAnchors)
                             .map(a => a.replace(/^\[INFERRED\]\s*/i, "").trim())
                             .filter(Boolean);
                           if (parsedAnchors.length > 0) {
@@ -5216,15 +5221,19 @@ ${finalInput}`;
                                   KIND: {file.type || "unknown"} ({file.mimeType || "raw"})
                                 </p>
                                 
-                                {analysis && analysis.tags && analysis.tags.length > 0 && (
+                                {(() => {
+                                  const tags = coerceToStringArray(analysis?.tags);
+                                  if (tags.length === 0) return null;
+                                  return (
                                   <div className="flex flex-wrap gap-1 pt-1">
-                                    {analysis.tags.slice(0, 3).map((tag, tIdx) => (
+                                    {tags.slice(0, 3).map((tag, tIdx) => (
                                       <span key={tIdx} className="font-mono text-[5.5px] uppercase tracking-widest bg-stone-800 text-stone-400 px-1.5 py-0.5 rounded-none border border-stone-750">
                                         {tag}
                                       </span>
                                     ))}
                                   </div>
-                                )}
+                                  );
+                                })()}
                               </div>
                             </div>
                           );

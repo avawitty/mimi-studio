@@ -26,6 +26,7 @@ import {
 } from '../services/quietStudioService';
 import { resolveApiKey } from '../services/apiKeyService';
 import { useUser } from '../contexts/UserContext';
+import { coerceToString, coerceToStringArray } from '../lib/utils';
 
 export const QuietStudioView: React.FC = () => {
   const { user, profile } = useUser();
@@ -184,30 +185,30 @@ export const QuietStudioView: React.FC = () => {
       // Populate editable state based on operation type
       if (type === "direction_card") {
         setDraftDirectionCard({
-          title: parsed.title || "Untitled Direction",
-          preservedLanguage: parsed.preservedLanguage || "",
-          proposedDirection: parsed.proposedDirection || "",
-          inferredAnchors: parsed.inferredAnchors || "",
-          openQuestions: parsed.openQuestions || "",
-          toneScale: parsed.toneScale || "Standard"
+          title: coerceToString(parsed.title) || "Untitled Direction",
+          preservedLanguage: coerceToString(parsed.preservedLanguage),
+          proposedDirection: coerceToString(parsed.proposedDirection),
+          inferredAnchors: coerceToString(parsed.inferredAnchors),
+          openQuestions: coerceToString(parsed.openQuestions),
+          toneScale: coerceToString(parsed.toneScale) || "Standard"
         });
       } else if (type === "image_brief") {
         setDraftImageBrief({
-          concept: parsed.concept || "",
-          subject: parsed.subject || "",
-          lighting: parsed.lighting || "",
-          composition: parsed.composition || "",
-          materiality: parsed.materiality || "",
-          styleAndVibe: parsed.styleAndVibe || "",
-          rawPrompt: parsed.rawPrompt || ""
+          concept: coerceToString(parsed.concept),
+          subject: coerceToString(parsed.subject),
+          lighting: coerceToString(parsed.lighting),
+          composition: coerceToString(parsed.composition),
+          materiality: coerceToString(parsed.materiality),
+          styleAndVibe: coerceToString(parsed.styleAndVibe),
+          rawPrompt: coerceToString(parsed.rawPrompt)
         });
       } else if (type === "decision_extract") {
         setDraftDecisionExtract({
-          coreInquiry: parsed.coreInquiry || "",
-          decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
-          requirements: Array.isArray(parsed.requirements) ? parsed.requirements : [],
-          tactileDirectives: Array.isArray(parsed.tactileDirectives) ? parsed.tactileDirectives : [],
-          nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : []
+          coreInquiry: coerceToString(parsed.coreInquiry),
+          decisions: coerceToStringArray(parsed.decisions),
+          requirements: coerceToStringArray(parsed.requirements),
+          tactileDirectives: coerceToStringArray(parsed.tactileDirectives),
+          nextSteps: coerceToStringArray(parsed.nextSteps)
         });
       }
 
@@ -982,7 +983,9 @@ export const QuietStudioView: React.FC = () => {
                 <div id="archive-list" className="lg:col-span-1 border-r border-[#E2E1D7] dark:border-[#22221E] pr-6 space-y-3 overflow-y-auto h-[60vh]">
                   {savedOperations.map((op) => {
                     const parsed = parseJsonSafe(op.generatedContent);
-                    const title = parsed?.title || parsed?.coreInquiry || parsed?.concept || `Operation ${op.type.replace('_', ' ')}`;
+                    const title = coerceToString(
+                      parsed?.title || parsed?.coreInquiry || parsed?.concept,
+                    ) || `Operation ${op.type.replace('_', ' ')}`;
                     
                     return (
                       <div
@@ -1029,6 +1032,11 @@ export const QuietStudioView: React.FC = () => {
                       const parsed = parseJsonSafe(selectedSavedOp.generatedContent);
                       if (!parsed) return <div className="text-xs text-[#7C7A6E]">Invalid artifact content format.</div>;
 
+                      const decisions = coerceToStringArray(parsed.decisions);
+                      const requirements = coerceToStringArray(parsed.requirements);
+                      const tactileDirectives = coerceToStringArray(parsed.tactileDirectives);
+                      const nextSteps = coerceToStringArray(parsed.nextSteps);
+
                       return (
                         <div className="space-y-6">
                           <div className="flex items-center justify-between border-b border-[#E2E1D7] dark:border-[#22221E] pb-3">
@@ -1050,32 +1058,32 @@ export const QuietStudioView: React.FC = () => {
                           {selectedSavedOp.type === "direction_card" && (
                             <div className="space-y-4">
                               <h3 className="text-xl font-serif italic text-amber-700 dark:text-amber-400 border-b border-stone-100 dark:border-stone-900 pb-2">
-                                {parsed.title}
+                                {coerceToString(parsed.title)}
                               </h3>
                               <div className="space-y-2">
                                 <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Preserved Language</span>
                                 <p className="text-xs font-mono bg-stone-50 dark:bg-stone-900/50 p-2.5 border border-stone-200 dark:border-stone-800 rounded-sm italic">
-                                  "{parsed.preservedLanguage}"
+                                  "{coerceToString(parsed.preservedLanguage)}"
                                 </p>
                               </div>
                               <div className="space-y-2">
                                 <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Proposed Trajectory / Focus</span>
-                                <p className="text-sm leading-relaxed">{parsed.proposedDirection}</p>
+                                <p className="text-sm leading-relaxed">{coerceToString(parsed.proposedDirection)}</p>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                   <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Inferred Anchors</span>
-                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{parsed.inferredAnchors}</p>
+                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{coerceToString(parsed.inferredAnchors)}</p>
                                 </div>
                                 <div className="space-y-1">
                                   <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Tone & Severity</span>
-                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{parsed.toneScale}</p>
+                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{coerceToString(parsed.toneScale)}</p>
                                 </div>
                               </div>
                               <div className="space-y-2">
                                 <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Open Questions</span>
                                 <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm leading-relaxed text-stone-600 dark:text-stone-300">
-                                  {parsed.openQuestions}
+                                  {coerceToString(parsed.openQuestions)}
                                 </p>
                               </div>
                             </div>
@@ -1084,38 +1092,38 @@ export const QuietStudioView: React.FC = () => {
                           {selectedSavedOp.type === "image_brief" && (
                             <div className="space-y-4">
                               <h3 className="text-lg font-serif italic text-indigo-700 dark:text-indigo-400 border-b border-stone-100 dark:border-stone-900 pb-2">
-                                {parsed.concept}
+                                {coerceToString(parsed.concept)}
                               </h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                   <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Subject Focus</span>
-                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{parsed.subject}</p>
+                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{coerceToString(parsed.subject)}</p>
                                 </div>
                                 <div className="space-y-1">
                                   <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Lighting Architecture</span>
-                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{parsed.lighting}</p>
+                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{coerceToString(parsed.lighting)}</p>
                                 </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                   <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Composition</span>
-                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{parsed.composition}</p>
+                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{coerceToString(parsed.composition)}</p>
                                 </div>
                                 <div className="space-y-1">
                                   <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Materiality & Substrate</span>
-                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{parsed.materiality}</p>
+                                  <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{coerceToString(parsed.materiality)}</p>
                                 </div>
                               </div>
                               <div className="space-y-2">
                                 <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Style & Vibe</span>
-                                <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{parsed.styleAndVibe}</p>
+                                <p className="text-xs bg-stone-50 dark:bg-stone-900/50 p-2 border border-stone-200 dark:border-stone-800 rounded-sm">{coerceToString(parsed.styleAndVibe)}</p>
                               </div>
                               <div className="space-y-2 pt-2 border-t border-stone-100 dark:border-stone-900">
                                 <div className="flex items-center justify-between">
                                   <span className="font-mono text-[8px] uppercase tracking-widest text-indigo-500 font-bold">Optimized Prompt</span>
                                   <button
                                     id="btn-copy-archive-prompt"
-                                    onClick={() => handleCopyText(parsed.rawPrompt)}
+                                    onClick={() => handleCopyText(coerceToString(parsed.rawPrompt))}
                                     className="text-indigo-500 hover:text-indigo-600 font-mono text-[9px] flex items-center gap-1"
                                   >
                                     <Clipboard size={10} />
@@ -1123,7 +1131,7 @@ export const QuietStudioView: React.FC = () => {
                                   </button>
                                 </div>
                                 <p className="text-xs font-mono bg-indigo-50/10 dark:bg-indigo-950/20 p-3 border border-indigo-100 dark:border-indigo-950/35 rounded-sm">
-                                  {parsed.rawPrompt}
+                                  {coerceToString(parsed.rawPrompt)}
                                 </p>
                               </div>
                             </div>
@@ -1132,13 +1140,13 @@ export const QuietStudioView: React.FC = () => {
                           {selectedSavedOp.type === "decision_extract" && (
                             <div className="space-y-5">
                               <h3 className="text-lg font-serif italic text-emerald-700 dark:text-emerald-400 border-b border-stone-100 dark:border-stone-900 pb-2">
-                                inquiry // {parsed.coreInquiry}
+                                inquiry // {coerceToString(parsed.coreInquiry)}
                               </h3>
                               
                               <div className="space-y-2">
                                 <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Design Decisions</span>
                                 <ul className="space-y-1 list-none pl-0">
-                                  {parsed.decisions?.map((item: string, i: number) => (
+                                  {decisions.map((item: string, i: number) => (
                                     <li key={i} className="text-xs flex gap-2 items-start text-stone-700 dark:text-stone-300">
                                       <CornerDownRight size={12} className="text-stone-400 mt-0.5 shrink-0" />
                                       {item}
@@ -1150,7 +1158,7 @@ export const QuietStudioView: React.FC = () => {
                               <div className="space-y-2">
                                 <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Material Requirements</span>
                                 <ul className="space-y-1 list-none pl-0">
-                                  {parsed.requirements?.map((item: string, i: number) => (
+                                  {requirements.map((item: string, i: number) => (
                                     <li key={i} className="text-xs flex gap-2 items-start text-stone-700 dark:text-stone-300">
                                       <Check size={12} className="text-emerald-500 mt-0.5 shrink-0" />
                                       {item}
@@ -1162,7 +1170,7 @@ export const QuietStudioView: React.FC = () => {
                               <div className="space-y-2">
                                 <span className="font-mono text-[8px] uppercase tracking-widest text-[#7C7A6E] font-bold">Tactile Directives</span>
                                 <ul className="space-y-1 list-none pl-0">
-                                  {parsed.tactileDirectives?.map((item: string, i: number) => (
+                                  {tactileDirectives.map((item: string, i: number) => (
                                     <li key={i} className="text-xs flex gap-2 items-start text-stone-700 dark:text-stone-300">
                                       <span className="w-1 h-1 rounded-full bg-[#111111] dark:bg-[#EEEEEE] mt-2 shrink-0"></span>
                                       {item}
@@ -1174,7 +1182,7 @@ export const QuietStudioView: React.FC = () => {
                               <div className="space-y-2 border-t border-stone-100 dark:border-stone-900 pt-3">
                                 <span className="font-mono text-[8px] uppercase tracking-widest text-emerald-500 font-bold">Immediate Next Steps</span>
                                 <ul className="space-y-1.5 list-none pl-0">
-                                  {parsed.nextSteps?.map((item: string, i: number) => (
+                                  {nextSteps.map((item: string, i: number) => (
                                     <li key={i} className="text-xs flex gap-2 items-start text-[#111111] dark:text-[#EEEEEE]">
                                       <span className="font-mono text-[9px] font-bold text-emerald-500 shrink-0 bg-emerald-500/10 px-1 py-0.5 rounded-sm">0{i+1}</span>
                                       <span className="font-medium">{item}</span>
