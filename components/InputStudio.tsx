@@ -2346,65 +2346,89 @@ ${finalInput}`;
                   <div className="flex-1 h-px bg-stone-200/10 dark:bg-stone-800/50" />
                 </div>
                 <div className="flex flex-wrap gap-2 items-center min-h-[24px]">
-                  {/* Deep Reasoning */}
-                  {deepThinking && (
-                    <span className="inline-flex items-center gap-1.5 font-mono text-[7px] uppercase bg-purple-500/15 border border-purple-500/35 text-purple-400 px-2 py-0.5 rounded-sm shadow-sm transition-all hover:bg-purple-500/20">
-                      <span>✥ DEEP REASONING</span>
-                      <button
-                        type="button"
-                        onClick={() => setDeepThinking(false)}
-                        className="hover:text-white transition-colors ml-0.5 text-[8.5px] font-black cursor-pointer"
-                        title="Disable Deep Reasoning"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
+                  {/* Deep Reasoning — always available */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeepThinking((v) => !v);
+                      playClick();
+                    }}
+                    className={`inline-flex items-center gap-1.5 font-mono text-[7px] uppercase px-2 py-0.5 rounded-sm border transition-all ${
+                      deepThinking
+                        ? "bg-purple-500/15 border-purple-500/35 text-purple-400"
+                        : "border-stone-700/60 text-stone-500 hover:text-stone-300 hover:border-stone-600"
+                    }`}
+                    title={deepThinking ? "Disable Deep Reasoning" : "Enable Deep Reasoning"}
+                  >
+                    <BrainCircuit size={9} />
+                    Deep
+                  </button>
 
-                  {/* Web Grounding */}
-                  {useSearch && (
-                    <span className="inline-flex items-center gap-1.5 font-mono text-[7px] uppercase bg-blue-500/15 border border-blue-500/35 text-blue-400 px-2 py-0.5 rounded-sm shadow-sm transition-all hover:bg-blue-500/20">
-                      <span>✥ WEB GROUNDING</span>
-                      <button
-                        type="button"
-                        onClick={() => setUseSearch(false)}
-                        className="hover:text-white transition-colors ml-0.5 text-[8.5px] font-black cursor-pointer"
-                        title="Disable Web Search Grounding"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
+                  {/* Web Grounding — always available */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseSearch((v) => !v);
+                      playClick();
+                    }}
+                    className={`inline-flex items-center gap-1.5 font-mono text-[7px] uppercase px-2 py-0.5 rounded-sm border transition-all ${
+                      useSearch
+                        ? "bg-blue-500/15 border-blue-500/35 text-blue-400"
+                        : "border-stone-700/60 text-stone-500 hover:text-stone-300 hover:border-stone-600"
+                    }`}
+                    title={useSearch ? "Disable Web Grounding" : "Enable Web Grounding"}
+                  >
+                    <Globe size={9} />
+                    Web
+                  </button>
 
-                  {/* Tailor profile */}
-                  {!useTailorProfile && (
-                    <span className="inline-flex items-center gap-1.5 font-mono text-[7px] uppercase bg-orange-500/15 border border-orange-500/35 text-orange-400 px-2 py-0.5 rounded-sm shadow-sm transition-all hover:bg-orange-500/20">
-                      <span>✥ TAILOR OVERRIDE</span>
-                      <button
-                        type="button"
-                        onClick={() => setUseTailorProfile(true)}
-                        className="hover:text-white transition-colors ml-0.5 text-[8.5px] font-black cursor-pointer"
-                        title="Disable Tailor Override"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
+                  {/* Tailor profile — on by default */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseTailorProfile((v) => !v);
+                      playClick();
+                    }}
+                    className={`inline-flex items-center gap-1.5 font-mono text-[7px] uppercase px-2 py-0.5 rounded-sm border transition-all ${
+                      useTailorProfile
+                        ? "bg-emerald-500/15 border-emerald-500/35 text-emerald-400"
+                        : "bg-orange-500/15 border-orange-500/35 text-orange-400"
+                    }`}
+                    title={
+                      useTailorProfile
+                        ? "Tailor voice on — click to bypass"
+                        : "Tailor bypassed — click to restore"
+                    }
+                  >
+                    <Scissors size={9} />
+                    {useTailorProfile ? "Tailor" : "Tailor off"}
+                  </button>
 
-                  {/* Active Doll Persona */}
-                  {studioDoll.enabled && studioDoll.activeDoll && (
-                    <span className="inline-flex items-center gap-1.5 font-mono text-[7px] uppercase bg-amber-500/15 border border-amber-500/35 text-amber-500 px-2 py-0.5 rounded-sm shadow-sm transition-all hover:bg-amber-500/20">
-                      <span>✥ PERSONA: {studioDoll.activeDoll.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => studioDoll.toggleDollInjection(false)}
-                        className="hover:text-white transition-colors ml-0.5 text-[8.5px] font-black cursor-pointer"
-                        title="Disable Persona"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
+                  {/* Doll persona */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      studioDoll.toggleDollInjection(!studioDoll.enabled);
+                      playClick();
+                    }}
+                    className={`inline-flex items-center gap-1.5 font-mono text-[7px] uppercase px-2 py-0.5 rounded-sm border transition-all ${
+                      studioDoll.enabled
+                        ? "bg-amber-500/15 border-amber-500/35 text-amber-500"
+                        : "border-stone-700/60 text-stone-500 hover:text-stone-300 hover:border-stone-600"
+                    }`}
+                    title={
+                      studioDoll.enabled
+                        ? `Disable persona${studioDoll.activeDoll ? `: ${studioDoll.activeDoll.name}` : ""}`
+                        : "Inject Doll identity into prompts"
+                    }
+                  >
+                    {studioDoll.loading ? (
+                      <Loader2 size={9} className="animate-spin" />
+                    ) : null}
+                    {studioDoll.enabled && studioDoll.activeDoll
+                      ? `Doll · ${studioDoll.activeDoll.name}`
+                      : "Doll"}
+                  </button>
 
                   {/* Active Preset Treatment */}
                   {activeTreatmentId && (
@@ -2450,11 +2474,6 @@ ${finalInput}`;
                       </button>
                     </span>
                   ))}
-
-                  {/* If nothing active */}
-                  {!deepThinking && !useSearch && useTailorProfile && (!studioDoll.enabled) && !activeTreatmentId && mediaFiles.length === 0 && activeTags.length === 0 && (
-                    <p className="font-sans text-[9px] text-stone-500 italic">No context active. Mimi will generate from raw prompt text.</p>
-                  )}
                 </div>
               </div>
 
@@ -3750,6 +3769,109 @@ ${finalInput}`;
                           );
                         }}
                       />
+
+                      <div className="space-y-3 border-t border-stone-800 pt-4">
+                        <span className="block font-mono text-[8.5px] uppercase tracking-widest text-stone-400 font-bold">
+                          Studio overflow
+                        </span>
+                        <p className="font-sans text-[10px] text-stone-500 leading-relaxed">
+                          Sparks, reset, and colophon live here so the left rail stays capture-only.
+                        </p>
+
+                        <div className="flex items-start gap-3">
+                          <StudioDollToggle
+                            enabled={studioDoll.enabled}
+                            loading={studioDoll.loading}
+                            dolls={studioDoll.dolls}
+                            activeDollId={studioDoll.activeDollId}
+                            onToggle={(next) => {
+                              studioDoll.toggleDollInjection(next);
+                              playClick();
+                            }}
+                            onSelectDoll={(id) => {
+                              studioDoll.setActiveDollId(id);
+                              playClick();
+                            }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-mono text-[8px] uppercase tracking-widest text-stone-400">
+                              Doll persona
+                            </p>
+                            <p className="font-sans text-[9px] text-stone-500 mt-0.5">
+                              Pick which doll injects into visual prompts. Toggle also lives on the context strip.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveThread(null);
+                              setInput("");
+                              playClick();
+                            }}
+                            className="flex items-center gap-2 py-2.5 px-3 border border-stone-800 hover:border-stone-600 text-stone-400 hover:text-stone-200 font-mono text-[8px] uppercase tracking-widest transition-colors"
+                            title="Reset Workspace"
+                          >
+                            <ChevronLeft size={12} />
+                            Reset
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleAutoGenerateTitle();
+                              playClick();
+                            }}
+                            className="flex items-center gap-2 py-2.5 px-3 border border-stone-800 hover:border-stone-600 text-stone-400 hover:text-stone-200 font-mono text-[8px] uppercase tracking-widest transition-colors"
+                            title="Whip Title Spark"
+                          >
+                            <Zap size={12} />
+                            Title spark
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isGeneratingPrompt}
+                            onClick={async () => {
+                              setIsGeneratingPrompt(true);
+                              try {
+                                const newPrompt = await generateAutoAwesomePrompt();
+                                setInput(newPrompt);
+                              } catch (e) {
+                                console.error(e);
+                              } finally {
+                                setIsGeneratingPrompt(false);
+                              }
+                              playClick();
+                            }}
+                            className={`flex items-center gap-2 py-2.5 px-3 border font-mono text-[8px] uppercase tracking-widest transition-colors ${
+                              isGeneratingPrompt
+                                ? "border-yellow-500/50 bg-yellow-500/10 text-yellow-400"
+                                : "border-stone-800 hover:border-stone-600 text-stone-400 hover:text-stone-200"
+                            }`}
+                            title="Generate Aesthetic Spark"
+                          >
+                            {isGeneratingPrompt ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <Sparkles size={12} />
+                            )}
+                            Aesthetic spark
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowColophon(true);
+                              playClick();
+                            }}
+                            className="flex items-center gap-2 py-2.5 px-3 border border-stone-800 hover:border-stone-600 text-stone-400 hover:text-stone-200 font-mono text-[8px] uppercase tracking-widest transition-colors"
+                            title="Review Manifesto Colophon"
+                          >
+                            <FileText size={12} />
+                            Colophon
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
 

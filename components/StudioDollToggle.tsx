@@ -44,7 +44,7 @@ export const StudioDollToggle: React.FC<StudioDollToggleProps> = ({
         <select
           value={activeDollId ?? ""}
           onChange={(e) => onSelectDoll(e.target.value)}
-          className="w-8 max-w-[120px] md:w-auto md:max-w-none border studio-border studio-bg-surface font-mono text-[7px] uppercase tracking-wider px-1 py-0.5 truncate"
+          className="min-w-[7rem] max-w-[14rem] border studio-border studio-bg-surface font-mono text-[7px] uppercase tracking-wider px-2 py-1 truncate"
           title={activeDoll?.name ?? "Select doll"}
         >
           {dolls.map((doll) => (
@@ -56,7 +56,7 @@ export const StudioDollToggle: React.FC<StudioDollToggleProps> = ({
       )}
 
       {enabled && dolls.length === 0 && !loading && (
-        <span className="font-mono text-[6px] uppercase tracking-widest text-stone-500 max-w-[80px] leading-tight">
+        <span className="font-mono text-[6px] uppercase tracking-widest text-stone-500 max-w-[120px] leading-tight">
           No dolls — visit Tailor
         </span>
       )}
