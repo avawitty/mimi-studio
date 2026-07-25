@@ -1301,6 +1301,7 @@ export const TailorView: React.FC<{
     | "shards"
     | "brand"
     | "drift"
+    | "celestial"
     | "settings"
   >("positioning");
   const [showLogicReport, setShowLogicReport] = useState(false);
@@ -3346,6 +3347,55 @@ export const TailorView: React.FC<{
                     </div>
                   </BlueprintCard>
 
+                  <BlueprintCard
+                    label="Celestial Calibration"
+                    subLabel="ORBITAL TIMING"
+                    onClick={() => openEditor("celestial")}
+                    className="md:col-span-2"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-2 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Moon size={14} className="text-nous-subtle shrink-0" />
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-nous-text">
+                            {draft.celestialCalibration?.enabled
+                              ? "Active"
+                              : "Dormant"}
+                          </span>
+                          {draft.celestialCalibration?.zodiac && (
+                            <span className="font-serif italic text-sm text-nous-subtle capitalize">
+                              · {draft.celestialCalibration.zodiac}
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-serif italic text-sm text-nous-subtle leading-relaxed">
+                          {draft.celestialCalibration?.enabled
+                            ? draft.celestialCalibration.seasonalAlignment ||
+                              draft.celestialCalibration.astrologicalLineage ||
+                              "Coordinates locked — zines will inherit orbital timing."
+                            : "Enable to color each zine’s celestial reading with your zodiac, season, and birth coordinates."}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateCelestial(
+                            "enabled",
+                            !draft.celestialCalibration?.enabled,
+                          );
+                        }}
+                        className={`shrink-0 px-3 py-1.5 font-mono text-[8px] uppercase tracking-widest border transition-colors ${
+                          draft.celestialCalibration?.enabled
+                            ? "bg-nous-text text-nous-base border-nous-text"
+                            : "border-nous-border text-nous-subtle hover:text-nous-text"
+                        }`}
+                      >
+                        {draft.celestialCalibration?.enabled ? "On" : "Off"}
+                      </button>
+                    </div>
+                  </BlueprintCard>
+
                   {/* NEW: TASTE DNA SEEDS PERSISTENCE */}
                   <div className="md:col-span-2 border-t border-stone-100 pt-10 mt-6 space-y-6">
                     <div className="space-y-1">
@@ -3939,6 +3989,7 @@ export const TailorView: React.FC<{
                       { key: "brand", label: "Constraints & rules" },
                       { key: "shards", label: "Reference Universe" },
                       { key: "drift", label: "Diagnostics" },
+                      { key: "celestial", label: "Celestial Calibration" },
                       { key: "settings", label: "Profile & Privacy" },
                     ].map((step) => (
                       <button
@@ -3975,6 +4026,7 @@ export const TailorView: React.FC<{
                                 brand: "Brand",
                                 shards: "Reference",
                                 drift: "Diagnostics",
+                                celestial: "Celestial",
                                 settings: "Profile",
                               };
                               return labels[activeStep] || activeStep;
@@ -5631,6 +5683,204 @@ export const TailorView: React.FC<{
                             />
                           </>
                         )}
+                        {activeStep === "celestial" && (
+                          <>
+                            <p className="font-serif italic text-nous-subtle mb-8">
+                              Set the orbital coordinates that color each zine’s
+                              celestial reading — zodiac, season, and birth
+                              timing.
+                            </p>
+
+                            <FieldGroup
+                              label="Activation"
+                              description="When enabled, zine generation inherits these coordinates for celestial_calibration."
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateCelestial(
+                                    "enabled",
+                                    !draft.celestialCalibration?.enabled,
+                                  )
+                                }
+                                className={`flex items-center justify-between w-full p-4 border transition-colors ${
+                                  draft.celestialCalibration?.enabled
+                                    ? "border-nous-text bg-nous-base"
+                                    : "border-nous-border hover:border-nous-subtle"
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Moon
+                                    size={16}
+                                    className={
+                                      draft.celestialCalibration?.enabled
+                                        ? "text-nous-text"
+                                        : "text-nous-subtle"
+                                    }
+                                  />
+                                  <div className="text-left">
+                                    <span className="font-sans text-[9px] uppercase tracking-widest font-black block">
+                                      Celestial Calibration
+                                    </span>
+                                    <span className="font-serif italic text-xs text-nous-subtle">
+                                      {draft.celestialCalibration?.enabled
+                                        ? "Active — readings will reflect your coordinates."
+                                        : "Dormant — zines infer timing without your profile."}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`font-mono text-[8px] uppercase tracking-widest px-2 py-1 ${
+                                    draft.celestialCalibration?.enabled
+                                      ? "bg-nous-text text-nous-base"
+                                      : "bg-nous-base text-nous-subtle border border-nous-border"
+                                  }`}
+                                >
+                                  {draft.celestialCalibration?.enabled
+                                    ? "On"
+                                    : "Off"}
+                                </span>
+                              </button>
+                            </FieldGroup>
+
+                            <FieldGroup
+                              label="Zodiac Sign"
+                              description="Primary solar sign for oracular timing language."
+                            >
+                              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                {ZODIAC_SIGNS.map((sign) => {
+                                  const isActive =
+                                    draft.celestialCalibration?.zodiac === sign;
+                                  return (
+                                    <button
+                                      key={sign}
+                                      type="button"
+                                      onClick={() =>
+                                        updateCelestial("zodiac", sign)
+                                      }
+                                      className={`px-3 py-2 border font-mono text-[8px] uppercase tracking-widest capitalize transition-colors ${
+                                        isActive
+                                          ? "border-nous-text bg-nous-text text-nous-base"
+                                          : "border-nous-border text-nous-subtle hover:text-nous-text"
+                                      }`}
+                                    >
+                                      {sign}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </FieldGroup>
+
+                            <FieldGroup
+                              label="Birth Coordinates"
+                              description="Optional — deepen the reading with date, time, and place."
+                            >
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                  <label className="font-sans text-[7px] uppercase tracking-widest text-nous-subtle font-black">
+                                    Birth Date
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={
+                                      draft.celestialCalibration?.birthDate ||
+                                      ""
+                                    }
+                                    onChange={(e) =>
+                                      updateCelestial(
+                                        "birthDate",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-full bg-transparent border-b border-nous-border py-2 font-mono text-sm focus:outline-none focus:border-nous-text"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="font-sans text-[7px] uppercase tracking-widest text-nous-subtle font-black">
+                                    Birth Time
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={
+                                      draft.celestialCalibration?.birthTime ||
+                                      ""
+                                    }
+                                    onChange={(e) =>
+                                      updateCelestial(
+                                        "birthTime",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-full bg-transparent border-b border-nous-border py-2 font-mono text-sm focus:outline-none focus:border-nous-text"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="font-sans text-[7px] uppercase tracking-widest text-nous-subtle font-black">
+                                    Birth Location
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={
+                                      draft.celestialCalibration
+                                        ?.birthLocation || ""
+                                    }
+                                    onChange={(e) =>
+                                      updateCelestial(
+                                        "birthLocation",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="City, country"
+                                    className="w-full bg-transparent border-b border-nous-border py-2 font-serif italic text-sm focus:outline-none focus:border-nous-text"
+                                  />
+                                </div>
+                              </div>
+                            </FieldGroup>
+
+                            <FieldGroup
+                              label="Astrological Lineage"
+                              description="Houses, aspects, or personal myth that should tint the reading."
+                            >
+                              <textarea
+                                value={
+                                  draft.celestialCalibration
+                                    ?.astrologicalLineage || ""
+                                }
+                                onChange={(e) =>
+                                  updateCelestial(
+                                    "astrologicalLineage",
+                                    e.target.value,
+                                  )
+                                }
+                                rows={3}
+                                placeholder="e.g. Venus in Scorpio, twelfth-house Moon…"
+                                className="w-full bg-transparent border border-nous-border p-3 font-serif italic text-sm focus:outline-none focus:border-nous-text resize-none"
+                              />
+                            </FieldGroup>
+
+                            <FieldGroup
+                              label="Seasonal Alignment"
+                              description="Preferred seasonal weather for this persona’s output."
+                            >
+                              <textarea
+                                value={
+                                  draft.celestialCalibration
+                                    ?.seasonalAlignment || ""
+                                }
+                                onChange={(e) =>
+                                  updateCelestial(
+                                    "seasonalAlignment",
+                                    e.target.value,
+                                  )
+                                }
+                                rows={2}
+                                placeholder="e.g. Late autumn, pre-dawn, frost on glass…"
+                                className="w-full bg-transparent border border-nous-border p-3 font-serif italic text-sm focus:outline-none focus:border-nous-text resize-none"
+                              />
+                            </FieldGroup>
+                          </>
+                        )}
+
                         {activeStep === "settings" && (
                           <>
                             <p className="font-serif italic text-nous-subtle mb-8">

@@ -17,9 +17,11 @@ function sanitizeProfile(profile: UserProfile | null): string {
         expressionEngine: tailor?.expressionEngine,
         strategicVectors: tailor?.strategicVectors,
         strategicSummary: tailor?.strategicSummary,
+        celestialCalibration: tailor?.celestialCalibration,
         seedName: tailor?.seedName,
         characterReferences: tailor?.characterReferences,
         darkRoomTreatments: tailor?.darkRoomTreatments,
+        algoDials: tailor?.algoDials,
         archetype: profile.tasteProfile?.dominant_archetypes,
         directives: profile.lastAuditReport?.aestheticDirectives,
         strategicOpportunity: profile.lastAuditReport?.strategicOpportunity,
@@ -48,7 +50,6 @@ export const createZine = async (text: string, media: any[], tone: ToneTag, prof
         }
         const isLite = !!opts.isLite;
         const useDeep = !!opts.deepThinking && !isLite;
-        const useSearch = !!opts.useSearch;
         const useMaps = !!opts.useMaps;
         const isTaskMode = !!opts.taskMode;
 
@@ -87,6 +88,13 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
 
             const profileToUse = opts.bypassTailor ? null : profile;
             const profileContext = sanitizeProfile(profileToUse);
+            const tailorWebScry = profileToUse?.tailorDraft?.algoDials?.webScry ?? 50;
+            // Studio Web chip OR elevated Tailor Web Scry dial enables Google grounding for semiotics.
+            const useSearch = !!opts.useSearch || (!useMaps && tailorWebScry >= 55);
+            const celestial = profileToUse?.tailorDraft?.celestialCalibration;
+            const celestialContext = celestial?.enabled
+                ? `\nCELESTIAL CALIBRATION (Tailor — MUST color timing, tone, and semiotic weather):\n- Zodiac: ${celestial.zodiac || 'unspecified'}\n- Astrological lineage: ${celestial.astrologicalLineage || 'none stated'}\n- Seasonal alignment: ${celestial.seasonalAlignment || 'none stated'}\n- Birth coordinates: ${[celestial.birthDate, celestial.birthTime, celestial.birthLocation].filter(Boolean).join(' · ') || 'not provided'}\nWrite celestial_calibration as a vivid temporal/oracular reading that reflects these coordinates—not a generic placeholder.`
+                : `\nCELESTIAL CALIBRATION: Infer a specific temporal/oracular timing for this issue (season, hour, lunar mood). Avoid empty or generic star silence.`;
             
             const zineOptionsContext = zineOptions ? `Zine Style: ${zineOptions.style}, Theme: ${zineOptions.theme}, Content Focus: ${zineOptions.contentFocus}, Art Style: ${zineOptions.artStyle || 'Default'}, Aesthetic Tone: ${zineOptions.aestheticTone || 'Default'}, Goals: ${zineOptions.goals || 'None'}, Custom Title: ${zineOptions.customTitle || 'Generate a title'}, Reading Level: ${zineOptions.readingLevel === 'slow' ? 'Slow Read (10-15 min, deep, expansive, detailed)' : 'Short Read (2-4 min, punchy, concise)'}` : 'Standard';
             const modulationContext = modulateSemioticContext(text, profile, tone);
@@ -187,6 +195,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             ${memoryContext}
             ${scribeUsedContext}
             ${dollContext}
+            ${celestialContext}
             
             CORE DIRECTIVE:
             - BLANK-SLATE VISUAL BASELINE: Do not impose a default palette, color treatment, camera, lens, lighting, film stock, medium, era, genre, mood, art movement, composition, or editorial style. Visual constraints may come only from the current user input, explicit zine brief/options, approved Used Context, uploaded artifacts, a confirmed Tailor profile, or an explicitly selected treatment. The current user input has highest priority. When a dimension is unspecified, leave it open rather than defaulting to monochrome, noir, desaturated, brutalist, cinematic, or high-fashion styling.
@@ -199,6 +208,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             
             ALGORITHMIC DIALS & INTENSITY CONTROL:
             - MEMORY SYNTHESIS (${profileToUse?.tailorDraft?.algoDials?.memorySynthesis ?? 50}%): At higher percentages, heavily contextualize the output using the RECENT ZINES and PAST THOUGHTS. At lower percentages, treat this artifact as an isolated, standalone creation.
+            - WEB SCRY / GROUNDING (${tailorWebScry}%)${useSearch ? ' — ACTIVE: Google Search grounding is enabled for this generation.' : ' — inactive unless Studio Web chip is on.'}: At higher percentages, pull real cultural references, designers, and verified touchpoints into semiotic_signals.
             - DISSONANCE ENGINE (${profileToUse?.tailorDraft?.algoDials?.dissonance ?? 10}%): At higher percentages, actively inject opposing, subversive, or contrasting aesthetic concepts into the visual plates and narrative to force creative breakthroughs. Mutate their safe aesthetic choices.
             - BINARY-TO-SPECTRUM DIAL (${profileToUse?.tailorDraft?.algoDials?.binaryToSpectrum ?? 50}%): At 0%, strictly adhere to binary categories (e.g., hyper-masculine/feminine). At 100%, aggressively synthesize and blur these boundaries into a fluid, post-binary aesthetic.
             - AESTHETIC DRIFT VULNERABILITY (${profileToUse?.tailorDraft?.diagnostics?.driftVulnerability ?? 5}/10): At lower values, strictly enforce the user's established Tailor Logic. At higher values, allow external inputs (artifacts, web scry) to heavily influence and shift the aesthetic output.
@@ -226,16 +236,17 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             6. strategic_hypothesis: A rigorous, insightful take on the data patterns. What is the underlying structural truth?
             7. resonance_score: A number between 0-100 representing how well the generated zine resonates with the user's aesthetic core.
             8. semiotic_signals: Exactly 3-5 motifs. 
-               - Use Google Search to find REAL, relevant emerging brands, designers, or cultural touchpoints.
+               - ${useSearch ? 'Google Search grounding is ON — you MUST search for REAL brands, designers, exhibitions, essays, or cultural touchpoints with verifiable links.' : 'Prefer concrete cultural references. Enable Studio Web or raise Tailor Web Scry (≥55) for live Google grounding.'}
                - Each signal MUST have a type: 'acquisition' (a specific, optional commerce reference), 'conceptual' (an aesthetic idea), or 'lexical' (a theoretical term).
                - Acquisition signals are editorial commentary, never commands or disguised advertisements. Provide a real 'link' and never invent product metadata.
                - When verified product data is available, include image_url, vendor, price, commerce_source, and product_id. Otherwise leave those fields empty.
                - Provide a 'semantic_trigger' (the exact keyword/concept from the user's profile/input that triggered this).
                - Provide a 'targeting_rationale' as a one-sentence, evidence-linked semiotic commentary explaining why the object is relevant. Do not call it targeting in the prose.
+               - context and visual_directive must be specific and sensory—never generic filler.
             9. aesthetic_touchpoints: Exactly 3-5 motifs.
                - Each MUST have a type: 'visual', 'lexical', or 'sonic'.
                - motif: A short descriptive string.
-            10. celestial_calibration: The timing of the insight (e.g., "Late Autumn, Pre-Dawn").
+            10. celestial_calibration: A vivid temporal/oracular reading for this issue (season, hour, lunar mood, atmospheric timing). ${celestial?.enabled ? 'Honor the Tailor celestial coordinates above.' : 'Be specific and poetic—never a silent-stars placeholder.'}
             11. visual_plates: Four (4) specific image prompts. Use the Tailor Logic to define the lighting, grain, and composition. They must be cohesive with the uploaded artifacts.
             12. roadmap: A Cultural Authority Roadmap. The objective is to anchor brands or individuals in sustainable aesthetic authority over time. Do not repeat brand names or references from the Tailor Logic. Use Tailor Logic only to understand positioning direction.
                 - Authority Anchor: Core Claim, Repetition Vector, Exclusion Principle.
@@ -276,8 +287,10 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                 toolConfig: tools.length > 0 ? { includeServerSideToolInvocations: true } : undefined,
             };
 
-            if (true) {
-                config.responseMimeType = "application/json";
+            config.responseMimeType = "application/json";
+            // Structured responseSchema conflicts with Google Search/Maps grounding tools.
+            // When grounding is active, enforce JSON via prompt only so semiotics can cite real sources.
+            if (tools.length === 0) {
                 config.responseSchema = {
                     type: Type.OBJECT,
                     properties: {

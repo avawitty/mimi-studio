@@ -1526,15 +1526,15 @@ export const AnalysisDisplay: React.FC<{
  </motion.section>
 
  {/* 7. CELESTIAL CALIBRATION */}
- <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg text-white print:min-h-0 print:py-12">
+ <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg-black text-white print:min-h-0 print:py-12">
  <div className="w-full space-y-12 px-6 md:px-24">
- <SectionHeader label="Celestial Calibration"icon={Moon} color="text-white"/>
+ <SectionHeader label="Celestial Calibration" icon={Moon} color="text-white"/>
  <div className="flex flex-col items-center text-center space-y-12">
  <div className="p-8 rounded-none border border-white/10 bg-white/5 animate-pulse-slow">
  <CelestialIcon size={48} style={{ color: accentColor }} />
  </div>
- <p className="font-mono text-xl md:text-3xl text-nous-text uppercase tracking-widest leading-relaxed max-w-2xl border-l-2 pl-8 text-left"style={{ borderColor: accentColor }}>
- {metadata.content.celestial_calibration}
+ <p className="font-mono text-xl md:text-3xl text-white/90 uppercase tracking-widest leading-relaxed max-w-2xl border-l-2 pl-8 text-left" style={{ borderColor: accentColor }}>
+ {metadata.content.celestial_calibration || "Awaiting celestial timing for this issue."}
  </p>
  </div>
  </div>
