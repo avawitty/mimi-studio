@@ -2603,27 +2603,29 @@ ${finalInput}`;
 
               {/* Desktop Action Area (Hidden on Mobile) */}
               {!isMobile && (
-                <div className="flex flex-col items-center gap-3 mt-5 select-none shrink-0 z-10 w-full max-w-2xl">
-                  <div className="grid grid-cols-3 gap-2 w-full" aria-label="Issue workflow">
+                <div className="flex flex-col items-center gap-2 mt-4 select-none shrink-0 z-10 w-full max-w-xl">
+                  <div
+                    className="flex flex-wrap items-baseline justify-center gap-x-7 gap-y-2"
+                    aria-label="Issue workflow"
+                  >
                     <button
                       type="button"
                       disabled={isShapingBrief}
                       onClick={handleShapeBrief}
-                      className="min-h-16 p-2.5 bg-stone-100 dark:bg-stone-900 border border-amber-500/60 hover:border-amber-500 hover:bg-stone-200 dark:hover:bg-stone-850 text-left rounded-xs transition-all cursor-pointer shadow-xs flex items-center gap-2.5"
+                      className="group inline-flex items-baseline gap-1.5 bg-transparent p-0 border-0 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                       title="Organize the idea without generating the issue"
                     >
-                      <span className="w-8 h-8 shrink-0 border border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center" aria-hidden="true">
-                        {isShapingBrief ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} strokeWidth={1.7} />}
+                      <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-amber-600/80 dark:text-amber-400/80">
+                        01
                       </span>
-                      <span className="min-w-0">
-                        <span className="block font-mono text-[7px] uppercase tracking-[0.16em] text-amber-600 dark:text-amber-400 font-extrabold">
-                          01 / Shape
-                        </span>
-                        <span className="block font-serif italic text-sm studio-text-ink mt-0.5">
-                          {isShapingBrief ? "Shaping..." : "Shape brief"}
-                        </span>
+                      <span className="inline-flex items-center gap-1.5 font-serif italic text-[15px] leading-none text-amber-700 dark:text-amber-300 border-b border-amber-500/70 pb-0.5 transition-colors group-hover:border-amber-500 group-hover:text-amber-800 dark:group-hover:text-amber-200">
+                        {isShapingBrief ? (
+                          <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                        ) : null}
+                        {isShapingBrief ? "Shaping…" : "Shape brief"}
                       </span>
                     </button>
+
                     <button
                       type="button"
                       disabled={isThinking}
@@ -2631,48 +2633,39 @@ ${finalInput}`;
                         triggerAccession(true);
                         playClick();
                       }}
-                      className="min-h-16 p-2.5 bg-purple-950/10 dark:bg-purple-950/30 border border-purple-500/40 hover:border-purple-400 hover:bg-purple-900/20 text-left rounded-xs transition-all cursor-pointer shadow-sm flex items-center gap-2.5"
+                      className="group inline-flex items-baseline gap-1.5 bg-transparent p-0 border-0 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                       title="Render a fast low-fidelity draft layout to verify structure before generating high-fi images"
                     >
-                      <span className="w-8 h-8 shrink-0 border border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center" aria-hidden="true">
-                        <Eye size={16} strokeWidth={1.7} />
+                      <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-teal-600/80 dark:text-teal-400/80">
+                        02
                       </span>
-                      <span className="min-w-0">
-                        <span className="block font-mono text-[7px] uppercase tracking-[0.16em] text-purple-600 dark:text-purple-400 font-extrabold">
-                          02 / Preview
-                        </span>
-                        <span className="block font-serif italic text-sm studio-text-ink mt-0.5">
-                          Quick preview
-                        </span>
+                      <span className="font-serif italic text-[15px] leading-none text-teal-700 dark:text-teal-300 border-b border-teal-500/70 pb-0.5 transition-colors group-hover:border-teal-500 group-hover:text-teal-800 dark:group-hover:text-teal-200">
+                        Quick preview
                       </span>
                     </button>
-                    <PearlButton
+
+                    <button
                       type="button"
-                      editorial
-                      loading={isThinking}
                       disabled={isThinking}
-                      likenessAccent={profile?.likenessManifest?.accentHex}
                       onClick={() => {
                         triggerAccession(false);
                         playClick();
                       }}
-                      className="min-w-0 w-full shadow-md !justify-start !text-left !p-2.5 !min-h-16"
+                      className="group inline-flex items-baseline gap-1.5 bg-transparent p-0 border-0 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                       title="Compose the complete editorial issue"
                     >
-                      <span className="flex items-center gap-2.5 min-w-0">
-                        <span className="w-8 h-8 shrink-0 border border-white/20 bg-white/5 flex items-center justify-center" aria-hidden="true">
-                          <BookOpen size={16} strokeWidth={1.7} />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block font-mono text-[7px] uppercase tracking-[0.16em] opacity-70 not-italic">
-                            03 / Build
-                          </span>
-                          <span className="block font-serif italic text-sm normal-case tracking-normal mt-0.5">Develop issue</span>
-                        </span>
+                      <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-rose-600/80 dark:text-rose-400/80">
+                        03
                       </span>
-                    </PearlButton>
+                      <span className="inline-flex items-center gap-1.5 font-serif italic text-[15px] leading-none text-rose-700 dark:text-rose-300 border-b-2 border-rose-500 pb-0.5 transition-colors group-hover:border-rose-600 group-hover:text-rose-800 dark:group-hover:text-rose-200">
+                        {isThinking ? (
+                          <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                        ) : null}
+                        {isThinking ? "Developing…" : "Develop issue"}
+                      </span>
+                    </button>
                   </div>
-                  <span className="font-sans text-[11px] text-stone-600 dark:text-stone-400 mt-0.5 select-none">
+                  <span className="font-sans text-[10px] text-stone-500 dark:text-stone-400 mt-0.5 select-none text-center">
                     Shape proposes structure. Nothing is final until you develop the issue.
                   </span>
                 </div>
