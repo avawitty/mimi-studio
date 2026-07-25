@@ -61,6 +61,7 @@ const userId = "ghost";
 const origin = {
   type: "semiotic_signal" as const,
   artifactId: "zine_lover_girl",
+  artifactTitle: "Will I Be a Lover Girl Again?",
   signalId: "signal_soft_armor",
   label: "Semiotic touchpoint",
 };
@@ -190,11 +191,35 @@ const request = requestFromLegacyPayload({
   autoRun: true,
   originType: "semiotic_signal",
   artifactId: "zine_lover_girl",
+  artifactTitle: "Will I Be a Lover Girl Again?",
+  signalId: "signal_soft_armor",
 });
 assert(request?.autoRun === true, "Touchpoint should request an automatic Scry.");
 assert(
   request?.origin.artifactId === "zine_lover_girl",
   "Navigation request should retain its originating zine.",
+);
+assert(
+  request?.origin.artifactTitle === "Will I Be a Lover Girl Again?" &&
+    request.origin.signalId === "signal_soft_armor",
+  "Navigation request should retain zine title and signal identity for tagging.",
+);
+
+const {
+  composeScrySummary,
+} = await import("../services/scrySessionService");
+const composed = composeScrySummary(
+  session.query,
+  [worldFinding],
+  [creatorFinding],
+  "A soft-armor reading.",
+);
+assert(
+  composed.includes("A soft-armor reading.") &&
+    composed.includes("Web / world signals") &&
+    composed.includes("Connections to past work") &&
+    composed.includes("The Broken Bride"),
+  "Scry summary should include reading, web signals, and past-work connections.",
 );
 
 console.log("Scry context flow verification: PASS");
@@ -203,4 +228,5 @@ console.log("  World and creator evidence remain distinct");
 console.log("  Findings receive deterministic tags without embedding requests");
 console.log("  Search history restores the durable query");
 console.log("  Creator approval exposes a Context Packet to Build Brief");
+console.log("  Summary composes web content and past-work connections");
 process.exit(0);

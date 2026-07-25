@@ -19,7 +19,7 @@ import {
 } from "../types";
 import {
   deriveDeterministicTags,
-  generateTagsForSavedArtifact,
+  generateOriginAwareFindingTags,
 } from "./taggingPolicyService";
 
 const LOCAL_PREFIX = "mimi_scry_v1";
@@ -351,10 +351,17 @@ const persistSelectionIndexes = async (
 export const saveScryFinding = async (
   finding: ScryFinding,
 ): Promise<ScryFinding> => {
-  const tagged = await generateTagsForSavedArtifact(
-    [finding.title, finding.snippet, finding.url].filter(Boolean).join("\n"),
-    finding.tags,
-  );
+  const tagged = await generateOriginAwareFindingTags({
+    title: finding.title,
+    snippet: finding.snippet,
+    url: finding.url,
+    query: finding.query,
+    originType: finding.origin.type,
+    originArtifactTitle: finding.origin.artifactTitle,
+    originSignalId: finding.origin.signalId,
+    originLabel: finding.origin.label,
+    deterministicTags: finding.tags,
+  });
   const saved: ScryFinding = {
     ...finding,
     selectionState: "saved",
@@ -376,6 +383,8 @@ export const saveScryFinding = async (
       sessionId: saved.sessionId,
       contextRunId: saved.contextRunId,
       originatingArtifactId: saved.origin.artifactId ?? null,
+      originatingArtifactTitle: saved.origin.artifactTitle ?? null,
+      originatingSignalId: saved.origin.signalId ?? null,
     },
     creatorTags: saved.tags,
   });
@@ -470,6 +479,40 @@ export const listScrySessions = async (
   }
 };
 
+export const listScryFindings = async (
+  userId: string,
+  maxResults = 250,
+): Promise<ScryFinding[]> => {
+  const local = readLocal<ScryFinding>(userId, "scryFindings");
+  if (!canSyncCloud(userId)) {
+    return local
+      .sort((a, b) => b.capturedAt - a.capturedAt)
+      .slice(0, maxResults);
+  }
+  try {
+    const snapshot = await getDocs(
+      query(
+        collection(db, "users", userId, "scryFindings"),
+        orderBy("capturedAt", "desc"),
+        limit(maxResults),
+      ),
+    );
+    const cloud = snapshot.docs.map(
+      (entry) => entry.data() as ScryFinding,
+    );
+    const merged = new Map<string, ScryFinding>();
+    [...cloud, ...local].forEach((finding) => merged.set(finding.id, finding));
+    return [...merged.values()]
+      .sort((a, b) => b.capturedAt - a.capturedAt)
+      .slice(0, maxResults);
+  } catch (error) {
+    console.warn("MIMI // Scry finding cloud read deferred.", error);
+    return local
+      .sort((a, b) => b.capturedAt - a.capturedAt)
+      .slice(0, maxResults);
+  }
+};
+
 export const requestFromLegacyPayload = (
   payload: unknown,
 ): ScryOpenRequest | null => {
@@ -497,9 +540,60 @@ export const requestFromLegacyPayload = (
           : "semiotic_signal",
       artifactId:
         typeof record.artifactId === "string" ? record.artifactId : undefined,
+      artifactTitle:
+        typeof record.artifactTitle === "string"
+          ? record.artifactTitle
+          : undefined,
       signalId:
         typeof record.signalId === "string" ? record.signalId : undefined,
       label: typeof record.label === "string" ? record.label : undefined,
     },
   };
+};
+
+/** Compose a durable Scry summary from world + creator findings. */
+export const composeScrySummary = (
+  query: string,
+  worldFindings: ScryFinding[],
+  creatorFindings: ScryFinding[],
+  poeticReading?: string | null,
+): string => {
+  const sections: string[] = [];
+  if (poeticReading?.trim()) {
+    sections.push(poeticReading.trim());
+  }
+
+  if (worldFindings.length > 0) {
+    const leads = worldFindings
+      .slice(0, 3)
+      .map((finding) => {
+        const bit = finding.snippet?.trim() || finding.title;
+        return finding.url
+          ? `${finding.title} — ${bit}`
+          : `${finding.title}: ${bit}`;
+      })
+      .join(" ");
+    sections.push(
+      `Web / world signals (${worldFindings.length}): ${leads}`,
+    );
+  }
+
+  if (creatorFindings.length > 0) {
+    const links = creatorFindings
+      .slice(0, 4)
+      .map(
+        (finding) =>
+          `${finding.title} [${finding.sourceType.replace(/_/g, " ")}]`,
+      )
+      .join("; ");
+    sections.push(
+      `Connections to past work (${creatorFindings.length}): ${links}.`,
+    );
+  }
+
+  if (sections.length === 0) {
+    return `Scry found no durable evidence yet for “${query}”. Try a sharper fragment, or seed Pocket / publish a zine so outside signals can attach to your archive.`;
+  }
+
+  return sections.join("\n\n");
 };

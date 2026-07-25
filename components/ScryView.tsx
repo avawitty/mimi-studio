@@ -32,6 +32,7 @@ import { useUser } from "../contexts/UserContext";
 import {
   approveScrySession,
   completeScrySession,
+  composeScrySummary,
   listScrySessions,
   normalizeScryFinding,
   saveScryFinding,
@@ -175,10 +176,13 @@ export const ScryView: React.FC<ScryViewProps> = ({
         "shadow_memory",
       ] as const;
 
+      const asArray = <T,>(value: unknown): T[] =>
+        Array.isArray(value) ? (value as T[]) : [];
+
       try {
         const settled = await Promise.allSettled([
-          searchGrounding(queryToUse),
-          scryWebSignals(queryToUse),
+          searchGrounding(queryToUse, userId),
+          scryWebSignals(queryToUse, apiKeys?.you_com),
           generateScribeReading(profile, queryToUse, apiKeys?.gemini),
           scryShadowMemory(queryToUse),
         ]);
@@ -198,16 +202,18 @@ export const ScryView: React.FC<ScryViewProps> = ({
               : [],
         );
 
-        const creatorArchive =
+        const creatorArchive = asArray<Record<string, unknown>>(
           settled[0].status === "fulfilled"
-            ? (settled[0].value?.results ?? [])
-            : [];
+            ? settled[0].value?.results
+            : [],
+        );
         const webPayload =
           settled[1].status === "fulfilled" ? settled[1].value : null;
-        const shadowHits =
-          settled[3].status === "fulfilled" ? settled[3].value : [];
+        const shadowHits = asArray<Record<string, unknown>>(
+          settled[3].status === "fulfilled" ? settled[3].value : [],
+        );
 
-        const creatorArchiveFindings = creatorArchive.map((raw: any) =>
+        const creatorArchiveFindings = creatorArchive.map((raw) =>
           normalizeScryFinding({
             userId,
             sessionId: session.id,
@@ -221,7 +227,7 @@ export const ScryView: React.FC<ScryViewProps> = ({
             raw,
           }),
         );
-        const shadowFindings = (shadowHits ?? []).map((raw: any) =>
+        const shadowFindings = shadowHits.map((raw) =>
           normalizeScryFinding({
             userId,
             sessionId: session.id,
@@ -232,10 +238,26 @@ export const ScryView: React.FC<ScryViewProps> = ({
             resultKind: "creator",
             sourceType: "shadow_memory",
             provider: "shadow_memory",
-            raw,
+            raw: {
+              ...raw,
+              title:
+                (typeof raw.title === "string" && raw.title) ||
+                (typeof raw.name === "string" && raw.name) ||
+                (typeof raw.type === "string"
+                  ? `Shadow ${raw.type}`
+                  : "Shadow memory"),
+              snippet:
+                (typeof raw.snippet === "string" && raw.snippet) ||
+                (typeof raw.content_preview === "string" &&
+                  raw.content_preview) ||
+                (typeof raw.summary === "string" && raw.summary) ||
+                (typeof raw.tone === "string" ? `Tone: ${raw.tone}` : undefined),
+            },
           }),
         );
-        const webSignalFindings = (webPayload?.results ?? []).map((raw: any) =>
+        const webSignalFindings = asArray<Record<string, unknown>>(
+          webPayload?.results,
+        ).map((raw) =>
           normalizeScryFinding({
             userId,
             sessionId: session.id,
@@ -249,26 +271,31 @@ export const ScryView: React.FC<ScryViewProps> = ({
             raw,
           }),
         );
-        const groundedFindings = (webPayload?.groundingChunks ?? []).map(
-          (chunk: any) =>
-            normalizeScryFinding({
-              userId,
-              sessionId: session.id,
-              contextRunId: contextRun.id,
-              query: queryToUse,
-              origin,
-              projectId,
-              resultKind: "world",
-              sourceType: "web",
-              provider: "google_grounding",
-              raw: {
-                title: chunk.web?.title || "Grounded source",
-                snippet:
-                  chunk.web?.title || "Referenced by the grounded reading.",
-                url: chunk.web?.uri,
-              },
-            }),
-        );
+        const groundedFindings = asArray<Record<string, unknown>>(
+          webPayload?.groundingChunks,
+        ).map((chunk) => {
+          const web = (chunk.web as Record<string, unknown> | undefined) || {};
+          return normalizeScryFinding({
+            userId,
+            sessionId: session.id,
+            contextRunId: contextRun.id,
+            query: queryToUse,
+            origin,
+            projectId,
+            resultKind: "world",
+            sourceType: "web",
+            provider: "google_grounding",
+            raw: {
+              title:
+                (typeof web.title === "string" && web.title) ||
+                "Grounded source",
+              snippet:
+                (typeof web.title === "string" && web.title) ||
+                "Referenced by the grounded reading.",
+              url: typeof web.uri === "string" ? web.uri : undefined,
+            },
+          });
+        });
 
         const dedupe = (findings: ScryFinding[]): ScryFinding[] => {
           const seen = new Set<string>();
@@ -292,24 +319,32 @@ export const ScryView: React.FC<ScryViewProps> = ({
           ...webSignalFindings,
           ...groundedFindings,
         ]);
-        const reading =
-          settled[2].status === "fulfilled"
+        const poeticReading =
+          settled[2].status === "fulfilled" &&
+          typeof settled[2].value === "string"
             ? settled[2].value
-            : settled[0].status === "fulfilled"
-              ? settled[0].value?.summary
+            : settled[0].status === "fulfilled" &&
+                typeof settled[0].value?.summary === "string"
+              ? settled[0].value.summary
               : null;
+        const reading = composeScrySummary(
+          queryToUse,
+          nextWorld,
+          nextCreator,
+          poeticReading,
+        );
         const allFindings = [...nextWorld, ...nextCreator];
         const completed = await completeScrySession({
           session,
           contextRun,
           findings: allFindings,
-          scribeReading: typeof reading === "string" ? reading : undefined,
+          scribeReading: reading,
           providerErrors,
         });
 
         setWorldFindings(nextWorld);
         setCreatorFindings(nextCreator);
-        setScribeReading(typeof reading === "string" ? reading : null);
+        setScribeReading(reading);
         setCurrentSession(completed.session);
         setConfidence(
           (settled.filter((result) => result.status === "fulfilled").length /
@@ -317,6 +352,20 @@ export const ScryView: React.FC<ScryViewProps> = ({
             100,
         );
         setHistory(await listScrySessions(userId));
+
+        if (allFindings.length === 0) {
+          showNotification(
+            providerErrors.length
+              ? "Scry finished with provider errors and no evidence."
+              : "Scry finished, but no web or archive matches landed.",
+          );
+        } else if (providerErrors.length > 0) {
+          showNotification(
+            `Partial scry: ${nextWorld.length} world · ${nextCreator.length} archive.`,
+          );
+        } else if (webPayload?.notice) {
+          showNotification(webPayload.notice);
+        }
       } catch (error) {
         console.error("MIMI // Scrying failed", error);
         showNotification("The Scry could not complete this search.");
@@ -326,7 +375,14 @@ export const ScryView: React.FC<ScryViewProps> = ({
         inFlightRef.current = false;
       }
     },
-    [apiKeys?.gemini, profile, query, showNotification, userId],
+    [
+      apiKeys?.gemini,
+      apiKeys?.you_com,
+      profile,
+      query,
+      showNotification,
+      userId,
+    ],
   );
 
   // Deep Semiotic Trend Scrying
