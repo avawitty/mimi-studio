@@ -1,0 +1,60 @@
+{
+  "name": "Mimi Studio",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20",
+
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "GitHub.copilot",
+        "ms-playwright.playwright",
+        "Firebase.firebase-explorer"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        }
+      }
+    }
+  },
+
+  "remoteEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096"
+  },
+
+  "postCreateCommand": "npm ci",
+
+  "forwardPorts": [5173, 3000, 5000],
+
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite Dev Server",
+      "onAutoForward": "notify"
+    },
+    "3000": {
+      "label": "API Server",
+      "onAutoForward": "notify"
+    },
+    "5000": {
+      "label": "Firebase Emulator",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "waitFor": "postCreateCommand",
+
+  "remoteUser": "node"
+}
