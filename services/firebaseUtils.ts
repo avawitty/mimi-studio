@@ -11,7 +11,7 @@ export const isFullyAuthenticated = () => {
 };
 
 import { ZineContent, ZineMetadata, ToneTag, PocketItem, UserProfile, DossierFolder, DossierArtifact, Treatment, UserPreferences, MediaFile, Proposal, ContextEntry, LineageEntry, UsedContextSnapshot } from "../types";
-import { saveZineLocally, savePocketItemLocally, getLocalProfile, getLocalPocket, getLocalZines, deleteLocalPocketItem, saveFolderLocally, getLocalFolders, saveArtifactLocally, getLocalArtifacts } from "./localArchive";
+import { saveZineLocally, savePocketItemLocally, getLocalProfile, getLocalPocket, getLocalZines, deleteLocalPocketItem, saveFolderLocally, getLocalFolders, saveArtifactLocally, getLocalArtifacts, deleteLocalArtifact } from "./localArchive";
 import { syncToShadowMemory, deleteFromShadowMemory } from "./vectorSearch";
 import { StrategyAudit, Task } from "../types";
 
@@ -1238,6 +1238,11 @@ HYPOTHESIS: ${zineData.content.strategic_hypothesis || ''}
 };
 
 export const updateDossierFolder = async (folderId: string, patch: Partial<DossierFolder>) => {
+  const localFolders = await getLocalFolders();
+  const existing = localFolders.find((folder: DossierFolder) => folder.id === folderId);
+  if (existing) {
+    await saveFolderLocally({ ...existing, ...patch });
+  }
   if (isFullyAuthenticated() && navigator.onLine) {
     try { await updateDoc(doc(db, "dossier_folders", folderId), patch); } catch (e) {}
   }
@@ -1272,59 +1277,63 @@ export const fetchDossierFolders = async (uid: string) => {
 };
 
 export const createDossierArtifactFromImage = async (uid: string, folderId: string, title: string, imageUrl: string, layout?: MoodboardLayout) => {
-  if (!uid || uid === 'ghost' || !isFullyAuthenticated()) return '';
-  const id = `artifact_${Date.now()}`;
+  const resolvedUid = uid || 'ghost';
+  const id = `artifact_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   
   let finalImageUrl = imageUrl;
-  if (imageUrl && imageUrl.startsWith('data:')) {
+  if (imageUrl && imageUrl.startsWith('data:') && resolvedUid !== 'ghost' && isFullyAuthenticated()) {
       try {
           const { archiveManager } = await import('./archiveManager');
-          finalImageUrl = await archiveManager.uploadMedia(uid, imageUrl, `dossier_artifacts/${id}`);
+          finalImageUrl = await archiveManager.uploadMedia(resolvedUid, imageUrl, `dossier_artifacts/${id}`);
       } catch (e) {
           console.warn("Failed to upload dossier artifact image", e);
       }
   }
 
-  // Generate tags automatically
-  const { generateTagsFromMedia } = await import("./geminiService");
-  const tags = await generateTagsFromMedia(`Image artifact: ${title}`);
+  let tags: string[] = ['visual_evidence', 'image'];
+  try {
+    const { generateTagsFromMedia } = await import("./geminiService");
+    tags = await generateTagsFromMedia(`Image artifact: ${title}`);
+  } catch (e) {
+    console.warn("Tag generation skipped for image artifact", e);
+  }
   
   const artifact: DossierArtifact = {
-    id, userId: uid, folderId, type: 'moodboard', title, createdAt: Date.now(),
-    elements: [{ id: 'el_0', type: 'image', content: finalImageUrl }],
-    tags, // Add tags
+    id, userId: resolvedUid, folderId, type: 'moodboard', title, createdAt: Date.now(),
+    elements: [{ id: 'el_0', type: 'image', content: finalImageUrl, style: { zIndex: 1 } }],
+    tags,
     status: 'active',
     ...(layout ? { layout } : {})
   };
   
   await saveArtifactLocally(artifact);
   
-  if (uid && auth.currentUser && navigator.onLine) {
+  if (resolvedUid !== 'ghost' && auth.currentUser && navigator.onLine) {
     try { 
       await setDoc(doc(db, "dossier_artifacts", id), sanitizeFirestoreData(artifact)); 
-      updateTasteGraph(uid, 'image', { imageUrl: imageUrl });
+      updateTasteGraph(resolvedUid, 'image', { imageUrl: imageUrl });
     } catch (e) {}
   }
   return id;
 };
 
 export const createDossierArtifactFromStrategy = async (uid: string, folderId: string, audit: StrategyAudit) => {
-  if (!uid || uid === 'ghost' || !isFullyAuthenticated()) return '';
-  const id = `artifact_${Date.now()}`;
+  const resolvedUid = uid || 'ghost';
+  const id = `artifact_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   
   const title = `${audit.platform} Strategy Audit`;
   const content = JSON.stringify(audit.read, null, 2);
   
   const artifact: DossierArtifact = {
-    id, userId: uid, folderId, type: 'strategy', title, createdAt: Date.now(),
-    elements: [{ id: 'el_0', type: 'text', content }],
+    id, userId: resolvedUid, folderId, type: 'strategy', title, createdAt: Date.now(),
+    elements: [{ id: 'el_0', type: 'text', content, style: { zIndex: 1 } }],
     tags: [audit.platform.toLowerCase(), 'strategy', 'audit'],
     status: 'active'
   };
   
   await saveArtifactLocally(artifact);
   
-  if (uid && auth.currentUser && navigator.onLine) {
+  if (resolvedUid !== 'ghost' && auth.currentUser && navigator.onLine) {
     try { 
       await setDoc(doc(db, "dossier_artifacts", id), sanitizeFirestoreData(artifact)); 
     } catch (e) {}
@@ -1333,27 +1342,31 @@ export const createDossierArtifactFromStrategy = async (uid: string, folderId: s
 };
 
 export const createDossierArtifactFromText = async (uid: string, folderId: string, title: string, text: string, layout?: MoodboardLayout) => {
-  if (!uid || uid === 'ghost' || !isFullyAuthenticated()) return '';
-  const id = `artifact_${Date.now()}`;
+  const resolvedUid = uid || 'ghost';
+  const id = `artifact_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   
-  // Generate tags automatically
-  const { generateTagsFromMedia } = await import("./geminiService");
-  const tags = await generateTagsFromMedia(`Text artifact: ${title} - ${text}`);
+  let tags: string[] = ['visual_evidence', 'text'];
+  try {
+    const { generateTagsFromMedia } = await import("./geminiService");
+    tags = await generateTagsFromMedia(`Text artifact: ${title} - ${text}`);
+  } catch (e) {
+    console.warn("Tag generation skipped for text artifact", e);
+  }
   
   const artifact: DossierArtifact = {
-    id, userId: uid, folderId, type: 'brief', title, createdAt: Date.now(),
-    elements: [{ id: 'el_0', type: 'text', content: text }],
-    tags, // Add tags
+    id, userId: resolvedUid, folderId, type: 'brief', title, createdAt: Date.now(),
+    elements: [{ id: 'el_0', type: 'text', content: text, style: { zIndex: 1 } }],
+    tags,
     status: 'active',
     ...(layout ? { layout } : {})
   };
   
   await saveArtifactLocally(artifact);
   
-  if (uid && auth.currentUser && navigator.onLine) {
+  if (resolvedUid !== 'ghost' && auth.currentUser && navigator.onLine) {
     try { 
       await setDoc(doc(db, "dossier_artifacts", id), sanitizeFirestoreData(artifact)); 
-      updateTasteGraph(uid, 'text', { content: text });
+      updateTasteGraph(resolvedUid, 'text', { content: text });
     } catch (e) {}
   }
   return id;
@@ -1361,8 +1374,12 @@ export const createDossierArtifactFromText = async (uid: string, folderId: strin
 
 export const deleteDossierArtifact = async (artifactId: string) => {
   try {
-    await deleteDoc(doc(db, "dossier_artifacts", artifactId));
-    // Note: We might also want to delete it from local storage if needed.
+    await deleteLocalArtifact(artifactId);
+  } catch (e) {}
+  try {
+    if (isFullyAuthenticated() && navigator.onLine) {
+      await deleteDoc(doc(db, "dossier_artifacts", artifactId));
+    }
   } catch (e: any) {
     handleFirestoreError(e, OperationType.DELETE, `dossier_artifacts/${artifactId}`);
   }

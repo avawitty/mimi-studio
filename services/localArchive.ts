@@ -265,6 +265,20 @@ export const getLocalArtifacts = async (folderId: string): Promise<any[]> => {
   } catch (e) { return []; }
 };
 
+export const deleteLocalArtifact = async (artifactId: string) => {
+  if (!artifactId) return;
+  try {
+    const db = await openDB();
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORES.ARTIFACTS, 'readwrite');
+      const request = tx.objectStore(STORES.ARTIFACTS).delete(artifactId);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (e) {}
+};
+
 export const clearLocalMemory = async () => {
   try {
     localStorage.removeItem('mimi_sovereign_id');
