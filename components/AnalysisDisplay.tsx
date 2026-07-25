@@ -1065,6 +1065,18 @@ export const AnalysisDisplay: React.FC<{
 
  <style>{`
   .zine-theme-root section { background-color: transparent !important; }
+  .zine-theme-root section.zine-ink-plate {
+    background-color: #0a0a0a !important;
+    color: #f5f5f4 !important;
+  }
+  .zine-theme-root section.zine-ink-plate p,
+  .zine-theme-root section.zine-ink-plate span,
+  .zine-theme-root section.zine-ink-plate h1,
+  .zine-theme-root section.zine-ink-plate h2,
+  .zine-theme-root section.zine-ink-plate h3,
+  .zine-theme-root section.zine-ink-plate h4 {
+    color: #f5f5f4 !important;
+  }
   .zine-theme-root .bg-white, .zine-theme-root .dark\\:bg-\\[\\#0A0A0A\\], .zine-theme-root .dark\\:bg-nous-base { background-color: var(--zine-surface) !important; }
   .zine-theme-root .border-nous-border, .zine-theme-root .dark\\:border-nous-border, .zine-theme-root .dark\\:border-nous-border { border-color: var(--zine-border) !important; }
   .zine-theme-root .text-nous-text, .zine-theme-root .dark\\:text-nous-text, .zine-theme-root .text-nous-text { color: var(--zine-text) !important; }
@@ -1322,7 +1334,7 @@ export const AnalysisDisplay: React.FC<{
  </motion.section>
 
  {/* 3. HEADER IMAGE */}
- <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg-black overflow-hidden relative group print:min-h-0 print:py-12">
+ <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="zine-ink-plate min-h-[100dvh] flex flex-col justify-center snap-start bg-black overflow-hidden relative group print:min-h-0 print:py-12">
  <Visualizer prompt={metadata.content.hero_image_prompt || metadata.content?.headlines?.[0] || metadata.title} defaultAspectRatio="16:9"defaultImageSize={metadata.isHighFidelity ? '2K' : '1K'} isArtifact isLite={metadata.isLite} initialImage={metadata.coverImageUrl} artifacts={metadata.artifacts} treatmentId={metadata.treatmentId} autoDevelop={!metadata.coverImageUrl && !metadata.isQuickPreview} onImageGenerated={handleHeroImageGenerated} />
  <div className="absolute bottom-12 left-12 p-4 bg-white/5 backdrop-blur-md rounded-none border border-white/10">
  <span className="font-mono text-[7px] text-white uppercase tracking-widest">FIG_01: PRIMARY_VISUAL</span>
