@@ -1,0 +1,11 @@
+1193- />
+1194- ) : (
+1195- <>
+1196- {viewMode === 'studio' && (
+1197- <>
+1198: <div className="hidden md:block h-full">
+1199- <InputStudio onRefine={handleRefine} isThinking={appState === AppState.THINKING} initialValue={threadValue} initialMedia={threadMedia} initialHighFidelity={threadHighFidelity} zineOptions={zineOptions} setZineOptions={setZineOptions} />
+1200- </div>
+1201- <div className="block md:hidden h-full">
+1202- <MobileStudio 
+1203- onPublish={async (content, title) => { 

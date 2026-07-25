@@ -1,0 +1,14 @@
+components/ArchivalView.tsx:            fetchUserZines(user.uid).then(zines => {
+components/TheEdit.tsx:          getPersonalizedEdit(user.uid, tasteVector, codex).then(edit => {
+components/ZineInspoCarousel.tsx:        .then(setSignatureImage)
+components/ZineInspoCarousel.tsx:    getTasteGraph(user.uid).then(graph => {
+components/ArchetypeIndex.tsx:    fetchCommunityZines(100).then((data) => {
+components/ThreadsView.tsx:      ]).then(([data, readout]) => {
+components/ThreadsView.tsx:      ]).then(([fetchedZines, fetchedThreads]) => {
+components/ScryView.tsx:        searchGrounding(queryToUse).then(data => {
+components/ScryView.tsx:        scryWebSignals(queryToUse).then(data => {
+components/ScryView.tsx:        generateScribeReading(profile, queryToUse, activePersona?.apiKey).then(reading => {
+components/ScryView.tsx:        scryShadowMemory(queryToUse).then(hits => {
+components/ScryView.tsx:      const imagePromise = generateRawImage(queryToUse, '1:1', profile).then(img => {
+components/TasteBlueprintModule.tsx:      fetchPocketItems(user.uid).then(items => {
+components/Pocket.tsx:          .then(() => {

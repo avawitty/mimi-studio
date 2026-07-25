@@ -1,0 +1,30 @@
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // PUBLIC READ, AUTH WRITE FOR USER FILES
+    match /users/{userId}/uploads/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null 
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024 // 5MB
+                   && request.resource.contentType.matches('image/.*|video/.*|audio/.*|application/pdf');
+    }
+    
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // ANONYMOUS GHOST UPLOADS (For temporary sessions)
+    match /ghosts/{ghostId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth == null || request.auth.uid == ghostId;
+    }
+
+    // DEFAULT FALLBACK
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

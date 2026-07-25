@@ -1,0 +1,592 @@
+{
+  "entities": {
+    "ThimbleBoard": {
+      "title": "ThimbleBoard",
+      "description": "A sourcing board for grouping external links.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who owns the board." },
+        "title": { "type": "string", "description": "Title of the board." },
+        "description": { "type": "string", "description": "Optional description of the board." },
+        "createdAt": { "type": "number", "description": "Timestamp of creation." },
+        "updatedAt": { "type": "number", "description": "Timestamp of last update." }
+      },
+      "required": ["userId", "title", "createdAt", "updatedAt"]
+    },
+    "ThimbleItem": {
+      "title": "ThimbleItem",
+      "description": "An item within a sourcing board.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who owns the item." },
+        "boardId": { "type": "string", "description": "ID of the board this item belongs to." },
+        "url": { "type": "string", "description": "URL of the item." },
+        "title": { "type": "string", "description": "Optional title of the item." },
+        "price": { "type": "string", "description": "Optional price of the item." },
+        "notes": { "type": "string", "description": "Optional notes for the item." },
+        "createdAt": { "type": "number", "description": "Timestamp of creation." }
+      },
+      "required": ["userId", "boardId", "url", "createdAt"]
+    },
+    "LineageEntry": {
+      "title": "LineageEntry",
+      "description": "Records the provenance and archetypal synthesis of a creative artifact.",
+      "type": "object",
+      "properties": {
+        "artifact_id": { "type": "string", "description": "ID of the generated artifact (e.g., Zine ID)." },
+        "userId": { "type": "string", "description": "ID of the user who created the lineage entry." },
+        "thought_signature": { "type": "string", "description": "Cryptographic fingerprint of the reasoning process." },
+        "fragment_ids": { "type": "array", "description": "IDs of raw debris/fragments used.", "items": { "type": "string" } },
+        "archetype_weights": { "type": "object", "description": "The dominant archetype weights." },
+        "synthesis_notes": { "type": "string", "description": "Philosophical bridge/notes on the synthesis." },
+        "timestamp": { "type": "number", "description": "Timestamp of creation." }
+      },
+      "required": ["artifact_id", "userId", "thought_signature", "fragment_ids", "archetype_weights", "synthesis_notes", "timestamp"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile data.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "handle": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "core", "pro", "lab"] },
+        "subscriptionStatus": { "type": "string", "enum": ["active", "inactive", "past_due", "canceled"] }
+      },
+      "required": ["uid", "handle"]
+    },
+    "Stack": {
+      "title": "Stack",
+      "description": "A collection of pocket items.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "userId", "name"]
+    },
+    "PublicTransmission": {
+      "title": "PublicTransmission",
+      "description": "A public message or artifact.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["userId", "content", "timestamp"]
+    },
+    "PocketItem": {
+      "title": "PocketItem",
+      "description": "An item saved to the user's pocket.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "stackIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "userId", "type", "title", "timestamp"]
+    },
+    "Zine": {
+      "title": "Zine",
+      "description": "A generated zine.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "title"]
+    },
+    "DossierFolder": {
+      "title": "DossierFolder",
+      "description": "A folder in the dossier.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "collaborators": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "userId", "name"]
+    },
+    "DossierArtifact": {
+      "title": "DossierArtifact",
+      "description": "An artifact in the dossier.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "folderId": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "userId", "folderId"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "A generated proposal.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" }
+      },
+      "required": ["id", "userId", "title"]
+    },
+    "Context": {
+      "title": "Context",
+      "description": "Context data.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "userId"]
+    },
+    "ZineComment": {
+      "title": "ZineComment",
+      "description": "A comment on a zine.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "zineId": { "type": "string" },
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "zineId", "userId", "content", "timestamp"]
+    },
+    "TasteEvent": {
+      "title": "TasteEvent",
+      "description": "A taste event log.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "artifactId": { "type": "string" },
+        "aestheticVector": { "type": "object" },
+        "similarityScore": { "type": "number" },
+        "trajectoryLabel": { "type": "string" },
+        "interpretation": { "type": "string" },
+        "confidence": { "type": "number" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["userId", "artifactId", "aestheticVector", "similarityScore", "trajectoryLabel", "interpretation", "confidence", "timestamp"]
+    },
+    "Memory": {
+      "title": "Memory",
+      "description": "A memory item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string" }
+      },
+      "required": ["id", "content"]
+    },
+    "RetentionEvent": {
+      "title": "RetentionEvent",
+      "description": "A retention event.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "timestamp"]
+    },
+    "Connection": {
+      "title": "Connection",
+      "description": "A user connection.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "followerId": { "type": "string" },
+        "followingId": { "type": "string" }
+      },
+      "required": ["id", "followerId", "followingId"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "A friend request.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "senderId", "receiverId", "status"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "A friendship.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user1": { "type": "string" },
+        "user2": { "type": "string" }
+      },
+      "required": ["id", "user1", "user2"]
+    },
+    "Theme": {
+      "title": "Theme",
+      "description": "A clustered theme.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Constellation": {
+      "title": "Constellation",
+      "description": "A manual grouping of artifacts.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "artifactIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "artifactIds", "createdAt", "updatedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A user notification.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "message": { "type": "string" },
+        "link": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "message", "timestamp", "read"]
+    },
+    "TasteGraphNode": {
+      "title": "TasteGraphNode",
+      "description": "A node in the semantic taste graph.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "type": { "type": "string", "enum": ["concept", "motif", "era"] },
+        "weight": { "type": "number" }
+      },
+      "required": ["id", "label", "type", "weight"]
+    },
+    "TasteGraphEdge": {
+      "title": "TasteGraphEdge",
+      "description": "An edge in the semantic taste graph.",
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "strength": { "type": "number" },
+        "type": { "type": "string", "enum": ["relates_to", "evolves_from", "contrasts_with"] }
+      },
+      "required": ["source", "target", "strength", "type"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile, role, preferences, and metrics.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "profile": { "type": "object" },
+        "role": { "type": "string" },
+        "preferences": { "type": "object" },
+        "metrics": { "type": "object" }
+      },
+      "required": ["uid", "role"]
+    },
+    "Issue": {
+      "title": "Issue",
+      "description": "A publication issue.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "publishAt": { "type": "number" },
+        "editorNotes": { "type": "string" }
+      },
+      "required": ["title", "status"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "A user submission for an issue.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "issueId": { "type": "string" },
+        "status": { "type": "string" },
+        "moderationReason": { "type": "string" }
+      },
+      "required": ["authorId", "status"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a submission.",
+      "type": "object",
+      "properties": {
+        "parentId": { "type": "string" },
+        "submissionId": { "type": "string" },
+        "threadDepth": { "type": "number" },
+        "content": { "type": "string" },
+        "authorId": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["submissionId", "threadDepth", "content", "authorId", "timestamp"]
+    },
+    "Stats": {
+      "title": "Stats",
+      "description": "Public statistic data.",
+      "type": "object",
+      "properties": {
+        "count": { "type": "number" }
+      },
+      "required": ["count"]
+    },
+    "WardrobeItem": {
+      "title": "WardrobeItem",
+      "description": "An item of clothing in a user's digital wardrobe.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "name", "category", "createdAt"]
+    },
+    "WardrobeCapsule": {
+      "title": "WardrobeCapsule",
+      "description": "A capsule wardrobe mapping of items.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "itemIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "name", "itemIds", "createdAt"]
+    },
+    "ZineFolder": {
+      "title": "ZineFolder",
+      "description": "A folder for grouping user zines.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "userId", "name"]
+    },
+    "Doll": {
+      "title": "Doll",
+      "description": "An AI persona styled after creative tailor guidelines.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "tasteGraphId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "visualLanguage": { "type": "array", "items": { "type": "string" } },
+        "palette": { "type": "array", "items": { "type": "string" } },
+        "materials": { "type": "array", "items": { "type": "string" } },
+        "silhouette": { "type": "string" },
+        "motifs": { "type": "array", "items": { "type": "string" } },
+        "eyeTreatment": { "type": "string" },
+        "emotionalRegister": { "type": "string" },
+        "creativePhilosophy": { "type": "string" },
+        "creativeLawIds": { "type": "array", "items": { "type": "string" } },
+        "strengths": { "type": "array", "items": { "type": "string" } },
+        "blindSpots": { "type": "array", "items": { "type": "string" } },
+        "preferredMediums": { "type": "array", "items": { "type": "string" } },
+        "favoriteShapes": { "type": "array", "items": { "type": "string" } },
+        "favoriteContrasts": { "type": "array", "items": { "type": "string" } },
+        "signatureMotifs": { "type": "array", "items": { "type": "string" } },
+        "suggestedExperiments": { "type": "array", "items": { "type": "string" } },
+        "sourceEvidenceIds": { "type": "array", "items": { "type": "string" } },
+        "generatedImageUrl": { "type": "string" },
+        "maskIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "tasteGraphId", "name", "createdAt", "updatedAt"]
+    },
+    "DollMask": {
+      "title": "DollMask",
+      "description": "A specific behavior role mask assigned to a doll.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "dollId": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "behaviorDescription": { "type": "string" },
+        "outputPreferences": { "type": "array", "items": { "type": "string" } },
+        "promptTemplate": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "dollId", "name", "role", "behaviorDescription", "createdAt"]
+    }
+  },
+  "firestore": {
+    "thimbleBoards/{boardId}": {
+      "schema": { "$ref": "#/entities/ThimbleBoard" },
+      "description": "Sourcing boards for grouping external links."
+    },
+    "thimbleItems/{itemId}": {
+      "schema": { "$ref": "#/entities/ThimbleItem" },
+      "description": "Items within a sourcing board."
+    },
+    "lineage_entries/{lineageId}": {
+      "schema": { "$ref": "#/entities/LineageEntry" },
+      "description": "Collection of provenance lineage records."
+    },
+    "profiles/{profileId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles."
+    },
+    "stacks/{stackId}": {
+      "schema": { "$ref": "#/entities/Stack" },
+      "description": "User stacks."
+    },
+    "public_transmissions/{transmissionId}": {
+      "schema": { "$ref": "#/entities/PublicTransmission" },
+      "description": "Public transmissions."
+    },
+    "pocket/{pocketId}": {
+      "schema": { "$ref": "#/entities/PocketItem" },
+      "description": "Pocket items."
+    },
+    "zines/{zineId}": {
+      "schema": { "$ref": "#/entities/Zine" },
+      "description": "Generated zines."
+    },
+    "dossier_folders/{folderId}": {
+      "schema": { "$ref": "#/entities/DossierFolder" },
+      "description": "Dossier folders."
+    },
+    "dossier_artifacts/{artifactId}": {
+      "schema": { "$ref": "#/entities/DossierArtifact" },
+      "description": "Dossier artifacts."
+    },
+    "proposals/{proposalId}": {
+      "schema": { "$ref": "#/entities/Proposal" },
+      "description": "Generated proposals."
+    },
+    "context/{contextId}": {
+      "schema": { "$ref": "#/entities/Context" },
+      "description": "Context data."
+    },
+    "zine_comments/{commentId}": {
+      "schema": { "$ref": "#/entities/ZineComment" },
+      "description": "Zine comments."
+    },
+    "taste_events/{eventId}": {
+      "schema": { "$ref": "#/entities/TasteEvent" },
+      "description": "Taste events."
+    },
+    "users/{userId}/memory/{memoryId}": {
+      "schema": { "$ref": "#/entities/Memory" },
+      "description": "User memories."
+    },
+    "retention_events/{userId}/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/RetentionEvent" },
+      "description": "Retention events."
+    },
+    "connections/{connectionId}": {
+      "schema": { "$ref": "#/entities/Connection" },
+      "description": "User connections."
+    },
+    "friend_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/FriendRequest" },
+      "description": "Friend requests."
+    },
+    "friendships/{friendshipId}": {
+      "schema": { "$ref": "#/entities/Friendship" },
+      "description": "Friendships."
+    },
+    "users/{userId}/themes/{themeId}": {
+      "schema": { "$ref": "#/entities/Theme" },
+      "description": "User themes."
+    },
+    "users/{userId}/constellations/{constellationId}": {
+      "schema": { "$ref": "#/entities/Constellation" },
+      "description": "User constellations."
+    },
+    "notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "User notifications."
+    },
+    "users/{userId}/tasteGraphNodes/{nodeId}": {
+      "schema": { "$ref": "#/entities/TasteGraphNode" },
+      "description": "User taste graph nodes."
+    },
+    "users/{userId}/tasteGraphEdges/{edgeId}": {
+      "schema": { "$ref": "#/entities/TasteGraphEdge" },
+      "description": "User taste graph edges."
+    },
+    "users/{uid}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles and settings."
+    },
+    "issues/{issueId}": {
+      "schema": { "$ref": "#/entities/Issue" },
+      "description": "Publication issues."
+    },
+    "submissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/Submission" },
+      "description": "User submissions."
+    },
+    "comments/{commentId}": {
+      "schema": { "$ref": "#/entities/Comment" },
+      "description": "Comments on submissions."
+    },
+    "stats/{docId}": {
+      "schema": { "$ref": "#/entities/Stats" },
+      "description": "Public statistic counts."
+    },
+    "wardrobe_items/{itemId}": {
+      "schema": { "$ref": "#/entities/WardrobeItem" },
+      "description": "Wardrobe clothing items."
+    },
+    "wardrobe_capsules/{capsuleId}": {
+      "schema": { "$ref": "#/entities/WardrobeCapsule" },
+      "description": "Wardrobe clothing capsules."
+    },
+    "zine_folders/{folderId}": {
+      "schema": { "$ref": "#/entities/ZineFolder" },
+      "description": "Zine organizer folders."
+    },
+    "customers/{userId}": {
+      "schema": { "type": "object" },
+      "description": "Stripe customers and sessions."
+    },
+    "users/{userId}/dolls/{dollId}": {
+      "schema": { "$ref": "#/entities/Doll" },
+      "description": "AI creative partner doll profiles."
+    },
+    "users/{userId}/dollMasks/{maskId}": {
+      "schema": { "$ref": "#/entities/DollMask" },
+      "description": "Specific behavior masks associated with dolls."
+    }
+  }
+}

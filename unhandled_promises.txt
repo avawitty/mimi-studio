@@ -1,0 +1,37 @@
+App.tsx:29: const ArchiveCloudNebula = lazy(() => import('./components/ArchiveCloudNebula').then(m => ({ default: m.ArchiveCloudNebula })));
+App.tsx:30: const ArchivalView = lazy(() => import('./components/ArchivalView').then(m => ({ default: m.ArchivalView })));
+App.tsx:31: const UserProfileView = lazy(() => import('./components/UserProfileView').then(m => ({ default: m.UserProfileView })));
+App.tsx:32: const SignatureView = lazy(() => import('./components/SignatureView').then(m => ({ default: m.SignatureView })));
+App.tsx:33: const TheEdit = lazy(() => import('./components/TheEdit').then(m => ({ default: m.TheEdit })));
+App.tsx:34: const SanctuaryView = lazy(() => import('./components/SanctuaryView').then(m => ({ default: m.SanctuaryView })));
+App.tsx:35: const TailorView = lazy(() => import('./components/TailorView').then(m => ({ default: m.TailorView })));
+App.tsx:36: const ScryView = lazy(() => import('./components/ScryView').then(m => ({ default: m.ScryView })));
+App.tsx:37: const DarkroomView = lazy(() => import('./components/DarkroomView').then(m => ({ default: m.DarkroomView })));
+App.tsx:38: const ApiKeyShield = lazy(() => import('./components/ApiKeyShield').then(m => ({ default: m.ApiKeyShield })));
+App.tsx:39: const ProsceniumView = lazy(() => import('./components/ProsceniumView').then(m => ({ default: m.ProsceniumView })));
+App.tsx:43: const CaptiveSentinel = lazy(() => import('./components/CaptiveSentinel').then(m => ({ default: m.CaptiveSentinel })));
+App.tsx:44: const TheWard = lazy(() => import('./components/TheWard').then(m => ({ default: m.TheWard })));
+App.tsx:45: const PatronMintView = lazy(() => import('./components/PatronMintView').then(m => ({ default: m.PatronMintView })));
+App.tsx:51: const StrategyStudio = lazy(() => import('./components/StrategyStudio').then(m => ({ default: m.StrategyStudio })));
+App.tsx:52: const ThreadsView = lazy(() => import('./components/ThreadsView').then(m => ({ default: m.ThreadsView })));
+App.tsx:53: const NarrativeThreadsView = lazy(() => import('./components/NarrativeThreadsView').then(m => ({ default: m.NarrativeThreadsView })));
+App.tsx:54: const TasteGraph = lazy(() => import('./components/TasteGraph').then(m => ({ default: m.TasteGraph })));
+App.tsx:55: const LatentConstellation = lazy(() => import('./components/LatentConstellation').then(m => ({ default: m.LatentConstellation })));
+App.tsx:56: const TheLens = lazy(() => import('./components/TheLens').then(m => ({ default: m.TheLens })));
+App.tsx:57: const NotificationsView = lazy(() => import('./components/NotificationsView').then(m => ({ default: m.NotificationsView })));
+App.tsx:58: const TheOracle = lazy(() => import('./components/TheOracle').then(m => ({ default: m.TheOracle })));
+App.tsx:59: const ActionBoard = lazy(() => import('./components/ActionBoard').then(m => ({ default: m.ActionBoard })));
+App.tsx:61: const MoodboardComposer = lazy(() => import('./components/MoodboardComposer').then(m => ({ default: m.MoodboardComposer })));
+App.tsx:62: const HelpView = lazy(() => import('./components/HelpView').then(m => ({ default: m.HelpView })));
+App.tsx:63: const RegistryAlert = lazy(() => import('./components/RegistryAlert').then(m => ({ default: m.RegistryAlert })));
+App.tsx:64: const ImperialPatronageModal = lazy(() => import('./components/ImperialPatronageModal').then(m => ({ default: m.ImperialPatronageModal })));
+App.tsx:66: const MembershipView = lazy(() => import('./components/MembershipView').then(m => ({ default: m.MembershipView })));
+App.tsx:67: const CheckoutSuccessView = lazy(() => import('./components/CheckoutSuccessView').then(m => ({ default: m.CheckoutSuccessView })));
+App.tsx:247: import('./services/firebaseInit').then(({ auth }) => {
+App.tsx:291: import('./services/firebaseInit').then(({ auth }) => {
+components/ScryView.tsx:48: scryWebSignals(queryToUse).then(data => {
+components/ScryView.tsx:71: const imagePromise = generateRawImage(queryToUse, '1:1', profile).then(img => {
+components/ThreadsView.tsx:121: ]).then(([fetchedZines, fetchedThreads]) => {
+contexts/UserContext.tsx:806: await import('../services/firebaseUtils').then(m => m.anchorIdentity(false));
+hooks/useLiveSession.ts:150: sessionPromise.then(session => {
+services/firebaseInit.ts:61: isSupported().then(supported => {

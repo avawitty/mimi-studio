@@ -1,0 +1,12 @@
+{
+  "projectId": "mimistudios",
+  "appId": "1:804631183358:web:789db14fbc7e0341528aaf",
+  "apiKey": "AIzaSyDLAESSMd5m17ItXv0ory7ZqDCJDqgm5Yo",
+  "authDomain": "mimistudios.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-mimi-4c383b50-c596-4b43-8a2e-61d0645e590a",
+  "storageBucket": "mimistudios.firebasestorage.app",
+  "messagingSenderId": "804631183358",
+  "measurementId": "G-4J9L2C79ZX",
+  "oAuthClientId": "804631183358-2f3oh4keh2amf2kdlfm39dlsr49j62kk.apps.googleusercontent.com",
+  "recaptchaSiteKey": "6LfmxFktAAAAAJbTZgSWh1_wAJ7oWnW2sGlpAjQ0"
+}

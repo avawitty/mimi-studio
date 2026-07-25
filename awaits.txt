@@ -1,0 +1,11 @@
+378:           const zine = await fetchZineById(e.detail_id);
+434:      const pages = await generateThreadZineSpine(thread, profile, activePersona?.apiKey);
+435:      const titles = await generateZineTitlesFromThreads([thread], profile, activePersona?.apiKey);
+464:      const id = await saveZineToProfile(targetUid, profile?.handle || 'Ghost', profile?.photoURL, zineContent, tone, undefined, false, false, false, [], thread.narrative, [], false, undefined, undefined);
+498:          const { collection, query, orderBy, limit, getDocs } = await import('firebase/firestore');
+499:          const { db } = await import('./services/firebase');
+501:          const snapshot = await getDocs(q);
+505:      const result = await createZine(text, media, tone, profile, opts, personaKey, transmissions, undefined, opts.selectedComponents, opts.zineOptions);
+513:      await incrementGeneration();
+515:      const id = await saveZineToProfile(targetUid, profile?.handle || 'Ghost', profile?.photoURL, result.content, tone, undefined, opts.deepThinking, opts.isPublic, opts.isLite, media, text, transmissions, opts.isHighFidelity, opts.tags, opts.zineOptions?.selectedTreatmentId);
+862:                                  await saveZineToProfile(user.uid, profile?.handle || 'Swan', profile?.photoURL, zineContent, 'RAW');

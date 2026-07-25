@@ -1,0 +1,777 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Public+Sans:wght@300;400;500&family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@300;400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;1,6..96,400&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "./components/ui/mimiMaterials.css";
+
+@custom-variant dark (&:is(.dark *));
+@config "./tailwind.config.js";
+
+@layer base {
+  :root {
+    /* Editorial Palette */
+    --nous-base: #ffffff; /* Pure white */
+    --nous-text: #000000; /* Pure black */
+    --nous-subtle: #404040;
+    --nous-accent: #78716c; /* Desaturated stone */
+    --nous-olive: #5A5A40;
+    --nous-charcoal: #262626;
+    --nous-border: #e5e5e5;
+
+    /* Era Variables */
+    --era-font-sans: "Geist Variable", sans-serif;
+    --era-font-serif: "Cormorant Garamond", serif;
+    --era-bg-image: url("https://www.transparenttextures.com/patterns/cream-paper.png");
+  }
+
+  .dark {
+    --nous-base: #050505; /* Obsidian black */
+    --nous-text: #FAF9F6; /* Cream/Off-white */
+    --nous-subtle: #A3A3A3; 
+    --nous-accent: #E5E5E5;
+    --nous-olive: #404040;
+    --nous-charcoal: #1f1f1f;
+    --nous-border: #262626;
+    --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
+  }
+
+  /* ERA: GENESIS (Brutalist) */
+  .era-genesis {
+    --era-font-sans: "JetBrains Mono", monospace;
+    --era-font-serif: "JetBrains Mono", monospace;
+    --era-bg-image: none;
+  }
+
+  /* ERA: EDITORIAL (v2) */
+  .era-editorial {
+    --era-font-sans: "Public Sans", sans-serif;
+    --era-font-serif: "Cormorant Garamond", serif;
+    --era-bg-image: none;
+  }
+
+  /* ERA: ETHEREAL (v3 - Current) */
+  .era-ethereal {
+    --era-font-sans: "Geist Variable", sans-serif;
+    --era-font-serif: "Cormorant Garamond", serif;
+  }
+
+  html, body {
+    height: 100dvh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--nous-base);
+    background-image: var(--era-bg-image);
+    background-repeat: repeat;
+    color: var(--nous-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: var(--era-font-sans);
+    font-weight: 400;
+    line-height: 1.5; /* Increased line height for better readability */
+    overscroll-behavior-y: none;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--era-font-serif);
+  }
+
+  /* Dark mode */
+  .dark body {
+    background-color: var(--nous-base);
+    color: var(--nous-text);
+  }
+
+  /* Studio / Worktable editorial shell (light + dark) */
+  .studio-worktable {
+    --studio-chrome: #f5f5f0;
+    --studio-canvas: #ffffff;
+    --studio-panel: #fafaf8;
+    --studio-surface: #ffffff;
+    --studio-workspace: #ffffff;
+    --studio-rail: #0a0a0a;
+    --studio-rail-track: rgba(0, 0, 0, 0.12);
+    --studio-ink: #0a0a0a;
+    --studio-muted: #6b6b6b;
+    --studio-border: #e3e3de;
+    --studio-divider: #d4d4ce;
+    --studio-polaroid: #faf9f6;
+    --studio-polaroid-slot: #121212;
+    --studio-tab-bg: #f5f5f0;
+    --studio-tab-active: #0a0a0a;
+    --studio-ref-tab: #faf9f6;
+    --studio-ref-tab-ink: #44403c;
+    --studio-icon-hover: rgba(0, 0, 0, 0.04);
+  }
+
+  /* Studio dark mode is scoped to the worktable — not the global app shell */
+  .studio-worktable[data-studio-theme="dark"] {
+    --studio-chrome: #0d0d0d;
+    --studio-canvas: #0d0b09;
+    --studio-panel: #141311;
+    --studio-surface: #111111;
+    --studio-workspace: #0d0b09;
+    --studio-rail: #111111;
+    --studio-rail-track: rgba(255, 255, 255, 0.08);
+    --studio-ink: #faf9f6;
+    --studio-muted: #a3a3a3;
+    --studio-border: #242220;
+    --studio-divider: #1c1c1b;
+    --studio-polaroid: #faf9f6;
+    --studio-polaroid-slot: #121212;
+    --studio-tab-bg: #0b0b0a;
+    --studio-tab-active: #faf9f6;
+    --studio-ref-tab: #faf9f6;
+    --studio-ref-tab-ink: #44403c;
+    --studio-icon-hover: rgba(255, 255, 255, 0.06);
+  }
+
+  .studio-worktable {
+    background-color: var(--studio-canvas);
+    color: var(--studio-ink);
+  }
+
+  .studio-chrome {
+    background-color: var(--studio-chrome);
+  }
+
+  .studio-bg-panel { background-color: var(--studio-panel); }
+  .studio-bg-surface { background-color: var(--studio-surface); }
+  .studio-bg-workspace { background-color: var(--studio-workspace); }
+  .studio-bg-rail { background-color: var(--studio-rail); }
+  .studio-bg-tab { background-color: var(--studio-tab-bg); }
+  .studio-border { border-color: var(--studio-border); }
+  .studio-divider { border-color: var(--studio-divider); }
+  .studio-text-ink { color: var(--studio-ink); }
+  .studio-text-muted { color: var(--studio-muted); }
+  .studio-polaroid { background-color: var(--studio-polaroid); }
+  .studio-polaroid-slot { background-color: var(--studio-polaroid-slot); }
+  .studio-ref-tab { background-color: var(--studio-ref-tab); color: var(--studio-ref-tab-ink); }
+  .studio-rail-track { background-color: var(--studio-rail-track); }
+
+  .studio-worktable .studio-icon-btn {
+    color: var(--studio-muted);
+    border-color: transparent;
+  }
+  .studio-worktable .studio-icon-btn:hover {
+    color: var(--studio-ink);
+    background-color: var(--studio-icon-hover);
+    border-color: var(--studio-border);
+  }
+
+  .studio-worktable .studio-prompt-input {
+    color: var(--studio-ink);
+  }
+  .studio-worktable .studio-prompt-input::placeholder {
+    color: color-mix(in srgb, var(--studio-muted) 55%, transparent);
+  }
+
+  .studio-worktable .studio-footer-tab.is-active {
+    color: var(--studio-tab-active);
+  }
+  .studio-worktable .studio-footer-tab {
+    color: var(--studio-muted);
+  }
+
+  .studio-worktable .studio-dotted-rule {
+    border-left: 1px dotted var(--studio-divider);
+  }
+
+  /* Archive chamber shell — working dossier palette (aligned with studio light) */
+  .archive-chamber {
+    --archive-cream: #f5f5f0;
+    --archive-ink: #0a0a0a;
+    --archive-border: #e3e3de;
+    --archive-muted: #6b6b6b;
+    --archive-panel: #fafaf8;
+    --archive-surface: #ffffff;
+    --archive-rail: #0a0a0a;
+    --archive-rail-ink: #faf9f6;
+  }
+
+  .dark .archive-chamber {
+    --archive-cream: #0d0d0d;
+    --archive-ink: #faf9f6;
+    --archive-border: #242220;
+    --archive-muted: #a3a3a3;
+    --archive-panel: #141311;
+    --archive-surface: #111111;
+    --archive-rail: #111111;
+    --archive-rail-ink: #faf9f6;
+  }
+
+  .archive-chamber {
+    background-color: var(--archive-surface);
+    color: var(--archive-ink);
+  }
+
+  .archive-chrome {
+    background-color: var(--archive-cream);
+  }
+
+  .archive-spine {
+    background-color: var(--archive-rail);
+    color: var(--archive-rail-ink);
+  }
+
+  .archive-context-sidebar,
+  .archive-drawer {
+    background-color: var(--archive-panel);
+  }
+
+  .archive-canvas {
+    background-color: var(--archive-surface);
+  }
+
+  .archive-border {
+    border-color: var(--archive-border);
+  }
+
+  .archive-text-ink {
+    color: var(--archive-ink);
+  }
+
+  .archive-text-muted {
+    color: var(--archive-muted);
+  }
+
+  .archive-icon-btn {
+    color: var(--archive-muted);
+    background-color: transparent;
+    transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+  }
+
+  .archive-icon-btn:hover {
+    color: var(--archive-ink);
+    background-color: color-mix(in srgb, var(--archive-muted) 8%, transparent);
+  }
+
+  .archive-spine .archive-icon-btn {
+    color: color-mix(in srgb, var(--archive-rail-ink) 55%, transparent);
+  }
+
+  .archive-spine .archive-icon-btn:hover,
+  .archive-spine .archive-icon-btn.is-active {
+    color: var(--archive-rail-ink);
+    background-color: color-mix(in srgb, var(--archive-rail-ink) 10%, transparent);
+  }
+
+  .archive-workflow-active {
+    background-color: var(--archive-ink);
+    color: var(--archive-cream);
+  }
+
+  .archive-workflow-past {
+    color: var(--archive-ink);
+    opacity: 0.65;
+  }
+
+  .archive-workflow-idle {
+    color: var(--archive-muted);
+  }
+
+  .bg-archive-cream { background-color: var(--archive-cream); }
+  .bg-archive-panel { background-color: var(--archive-panel); }
+  .bg-archive-surface { background-color: var(--archive-surface); }
+  .bg-archive-ink { background-color: var(--archive-ink); }
+  .text-archive-cream { color: var(--archive-cream); }
+  .border-archive-ink { border-color: var(--archive-ink); }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  
+  /* ACCESSIBILITY: Global Focus States */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-2 ring-offset-white dark:ring-offset-stone-950 transition-shadow;
+  }
+
+  /* ACCESSIBILITY: Safe Tap Targets on Mobile */
+  @media (max-width: 768px) {
+    button, 
+    a, 
+    input[type="checkbox"], 
+    input[type="radio"], 
+    select, 
+    .tap-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+}
+
+@layer utilities {
+  /* TYPOGRAPHY SCALE */
+  .text-display {
+    @apply font-serif text-5xl md:text-6xl lg:text-7xl font-light tracking-tight leading-none;
+  }
+  .text-h1 {
+    @apply font-serif text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-tight;
+  }
+  .text-h2 {
+    @apply font-serif text-2xl md:text-3xl font-medium tracking-tight leading-snug;
+  }
+  .text-h3 {
+    @apply font-sans text-lg md:text-xl font-semibold tracking-wide leading-snug;
+  }
+  .text-body {
+    @apply font-sans text-base md:text-lg font-normal leading-relaxed;
+  }
+  .text-small {
+    @apply font-sans text-sm font-normal leading-normal text-stone-600 dark:text-stone-400;
+  }
+  .text-micro {
+    @apply font-mono text-[10px] uppercase tracking-widest font-bold text-stone-600 dark:text-stone-400;
+  }
+
+  /* GRID CONSTRAINTS */
+  .grid-container {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .grid-content {
+    @apply grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 lg:gap-8;
+  }
+  .grid-sidebar {
+    @apply md:col-span-4 lg:col-span-3;
+  }
+  .grid-main {
+    @apply md:col-span-8 lg:col-span-9;
+  }
+
+  .brutalist-border {
+    border: 1px solid #000000;
+  }
+  .dark .brutalist-border {
+    border: 1px solid #ffffff;
+  }
+  .dashed-border {
+    border: 1px dashed #000000;
+  }
+  .dark .dashed-border {
+    border: 1px dashed #ffffff;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+  }
+
+  /* 1. Global Reset & Body Container for High-Quality Print */
+  html, body, #root {
+    height: auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    position: static !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Disable animations, transitions, heavy filters & web effects */
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Hide CRT scanlines, grain textures, floating UI chrome, controls & navigation */
+  .crt-overlay,
+  .grain-overlay,
+  .pericardium-seal,
+  .print\:hidden,
+  .no-print,
+  nav,
+  header,
+  footer.print\:hidden,
+  button,
+  .fixed,
+  .sticky:not(.print-sticky) {
+    display: none !important;
+  }
+
+  /* 2. Zine Theme Root & Container Viewport Unlocking */
+  .zine-theme-root,
+  .studio-worktable,
+  .archive-chamber,
+  #zine-content {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    z-index: auto !important;
+    background-color: transparent !important;
+    color: inherit !important;
+  }
+
+  /* 3. Zine Track & Flipbook Layout Formatting */
+  .zine-flipbook-track {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    snap-type: none !important;
+    scroll-snap-type: none !important;
+  }
+
+  /* 4. Page Break & Section Formatting */
+  .zine-theme-root section,
+  .zine-theme-root article,
+  .zine-flipbook-track > section,
+  .zine-flipbook-track > footer,
+  #zine-content section,
+  .snap-start,
+  .zine-page,
+  .zine-section {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    scroll-snap-align: none !important;
+    padding-top: 1.5rem !important;
+    padding-bottom: 2rem !important;
+    margin-bottom: 1rem !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-before: always !important;
+    break-before: page !important;
+    filter: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* First section does not need a leading page break */
+  .zine-theme-root section:first-of-type,
+  .zine-flipbook-track > section:first-of-type,
+  #zine-content section:first-of-type,
+  .zine-page:first-of-type {
+    page-break-before: auto !important;
+    break-before: auto !important;
+    padding-top: 0 !important;
+  }
+
+  /* 5. Typography & Headings High-Quality Preservation */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    color: inherit !important;
+  }
+
+  p, blockquote, ul, ol, dl {
+    orphans: 3 !important;
+    widows: 3 !important;
+  }
+
+  /* 6. Media & Graphic Assets Optimization */
+  img, svg, video, canvas, figure, .aspect-square {
+    max-width: 100% !important;
+    max-height: 80vh !important;
+    object-fit: contain !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    filter: none !important;
+  }
+
+  /* 7. Grid & Flex Layouts Adaptation */
+  .grid {
+    display: grid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Preserve links without underlines breaking typography */
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+
+  /* 8. Dossier & Blueprint Print Support */
+  .dossier-print-container,
+  .blueprint-print-sheet {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* SAFE AREA UTILITIES */
+.pt-safe { padding-top: env(safe-area-inset-top) !important; }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom) !important; }
+.pl-safe { padding-left: env(safe-area-inset-left) !important; }
+.pr-safe { padding-right: env(safe-area-inset-right) !important; }
+.mt-safe { margin-top: env(safe-area-inset-top) !important; }
+.mb-safe { margin-bottom: env(safe-area-inset-bottom) !important; }
+
+#root {
+  height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* TEXTURE SYSTEM */
+.paper-texture {
+  background-image: url("https://www.transparenttextures.com/patterns/cream-paper.png");
+  background-repeat: repeat;
+}
+
+.dark .paper-texture {
+  background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
+}
+
+.canvas-texture {
+  position: relative;
+}
+.canvas-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("https://www.transparenttextures.com/patterns/rough-cloth.png");
+  background-blend-mode: multiply;
+  opacity: 0.2;
+  z-index: 0;
+}
+
+.luminescent-text {
+  transition: text-shadow 0.8s ease, color 0.8s ease;
+}
+.dark .luminescent-text {
+  text-shadow: 
+    0 0 12px rgba(255, 255, 255, 0.8), 
+    0 0 22px rgba(255, 255, 255, 0.6), 
+    0 0 40px rgba(16, 185, 129, 0.2),
+    0 0 60px rgba(16, 185, 129, 0.1);
+  color: #ffffff;
+}
+
+@keyframes crt-flicker {
+  0% { opacity: 0.9; }
+  5% { opacity: 0.8; }
+  10% { opacity: 0.95; text-shadow: 0 0 10px rgba(255,255,255,0.8); }
+  15% { opacity: 0.9; }
+  50% { opacity: 0.95; }
+  55% { opacity: 0.85; }
+  60% { opacity: 0.9; text-shadow: 0 0 5px rgba(255,255,255,0.4); }
+  100% { opacity: 0.9; }
+}
+
+.animate-crt {
+  animation: crt-flicker 4s infinite alternate;
+}
+
+.pericardium-seal {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  width: 100vw;
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.rounded-sm { border-radius: 1px !important; }
+
+/* TAPE EFFECT */
+.tape-top {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  width: 40px;
+  height: 16px;
+  background-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  backdrop-filter: blur(2px);
+}
+
+@theme inline {
+  --font-heading: var(--era-font-serif);
+  --font-sans: var(--era-font-sans);
+  --font-serif: var(--era-font-serif);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(0 0% 10%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(0 0% 10%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(0 0% 10%);
+  --primary: hsl(0 0% 15%);
+  --primary-foreground: hsl(0 0% 98%);
+  --secondary: hsl(0 0% 96%);
+  --secondary-foreground: hsl(0 0% 15%);
+  --muted: hsl(0 0% 96%);
+  --muted-foreground: hsl(0 0% 50%);
+  --accent: hsl(0 0% 96%);
+  --accent-foreground: hsl(0 0% 15%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --border: hsl(0 0% 90%);
+  --input: hsl(0 0% 90%);
+  --ring: hsl(0 0% 70%);
+  --chart-1: hsl(0 0% 85%);
+  --chart-2: hsl(0 0% 50%);
+  --chart-3: hsl(0 0% 40%);
+  --chart-4: hsl(0 0% 35%);
+  --chart-5: hsl(0 0% 25%);
+  --radius: 0.625rem;
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(0 0% 10%);
+  --sidebar-primary: hsl(0 0% 15%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(0 0% 96%);
+  --sidebar-accent-foreground: hsl(0 0% 15%);
+  --sidebar-border: hsl(0 0% 90%);
+  --sidebar-ring: hsl(0 0% 70%);
+}
+
+.dark {
+  --background: hsl(0 0% 10%);
+  --foreground: hsl(0 0% 98%);
+  --card: hsl(0 0% 15%);
+  --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(0 0% 15%);
+  --popover-foreground: hsl(0 0% 98%);
+  --primary: hsl(0 0% 90%);
+  --primary-foreground: hsl(0 0% 15%);
+  --secondary: hsl(0 0% 25%);
+  --secondary-foreground: hsl(0 0% 98%);
+  --muted: hsl(0 0% 25%);
+  --muted-foreground: hsl(0 0% 70%);
+  --accent: hsl(0 0% 25%);
+  --accent-foreground: hsl(0 0% 98%);
+  --destructive: hsl(0 84.2% 50.2%);
+  --border: hsl(0 0% 100% / 10%);
+  --input: hsl(0 0% 100% / 15%);
+  --ring: hsl(0 0% 50%);
+  --chart-1: hsl(0 0% 85%);
+  --chart-2: hsl(0 0% 50%);
+  --chart-3: hsl(0 0% 40%);
+  --chart-4: hsl(0 0% 35%);
+  --chart-5: hsl(0 0% 25%);
+  --sidebar: hsl(0 0% 15%);
+  --sidebar-foreground: hsl(0 0% 98%);
+  --sidebar-primary: hsl(217.2 91.2% 59.8%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(0 0% 25%);
+  --sidebar-accent-foreground: hsl(0 0% 98%);
+  --sidebar-border: hsl(0 0% 100% / 10%);
+  --sidebar-ring: hsl(0 0% 50%);
+}
+
+/* Custom CRT Scanline & Grain Shaders for Mimi Zine */
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle, rgba(0,0,0,0) 65%, rgba(0,0,0,0.3) 100%),
+              linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%),
+              linear-gradient(90deg, rgba(239, 68, 68, 0.03), rgba(34, 197, 94, 0.01), rgba(59, 130, 246, 0.03));
+  background-size: 100% 100%, 100% 4px, 6px 100%;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.15;
+}
+
+.crt-flicker-anim {
+  animation: crt-overlay-flicker 0.25s infinite;
+}
+
+@keyframes crt-overlay-flicker {
+  0% { opacity: 0.13; }
+  50% { opacity: 0.15; }
+  100% { opacity: 0.13; }
+}
+
+/* Organic Noise / Grain overlay */
+.grain-overlay {
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  right: -50%;
+  bottom: -50%;
+  background-image: url("https://www.transparenttextures.com/patterns/dust.png");
+  opacity: 0.04;
+  z-index: 9998;
+  pointer-events: none;
+  animation: grain-animation 8s steps(10) infinite;
+}
+
+@keyframes grain-animation {
+  0%, 100% { transform:translate(0, 0); }
+  10% { transform:translate(-2%, -4%); }
+  30% { transform:translate(-4%, 2%); }
+  50% { transform:translate(2%, -2%); }
+  70% { transform:translate(3%, 3%); }
+  90% { transform:translate(-1%, 2%); }
+}
