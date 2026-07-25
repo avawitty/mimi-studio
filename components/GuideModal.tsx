@@ -86,6 +86,19 @@ const GUIDE_DATA: GuideItem[] = [
     keywords: ["lens", "clique", "analyze", "semiotic", "radar", "entropy", "density", "metrics", "directives", "audit"]
   },
   {
+    id: "chambers-shopify-embed",
+    title: "The Press: Embed a Zine in Shopify",
+    category: "chambers",
+    description: "Place a published Mimi reader inside a Shopify page without exposing store credentials or changing the zine's source record.",
+    details: [
+      "Publish First: The embed uses Mimi's public zine route, so private drafts remain inaccessible.",
+      "Copy Embed: Open the finished zine and choose Embed from the floating action bar.",
+      "Paste in Shopify: Add a Custom Liquid block to a page, article, or product template and paste the copied snippet.",
+      "Commerce Separation: Product packs and direct Shopify draft publishing remain explicit actions in The Press."
+    ],
+    keywords: ["shopify", "embed", "liquid", "iframe", "publish", "press", "store", "reader", "commerce"]
+  },
+  {
     id: "studio-ingestion",
     title: "Input Studio: Media Ingestion",
     category: "input-studio",

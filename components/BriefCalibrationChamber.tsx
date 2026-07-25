@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Check, FileText, FlaskConical, Plus, Save, SlidersHorizontal } from 'lucide-react';
 import {
   BRIEF_PRESETS,
@@ -7,6 +7,11 @@ import {
   loadCustomBriefPresets,
   saveCustomBriefPresets,
 } from './UseCaseSelector';
+import {
+  getApprovedUsedContext,
+  subscribeUsedContext,
+} from '../services/usedContextService';
+import { UsedContextEntry } from '../types';
 
 const makeDraft = (): BriefPreset => ({
   id: `custom-${Date.now()}`,
@@ -28,7 +33,25 @@ export const BriefCalibrationChamber: React.FC = () => {
   const [sample, setSample] = useState('Paste a representative fragment, client ask, or recurring worktable task here.');
   const [compiled, setCompiled] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [researchContexts, setResearchContexts] = useState<UsedContextEntry[]>([]);
+  const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
   const presets = useMemo(() => [...BRIEF_PRESETS, ...customPresets], [customPresets]);
+
+  useEffect(() => {
+    const refresh = () => {
+      const next = getApprovedUsedContext('build-brief').filter(
+        (entry) => entry.objectType === 'context_packet',
+      );
+      setResearchContexts(next);
+      setSelectedContextIds((current) => {
+        const available = new Set(next.map((entry) => entry.objectId || entry.atomId));
+        const retained = current.filter((id) => available.has(id));
+        return retained.length > 0 ? retained : [...available];
+      });
+    };
+    refresh();
+    return subscribeUsedContext(refresh);
+  }, []);
 
   const updateActive = <K extends keyof BriefPreset>(key: K, value: BriefPreset[K]) => {
     setActive((current) => ({ ...current, [key]: value }));
@@ -48,6 +71,9 @@ export const BriefCalibrationChamber: React.FC = () => {
   };
 
   const compileTest = () => {
+    const selectedResearch = researchContexts.filter((entry) =>
+      selectedContextIds.includes(entry.objectId || entry.atomId),
+    );
     setCompiled([
       `ROLE: ${active.title}`,
       `GATEWAY CAPABILITY: ${active.gatewayCapability}`,
@@ -55,11 +81,23 @@ export const BriefCalibrationChamber: React.FC = () => {
       `INSTRUCTION: ${active.briefInstruction}`,
       `OUTPUT CONTRACT: ${active.outputContract.join(' · ')}`,
       `TEST MATERIAL: ${sample}`,
+      selectedResearch.length > 0
+        ? `APPROVED RESEARCH CONTEXT:\n${selectedResearch
+            .map(
+              (entry) =>
+                `--- ${entry.title} ---\n${entry.content}\nPROVENANCE: ${entry.source || 'Scry Research Context'} · ${entry.objectId || entry.atomId}`,
+            )
+            .join('\n\n')}`
+        : 'APPROVED RESEARCH CONTEXT: none selected',
     ].join('\n\n'));
   };
 
   const applyToWorktable = () => {
     localStorage.setItem('mimi_cognitive_persona', JSON.stringify({ id: active.id }));
+    localStorage.setItem(
+      'mimi_active_brief_context_ids',
+      JSON.stringify(selectedContextIds),
+    );
     window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
       detail: { message: `${active.title} applied to the Worktable.`, type: 'success' },
     }));
@@ -149,6 +187,67 @@ export const BriefCalibrationChamber: React.FC = () => {
               <h2 className="font-mono text-[10px] uppercase tracking-widest font-bold">Test panel</h2>
             </div>
             <p className="font-sans text-xs text-stone-400 mb-4">Compile a representative input and inspect exactly what the gateway receives. This test does not spend model tokens.</p>
+            <div className="mb-4 border border-stone-700 bg-stone-950 p-3">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <span className="font-mono text-[7px] uppercase tracking-widest text-stone-500">
+                  Approved Scry research
+                </span>
+                <span className="font-mono text-[7px] text-purple-300">
+                  {selectedContextIds.length}/{researchContexts.length} selected
+                </span>
+              </div>
+              {researchContexts.length === 0 ? (
+                <button
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent('mimi:change_view', { detail: 'scry' }),
+                    )
+                  }
+                  className="w-full border border-dashed border-stone-700 p-3 text-left font-sans text-[10px] text-stone-400 hover:border-purple-400"
+                >
+                  No approved Research Context yet. Open Scry, save findings,
+                  then approve a context for this Build Brief.
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  {researchContexts.map((entry) => {
+                    const id = entry.objectId || entry.atomId;
+                    const selected = selectedContextIds.includes(id);
+                    return (
+                      <label
+                        key={id}
+                        className={`flex items-start gap-2 border p-2 cursor-pointer ${
+                          selected
+                            ? 'border-purple-400 bg-purple-500/10'
+                            : 'border-stone-800'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() =>
+                            setSelectedContextIds((current) =>
+                              selected
+                                ? current.filter((candidate) => candidate !== id)
+                                : [...current, id],
+                            )
+                          }
+                          className="mt-0.5 accent-purple-400"
+                        />
+                        <span className="min-w-0">
+                          <span className="font-sans text-[10px] text-stone-200 block">
+                            {entry.title}
+                          </span>
+                          <span className="font-mono text-[7px] uppercase tracking-wide text-stone-500 block mt-1">
+                            {(entry.tags || []).slice(0, 4).join(' · ')}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <textarea value={sample} onChange={(e) => setSample(e.target.value)} className="w-full min-h-32 border border-stone-700 bg-stone-950 p-3 font-serif text-sm text-stone-200" />
             <button onClick={compileTest} className="mt-3 w-full py-3 bg-purple-500 text-stone-950 font-mono text-[9px] uppercase tracking-widest font-bold">Compile test brief</button>
             <div className="mt-5 border border-stone-700 bg-stone-950 min-h-72 p-4">

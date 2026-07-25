@@ -25,6 +25,7 @@ import {
   DriftEvent,
   MediaFile,
   ZineContent,
+  ScryOpenRequest,
 } from "./types";
 import { t } from "./lib/i18n";
 import {
@@ -36,6 +37,7 @@ import { resolveApiKey } from "./services/apiKeyService";
 import { diagnoseOracle } from "./services/geminiClient";
 import { createZine } from "./services/zineGenerator";
 import { clearApprovedUsedContext } from "./services/usedContextService";
+import { requestFromLegacyPayload } from "./services/scrySessionService";
 import {
   saveZineToProfile,
   fetchZineById,
@@ -48,6 +50,7 @@ import { ApiKeyShield } from "./components/ApiKeyShield";
 import { ZineGenerationOptions } from "./types";
 import { InputStudio } from "./components/InputStudio";
 import { StudioChrome } from "./components/studio/StudioChrome";
+import { MimiReferenceRail } from "./components/studio/MimiReferenceRail";
 import { injectJSONLD } from "./utils/seoHelper";
 
 import { archiveManager } from "./services/archiveManager";
@@ -1218,6 +1221,8 @@ export const App: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isHeaderTranslucent, setIsHeaderTranslucent] = useState(false);
   const [tailorOverrides, setTailorOverrides] = useState<any>(null);
+  const [scryOpenRequest, setScryOpenRequest] =
+    useState<ScryOpenRequest | null>(null);
   const [isPatronMint, setIsPatronMint] = useState(false);
   const [showPatronModal, setShowPatronModal] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
@@ -1566,6 +1571,9 @@ export const App: React.FC = () => {
         }
         if (e.detail === "about" && e.detail_data?.folder) {
           setProposalContext(e.detail_data.folder);
+        }
+        if (e.detail === "scry" && e.detail_data) {
+          setScryOpenRequest(requestFromLegacyPayload(e.detail_data));
         }
       }
     };
@@ -2154,55 +2162,14 @@ export const App: React.FC = () => {
       )}
 
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Dark Spine Sidebar */}
         {appState !== AppState.REVEALED && (
-          <button
-            type="button"
-            onClick={() => setIsNavOpen(!isNavOpen)}
-            aria-expanded={isNavOpen}
-            aria-label="Toggle Mimi Canon Menu"
-            title="Toggle Mimi Canon Menu"
-            className="w-16 bg-nous-text flex flex-col items-center py-6 border-r border-nous-border relative z-20 hidden md:flex cursor-pointer hover:bg-nous-base transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/80 text-left"
-          >
-            {/* Elegant Vertical Sidebar Content */}
-            <div className="flex flex-col items-center justify-between h-full select-none w-full relative z-10 text-stone-300 pointer-events-none">
-              {/* Top Menu Icon Button */}
-              <div className="flex flex-col items-center gap-1.5 mt-2">
-                <div className="w-8 h-8 rounded-full border border-stone-850 flex items-center justify-center bg-[#1c1c1a]/50 text-amber-500 animate-pulse">
-                  <LayoutGrid size={14} strokeWidth={1.5} />
-                </div>
-                <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-black">MENU</span>
-              </div>
-
-              {/* Center vertical typography (Spaced label) */}
-              <div className="flex-1 flex items-center justify-center py-8">
-                <p 
-                  style={{ writingMode: "vertical-rl" }} 
-                  className="font-mono text-[8px] uppercase tracking-[0.55em] font-extrabold text-stone-500 hover:text-stone-300 transition-colors rotate-180 select-none whitespace-nowrap"
-                >
-                  ✥ MIMI CANON SYSTEM
-                </p>
-              </div>
-
-              {/* Bottom status indicator / coordinates */}
-              <div className="flex flex-col items-center gap-1 font-mono text-[7px] text-stone-500 mb-2">
-                <span>E: 0.88</span>
-                <span className="text-[9px] text-amber-500">✥</span>
-              </div>
-            </div>
-
-            {/* Tactile Punch Circles directly on the side component */}
-            <div className="absolute right-2 top-0 bottom-0 flex flex-col justify-around py-12 pointer-events-none z-20">
-              {[...Array(12)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-2.5 h-2.5 rounded-full bg-stone-950 dark:bg-black border border-stone-800 dark:border-stone-900 shadow-inner flex items-center justify-center"
-                >
-                  <div className="w-1 h-1 rounded-full bg-stone-900 dark:bg-stone-950" />
-                </div>
-              ))}
-            </div>
-          </button>
+          <MimiReferenceRail
+            currentView={viewMode}
+            onNavigate={setViewMode}
+            onOpenDirectory={() => setIsNavOpen(true)}
+            oracleState={systemStatus?.oracle}
+            isGenerating={appState === AppState.THINKING}
+          />
         )}
 
         {/* Main Content Area */}
@@ -2355,7 +2322,12 @@ export const App: React.FC = () => {
                           />
                         )}
                         {viewMode === "wardrobe" && <WardrobeView />}
-                        {viewMode === "scry" && <ScryView />}
+                        {viewMode === "scry" && (
+                          <ScryView
+                            openRequest={scryOpenRequest}
+                            onRequestConsumed={() => setScryOpenRequest(null)}
+                          />
+                        )}
                         {viewMode === "the-edit" && <TheEditChamber />}
                         {viewMode === "briefs" && <BriefCalibrationChamber />}
                         {viewMode === "mimi-drop" && <MimiDrop />}

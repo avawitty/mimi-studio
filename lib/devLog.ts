@@ -1,4 +1,4 @@
-const isDev = import.meta.env.DEV;
+const isDev = import.meta.env?.DEV ?? false;
 
 export const devLog = {
   info: (...args: unknown[]) => {

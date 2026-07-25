@@ -1,5 +1,5 @@
 import React from "react";
-import { GripVertical, Moon, Sun, User } from "lucide-react";
+import { GripVertical, Menu, Moon, Sun, User, Volume2 } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 
@@ -30,28 +30,6 @@ export const StudioChrome: React.FC<{
 }) => {
   const { user, profile } = useUser();
   const isDark = theme === "dark";
-  const creatorPath = [
-    { label: "Collect", modes: ["scribe", "darkroom"] },
-    { label: "Shape", modes: ["pocket", "wardrobe", "the-edit", "tailor"] },
-    { label: "Create", modes: ["studio", "briefs", "quiet-studio", "moodboard"] },
-    { label: "Publish", modes: ["the-press", "editorial-home"] },
-  ];
-  const activePathIndex = Math.max(
-    0,
-    creatorPath.findIndex((step) => step.modes.includes(viewMode)),
-  );
-
-  const [timeString, setTimeString] = React.useState("");
-  React.useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      setTimeString(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const getPageTitle = (mode: string) => {
     switch (mode) {
       case "studio":
@@ -110,7 +88,7 @@ export const StudioChrome: React.FC<{
   };
 
   return (
-    <header className="studio-chrome relative shrink-0 border-b studio-border px-6 md:px-8 py-3.5 flex items-center justify-between z-20 overflow-hidden">
+    <header className="studio-chrome relative z-20 grid h-[94px] shrink-0 grid-cols-[1fr_auto_1fr] items-center overflow-hidden border-b studio-border px-5 md:px-8">
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-amber-500/20 overflow-hidden z-30">
@@ -118,84 +96,47 @@ export const StudioChrome: React.FC<{
         </div>
       )}
 
-      {/* Brand & View Title with Skeleton Fallback */}
-      <div className="flex flex-col leading-none select-none">
-        {isLoading ? (
-          <div className="space-y-1.5 py-1">
-            <div className="h-6 w-20 bg-stone-200 dark:bg-stone-800 animate-pulse rounded-none" />
-            <div className="h-2 w-28 bg-stone-200/60 dark:bg-stone-800/60 animate-pulse rounded-none" />
-          </div>
-        ) : (
-          <>
-            <button
-              type="button"
-              aria-label="Return to Mimi Studio"
-              className={`w-fit overflow-hidden transition-opacity ${
-                isGenerating ? "opacity-90 cursor-wait" : "hover:opacity-80 cursor-pointer"
-              }`}
-              onClick={() => {
-                if (!isGenerating) {
-                  window.dispatchEvent(new CustomEvent("mimi:change_view", { detail: "studio" }));
-                }
-              }}
-            >
-              <span className="block font-serif text-[27px] leading-none tracking-[0.01em] studio-text-ink">
-                Mimi
-              </span>
-            </button>
-            <span className="font-mono text-[9px] uppercase tracking-[0.32em] studio-text-muted mt-1.5 font-bold flex items-center gap-1.5">
-              {getPageTitle(viewMode)}
-            </span>
-          </>
-        )}
+      <div className="flex min-w-0 items-center">
+        <button
+          type="button"
+          onClick={onOpenMenu}
+          className="flex h-9 w-9 items-center justify-center studio-text-muted transition-colors hover:studio-text-ink md:hidden"
+          aria-label="Open Mimi chambers"
+        >
+          <Menu size={16} strokeWidth={1.25} />
+        </button>
+        <span className="hidden truncate font-mono text-[7px] uppercase tracking-[0.3em] studio-text-muted md:block">
+          {isGenerating
+            ? statusMessage || "Manifesting"
+            : isHighLatency
+              ? "Oracle warming"
+              : getPageTitle(viewMode)}
+        </span>
       </div>
 
-      {/* Creator journey becomes live telemetry while Mimi is working. */}
-      {isGenerating || isHighLatency || statusMessage ? (
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1 border studio-border bg-amber-500/5 dark:bg-amber-400/5 backdrop-blur-xs font-mono text-[9px] uppercase tracking-widest text-amber-700 dark:text-amber-400 font-bold animate-fadeIn">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-          </span>
-          <span>
-            {statusMessage || (isGenerating ? "SYNTHESIZING FRAGMENT..." : "HIGH LATENCY • TELEMETRY ACTIVE")}
-          </span>
-        </div>
+      {isLoading ? (
+        <div className="h-11 w-24 animate-pulse bg-stone-200/70 dark:bg-stone-800/70" />
       ) : (
-        <nav aria-label="Creator path" className="hidden lg:flex items-center gap-1.5">
-          {creatorPath.map((step, index) => {
-            const isActiveStep = index === activePathIndex;
-            const isComplete = index < activePathIndex;
-            return (
-              <React.Fragment key={step.label}>
-                {index > 0 ? <span className="studio-text-muted text-[10px] opacity-50">→</span> : null}
-                <button
-                  type="button"
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent("mimi:change_view", { detail: step.modes[0] }),
-                    )
-                  }
-                  className={`px-2.5 py-1.5 border font-mono text-[9px] uppercase tracking-[0.16em] transition-colors ${
-                    isActiveStep
-                      ? "border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-extrabold"
-                      : isComplete
-                        ? "studio-border studio-text-ink bg-black/[0.03] dark:bg-white/[0.03]"
-                        : "border-transparent studio-text-muted hover:studio-text-ink hover:border-current/20"
-                  }`}
-                  aria-current={isActiveStep ? "step" : undefined}
-                >
-                  <span className="mr-1 opacity-60">0{index + 1}</span>
-                  {step.label}
-                </button>
-              </React.Fragment>
-            );
-          })}
-        </nav>
+        <button
+          type="button"
+          aria-label="Return to Mimi Studio"
+          disabled={isGenerating}
+          className="group relative px-4 py-1 text-center transition-opacity hover:opacity-70 disabled:cursor-wait disabled:opacity-60"
+          onClick={() =>
+            window.dispatchEvent(
+              new CustomEvent("mimi:change_view", { detail: "studio" }),
+            )
+          }
+        >
+          <span className="block font-serif text-[50px] italic leading-[0.85] tracking-[-0.055em] studio-text-ink md:text-[54px]">
+            Mimi
+          </span>
+          <span className="absolute -bottom-2 left-1/2 h-px w-10 -translate-x-1/2 bg-current opacity-15 transition-all group-hover:w-16" />
+        </button>
       )}
 
       {/* Controls & Navigation Identity */}
-      <div className="flex items-center gap-2 md:gap-3">
+      <div className="flex min-w-0 items-center justify-end gap-1.5 md:gap-3">
         {isMobile && onMobileStudioViewChange ? (
           <div className="flex border studio-border rounded-sm overflow-hidden mr-1">
             <button
@@ -221,19 +162,25 @@ export const StudioChrome: React.FC<{
           </div>
         ) : null}
 
-        {/* Minimalist running clock */}
-        {timeString && (
-          <span className="font-mono text-[9px] uppercase tracking-widest studio-text-muted hidden sm:inline-block border studio-border px-2.5 py-1.5 select-none bg-black/[0.02] dark:bg-white/[0.02] font-semibold transition-all hover:bg-black/[0.04] dark:hover:bg-white/[0.04]">
-            {timeString}
-          </span>
-        )}
+        <button
+          type="button"
+          title="Sound"
+          className="hidden h-9 w-9 items-center justify-center studio-text-muted transition-colors hover:studio-text-ink sm:flex"
+          onClick={() =>
+            window.dispatchEvent(
+              new CustomEvent("mimi:sound", { detail: { type: "click" } }),
+            )
+          }
+        >
+          <Volume2 size={15} strokeWidth={1.25} />
+        </button>
 
         {/* Theme Switcher Button */}
         <button
           type="button"
           title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           onClick={onToggleTheme}
-          className="w-9 h-9 border studio-border flex items-center justify-center studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 transition-all hover:scale-105 duration-300"
+          className="flex h-9 w-9 items-center justify-center rounded-full studio-text-muted transition-all hover:bg-black/5 hover:studio-text-ink active:scale-90 dark:hover:bg-white/5"
         >
           {isDark ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />}
         </button>
@@ -246,7 +193,7 @@ export const StudioChrome: React.FC<{
             type="button"
             disabled={isGenerating}
             onClick={() => window.dispatchEvent(new CustomEvent("mimi:change_view", { detail: "profile" }))}
-            className={`flex items-center gap-2 px-3 py-1.5 border studio-border hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black studio-text-ink h-9 ${
+            className={`flex h-9 items-center gap-2 rounded-full bg-[#373533] px-4 font-mono text-[8px] uppercase tracking-[0.18em] text-stone-100 shadow-lg transition-all hover:bg-[#242321] active:scale-95 ${
               isGenerating ? "opacity-75 cursor-wait" : ""
             }`}
           >
@@ -266,9 +213,9 @@ export const StudioChrome: React.FC<{
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent("mimi:open_gateway"))}
-            className="px-3.5 py-1.5 border studio-border hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black studio-text-ink h-9"
+            className="h-9 rounded-full bg-[#373533] px-4 font-mono text-[8px] uppercase tracking-[0.18em] text-stone-100 shadow-lg transition-all hover:bg-[#242321] active:scale-95"
           >
-            Sign On
+            Sign In
           </button>
         )}
       </div>

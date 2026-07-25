@@ -1,26 +1,23 @@
-// @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Search,
   Loader2,
   Globe,
   ScanLine,
   Database,
   ArrowRight,
   TrendingUp,
-  Sliders,
   Sparkles,
   PenTool,
-  Cpu,
   Bookmark,
-  Shuffle,
-  Compass,
-  FileText,
   Key,
   Layers,
   CheckCircle,
-  HelpCircle,
   ChevronRight,
   Download,
 } from "lucide-react";
@@ -32,23 +29,68 @@ import {
   generateOracleResearch,
 } from "../services/geminiService";
 import { useUser } from "../contexts/UserContext";
+import {
+  approveScrySession,
+  completeScrySession,
+  listScrySessions,
+  normalizeScryFinding,
+  saveScryFinding,
+  startScrySession,
+} from "../services/scrySessionService";
+import {
+  approveResearchContext,
+  createResearchContext,
+} from "../services/researchContextService";
+import { archiveManager } from "../services/archiveManager";
+import {
+  ResearchContextPacket,
+  ScryFinding,
+  ScryOpenRequest,
+  ScryOrigin,
+  ScryProviderError,
+  ScryWorkflowSession,
+} from "../types";
 
-export const ScryView: React.FC = () => {
-  const { profile, activePersona, apiKeys, pocket, setPocket } = useUser();
+interface ScryViewProps {
+  openRequest?: ScryOpenRequest | null;
+  onRequestConsumed?: () => void;
+}
+
+export const ScryView: React.FC<ScryViewProps> = ({
+  openRequest,
+  onRequestConsumed,
+}) => {
+  const { user, profile, apiKeys } = useUser();
+  const userId = user?.uid || profile?.uid || "ghost";
+  const inFlightRef = useRef(false);
+  const consumedRequestRef = useRef<string | null>(null);
+  const notificationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Core Navigation Active Tab
-  const [activeTab, setActiveTab] = useState<"specimen" | "trend-scryer">(
-    "specimen",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "specimen" | "trend-scryer" | "history"
+  >("specimen");
 
   // Tab A: Specimen Search states
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[]>([]);
-  const [webResults, setWebResults] = useState<any[]>([]);
+  const [creatorFindings, setCreatorFindings] = useState<ScryFinding[]>([]);
+  const [worldFindings, setWorldFindings] = useState<ScryFinding[]>([]);
+  const [resultFilter, setResultFilter] = useState<
+    "all" | "world" | "creator"
+  >("all");
   const [scribeReading, setScribeReading] = useState<string | null>(null);
   const [isScrying, setIsScrying] = useState(false);
   const [confidence, setConfidence] = useState(0);
   const [latency, setLatency] = useState(0);
+  const [currentSession, setCurrentSession] =
+    useState<ScryWorkflowSession | null>(null);
+  const [history, setHistory] = useState<ScryWorkflowSession[]>([]);
+  const [researchContext, setResearchContext] =
+    useState<ResearchContextPacket | null>(null);
+  const [isSavingFinding, setIsSavingFinding] = useState<string | null>(null);
+  const [isPreparingContext, setIsPreparingContext] = useState(false);
 
   // Tab B: Trend Research & Copywriter states
   const [trendQuery, setTrendQuery] = useState("Saturation Chic");
@@ -61,10 +103,25 @@ export const ScryView: React.FC = () => {
   // UI Notification Floater
   const [notification, setNotification] = useState<string | null>(null);
 
-  const showNotification = (msg: string) => {
+  const showNotification = useCallback((msg: string) => {
     setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
-  };
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+    }
+    notificationTimerRef.current = setTimeout(
+      () => setNotification(null),
+      3000,
+    );
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+    },
+    [],
+  );
 
   // Preset options for Trend Scryer
   const presets = [
@@ -82,68 +139,195 @@ export const ScryView: React.FC = () => {
     },
   ];
 
-  // Standard Query Search triggers
-  const handleScry = async (q?: string) => {
-    const queryToUse = q || query;
-    if (!queryToUse.trim() || isScrying) return;
-    setIsScrying(true);
-    setWebResults([]);
-    setResults([]);
-    setScribeReading(null);
-    setConfidence(0);
-    setLatency(0);
-    if (q) setQuery(q);
+  // Each provider returns into its own lane. State is committed once after all
+  // providers settle so Shadow Memory can never overwrite world or archive hits.
+  const handleScry = useCallback(
+    async (
+      q?: string,
+      origin: ScryOrigin = { type: "manual" },
+      projectId?: string,
+    ) => {
+      const queryToUse = (q || query).trim();
+      if (!queryToUse || inFlightRef.current) return;
+      inFlightRef.current = true;
+      setIsScrying(true);
+      setWorldFindings([]);
+      setCreatorFindings([]);
+      setScribeReading(null);
+      setCurrentSession(null);
+      setResearchContext(null);
+      setConfidence(0);
+      setLatency(0);
+      setQuery(queryToUse);
 
-    const startTime = performance.now();
-    const geminiKey = apiKeys?.gemini;
+      const startTime = performance.now();
+      const { session, contextRun } = await startScrySession({
+        userId,
+        query: queryToUse,
+        projectId,
+        origin,
+      });
 
-    try {
-      const textPromises = [
-        searchGrounding(queryToUse)
-          .then((data) => {
-            setResults((prev) => [...prev, ...data.results]);
-            setScribeReading(data.summary);
-          })
-          .catch((e) => console.error("MIMI // Search grounding failed", e)),
+      const providerNames = [
+        "creator_archive",
+        "world_web",
+        "scribe",
+        "shadow_memory",
+      ] as const;
 
-        scryWebSignals(queryToUse)
-          .then((data) => {
-            setWebResults(data.results);
-            if (data.groundingChunks && data.groundingChunks.length > 0) {
-              setResults((prev) => [
-                ...prev,
-                ...data.groundingChunks.map((c: any) => ({
-                  title: c.web?.title || "Grounded Insight",
-                  snippet: c.web?.title || "Grounded in real-time data",
-                  url: c.web?.uri,
-                })),
-              ]);
-            }
-          })
-          .catch((e) => console.error("MIMI // Web scry failed", e)),
+      try {
+        const settled = await Promise.allSettled([
+          searchGrounding(queryToUse),
+          scryWebSignals(queryToUse),
+          generateScribeReading(profile, queryToUse, apiKeys?.gemini),
+          scryShadowMemory(queryToUse),
+        ]);
+        const providerErrors: ScryProviderError[] = settled.flatMap(
+          (result, index) =>
+            result.status === "rejected"
+              ? [
+                  {
+                    provider: providerNames[index],
+                    message:
+                      result.reason instanceof Error
+                        ? result.reason.message
+                        : String(result.reason),
+                    occurredAt: Date.now(),
+                  },
+                ]
+              : [],
+        );
 
-        generateScribeReading(profile, queryToUse, geminiKey)
-          .then((reading) => {
-            setScribeReading(reading);
-          })
-          .catch((e) => console.error("MIMI // Scribe failed", e)),
+        const creatorArchive =
+          settled[0].status === "fulfilled"
+            ? (settled[0].value?.results ?? [])
+            : [];
+        const webPayload =
+          settled[1].status === "fulfilled" ? settled[1].value : null;
+        const shadowHits =
+          settled[3].status === "fulfilled" ? settled[3].value : [];
 
-        scryShadowMemory(queryToUse)
-          .then((hits) => {
-            setResults(hits);
-          })
-          .catch((e) => console.error("MIMI // Shadow memory failed", e)),
-      ];
+        const creatorArchiveFindings = creatorArchive.map((raw: any) =>
+          normalizeScryFinding({
+            userId,
+            sessionId: session.id,
+            contextRunId: contextRun.id,
+            query: queryToUse,
+            origin,
+            projectId,
+            resultKind: "creator",
+            sourceType: raw.type === "zine" ? "zine" : "pocket",
+            provider: "creator_archive",
+            raw,
+          }),
+        );
+        const shadowFindings = (shadowHits ?? []).map((raw: any) =>
+          normalizeScryFinding({
+            userId,
+            sessionId: session.id,
+            contextRunId: contextRun.id,
+            query: queryToUse,
+            origin,
+            projectId,
+            resultKind: "creator",
+            sourceType: "shadow_memory",
+            provider: "shadow_memory",
+            raw,
+          }),
+        );
+        const webSignalFindings = (webPayload?.results ?? []).map((raw: any) =>
+          normalizeScryFinding({
+            userId,
+            sessionId: session.id,
+            contextRunId: contextRun.id,
+            query: queryToUse,
+            origin,
+            projectId,
+            resultKind: "world",
+            sourceType: "web",
+            provider: "world_web",
+            raw,
+          }),
+        );
+        const groundedFindings = (webPayload?.groundingChunks ?? []).map(
+          (chunk: any) =>
+            normalizeScryFinding({
+              userId,
+              sessionId: session.id,
+              contextRunId: contextRun.id,
+              query: queryToUse,
+              origin,
+              projectId,
+              resultKind: "world",
+              sourceType: "web",
+              provider: "google_grounding",
+              raw: {
+                title: chunk.web?.title || "Grounded source",
+                snippet:
+                  chunk.web?.title || "Referenced by the grounded reading.",
+                url: chunk.web?.uri,
+              },
+            }),
+        );
 
-      await Promise.allSettled([...textPromises]);
-      setConfidence(Math.random() * 20 + 78); // 78-98%
-      setLatency(Math.floor(performance.now() - startTime));
-    } catch (e: any) {
-      console.error("MIMI // Scrying failed", e);
-    } finally {
-      setIsScrying(false);
-    }
-  };
+        const dedupe = (findings: ScryFinding[]): ScryFinding[] => {
+          const seen = new Set<string>();
+          return findings.filter((finding) => {
+            const key = [
+              finding.resultKind,
+              finding.referencedObjectId || "",
+              finding.url || "",
+              finding.title.toLowerCase(),
+            ].join("|");
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        };
+        const nextCreator = dedupe([
+          ...creatorArchiveFindings,
+          ...shadowFindings,
+        ]);
+        const nextWorld = dedupe([
+          ...webSignalFindings,
+          ...groundedFindings,
+        ]);
+        const reading =
+          settled[2].status === "fulfilled"
+            ? settled[2].value
+            : settled[0].status === "fulfilled"
+              ? settled[0].value?.summary
+              : null;
+        const allFindings = [...nextWorld, ...nextCreator];
+        const completed = await completeScrySession({
+          session,
+          contextRun,
+          findings: allFindings,
+          scribeReading: typeof reading === "string" ? reading : undefined,
+          providerErrors,
+        });
+
+        setWorldFindings(nextWorld);
+        setCreatorFindings(nextCreator);
+        setScribeReading(typeof reading === "string" ? reading : null);
+        setCurrentSession(completed.session);
+        setConfidence(
+          (settled.filter((result) => result.status === "fulfilled").length /
+            settled.length) *
+            100,
+        );
+        setHistory(await listScrySessions(userId));
+      } catch (error) {
+        console.error("MIMI // Scrying failed", error);
+        showNotification("The Scry could not complete this search.");
+      } finally {
+        setLatency(Math.floor(performance.now() - startTime));
+        setIsScrying(false);
+        inFlightRef.current = false;
+      }
+    },
+    [apiKeys?.gemini, profile, query, showNotification, userId],
+  );
 
   // Deep Semiotic Trend Scrying
   const conductTrendScry = async (keywordToScry?: string) => {
@@ -275,27 +459,22 @@ export const ScryView: React.FC = () => {
     }, 1200);
   };
 
-  const saveDraftToPocket = () => {
+  const saveDraftToPocket = async () => {
     if (!narrativeDraft) return;
-    if (setPocket) {
-      const updatedPocket = Array.isArray(pocket) ? [...pocket] : [];
-      updatedPocket.push({
-        id: `scribe-narrative-${Date.now()}`,
-        type: "scribe-intake",
-        metadata: {
-          keyword: trendQuery,
-          compiledOn: Date.now(),
-        },
+    try {
+      await archiveManager.saveToPocket(userId, "text", {
+        title: `Editorial: ${trendQuery}`,
+        text: narrativeDraft,
         content_preview: narrativeDraft.slice(0, 300),
-        content: {
-          title: `Editorial: ${trendQuery}`,
-          draftText: narrativeDraft,
-        },
+        source: "scry_trend_suite",
+        tags: ["scry", "editorial_draft", "trend_research"],
+        embeddingPolicy: "not_requested",
       });
-      setPocket(updatedPocket);
       showNotification(
         "Narrative anchored! Specimen added to Sovereign Pocket.",
       );
+    } catch {
+      showNotification("The narrative could not be saved.");
     }
   };
 
@@ -310,12 +489,116 @@ export const ScryView: React.FC = () => {
     showNotification("Markdown draft exported successfully.");
   };
 
+  const handleSaveFinding = async (finding: ScryFinding) => {
+    if (finding.selectionState === "saved") return;
+    setIsSavingFinding(finding.id);
+    try {
+      const saved = await saveScryFinding(finding);
+      const replace = (item: ScryFinding) =>
+        item.id === saved.id ? saved : item;
+      setWorldFindings((current) => current.map(replace));
+      setCreatorFindings((current) => current.map(replace));
+      showNotification(
+        "Finding saved with tags. Shadow Memory embedding was not requested.",
+      );
+    } catch (error) {
+      console.error("MIMI // Save finding failed", error);
+      showNotification("The finding could not be saved.");
+    } finally {
+      setIsSavingFinding(null);
+    }
+  };
+
+  const savedFindings = [...worldFindings, ...creatorFindings].filter(
+    (finding) => finding.selectionState === "saved",
+  );
+
+  const handlePrepareContext = async () => {
+    if (!currentSession || savedFindings.length === 0) return;
+    setIsPreparingContext(true);
+    try {
+      const packet = await createResearchContext({
+        userId,
+        session: currentSession,
+        findings: savedFindings,
+        target: "build-brief",
+      });
+      setResearchContext(packet);
+      showNotification("Draft Research Context assembled for review.");
+    } catch (error) {
+      console.error("MIMI // Research Context creation failed", error);
+      showNotification(
+        error instanceof Error ? error.message : "Context creation failed.",
+      );
+    } finally {
+      setIsPreparingContext(false);
+    }
+  };
+
+  const handleApproveContext = async () => {
+    if (!researchContext) return;
+    setIsPreparingContext(true);
+    try {
+      const approved = await approveResearchContext(
+        researchContext,
+        savedFindings,
+      );
+      setResearchContext(approved);
+      if (currentSession) {
+        const approvedSession = await approveScrySession(currentSession);
+        setCurrentSession(approvedSession);
+        setHistory(await listScrySessions(userId));
+      }
+      showNotification(
+        "Research Context approved and added to Build Brief inputs.",
+      );
+    } catch (error) {
+      console.error("MIMI // Research Context approval failed", error);
+      showNotification("Context approval failed.");
+    } finally {
+      setIsPreparingContext(false);
+    }
+  };
+
   useEffect(() => {
-    const handleScrySearch = (e: any) => handleScry(e.detail);
+    listScrySessions(userId).then(setHistory).catch(console.error);
+  }, [userId]);
+
+  useEffect(() => {
+    const handleScrySearch = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      const nextQuery =
+        typeof detail === "string"
+          ? detail
+          : typeof detail?.query === "string"
+            ? detail.query
+            : "";
+      if (nextQuery) handleScry(nextQuery, { type: "manual" });
+    };
     window.addEventListener("mimi:scry_search", handleScrySearch);
     return () =>
       window.removeEventListener("mimi:scry_search", handleScrySearch);
-  }, []);
+  }, [handleScry]);
+
+  useEffect(() => {
+    if (
+      !openRequest ||
+      consumedRequestRef.current === openRequest.requestId
+    ) {
+      return;
+    }
+    consumedRequestRef.current = openRequest.requestId;
+    setActiveTab("specimen");
+    setQuery(openRequest.query);
+    if (openRequest.autoRun) {
+      handleScry(
+        openRequest.query,
+        openRequest.origin,
+        openRequest.projectId,
+      );
+    }
+    onRequestConsumed?.();
+  }, [handleScry, onRequestConsumed, openRequest]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -329,6 +612,147 @@ export const ScryView: React.FC = () => {
     if (apiKeys?.gemini) count++;
     if (apiKeys?.you_com) count++;
     return count;
+  };
+
+  const findingGroups = [
+    {
+      key: "world",
+      label: "World",
+      description: "Current sources outside your archive",
+      findings: resultFilter === "creator" ? [] : worldFindings,
+    },
+    {
+      key: "zine",
+      label: "Your Zines",
+      description: "Published and editorial work you have already made",
+      findings:
+        resultFilter === "world"
+          ? []
+          : creatorFindings.filter((finding) => finding.sourceType === "zine"),
+    },
+    {
+      key: "pocket",
+      label: "Your Pocket",
+      description: "References you deliberately kept",
+      findings:
+        resultFilter === "world"
+          ? []
+          : creatorFindings.filter(
+              (finding) => finding.sourceType === "pocket",
+            ),
+    },
+    {
+      key: "shadow",
+      label: "Shadow Memory",
+      description: "Optional analogies from previously embedded creator work",
+      findings:
+        resultFilter === "world"
+          ? []
+          : creatorFindings.filter(
+              (finding) => finding.sourceType === "shadow_memory",
+            ),
+    },
+  ];
+
+  const renderFinding = (finding: ScryFinding, index: number) => {
+    const isWorld = finding.resultKind === "world";
+    const isSaved = finding.selectionState === "saved";
+    return (
+      <motion.article
+        key={finding.id}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: Math.min(index * 0.06, 0.3) }}
+        className="border border-[#e0e0e0] p-6 relative overflow-hidden bg-white/60 backdrop-blur-sm"
+      >
+        <div
+          className={`absolute top-0 left-0 w-1 h-full ${
+            isWorld ? "bg-[#4db6ac]" : "bg-stone-800"
+          }`}
+        />
+        <div className="flex justify-between items-start gap-4 mb-5">
+          <div className="flex flex-col gap-1">
+            <span
+              className={`font-mono text-[10px] uppercase tracking-widest ${
+                isWorld ? "text-[#004d40]" : "text-stone-700"
+              }`}
+            >
+              {isWorld ? "World source" : "Creator history"} //{" "}
+              {finding.sourceType.replace("_", " ")}
+            </span>
+            <span className="font-mono text-[9px] text-stone-500 uppercase tracking-widest">
+              {finding.sourceDomain || finding.provider}
+              {typeof finding.relevance === "number"
+                ? ` · ${Math.round(finding.relevance * 100)}% resonance`
+                : ""}
+            </span>
+          </div>
+          <div className="w-8 h-8 border border-stone-200 rounded-full flex items-center justify-center bg-white shrink-0">
+            {isWorld ? (
+              <Globe size={14} className="text-[#004d40]" />
+            ) : (
+              <Database size={14} className="text-stone-600" />
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-5">
+          {finding.displayImage && (
+            <img
+              src={finding.displayImage}
+              alt=""
+              className="w-24 h-24 border border-stone-200 bg-stone-50 object-cover grayscale opacity-80 shrink-0"
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <h3 className="font-serif text-xl md:text-2xl mb-2">
+              {finding.url ? (
+                <a
+                  href={finding.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
+                  {finding.title}
+                </a>
+              ) : (
+                finding.title
+              )}
+            </h3>
+            <p className="font-sans font-light text-sm text-stone-600 leading-relaxed line-clamp-3">
+              {finding.snippet || "A relevant object from your creator archive."}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              {finding.tags.slice(0, 5).map((tag) => (
+                <span
+                  key={tag}
+                  className="px-2 py-1 bg-stone-100 border border-stone-200 font-mono text-[8px] uppercase tracking-wide"
+                >
+                  {tag.replaceAll("_", " ")}
+                </span>
+              ))}
+              <button
+                onClick={() => handleSaveFinding(finding)}
+                disabled={isSaved || isSavingFinding === finding.id}
+                className={`ml-auto px-3 py-1.5 border font-mono text-[9px] uppercase tracking-widest flex items-center gap-1.5 ${
+                  isSaved
+                    ? "border-emerald-700 bg-emerald-50 text-emerald-900"
+                    : "border-black hover:bg-black hover:text-white"
+                } disabled:cursor-default`}
+              >
+                {isSavingFinding === finding.id ? (
+                  <Loader2 size={11} className="animate-spin" />
+                ) : isSaved ? (
+                  <CheckCircle size={11} />
+                ) : (
+                  <Bookmark size={11} />
+                )}
+                {isSaved ? "Saved" : "Save finding"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.article>
+    );
   };
 
   return (
@@ -375,9 +799,12 @@ export const ScryView: React.FC = () => {
               >
                 Trend_Scry_Suite
               </button>
-              <span className="block py-2 border-l-2 border-transparent pl-4 opacity-30 cursor-not-allowed">
-                Archives
-              </span>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={`text-left py-2 border-l-2 pl-4 transition-all uppercase ${activeTab === "history" ? "border-black font-bold text-black" : "border-transparent text-stone-400 hover:text-stone-700"}`}
+              >
+                Search_History
+              </button>
               <span className="block py-2 border-l-2 border-transparent pl-4 opacity-30 cursor-not-allowed">
                 Index
               </span>
@@ -434,14 +861,23 @@ export const ScryView: React.FC = () => {
                         Input_:
                       </label>
                       <div className="flex gap-2">
-                        <button className="px-3 py-1 border border-[#e0e0e0] rounded-full font-mono text-[10px] uppercase hover:bg-black hover:text-white transition-colors">
-                          Web
+                        <button
+                          onClick={() => setResultFilter("all")}
+                          className={`px-3 py-1 border rounded-full font-mono text-[10px] uppercase transition-colors ${resultFilter === "all" ? "bg-black text-white border-black" : "border-[#e0e0e0] hover:border-black"}`}
+                        >
+                          All
                         </button>
-                        <button className="px-3 py-1 border border-[#e0e0e0] rounded-full font-mono text-[10px] uppercase hover:bg-black hover:text-white transition-colors">
-                          Describe
+                        <button
+                          onClick={() => setResultFilter("world")}
+                          className={`px-3 py-1 border rounded-full font-mono text-[10px] uppercase transition-colors ${resultFilter === "world" ? "bg-black text-white border-black" : "border-[#e0e0e0] hover:border-black"}`}
+                        >
+                          World
                         </button>
-                        <button className="px-3 py-1 border border-[#e0e0e0] rounded-full font-mono text-[10px] uppercase hover:bg-black hover:text-white transition-colors">
-                          Scribe
+                        <button
+                          onClick={() => setResultFilter("creator")}
+                          className={`px-3 py-1 border rounded-full font-mono text-[10px] uppercase transition-colors ${resultFilter === "creator" ? "bg-black text-white border-black" : "border-[#e0e0e0] hover:border-black"}`}
+                        >
+                          Your Work
                         </button>
                       </div>
                     </div>
@@ -465,10 +901,89 @@ export const ScryView: React.FC = () => {
                         )}
                       </button>
                     </div>
+                    {currentSession &&
+                      currentSession.origin.type !== "manual" && (
+                      <div className="mt-4 p-3 border border-[#004d40]/30 bg-[#004d40]/5 flex items-start gap-3">
+                        <Sparkles
+                          size={13}
+                          className="text-[#004d40] mt-0.5 shrink-0"
+                        />
+                        <div>
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-[#004d40] block">
+                            Continued from{" "}
+                            {currentSession.origin.label ||
+                              currentSession.origin.type.replace("_", " ")}
+                          </span>
+                          <span className="font-serif italic text-xs text-stone-600">
+                            This search retains the originating editorial
+                            touchpoint as provenance.
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 </div>
 
                 <div className="space-y-8 pb-12">
+                  {savedFindings.length > 0 && (
+                    <section className="border border-black bg-[#f7f5ee] p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-500">
+                            Research Context
+                          </span>
+                          <h3 className="font-serif text-xl mt-1">
+                            {savedFindings.length} saved finding
+                            {savedFindings.length === 1 ? "" : "s"} ready
+                          </h3>
+                          <p className="font-sans text-xs text-stone-600 mt-1">
+                            Saving does not create embeddings. Approval makes
+                            this evidence selectable by the Mimi Build Brief.
+                          </p>
+                        </div>
+                        {!researchContext ? (
+                          <button
+                            onClick={handlePrepareContext}
+                            disabled={isPreparingContext}
+                            className="px-4 py-2 bg-black text-white font-mono text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {isPreparingContext ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <Layers size={12} />
+                            )}
+                            Build context
+                          </button>
+                        ) : researchContext.approvalState === "draft" ? (
+                          <button
+                            onClick={handleApproveContext}
+                            disabled={isPreparingContext}
+                            className="px-4 py-2 bg-[#004d40] text-white font-mono text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {isPreparingContext ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <CheckCircle size={12} />
+                            )}
+                            Approve for Build Brief
+                          </button>
+                        ) : (
+                          <span className="px-4 py-2 border border-emerald-700 bg-emerald-50 text-emerald-900 font-mono text-[9px] uppercase tracking-widest flex items-center gap-2">
+                            <CheckCircle size={12} /> Build Brief ready
+                          </span>
+                        )}
+                      </div>
+                      {researchContext && (
+                        <div className="mt-4 pt-3 border-t border-stone-300 font-mono text-[8px] uppercase tracking-wider text-stone-500 flex flex-wrap gap-x-5 gap-y-1">
+                          <span>{researchContext.approvalState}</span>
+                          <span>
+                            {researchContext.selectedFindingIds.length} sources
+                          </span>
+                          <span>{researchContext.integrityHash}</span>
+                        </div>
+                      )}
+                    </section>
+                  )}
                   {/* RESULTS DISPLAY */}
                   <AnimatePresence>
                     {scribeReading && (
@@ -497,98 +1012,110 @@ export const ScryView: React.FC = () => {
                       </motion.div>
                     )}
 
-                    {webResults.map((r, i) => (
-                      <motion.div
-                        key={`web-${i}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="border border-[#e0e0e0] p-6 relative overflow-hidden bg-white/50 backdrop-blur-sm"
-                      >
-                        <div className="absolute top-0 left-0 w-1 h-full bg-[#4db6ac]"></div>
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="flex flex-col">
-                            <span className="font-mono text-[10px] text-[#004d40] uppercase tracking-widest mb-1">
-                              Web Signal // Found
-                            </span>
-                            <span className="font-mono text-[10px] text-stone-500 uppercase tracking-widest">
-                              URL: {r.url ? new URL(r.url).hostname : "unknown"}
-                            </span>
-                          </div>
-                          <div className="w-8 h-8 border border-stone-200 rounded-full flex items-center justify-center bg-white">
-                            <Globe size={14} className="text-[#004d40]" />
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="font-serif text-xl md:text-2xl mb-2">
-                            <a
-                              href={r.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:underline"
-                            >
-                              {r.title}
-                            </a>
-                          </h3>
-                          <p className="font-sans font-light text-sm text-stone-600 leading-relaxed max-w-xl">
-                            {r.snippet}
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
-
-                    {results.length > 0 &&
-                      results.map((r, i) => (
-                        <motion.div
-                          key={`mem-${i}`}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.1 }}
-                          className="border border-[#e0e0e0] p-6 relative overflow-hidden bg-white/50 backdrop-blur-sm"
-                        >
-                          <div className="absolute top-0 left-0 w-1 h-full bg-stone-800"></div>
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="flex flex-col">
-                              <span className="font-mono text-[10px] text-stone-600 uppercase tracking-widest mb-1">
-                                Shadow Memory // {r.type || "Data"}
-                              </span>
-                              <span className="font-mono text-[10px] text-stone-500 uppercase tracking-widest">
-                                Resonance:{" "}
-                                {r.similarity
-                                  ? (r.similarity * 100).toFixed(0)
-                                  : "85"}
-                                %
-                              </span>
-                            </div>
-                            <div className="w-8 h-8 border border-stone-200 rounded-full flex items-center justify-center bg-white">
-                              <Database size={14} className="text-stone-600" />
-                            </div>
-                          </div>
-                          <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-                            {r.display_image && (
-                              <div className="w-24 h-24 border border-stone-200 bg-stone-50 flex items-center justify-center shrink-0">
-                                <img
-                                  src={r.display_image}
-                                  className="w-full h-full object-cover grayscale opacity-80"
-                                />
+                    {findingGroups.map(
+                      (group) =>
+                        group.findings.length > 0 && (
+                          <section key={group.key} className="space-y-3">
+                            <div className="flex items-end justify-between border-b border-stone-300 pb-2">
+                              <div>
+                                <h3 className="font-mono text-[10px] uppercase tracking-[0.18em] font-bold">
+                                  {group.label}
+                                </h3>
+                                <p className="font-serif italic text-xs text-stone-500 mt-1">
+                                  {group.description}
+                                </p>
                               </div>
-                            )}
-                            <div>
-                              <h3 className="font-serif text-lg md:text-xl mb-2 italic">
-                                {r.content?.prompt ||
-                                  r.title ||
-                                  "Archived Specimen"}
-                              </h3>
-                              <p className="font-sans font-light text-sm text-stone-600 leading-relaxed max-w-xl line-clamp-3">
-                                {r.content_preview ||
-                                  r.snippet ||
-                                  "Fragment located in the latent registry."}
-                              </p>
+                              <span className="font-mono text-[9px] text-stone-400">
+                                {group.findings.length}
+                              </span>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                            {group.findings.map(renderFinding)}
+                          </section>
+                        ),
+                    )}
                   </AnimatePresence>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "history" && (
+              <div className="space-y-10">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <Database size={14} className="text-[#004d40]" />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#004d40] font-bold">
+                      Durable Curiosity History
+                    </span>
+                  </div>
+                  <h2 className="font-serif text-5xl italic font-light tracking-tight">
+                    Questions you can return to.
+                  </h2>
+                  <p className="font-sans text-xs text-stone-600 leading-relaxed max-w-xl">
+                    Each entry records the original query, its source
+                    touchpoint, provider coverage, and the findings available
+                    for later research contexts.
+                  </p>
+                </motion.div>
+
+                <div className="space-y-3">
+                  {history.length === 0 ? (
+                    <div className="border border-dashed border-stone-300 p-10 text-center">
+                      <p className="font-serif italic text-stone-500">
+                        Your first Scry will appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    history.map((session) => (
+                      <article
+                        key={session.id}
+                        className="border border-stone-300 bg-white/50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 flex flex-wrap gap-x-3 gap-y-1">
+                            <span>{session.status}</span>
+                            <span>{session.approvalState || "unreviewed"}</span>
+                            <span>
+                              {new Date(session.createdAt).toLocaleString()}
+                            </span>
+                            <span>
+                              {session.findingIds.length} finding
+                              {session.findingIds.length === 1 ? "" : "s"}
+                            </span>
+                            <span>
+                              from{" "}
+                              {session.origin?.label ||
+                                session.origin?.type?.replace("_", " ") ||
+                                "legacy search"}
+                            </span>
+                          </div>
+                          <h3 className="font-serif text-xl mt-2">
+                            {session.query}
+                          </h3>
+                          {session.scribeReading && (
+                            <p className="font-sans text-xs text-stone-600 mt-2 line-clamp-2">
+                              {session.scribeReading}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setActiveTab("specimen");
+                            handleScry(session.query, {
+                              type: "manual",
+                              label: "Search history",
+                            });
+                          }}
+                          className="shrink-0 px-4 py-2 border border-black font-mono text-[9px] uppercase tracking-widest hover:bg-black hover:text-white flex items-center gap-2"
+                        >
+                          Continue thread <ArrowRight size={11} />
+                        </button>
+                      </article>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -944,7 +1471,7 @@ export const ScryView: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-mono text-[10px] uppercase text-stone-500">
-                      Confidence
+                      Retrieval coverage
                     </span>
                     <span className="font-mono text-[10px]">
                       {confidence > 0 ? `${confidence.toFixed(1)}%` : "---"}
@@ -960,31 +1487,42 @@ export const ScryView: React.FC = () => {
 
                 <div>
                   <span className="font-mono text-[10px] uppercase text-stone-500 block mb-3">
-                    Semantics Archetype
+                    Results by layer
                   </span>
                   <ul className="font-mono text-[10px] space-y-2">
                     <li className="flex justify-between text-[#004d40] font-bold">
-                      <span>&gt; Saturated Chroma</span>
-                      <span className="opacity-100">
-                        {confidence > 0 ? "0.94" : "---"}
+                      <span>&gt; World</span>
+                      <span>{worldFindings.length}</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span>&gt; Zines</span>
+                      <span>
+                        {
+                          creatorFindings.filter(
+                            (finding) => finding.sourceType === "zine",
+                          ).length
+                        }
                       </span>
                     </li>
                     <li className="flex justify-between">
-                      <span>&gt; Neon Rebellion</span>
-                      <span className="opacity-70">
-                        {confidence > 0 ? "0.86" : "---"}
+                      <span>&gt; Pocket</span>
+                      <span>
+                        {
+                          creatorFindings.filter(
+                            (finding) => finding.sourceType === "pocket",
+                          ).length
+                        }
                       </span>
                     </li>
                     <li className="flex justify-between">
-                      <span>&gt; Tayloring Armor</span>
-                      <span className="opacity-70">
-                        {confidence > 0 ? "0.74" : "---"}
-                      </span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>&gt; Greige Monotony</span>
-                      <span className="opacity-30">
-                        {confidence > 0 ? "0.12" : "---"}
+                      <span>&gt; Shadow Memory</span>
+                      <span>
+                        {
+                          creatorFindings.filter(
+                            (finding) =>
+                              finding.sourceType === "shadow_memory",
+                          ).length
+                        }
                       </span>
                     </li>
                   </ul>

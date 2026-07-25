@@ -1560,8 +1560,12 @@ export type MimiAestheticGraphNode = {
   confidence: number;
 };
 
-/** Scribe atom queued for Studio / Edit generation (approve ? apply loop). */
-export type UsedContextTarget = "studio" | "the-edit";
+/** Explicitly selected context queued for a downstream workflow. */
+export type UsedContextTarget =
+  | "studio"
+  | "the-edit"
+  | "research"
+  | "build-brief";
 
 /** Discriminator for documents in users/{uid}/memory (atoms vs embedding shadow). */
 export type MemoryDocKind = 'memory_atom' | 'embedding_shadow';
@@ -1596,6 +1600,8 @@ export interface MemoryAtom {
 
 export interface UsedContextEntry {
   atomId: string;
+  objectType?: "memory_atom" | "context_packet";
+  objectId?: string;
   title: string;
   content: string;
   source?: string;
@@ -1604,6 +1610,124 @@ export interface UsedContextEntry {
   addedAt: number;
   approved: boolean;
   target: UsedContextTarget;
+}
+
+export type ScryResultKind = "world" | "creator";
+
+export type ScrySourceType =
+  | "web"
+  | "zine"
+  | "pocket"
+  | "shadow_memory";
+
+export type ScrySelectionState = "candidate" | "saved" | "rejected";
+
+export interface ScryOrigin {
+  type: "manual" | "semiotic_signal" | "zine" | "pocket";
+  artifactId?: string;
+  signalId?: string;
+  label?: string;
+}
+
+export interface ScryOpenRequest {
+  requestId: string;
+  query: string;
+  autoRun: boolean;
+  projectId?: string;
+  origin: ScryOrigin;
+}
+
+export interface ScryProviderError {
+  provider: string;
+  message: string;
+  occurredAt: number;
+}
+
+export interface ScryFinding {
+  id: string;
+  userId: string;
+  sessionId: string;
+  contextRunId: string;
+  projectId?: string;
+  resultKind: ScryResultKind;
+  sourceType: ScrySourceType;
+  title: string;
+  snippet?: string;
+  url?: string;
+  sourceDomain?: string;
+  referencedObjectId?: string;
+  displayImage?: string;
+  provider: string;
+  relevance?: number;
+  tags: string[];
+  tagSource: "deterministic" | "generated" | "mixed";
+  embeddingStatus: "not_requested" | "available";
+  capturedAt: number;
+  selectionState: ScrySelectionState;
+  query: string;
+  origin: ScryOrigin;
+}
+
+export interface ScryContextRun {
+  id: string;
+  userId: string;
+  sessionId: string;
+  projectId?: string;
+  objectType: "context_run";
+  taskIntent: "scry_research";
+  query: string;
+  scope: Array<"world" | "zines" | "pocket" | "shadow_memory">;
+  candidateFindingIds: string[];
+  selectedFindingIds: string[];
+  rejectedFindingIds: string[];
+  providerErrors: ScryProviderError[];
+  retrievalVersion: number;
+  startedAt: number;
+  completedAt?: number;
+}
+
+export interface ScryWorkflowSession {
+  id: string;
+  userId: string;
+  projectId?: string;
+  objectType: "workflow_session";
+  workflowType: "scry";
+  query: string;
+  origin: ScryOrigin;
+  status: "running" | "partial" | "complete" | "failed";
+  approvalState: "unreviewed" | "approved" | "rejected";
+  approvedAt?: number;
+  contextRunId: string;
+  findingIds: string[];
+  selectedFindingIds: string[];
+  scribeReading?: string;
+  providerErrors: ScryProviderError[];
+  createdAt: number;
+  updatedAt: number;
+  completedAt?: number;
+  version: number;
+}
+
+export interface ResearchContextPacket {
+  id: string;
+  userId: string;
+  projectId?: string;
+  objectType: "context_packet";
+  title: string;
+  summary?: string;
+  tags: string[];
+  taskIntent: string;
+  sourceSessionIds: string[];
+  sourceContextRunIds: string[];
+  selectedFindingIds: string[];
+  selectedAtomIds: string[];
+  approvalState: "draft" | "approved" | "rejected";
+  approvedAt?: number;
+  target: "research" | "build-brief";
+  integrityHash: string;
+  createdAt: number;
+  updatedAt: number;
+  version: number;
 }
 
 /** Frozen snapshot of used context at generation time (export / offline reveal). */

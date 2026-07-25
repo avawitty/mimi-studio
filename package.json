@@ -18,6 +18,7 @@
     "verify:zine-visual-policy": "node scripts/verifyZineVisualPolicy.mjs",
     "verify:pinterest-preview": "tsx scripts/verifyPinterestBoardPreview.ts",
     "verify:used-context": "tsx scripts/verifyUsedContextFlow.ts",
+    "verify:scry-context": "tsx scripts/verifyScryContextFlow.ts",
     "test:e2e": "playwright test",
     "start": "node dist/server.cjs"
   },

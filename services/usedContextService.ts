@@ -1,4 +1,11 @@
-import { MemoryAtom, UsedContextEntry, UsedContextTarget } from "../types";
+import {
+  MemoryAtom,
+  ResearchContextPacket,
+  ScryFinding,
+  UsedContextEntry,
+  UsedContextTarget,
+} from "../types";
+import { mergeTags } from "./taggingPolicyService";
 
 const STORAGE_KEY = "mimi_studio_used_context";
 export const USED_CONTEXT_CHANGED = "mimi:used-context-changed";
@@ -53,6 +60,50 @@ export function addToUsedContext(
   };
 
   writeStore([entry, ...entries]);
+  return entry;
+}
+
+const findingEvidenceLine = (finding: ScryFinding): string => {
+  const source =
+    finding.resultKind === "world" ? "World source" : "Creator history";
+  const location = finding.url ? ` — ${finding.url}` : "";
+  return `[${source}] ${finding.title}${location}\n${finding.snippet || ""}`.trim();
+};
+
+/**
+ * Projects an approved Research Context into the existing Used Context surface.
+ * The context packet remains the durable object; this entry is its selectable
+ * downstream representation for Build Brief generation.
+ */
+export function addResearchContextToUsedContext(
+  packet: ResearchContextPacket,
+  findings: ScryFinding[],
+): UsedContextEntry {
+  const target: UsedContextTarget = packet.target;
+  const entries = readStore();
+  const existing = entries.find(
+    (entry) => entry.objectId === packet.id && entry.target === target,
+  );
+  const entry: UsedContextEntry = {
+    atomId: packet.id,
+    objectType: "context_packet",
+    objectId: packet.id,
+    title: packet.title,
+    content:
+      packet.summary ||
+      findings.map(findingEvidenceLine).filter(Boolean).join("\n\n"),
+    source: "Scry Research Context",
+    tags: mergeTags(
+      packet.tags,
+      ...findings.map((finding) => finding.tags),
+    ),
+    projectId: packet.projectId,
+    addedAt: existing?.addedAt ?? Date.now(),
+    approved: packet.approvalState === "approved",
+    target,
+  };
+
+  writeStore([entry, ...entries.filter((item) => item !== existing)]);
   return entry;
 }
 

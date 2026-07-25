@@ -1,7 +1,13 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../services/firebaseInit";
 
-export type ProvenanceChamber = "darkroom" | "pocket" | "studio";
+export type ProvenanceChamber =
+  | "darkroom"
+  | "pocket"
+  | "studio"
+  | "scry"
+  | "research"
+  | "build-brief";
 
 export interface ProvenanceTransfer {
   from: ProvenanceChamber;

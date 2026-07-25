@@ -22,6 +22,7 @@ import { coerceToString } from '../lib/utils';
 import { useRecorder } from '../hooks/useRecorder';
 import { ZineFlipbookShell, type ZineReadingMode } from './ZineFlipbookShell';
 import { useZineSEO } from '../utils/seoHelper';
+import { generateShopifyEmbedCode } from '../services/shopifyEmbed';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -183,6 +184,7 @@ export const AnalysisDisplay: React.FC<{
  const [isEditing, setIsEditing] = useState(false);
  const [isExportingPDF, setIsExportingPDF] = useState(false);
  const [isDedicatedReadingMode, setIsDedicatedReadingMode] = useState(false);
+ const [isEmbedCopied, setIsEmbedCopied] = useState(false);
 
  useEffect(() => {
    const handleKeyDown = (e: KeyboardEvent) => {
@@ -881,6 +883,45 @@ export const AnalysisDisplay: React.FC<{
  }
  };
 
+ const handleCopyShopifyEmbed = async () => {
+   if (!metadata.isPublic) {
+     window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+       detail: {
+         message: "Publish this zine before embedding it in Shopify.",
+         type: "warning",
+       },
+     }));
+     return;
+   }
+
+   try {
+     const embedCode = generateShopifyEmbedCode({
+       zineId: metadata.id,
+       title: metadata.title || "Mimi Editorial Zine",
+       baseUrl: window.location.origin,
+       aspectRatio: "16/9",
+       themeMode: document.documentElement.classList.contains("dark") ? "dark" : "light",
+     });
+     await navigator.clipboard.writeText(embedCode);
+     setIsEmbedCopied(true);
+     window.setTimeout(() => setIsEmbedCopied(false), 2400);
+     window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+       detail: {
+         message: "Shopify Liquid embed copied.",
+         type: "success",
+       },
+     }));
+   } catch (error) {
+     console.error("Failed to copy Shopify embed", error);
+     window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+       detail: {
+         message: "Shopify embed could not be copied.",
+         type: "error",
+       },
+     }));
+   }
+ };
+
  const handleSaveThread = async () => {
  if (isThreadSaved || isSavingThread || !user?.uid) return;
  
@@ -958,7 +999,13 @@ export const AnalysisDisplay: React.FC<{
  // Direct pass to Scry View
  window.dispatchEvent(new CustomEvent('mimi:change_view', { 
  detail: 'scry',
- detail_data: { signal: motif }
+ detail_data: {
+ signal: motif,
+ autoRun: true,
+ originType: 'semiotic_signal',
+ artifactId: metadata.id,
+ label: 'Semiotic touchpoint'
+ }
  } as any));
  };
 
@@ -2090,6 +2137,29 @@ export const AnalysisDisplay: React.FC<{
       <button onClick={() => setShowExport(true)} className="flex flex-col items-center gap-2 hover:text-[#1A1A1A] transition-colors group" title="Export image or PDF">
         <Download size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
         <span className="text-[7px] uppercase tracking-[0.2em] font-black">EXPORT</span>
+      </button>
+
+      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
+
+      <button
+        onClick={handleCopyShopifyEmbed}
+        className={`flex flex-col items-center gap-2 transition-colors group ${
+          isEmbedCopied ? "text-emerald-700" : "hover:text-[#1A1A1A]"
+        }`}
+        title={
+          metadata.isPublic
+            ? "Copy a responsive Shopify Custom Liquid embed"
+            : "Publish this zine before embedding it"
+        }
+      >
+        {isEmbedCopied ? (
+          <Check size={18} strokeWidth={1.5} />
+        ) : (
+          <Terminal size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+        )}
+        <span className="text-[7px] uppercase tracking-[0.2em] font-black">
+          {isEmbedCopied ? "COPIED" : "EMBED"}
+        </span>
       </button>
 
       <div className="w-[1px] h-6 bg-[#A19D94]/20"/>

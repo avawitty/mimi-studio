@@ -744,15 +744,23 @@ export const addToPocket = async (uid: string, type: PocketItem['type'], content
     }
   }
 
-  // Generate tags automatically
-  const { generateTagsFromMedia } = await import("./geminiService");
+  // Preserve explicit tags when an upstream workflow already funded tagging.
+  // Otherwise generate tags once at this durable save boundary.
+  const providedTags = Array.isArray(contentForAnalysis.tags)
+    ? contentForAnalysis.tags.filter((tag: unknown): tag is string => typeof tag === "string" && tag.trim().length > 0)
+    : [];
   // Remove the base64 string from the text content to avoid blowing up the prompt
   const textContent = { ...contentForAnalysis };
   delete textContent.imageUrl;
   delete textContent.image;
   delete textContent.media;
   
-  const tags = await generateTagsFromMedia(JSON.stringify(textContent), mediaItems);
+  const tags = providedTags.length > 0
+    ? providedTags
+    : await (await import("./geminiService")).generateTagsFromMedia(
+        JSON.stringify(textContent),
+        mediaItems,
+      );
   
   const item: PocketItem = { id: itemId, userId: uid, type, savedAt: Date.now(), content, notes: content.notes || "", tags, embedding, deltaVerdict };
   
@@ -770,7 +778,9 @@ export const addToPocket = async (uid: string, type: PocketItem['type'], content
   if (uid && auth.currentUser && navigator.onLine) {
     try {
       await setDoc(doc(db, "pocket", itemId), sanitizeFirestoreData(item));
-      syncToShadowMemory(item);
+      if (contentForAnalysis.embeddingPolicy !== "not_requested") {
+        syncToShadowMemory(item);
+      }
       // Asynchronously update the taste graph
       updateTasteGraph(uid, type, contentForAnalysis);
       invalidatePocketCache();
