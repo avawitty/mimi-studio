@@ -17,6 +17,7 @@ import {
   buildExportManifest,
   validateExportManifest,
 } from '../services/exportManifestService';
+import { generateShopifyEmbedCode } from '../services/shopifyEmbed';
 import { resolveZineExportCoverUrl } from '../lib/studioCoverExport';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -60,6 +61,7 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set(SECTION_DEFS.map(s => s.id)));
  const [isGenerating, setIsGenerating] = useState(false);
   const [progressMessage, setProgressMessage] = useState("Compressing Semiotic Layers...");
+  const [isEmbedCopied, setIsEmbedCopied] = useState(false);
 
   useEffect(() => {
     if (!isGenerating) return;
@@ -113,6 +115,45 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  else next.add(id);
  return next;
  });
+ };
+
+ const handleCopyShopifyEmbed = async () => {
+   if (!metadata.isPublic) {
+     window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+       detail: {
+         message: "Publish this zine before embedding it in Shopify.",
+         type: "warning",
+       },
+     }));
+     return;
+   }
+
+   try {
+     const embedCode = generateShopifyEmbedCode({
+       zineId: metadata.id,
+       title: metadata.title || "Mimi Editorial Zine",
+       baseUrl: window.location.origin,
+       aspectRatio: "16/9",
+       themeMode: document.documentElement.classList.contains("dark") ? "dark" : "light",
+     });
+     await navigator.clipboard.writeText(embedCode);
+     setIsEmbedCopied(true);
+     window.setTimeout(() => setIsEmbedCopied(false), 2400);
+     window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+       detail: {
+         message: "Shopify Liquid embed copied.",
+         type: "success",
+       },
+     }));
+   } catch (error) {
+     console.error("Failed to copy Shopify embed", error);
+     window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+       detail: {
+         message: "Shopify embed could not be copied.",
+         type: "error",
+       },
+     }));
+   }
  };
 
  const convertImagesToBase64 = async (element: HTMLElement) => {
@@ -392,6 +433,35 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  </button>
  ))}
  </div>
+ </section>
+
+ <section className="space-y-3 border border-nous-border p-4 bg-nous-base/40">
+   <div className="flex items-center justify-between gap-3">
+     <span className="font-sans text-[9px] uppercase tracking-widest font-black text-nous-subtle">Shopify Liquid Embed</span>
+     <Terminal size={14} className="text-nous-subtle" />
+   </div>
+   <p className="font-serif italic text-[11px] leading-relaxed text-nous-subtle">
+     Copy a responsive Custom Liquid block for theme embedding. Requires a published public zine URL.
+   </p>
+   <button
+     type="button"
+     onClick={handleCopyShopifyEmbed}
+     className={`w-full py-3 border font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-2 transition-all ${
+       isEmbedCopied
+         ? 'border-emerald-600/40 text-emerald-700 bg-emerald-50'
+         : metadata.isPublic
+           ? 'border-nous-border text-nous-text hover:bg-nous-base'
+           : 'border-nous-border text-nous-subtle opacity-70'
+     }`}
+     title={
+       metadata.isPublic
+         ? "Copy a responsive Shopify Custom Liquid embed"
+         : "Publish this zine before embedding it"
+     }
+   >
+     {isEmbedCopied ? <Check size={14} /> : <Copy size={14} />}
+     {isEmbedCopied ? 'Embed Copied' : metadata.isPublic ? 'Copy Liquid Embed' : 'Publish to Enable Embed'}
+   </button>
  </section>
 
  {exportMode === 'shopify' && (
