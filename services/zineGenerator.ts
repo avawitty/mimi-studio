@@ -579,6 +579,10 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             if (!content.poetic_provocation) {
                 content.poetic_provocation = "What remains when the signal fades?";
             }
+
+            if (!content.originalThought || !String(content.originalThought).trim()) {
+                content.originalThought = (text || "").trim().slice(0, 800) || "The originating debris was not retained.";
+            }
             
             if (!content.pages || content.pages.length === 0) {
                 content.pages = [

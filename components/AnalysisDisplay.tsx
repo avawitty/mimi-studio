@@ -176,6 +176,7 @@ export const AnalysisDisplay: React.FC<{
  const [showShare, setShowShare] = useState(false);
  const [showComments, setShowComments] = useState(false);
  const [showNotes, setShowNotes] = useState(false);
+ const [showOriginalThought, setShowOriginalThought] = useState(false);
  const [showReflection, setShowReflection] = useState(true);
  const [isSaved, setIsSaved] = useState(false);
  const [isAnimatingManifest, setIsAnimatingManifest] = useState(false);
@@ -573,6 +574,9 @@ export const AnalysisDisplay: React.FC<{
 
  // Field Notes State - Fallback logic for Debris
  const originalDebris = metadata.originalInput || metadata.content.meta?.intent || '';
+ const originalThoughtText =
+   (typeof metadata.content?.originalThought === 'string' && metadata.content.originalThought.trim()) ||
+   originalDebris;
  const [noteContent, setNoteContent] = useState(originalDebris);
  const [vocalSummary, setVocalSummary] = useState(metadata.content.vocal_summary_blurb || '');
  const [poeticInterpretation, setPoeticInterpretation] = useState(metadata.content.poetic_interpretation || '');
@@ -2014,6 +2018,67 @@ export const AnalysisDisplay: React.FC<{
      </div>
    </div>
 
+   <div className="w-full max-w-3xl px-6 pt-8">
+     <div className="border border-stone-200 bg-white overflow-hidden">
+       <button
+         type="button"
+         onClick={() => setShowOriginalThought((open) => !open)}
+         className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left hover:bg-stone-50 transition-colors"
+         aria-expanded={showOriginalThought}
+       >
+         <div className="space-y-1 min-w-0">
+           <span className="font-sans text-[10px] uppercase tracking-[0.4em] font-black block" style={{ color: accentColor }}>
+             Original Thought
+           </span>
+           <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400 block">
+             {showOriginalThought ? 'Close drawer' : 'Open drawer — the debris that started this issue'}
+           </span>
+         </div>
+         <ChevronDown
+           size={18}
+           className={`shrink-0 text-stone-400 transition-transform duration-300 ${showOriginalThought ? 'rotate-180' : ''}`}
+         />
+       </button>
+       <AnimatePresence initial={false}>
+         {showOriginalThought && (
+           <motion.div
+             initial={{ height: 0, opacity: 0 }}
+             animate={{ height: 'auto', opacity: 1 }}
+             exit={{ height: 0, opacity: 0 }}
+             transition={{ duration: 0.35, ease: 'easeOut' }}
+             className="overflow-hidden border-t border-stone-200"
+           >
+             <div className="px-6 py-8 space-y-6 text-left">
+               {originalThoughtText ? (
+                 <>
+                   <p className="font-serif italic text-xl md:text-2xl text-nous-text leading-relaxed whitespace-pre-wrap">
+                     “{originalThoughtText}”
+                   </p>
+                   {originalDebris &&
+                     metadata.content?.originalThought &&
+                     originalDebris.trim() !== metadata.content.originalThought.trim() && (
+                       <div className="pt-4 border-t border-stone-100 space-y-2">
+                         <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 block">
+                           Raw input log
+                         </span>
+                         <p className="font-mono text-sm text-stone-500 leading-relaxed whitespace-pre-wrap">
+                           {originalDebris}
+                         </p>
+                       </div>
+                     )}
+                 </>
+               ) : (
+                 <p className="font-serif italic text-stone-400">
+                   Debris data lost in transit.
+                 </p>
+               )}
+             </div>
+           </motion.div>
+         )}
+       </AnimatePresence>
+     </div>
+   </div>
+
    <div className="flex flex-col gap-6 w-full max-w-md pt-12">
      <button onClick={onReset} className="w-full py-4 text-stone-400 hover:text-stone-900 border-t border-stone-100 font-sans text-[9px] uppercase tracking-[0.4em] font-black transition-all">
        Purge & Return to Vault
@@ -2326,6 +2391,41 @@ export const AnalysisDisplay: React.FC<{
                 </p>
               </footer>
             )}
+
+            {/* Original Thought Drawer */}
+            <section className="border-t border-stone-200 dark:border-stone-850 pt-12 pb-16">
+              <button
+                type="button"
+                onClick={() => setShowOriginalThought((open) => !open)}
+                className="w-full flex items-center justify-between gap-4 py-4 text-left"
+                aria-expanded={showOriginalThought}
+              >
+                <span className="font-mono text-[9px] uppercase tracking-[0.4em] text-stone-500 font-bold">
+                  Original Thought
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-stone-400 transition-transform duration-300 ${showOriginalThought ? 'rotate-180' : ''}`}
+                />
+              </button>
+              <AnimatePresence initial={false}>
+                {showOriginalThought && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                    className="overflow-hidden"
+                  >
+                    <p className="font-serif italic text-xl md:text-2xl text-stone-800 dark:text-stone-200 leading-relaxed whitespace-pre-wrap pb-4">
+                      {originalThoughtText
+                        ? `“${originalThoughtText}”`
+                        : 'Debris data lost in transit.'}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </section>
           </article>
         </motion.div>
       )}
