@@ -581,6 +581,14 @@ export interface Roadmap {
   driftForecast: DriftForecast;
 }
 
+export interface PlateVoiceMemo {
+  /** Uploaded storage URL or data URI for playback */
+  audioUrl: string;
+  transcript?: string;
+  durationSec?: number;
+  recordedAt?: number;
+}
+
 export interface ZinePageSpec {
   pageNumber: number;
   headline: string;
@@ -588,6 +596,8 @@ export interface ZinePageSpec {
   supportingText?: string;
   imagePrompt: string;
   image_url?: string;
+  /** Creator voice annotation attached to this visual plate */
+  voiceMemo?: PlateVoiceMemo;
   pageType?: 'standard' | 'thread_timeline';
   threadData?: {
     artifacts: any[]; // Will be PocketItem[]

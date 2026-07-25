@@ -23,6 +23,8 @@ import { useRecorder } from '../hooks/useRecorder';
 import { ZineFlipbookShell, type ZineReadingMode } from './ZineFlipbookShell';
  import { useZineSEO } from '../utils/seoHelper';
 import { BuildBriefInspector } from './BuildBriefInspector';
+import { PlateVoiceMemo } from './PlateVoiceMemo';
+import type { PlateVoiceMemo as PlateVoiceMemoData } from '../types';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -628,6 +630,20 @@ export const AnalysisDisplay: React.FC<{
  } catch (e) {
  console.error("Failed to upload page image", e);
  }
+ };
+
+ const handlePlateVoiceMemoChange = (pageIndex: number, voiceMemo: PlateVoiceMemoData | undefined) => {
+   if (!metadata.content?.pages) return;
+   const updatedPages = metadata.content.pages.map((page, idx) =>
+     idx === pageIndex ? { ...page, voiceMemo } : page,
+   );
+   onUpdateMetadata({
+     ...metadata,
+     content: {
+       ...metadata.content,
+       pages: updatedPages,
+     },
+   });
  };
 
  const handleHypothesisImageGenerated = async (base64: string) => {
@@ -1588,6 +1604,15 @@ export const AnalysisDisplay: React.FC<{
  Generative Output • {metadata.tone} • Plate {i+1} of {metadata.content.pages.length}
  </p>
  </div>
+
+ <PlateVoiceMemo
+   memo={page.voiceMemo}
+   plateIndex={i}
+   canEdit={isOwner}
+   userId={user?.uid}
+   zineId={metadata.id}
+   onChange={(voiceMemo) => handlePlateVoiceMemoChange(i, voiceMemo)}
+ />
  </div>
  </div>
  </motion.section> ); })}
@@ -2057,6 +2082,7 @@ export const AnalysisDisplay: React.FC<{
  <button 
  onClick={isRecording ? stopRecording : startRecording} 
  className={`p-2 transition-all opacity-50 hover:opacity-100 ${isRecording ? 'text-red-500 animate-pulse' : 'text-nous-subtle hover:text-nous-subtle hover:text-nous-text'}`}
+ title={isRecording ? 'Stop voice note' : 'Dictate field note'}
  >
  {isRecording ? <Square size={14} fill="currentColor"/> : <Mic size={14} />}
  </button>
