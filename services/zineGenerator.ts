@@ -292,6 +292,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                             type: Type.ARRAY, 
                             items: { 
                                 type: Type.OBJECT,
+                                required: ["motif", "context", "visual_directive", "type"],
                                 properties: {
                                     motif: { type: Type.STRING },
                                     context: { type: Type.STRING },
@@ -312,9 +313,11 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                             type: Type.ARRAY, 
                             items: { 
                                 type: Type.OBJECT,
+                                required: ["motif", "type"],
                                 properties: {
                                     motif: { type: Type.STRING },
-                                    type: { type: Type.STRING }
+                                    type: { type: Type.STRING },
+                                    context: { type: Type.STRING }
                                 }
                             } 
                         },
@@ -435,9 +438,62 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             
             if (!content.aesthetic_touchpoints || content.aesthetic_touchpoints.length === 0) {
                 content.aesthetic_touchpoints = [
-                    { motif: "Minimalism", context: "The reduction of noise.", visual_directive: "Clean lines, negative space.", type: "conceptual", link: "" },
-                    { motif: "Archival", context: "Preserving the debris.", visual_directive: "Dusty textures, sepia tones.", type: "conceptual", link: "" }
+                    { motif: "Minimalism", context: "The reduction of noise.", type: "conceptual" },
+                    { motif: "Archival", context: "Preserving the debris.", type: "conceptual" }
                 ];
+            } else {
+                content.aesthetic_touchpoints = content.aesthetic_touchpoints.map((point: any, index: number) => {
+                    const motif = (typeof point?.motif === "string" && point.motif.trim()) || `Touchpoint ${index + 1}`;
+                    return {
+                        ...point,
+                        motif,
+                        type: (typeof point?.type === "string" && point.type.trim()) || "conceptual",
+                        context:
+                            (typeof point?.context === "string" && point.context.trim()) ||
+                            `An aesthetic coordinate orbiting “${motif}.”`,
+                    };
+                });
+            }
+
+            // Normalize semiotic signals so the reveal never shows motif-only empty cards.
+            {
+                const rawSignals = Array.isArray(content.semiotic_signals)
+                    ? content.semiotic_signals
+                    : [];
+                content.semiotic_signals = (rawSignals.length > 0
+                    ? rawSignals
+                    : [
+                        {
+                            motif: "Latent Motif",
+                            context: "A residual signal waiting for sharper debris.",
+                            visual_directive: "Hold negative space and one decisive material cue.",
+                            type: "conceptual",
+                            link: "",
+                        },
+                    ]
+                )
+                    .slice(0, 5)
+                    .map((signal: any, index: number) => {
+                        const motif =
+                            (typeof signal?.motif === "string" && signal.motif.trim()) ||
+                            `Signal ${index + 1}`;
+                        const type =
+                            (typeof signal?.type === "string" && signal.type.trim()) ||
+                            "conceptual";
+                        return {
+                            ...signal,
+                            motif,
+                            type,
+                            context:
+                                (typeof signal?.context === "string" && signal.context.trim()) ||
+                                `Semiotic reading of “${motif}” as an editorial pressure point in this issue.`,
+                            visual_directive:
+                                (typeof signal?.visual_directive === "string" &&
+                                    signal.visual_directive.trim()) ||
+                                `Visualize “${motif}” through material, light, and spatial tension—no decorative text.`,
+                            link: typeof signal?.link === "string" ? signal.link : "",
+                        };
+                    });
             }
             
             if (!content.celestial_calibration) {

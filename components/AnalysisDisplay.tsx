@@ -23,6 +23,7 @@ import { useRecorder } from '../hooks/useRecorder';
 import { ZineFlipbookShell, type ZineReadingMode } from './ZineFlipbookShell';
 import { useZineSEO } from '../utils/seoHelper';
 import { generateShopifyEmbedCode } from '../services/shopifyEmbed';
+import { BuildBriefInspector } from './BuildBriefInspector';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -185,6 +186,7 @@ export const AnalysisDisplay: React.FC<{
  const [isExportingPDF, setIsExportingPDF] = useState(false);
  const [isDedicatedReadingMode, setIsDedicatedReadingMode] = useState(false);
  const [isEmbedCopied, setIsEmbedCopied] = useState(false);
+ const [showBuildBriefInspector, setShowBuildBriefInspector] = useState(false);
 
  useEffect(() => {
    const handleKeyDown = (e: KeyboardEvent) => {
@@ -995,7 +997,7 @@ export const AnalysisDisplay: React.FC<{
  } as any));
  };
 
- const handleScrySignal = (motif: string) => {
+ const handleScrySignal = (motif: string, signalId: string) => {
  // Direct pass to Scry View
  window.dispatchEvent(new CustomEvent('mimi:change_view', { 
  detail: 'scry',
@@ -1004,6 +1006,8 @@ export const AnalysisDisplay: React.FC<{
  autoRun: true,
  originType: 'semiotic_signal',
  artifactId: metadata.id,
+ artifactTitle: metadata.title || metadata.content?.headlines?.[0] || 'Untitled zine',
+ signalId,
  label: 'Semiotic touchpoint'
  }
  } as any));
@@ -1055,56 +1059,6 @@ export const AnalysisDisplay: React.FC<{
     </div>
   )}
 
-  <div className="fixed top-8 right-8 z-[10000] flex items-center gap-2">
-    <button
-      onClick={handleReadToMe}
-      disabled={isSynthesizingTTS}
-      className={`font-mono text-[10px] uppercase tracking-[0.2em] font-black transition-all bg-white/95 dark:bg-stone-900/95 backdrop-blur-md px-4 py-3 border hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer ${
-        isReadingAloud
-          ? 'text-amber-400 bg-amber-950/80 border-amber-400 animate-pulse'
-          : 'text-purple-600 dark:text-purple-300 border-purple-500/40 hover:border-purple-400'
-      }`}
-      title={`Read full Zine aloud in ${ttsVoice} Voice`}
-    >
-      {isSynthesizingTTS ? (
-        <>
-          <Loader2 size={13} className="animate-spin text-purple-400" />
-          [ SYNTHESIZING VOICE... ]
-        </>
-      ) : isReadingAloud ? (
-        <>
-          <Square size={13} className="text-amber-400 fill-amber-400" />
-          [ STOP VOICE ({ttsVoice}) ]
-        </>
-      ) : (
-        <>
-          <Volume2 size={13} className="text-purple-400" />
-          [ READ TO ME ({ttsVoice}) ]
-        </>
-      )}
-    </button>
-    <button
-      onClick={() => setTtsVoice(prev => prev === 'Kore' ? 'Koral' : 'Kore')}
-      className="font-mono text-[9px] uppercase tracking-widest text-stone-300 bg-stone-900/90 hover:bg-stone-800 backdrop-blur-md px-2.5 py-3 border border-stone-700/60 transition-colors cursor-pointer"
-      title="Toggle between Kore and Koral voice models"
-    >
-      VOICE: {ttsVoice}
-    </button>
-    <button
-      onClick={() => setIsDedicatedReadingMode(true)}
-      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-purple-600 dark:text-purple-400 hover:text-purple-500 transition-all bg-white/90 dark:bg-stone-900/90 backdrop-blur-md px-5 py-3 border border-purple-500/30 hover:border-purple-500/60 hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer"
-      title="Enter dedicated Reading Mode with expanded line height, increased margins, and zero distraction chrome"
-    >
-      <BookOpen size={13} />
-      [ READING MODE ]
-    </button>
-    <button 
-      onClick={onReset} 
-      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/80 dark:bg-stone-900/80 backdrop-blur-md px-6 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
-    >
-      [ X CLOSE ]
-    </button>
-  </div>
  <style>{`
   .zine-theme-root section { background-color: transparent !important; }
   .zine-theme-root .bg-white, .zine-theme-root .dark\\:bg-\\[\\#0A0A0A\\], .zine-theme-root .dark\\:bg-nous-base { background-color: var(--zine-surface) !important; }
@@ -1171,6 +1125,12 @@ export const AnalysisDisplay: React.FC<{
  )}
  {showExport && <ExportChamber metadata={metadata} onClose={() => setShowExport(false)} />}
  {showShare && <SocialShareModal metadata={metadata} onClose={() => setShowShare(false)} />}
+ {showBuildBriefInspector && (
+  <BuildBriefInspector
+   userId={user?.uid || profile?.uid || metadata.userId || 'ghost'}
+   onClose={() => setShowBuildBriefInspector(false)}
+  />
+ )}
  {showReorderModal && (
    <motion.div 
      initial={{ opacity: 0 }} 
@@ -1359,7 +1319,7 @@ export const AnalysisDisplay: React.FC<{
 
  {/* 3. HEADER IMAGE */}
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg-black overflow-hidden relative group print:min-h-0 print:py-12">
- <Visualizer prompt={metadata.content.hero_image_prompt || metadata.content?.headlines?.[0] || metadata.title} defaultAspectRatio="16:9"defaultImageSize={metadata.isHighFidelity ? '2K' : '1K'} isArtifact isLite={metadata.isLite} initialImage={metadata.coverImageUrl} artifacts={metadata.artifacts} treatmentId={metadata.treatmentId} autoDevelop={false} onImageGenerated={handleHeroImageGenerated} />
+ <Visualizer prompt={metadata.content.hero_image_prompt || metadata.content?.headlines?.[0] || metadata.title} defaultAspectRatio="16:9"defaultImageSize={metadata.isHighFidelity ? '2K' : '1K'} isArtifact isLite={metadata.isLite} initialImage={metadata.coverImageUrl} artifacts={metadata.artifacts} treatmentId={metadata.treatmentId} autoDevelop={!metadata.coverImageUrl && !metadata.isQuickPreview} onImageGenerated={handleHeroImageGenerated} />
  <div className="absolute bottom-12 left-12 p-4 bg-white/5 backdrop-blur-md rounded-none border border-white/10">
  <span className="font-mono text-[7px] text-white uppercase tracking-widest">FIG_01: PRIMARY_VISUAL</span>
  </div>
@@ -1390,7 +1350,7 @@ export const AnalysisDisplay: React.FC<{
  artifacts={metadata.artifacts?.length > 1 ? metadata.artifacts : undefined}
  treatmentId={metadata.treatmentId}
  initialImage={(metadata.content as any).hypothesis_image_url}
-                autoDevelop={false}
+                autoDevelop={!(metadata.content as any).hypothesis_image_url && !metadata.isQuickPreview}
                 onImageGenerated={handleHypothesisImageGenerated}
  />
  <div className="absolute bottom-4 right-4 bg-black/80 text-white px-2 py-1 text-[8px] font-mono rounded-none">FIG 2.1 — ABSTRACT</div>
@@ -1415,10 +1375,20 @@ export const AnalysisDisplay: React.FC<{
  <div className="w-full space-y-16 px-6 md:px-24">
  <SectionHeader label="Semiotics & Visual Directives"icon={Radar} style={{ color: accentColor }} />
  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
- {metadata.content.semiotic_signals?.map((t, i) => {
+ {(metadata.content.semiotic_signals?.length
+   ? metadata.content.semiotic_signals
+   : [{ motif: "Latent Motif", context: "No durable signals were attached to this issue.", visual_directive: "Hold negative space until sharper debris arrives.", type: "conceptual" }]
+ ).map((t, i) => {
  const Icon = t.type === 'acquisition' ? Briefcase : t.type === 'lexical' ? BookOpen : Sparkles;
  const isCommerce = t.type === 'acquisition';
  const isFlipped = flippedSignalIndex === i;
+ const motif = (t.motif || `Signal ${i + 1}`).trim();
+ const context =
+   (t.context || "").trim() ||
+   `Semiotic reading of “${motif}” as an editorial pressure point in this issue.`;
+ const directive =
+   (t.visual_directive || "").trim() ||
+   `Visualize “${motif}” through material, light, and spatial tension—no decorative text.`;
  const label = isCommerce
    ? (t.commerce_source === 'shopify' ? 'Shopify touchpoint' : 'Commerce reference')
    : t.type === 'lexical'
@@ -1426,7 +1396,7 @@ export const AnalysisDisplay: React.FC<{
      : 'Imagine this';
  
  return (
- <div key={i} className="group relative min-h-[390px] overflow-hidden bg-white border border-nous-border rounded-none transition-all hover:border-[var(--hover-accent)]" style={{ '--hover-accent': accentColor, perspective: '1200px' } as React.CSSProperties}>
+ <div key={i} className="group relative min-h-[390px] overflow-hidden border rounded-none transition-all hover:border-[var(--hover-accent)]" style={{ '--hover-accent': accentColor, perspective: '1200px', backgroundColor: 'var(--zine-surface)', borderColor: 'var(--zine-border)', color: 'var(--zine-text)' } as React.CSSProperties}>
  <AnimatePresence mode="wait" initial={false}>
  {isFlipped && isCommerce ? (
  <motion.div
@@ -1435,32 +1405,33 @@ export const AnalysisDisplay: React.FC<{
  animate={{ rotateY: 0, opacity: 1 }}
  exit={{ rotateY: 90, opacity: 0 }}
  transition={{ duration: 0.28, ease: 'easeOut' }}
- className="absolute inset-0 p-7 flex flex-col justify-between bg-[#F7F4EC]"
+ className="absolute inset-0 p-7 flex flex-col justify-between"
+ style={{ backgroundColor: 'var(--zine-surface)', color: 'var(--zine-text)' }}
  >
  <div>
- <div className="flex items-center justify-between gap-3 pb-4 border-b border-nous-border">
- <span className="font-sans text-[8px] uppercase tracking-[0.22em] font-black text-nous-subtle">Semiotic commentary</span>
- <span className="font-mono text-[8px] text-nous-subtle">SIG_0{i+1}</span>
+ <div className="flex items-center justify-between gap-3 pb-4 border-b" style={{ borderColor: 'var(--zine-border)' }}>
+ <span className="font-sans text-[8px] uppercase tracking-[0.22em] font-black opacity-60">Semiotic commentary</span>
+ <span className="font-mono text-[8px] opacity-60">SIG_0{i+1}</span>
  </div>
  {t.semantic_trigger && (
  <div className="mt-6">
- <span className="font-mono text-[8px] uppercase tracking-wider text-nous-subtle block mb-2">Evidence trigger</span>
+ <span className="font-mono text-[8px] uppercase tracking-wider opacity-60 block mb-2">Evidence trigger</span>
  <span className="inline-block font-mono text-[9px] text-[var(--hover-accent)] bg-[var(--hover-accent)]/10 px-2 py-1">{t.semantic_trigger}</span>
  </div>
  )}
- <p className="font-serif text-xl italic leading-relaxed text-nous-text mt-6">
- {t.targeting_rationale || t.context}
+ <p className="font-serif text-xl italic leading-relaxed mt-6">
+ {t.targeting_rationale || context}
  </p>
- <p className="font-sans text-[10px] leading-relaxed text-nous-subtle mt-5">
+ <p className="font-sans text-[10px] leading-relaxed opacity-60 mt-5">
  This object is included as editorial evidence. It is optional context—not a purchase instruction.
  </p>
  </div>
- <div className="flex items-center justify-between gap-4 pt-6 border-t border-nous-border">
- <button onClick={() => setFlippedSignalIndex(null)} className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle hover:text-nous-text">
+ <div className="flex items-center justify-between gap-4 pt-6 border-t" style={{ borderColor: 'var(--zine-border)' }}>
+ <button onClick={() => setFlippedSignalIndex(null)} className="font-sans text-[8px] uppercase tracking-widest font-black opacity-60 hover:opacity-100">
  View object
  </button>
  {t.link && (
- <a href={t.link} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text">
+ <a href={t.link} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black">
  Open source <ExternalLink size={12} />
  </a>
  )}
@@ -1473,62 +1444,63 @@ export const AnalysisDisplay: React.FC<{
  animate={{ rotateY: 0, opacity: 1 }}
  exit={{ rotateY: -90, opacity: 0 }}
  transition={{ duration: 0.28, ease: 'easeOut' }}
- className="absolute inset-0 p-7 flex flex-col justify-between bg-white"
+ className="absolute inset-0 p-7 flex flex-col justify-between"
+ style={{ backgroundColor: 'var(--zine-surface)', color: 'var(--zine-text)' }}
  >
  <div>
  <div className="flex items-center justify-between gap-3 mb-5">
  <div className="flex items-center gap-2">
- <Icon size={12} className="text-nous-subtle group-hover:text-[var(--hover-accent)] transition-colors"/>
- <span className="font-sans text-[8px] uppercase tracking-[0.2em] font-black text-nous-subtle">{label}</span>
+ <Icon size={12} className="opacity-60 group-hover:text-[var(--hover-accent)] transition-colors"/>
+ <span className="font-sans text-[8px] uppercase tracking-[0.2em] font-black opacity-60">{label}</span>
  </div>
- <span className="font-mono text-[8px] text-nous-subtle opacity-50">SIG_0{i+1}</span>
+ <span className="font-mono text-[8px] opacity-50">SIG_0{i+1}</span>
  </div>
  {isCommerce && (
- <div className="aspect-[16/10] mb-5 overflow-hidden border border-nous-border bg-stone-100 flex items-center justify-center">
+ <div className="aspect-[16/10] mb-5 overflow-hidden border flex items-center justify-center" style={{ borderColor: 'var(--zine-border)', backgroundColor: 'var(--zine-bg)' }}>
  {t.image_url ? (
- <img src={t.image_url} alt={`${t.motif} product reference`} loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+ <img src={t.image_url} alt={`${motif} product reference`} loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
  ) : (
- <div className="text-center px-6 text-nous-subtle">
+ <div className="text-center px-6 opacity-60">
  <Briefcase size={24} strokeWidth={1} className="mx-auto mb-3" />
  <span className="font-mono text-[8px] uppercase tracking-widest">Thumbnail appears with verified Shopify data</span>
  </div>
  )}
  </div>
  )}
- <h4 className="font-serif text-2xl md:text-3xl italic tracking-tighter text-nous-text group-hover:text-[var(--hover-accent)] transition-colors">
- {t.motif}
+ <h4 className="font-serif text-2xl md:text-3xl italic tracking-tighter group-hover:text-[var(--hover-accent)] transition-colors">
+ {motif}
  </h4>
  {(t.vendor || t.price) && (
- <p className="font-mono text-[8px] uppercase tracking-wider text-nous-subtle mt-2">
+ <p className="font-mono text-[8px] uppercase tracking-wider opacity-60 mt-2">
  {[t.vendor, t.price].filter(Boolean).join(' · ')}
  </p>
  )}
- <p className="font-serif italic text-sm text-nous-subtle leading-relaxed border-l-2 border-nous-border pl-4 mt-4">
- {t.context}
+ <p className="font-serif italic text-sm leading-relaxed border-l-2 pl-4 mt-4 opacity-80" style={{ borderColor: 'var(--zine-border)' }}>
+ {context}
  </p>
- {!isCommerce && t.visual_directive && (
- <div className="mt-4 pt-4 border-t border-nous-border">
- <span className="font-sans text-[7px] uppercase tracking-widest font-black text-nous-subtle block mb-2">Directive</span>
- <p className="font-mono text-[9px] text-nous-subtle">{t.visual_directive}</p>
+ {!isCommerce && (
+ <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--zine-border)' }}>
+ <span className="font-sans text-[7px] uppercase tracking-widest font-black opacity-60 block mb-2">Directive</span>
+ <p className="font-mono text-[9px] opacity-80">{directive}</p>
  </div>
  )}
  </div>
  <div className="pt-6 flex justify-between items-center gap-4">
  {isCommerce ? (
- <button onClick={() => setFlippedSignalIndex(i)} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text border-b border-current pb-0.5">
+ <button onClick={() => setFlippedSignalIndex(i)} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black border-b border-current pb-0.5">
  <Target size={10} /> Read why
  </button>
  ) : (
- <button onClick={() => handleScrySignal(t.motif + (t.visual_directive ? ` ${t.visual_directive}` : ''))} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle hover:text-[var(--hover-accent)] transition-colors border-b border-transparent hover:border-current pb-0.5">
+ <button onClick={() => handleScrySignal(motif + (directive ? ` ${directive}` : ''), `SIG_${String(i + 1).padStart(2, '0')}`)} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black opacity-70 hover:text-[var(--hover-accent)] transition-colors border-b border-transparent hover:border-current pb-0.5">
  <Search size={10} /> Scry signal
  </button>
  )}
  {t.link ? (
- <a href={t.link} target="_blank" rel="noreferrer" className="text-nous-subtle hover:text-[var(--hover-accent)] transition-colors" aria-label={`Open source for ${t.motif}`}>
+ <a href={t.link} target="_blank" rel="noreferrer" className="opacity-60 hover:text-[var(--hover-accent)] transition-colors" aria-label={`Open source for ${motif}`}>
  <ExternalLink size={14} />
  </a>
  ) : (
- <a href={`https://www.google.com/search?q=${encodeURIComponent(`${t.motif} aesthetic meaning`)}`} target="_blank" rel="noreferrer" className="text-nous-subtle hover:text-[var(--hover-accent)] transition-colors" aria-label={`Research ${t.motif}`}>
+ <a href={`https://www.google.com/search?q=${encodeURIComponent(`${motif} aesthetic meaning`)}`} target="_blank" rel="noreferrer" className="opacity-60 hover:text-[var(--hover-accent)] transition-colors" aria-label={`Research ${motif}`}>
  <ExternalLink size={14} />
  </a>
  )}
@@ -1540,6 +1512,41 @@ export const AnalysisDisplay: React.FC<{
  );
  })}
  </div>
+
+ {!!metadata.content.aesthetic_touchpoints?.length && (
+   <div className="space-y-5 pt-4 border-t" style={{ borderColor: 'var(--zine-border)' }}>
+     <div className="flex items-end justify-between gap-4">
+       <div>
+         <h3 className="font-mono text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: 'var(--zine-text)' }}>
+           Aesthetic touchpoints
+         </h3>
+         <p className="font-serif italic text-sm opacity-70 mt-1" style={{ color: 'var(--zine-text)' }}>
+           Secondary coordinates that color the issue’s visual grammar.
+         </p>
+       </div>
+       <span className="font-mono text-[9px] opacity-50">{metadata.content.aesthetic_touchpoints.length}</span>
+     </div>
+     <div className="flex flex-wrap gap-2">
+       {metadata.content.aesthetic_touchpoints.map((point, index) => (
+         <div
+           key={`${point.motif}-${index}`}
+           className="border px-3 py-2 max-w-xs"
+           style={{ borderColor: 'var(--zine-border)', backgroundColor: 'var(--zine-surface)', color: 'var(--zine-text)' }}
+         >
+           <span className="font-mono text-[7px] uppercase tracking-widest opacity-50 block mb-1">
+             {(point.type || "coordinate").replace(/_/g, " ")}
+           </span>
+           <span className="font-serif italic text-sm block">{point.motif}</span>
+           {point.context && (
+             <span className="font-sans text-[10px] opacity-70 block mt-1 leading-snug">
+               {point.context}
+             </span>
+           )}
+         </div>
+       ))}
+     </div>
+   </div>
+ )}
  </div>
  </motion.section>
 
@@ -1583,7 +1590,7 @@ export const AnalysisDisplay: React.FC<{
  delay={800 + (i * 1200)}
  artifacts={metadata.artifacts?.length > 1 ? metadata.artifacts : undefined}
  treatmentId={metadata.treatmentId}
-                autoDevelop={false}
+                autoDevelop={!page.image_url && !metadata.isQuickPreview}
                 onImageGenerated={(base64) => handlePageImageGenerated(base64, i)}
  />
  {/* PLATE METADATA OVERLAY */}
@@ -2160,6 +2167,17 @@ export const AnalysisDisplay: React.FC<{
         <span className="text-[7px] uppercase tracking-[0.2em] font-black">
           {isEmbedCopied ? "COPIED" : "EMBED"}
         </span>
+      </button>
+
+      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
+
+      <button
+        onClick={() => setShowBuildBriefInspector(true)}
+        className="flex flex-col items-center gap-2 transition-colors group hover:text-[#1A1A1A]"
+        title="Inspect creator-approved Scry evidence available to Build Brief"
+      >
+        <FileText size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+        <span className="text-[7px] uppercase tracking-[0.2em] font-black">BRIEF</span>
       </button>
 
       <div className="w-[1px] h-6 bg-[#A19D94]/20"/>

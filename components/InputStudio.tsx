@@ -2006,10 +2006,8 @@ ${finalInput}`;
         {/* COLUMN 2: INPUT / EDITOR */}
         {(!isMobile || mobileStudioView === "editor") && (
           <div className="flex-1 min-w-0 h-full flex overflow-hidden studio-bg-workspace border-r border-dotted studio-divider">
-            {/* 3a: Vertical Icon Rail */}
-            <div className="w-[50px] studio-bg-surface border-r studio-border flex flex-col items-center justify-start py-4 gap-2.5 shrink-0 overflow-y-auto no-scrollbar max-h-full">
-              
-              {/* Icon 1: Attachment clip */}
+            {/* 3a: Capture tools — attach / voice / dictate only */}
+            <div className="w-11 studio-bg-surface border-r studio-border flex flex-col items-center justify-start py-4 gap-2 shrink-0">
               <button
                 onClick={() => mediaInputRef.current?.click()}
                 title="Attach Media Artifact"
@@ -2018,7 +2016,6 @@ ${finalInput}`;
                 <Paperclip size={14} />
               </button>
 
-              {/* Icon 2: Voice memo */}
               <button
                 type="button"
                 onClick={() => {
@@ -2050,7 +2047,6 @@ ${finalInput}`;
                 )}
               </button>
 
-              {/* Icon 2.5: Live dictation (Web Speech API) */}
               <button
                 type="button"
                 onClick={() => {
@@ -2065,159 +2061,6 @@ ${finalInput}`;
                 }`}
               >
                 <Radio size={14} className={isDictating ? "animate-pulse" : ""} />
-              </button>
-
-              {/* Icon 3: Arrow back */}
-              <button
-                onClick={() => {
-                  setActiveThread(null);
-                  setInput("");
-                  playClick();
-                }}
-                title="Reset Workspace"
-                className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
-              >
-                <ChevronLeft size={14} />
-              </button>
-
-              <div className="w-4 h-[1px] bg-stone-850 my-1" />
-
-              {/* Icon 3: Zap */}
-              <button
-                onClick={() => {
-                  handleAutoGenerateTitle();
-                  playClick();
-                }}
-                title="Whip Title Spark"
-                className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
-              >
-                <Zap size={14} />
-              </button>
-
-              {/* Icon 4: Brain */}
-              <button
-                onClick={() => {
-                  setDeepThinking(!deepThinking);
-                  playClick();
-                }}
-                title="Superintelligence Engine"
-                className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
-                  deepThinking 
-                    ? "border-purple-500/50 bg-purple-500/10 text-purple-400" 
-                    : "border-transparent text-stone-500 hover:border-stone-800 hover:bg-stone-900/40 hover:text-stone-200"
-                }`}
-              >
-                <BrainCircuit size={14} />
-              </button>
-
-              {/* Icon 5: Globe */}
-              <button
-                onClick={() => {
-                  setUseSearch(!useSearch);
-                  playClick();
-                }}
-                title="Semantic Web Grounding"
-                className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
-                  useSearch 
-                    ? "border-blue-500/50 bg-blue-500/10 text-blue-400" 
-                    : "border-transparent text-stone-500 hover:border-stone-800 hover:bg-stone-900/40 hover:text-stone-200"
-                }`}
-              >
-                <Globe size={14} />
-              </button>
-
-              {/* Icon 6: Eye */}
-              <button
-                onClick={() => {
-                  togglePanel("telemetry");
-                  playClick();
-                }}
-                title="System Optics"
-                className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
-              >
-                <Eye size={14} />
-              </button>
-
-              {/* Icon 7: Sparkles */}
-              <button
-                onClick={async () => {
-                  setIsGeneratingPrompt(true);
-                  try {
-                    const newPrompt = await generateAutoAwesomePrompt();
-                    setInput(newPrompt);
-                  } catch (e) {
-                    console.error(e);
-                  } finally {
-                    setIsGeneratingPrompt(false);
-                  }
-                  playClick();
-                }}
-                title="Generate Aesthetic Spark"
-                className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
-                  isGeneratingPrompt 
-                    ? "border-yellow-500/50 bg-yellow-500/10 text-yellow-400 animate-pulse" 
-                    : "border-transparent text-stone-500 hover:border-stone-800 hover:bg-stone-900/40 hover:text-stone-200"
-                }`}
-              >
-                <Sparkles size={14} />
-              </button>
-
-              {/* Icon 8: Doll identity */}
-              <StudioDollToggle
-                enabled={studioDoll.enabled}
-                loading={studioDoll.loading}
-                dolls={studioDoll.dolls}
-                activeDollId={studioDoll.activeDollId}
-                onToggle={(next) => {
-                  studioDoll.toggleDollInjection(next);
-                  playClick();
-                }}
-                onSelectDoll={(id) => {
-                  studioDoll.setActiveDollId(id);
-                  playClick();
-                }}
-              />
-
-              {/* Icon 9: Scissors */}
-              <button
-                onClick={() => {
-                  setUseTailorProfile(!useTailorProfile);
-                  playClick();
-                }}
-                title="Custom Tailor Override"
-                className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
-                  !useTailorProfile 
-                    ? "border-orange-500/50 bg-orange-500/10 text-orange-400" 
-                    : "border-transparent text-stone-500 hover:border-stone-800 hover:bg-stone-900/40 hover:text-stone-200"
-                }`}
-              >
-                <Scissors size={14} />
-              </button>
-
-              <div className="w-4 h-[1px] bg-stone-850 my-1" />
-
-              {/* Icon 9: FileText */}
-              <button
-                onClick={() => {
-                  setShowColophon(true);
-                  playClick();
-                }}
-                title="Review Manifesto Colophon"
-                className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
-              >
-                <FileText size={14} />
-              </button>
-
-              {/* Icon 10: Paintbrush */}
-              <button
-                onClick={() => {
-                  togglePanel("treatments");
-                  playClick();
-                }}
-                title="Preset Treatments Canvas"
-                className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
-              >
-                <Paintbrush size={14} />
               </button>
             </div>
 
@@ -2370,27 +2213,6 @@ ${finalInput}`;
                   />
                 </div>
 
-                {/* Expand Brief Toggle Button */}
-                <div className="flex justify-center select-none shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsBriefExpanded(!isBriefExpanded);
-                      playClick();
-                    }}
-                    aria-expanded={isBriefExpanded}
-                    className="font-serif italic text-sm font-semibold text-white dark:text-stone-950 bg-stone-950 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white transition-colors flex items-center gap-2 py-2 px-4 border border-stone-950 dark:border-stone-200 shadow-sm"
-                  >
-                    <Settings size={13} strokeWidth={1.7} aria-hidden="true" />
-                    <span>{isBriefExpanded ? "Hide Detailed Brief Options" : "Configure Detailed Brief"}</span>
-                    <ChevronDown
-                      size={13}
-                      className={`transition-transform ${isBriefExpanded ? "rotate-180" : ""}`}
-                      aria-hidden="true"
-                    />
-                  </button>
-                </div>
-
                 {/* Expandable detailed fields */}
                 <AnimatePresence>
                   {isBriefExpanded && (
@@ -2400,6 +2222,21 @@ ${finalInput}`;
                       exit={{ opacity: 0, height: 0 }}
                       className="overflow-hidden w-full flex flex-col gap-3 bg-[#FAF9F6] dark:bg-[#11110F] border border-stone-300 dark:border-stone-700 p-3.5 rounded-sm shrink-0 shadow-lg"
                     >
+                      <div className="flex items-center justify-between gap-3 mb-0.5">
+                        <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-stone-500 font-extrabold">
+                          Detailed brief
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsBriefExpanded(false);
+                            playClick();
+                          }}
+                          className="font-mono text-[8px] uppercase tracking-[0.16em] text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                        >
+                          Close
+                        </button>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         {/* Editorial Intention */}
                         <div className="flex flex-col gap-1">
@@ -2479,6 +2316,27 @@ ${finalInput}`;
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Primary submit — develop the issue */}
+                <div className="flex justify-center select-none shrink-0">
+                  <button
+                    type="button"
+                    disabled={isThinking}
+                    onClick={() => {
+                      triggerAccession(false);
+                      playClick();
+                    }}
+                    className="font-serif italic text-sm font-semibold text-white dark:text-stone-950 bg-stone-950 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white transition-colors flex items-center gap-2 py-2 px-4 border border-stone-950 dark:border-stone-200 shadow-sm disabled:opacity-60 disabled:cursor-wait"
+                    title="Compose the complete editorial issue"
+                  >
+                    {isThinking ? (
+                      <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <BookOpen size={13} strokeWidth={1.7} aria-hidden="true" />
+                    )}
+                    <span>{isThinking ? "Developing…" : "Develop issue"}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Used by Mimi // Active Context Strip */}
@@ -2645,27 +2503,29 @@ ${finalInput}`;
 
                     <button
                       type="button"
-                      disabled={isThinking}
                       onClick={() => {
-                        triggerAccession(false);
+                        setIsBriefExpanded((open) => !open);
                         playClick();
                       }}
-                      className="group inline-flex items-baseline gap-1.5 bg-transparent p-0 border-0 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
-                      title="Compose the complete editorial issue"
+                      aria-expanded={isBriefExpanded}
+                      className="group inline-flex items-baseline gap-1.5 bg-transparent p-0 border-0 cursor-pointer"
+                      title="Open detailed brief options"
                     >
                       <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-rose-600/80 dark:text-rose-400/80">
                         03
                       </span>
-                      <span className="inline-flex items-center gap-1.5 font-serif italic text-[15px] leading-none text-rose-700 dark:text-rose-300 border-b-2 border-rose-500 pb-0.5 transition-colors group-hover:border-rose-600 group-hover:text-rose-800 dark:group-hover:text-rose-200">
-                        {isThinking ? (
-                          <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-                        ) : null}
-                        {isThinking ? "Developing…" : "Develop issue"}
+                      <span className="inline-flex items-center gap-1 font-serif italic text-[15px] leading-none text-rose-700 dark:text-rose-300 border-b border-rose-500/70 pb-0.5 transition-colors group-hover:border-rose-500 group-hover:text-rose-800 dark:group-hover:text-rose-200">
+                        {isBriefExpanded ? "Hide brief" : "Configure brief"}
+                        <ChevronDown
+                          size={12}
+                          className={`transition-transform ${isBriefExpanded ? "rotate-180" : ""}`}
+                          aria-hidden="true"
+                        />
                       </span>
                     </button>
                   </div>
                   <span className="font-sans text-[10px] text-stone-500 dark:text-stone-400 mt-0.5 select-none text-center">
-                    Shape proposes structure. Nothing is final until you develop the issue.
+                    Shape or preview first if you want. Develop issues the final build.
                   </span>
                 </div>
               )}

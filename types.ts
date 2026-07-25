@@ -675,8 +675,9 @@ export interface SemioticSignal {
 }
 
 export interface AestheticTouchpoint {
-  type: 'visual' | 'lexical' | 'sonic';
+  type: 'visual' | 'lexical' | 'sonic' | string;
   motif: string;
+  context?: string;
 }
 
 export interface FruitionTrajectory {
@@ -1625,6 +1626,7 @@ export type ScrySelectionState = "candidate" | "saved" | "rejected";
 export interface ScryOrigin {
   type: "manual" | "semiotic_signal" | "zine" | "pocket";
   artifactId?: string;
+  artifactTitle?: string;
   signalId?: string;
   label?: string;
 }

@@ -40,7 +40,7 @@ export const Visualizer: React.FC<{
  const [isAnimating, setIsAnimating] = useState(false);
  const [isAnalyzing, setIsAnalyzing] = useState(false);
  const [isPocketSaved, setIsPocketSaved] = useState(false);
- const [isEditing, setIsEditing] = useState(!autoDevelop && !initialImage);
+ const [isEditing, setIsEditing] = useState(false);
  const [refinementText, setRefinementText] = useState(prompt);
  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(defaultAspectRatio);
  const [imageSize, setImageSize] = useState<ImageSize>(defaultImageSize);
@@ -70,6 +70,9 @@ export const Visualizer: React.FC<{
    const base = refinementText || prompt;
    const enhanced = `${base}. Clarify the primary subject, spatial relationships, material details, and a coherent light source while preserving every palette, medium, era, camera, mood, and stylistic choice already stated. Do not introduce monochrome, desaturation, film grain, editorial styling, cinematic lighting, or an art movement unless the prompt explicitly asks for it.`;
    setRefinementText(enhanced);
+   window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+     detail: { message: "Prompt enriched — hit Develop Plate to render.", icon: <Sparkles size={14} className="text-amber-500"/> }
+   }));
  };
 
  const handleDevelopWithText = async (customText?: string) => {
@@ -205,17 +208,29 @@ export const Visualizer: React.FC<{
  
  try {
  const { archiveManager } = await import('../services/archiveManager');
+ const title =
+   (prompt || refinementText || "Zine plate").trim().slice(0, 80) || "Zine plate";
  
- await archiveManager.saveToPocket(user?.uid || 'ghost', 'image', { 
+ const itemId = await archiveManager.saveToPocket(user?.uid || 'ghost', 'image', { 
  imageUrl: variants[selectedIdx], 
  prompt,
- aspectRatio 
+ title,
+ aspectRatio,
+ origin: "visualizer",
  });
+
+ if (!itemId) {
+   throw new Error("Pocket did not confirm the save.");
+ }
  
  setIsPocketSaved(true);
+ window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
+ detail: { message: "Plate saved to Pocket.", type: 'success', icon: <Check size={14} className="text-nous-subtle"/> } 
+ }));
  setTimeout(() => setIsPocketSaved(false), 3000);
  } catch (error) {
  console.error("Failed to save image to pocket:", error);
+ setIsPocketSaved(false);
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
  detail: { message:"Failed to save image.", icon: <X size={14} className="text-red-500"/> } 
  }));
@@ -291,7 +306,7 @@ export const Visualizer: React.FC<{
  <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className="p-2 text-white/70 hover:text-white transition-colors" title="Refine Prompt">
    <Pencil size={13} />
  </button>
- <button onClick={saveToPocket} className={isPocketSaved ? "p-2 transition-all text-amber-400" : "p-2 transition-all text-white/70 hover:text-white"} title="Save to Pocket">
+ <button onClick={saveToPocket} disabled={!variants[selectedIdx]} className={isPocketSaved ? "p-2 transition-all text-amber-400" : "p-2 transition-all text-white/70 hover:text-white disabled:opacity-30"} title="Save to Pocket">
    {isPocketSaved ? <Check size={13} /> : <Bookmark size={13} />}
  </button>
  <button onClick={handleAnalyze} disabled={isAnalyzing} className="p-2 text-white/70 hover:text-indigo-400" title="Analyze Mise-en-scène">

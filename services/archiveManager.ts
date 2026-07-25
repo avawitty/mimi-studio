@@ -52,33 +52,42 @@ export const archiveManager = {
          processedContent.imageUrl = await this.uploadMedia(userId, processedContent.imageUrl, 'artifacts/pocket_main');
       }
 
-      const itemId = await addToPocket(userId, type, processedContent, embedding, deltaVerdict, content);
+      const itemId = await addToPocket(
+        userId,
+        type,
+        processedContent,
+        embedding,
+        deltaVerdict,
+        processedContent,
+      );
 
-      if (itemId) {
-        await recordProvenanceOrigin(userId, {
-          artifactId: itemId,
-          originChamber: 'pocket',
-          originMetadata: {
-            type,
-            title: processedContent.title ?? processedContent.prompt ?? null,
-            sourceModule: processedContent.origin ?? 'archiveManager',
-          },
-          creatorTags: processedContent.tags ?? [],
-        });
+      if (!itemId) {
+        throw new Error("Pocket save did not return an item id.");
+      }
 
-        if (content.provenanceArtifactId) {
-          await carryProvenanceOnTransfer(
-            userId,
-            content.provenanceArtifactId,
-            itemId,
-            { from: content.provenanceFrom ?? 'darkroom', to: 'pocket', note: 'Archived to Pocket' },
-            { type },
-          );
-        }
+      await recordProvenanceOrigin(userId, {
+        artifactId: itemId,
+        originChamber: 'pocket',
+        originMetadata: {
+          type,
+          title: processedContent.title ?? processedContent.prompt ?? null,
+          sourceModule: processedContent.origin ?? 'archiveManager',
+        },
+        creatorTags: processedContent.tags ?? [],
+      });
+
+      if (content.provenanceArtifactId) {
+        await carryProvenanceOnTransfer(
+          userId,
+          content.provenanceArtifactId,
+          itemId,
+          { from: content.provenanceFrom ?? 'darkroom', to: 'pocket', note: 'Archived to Pocket' },
+          { type },
+        );
       }
       
       window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
-        detail: { message: "Artifact Archived in Firebase.", type: 'success' } 
+        detail: { message: "Artifact Archived in Pocket.", type: 'success' } 
       }));
       
       return itemId;
