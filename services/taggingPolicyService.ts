@@ -67,3 +67,48 @@ export const generateTagsForSavedArtifact = async (
     return { tags: deterministicTags, tagSource: "deterministic" };
   }
 };
+
+export interface OriginAwareFindingTagInput {
+  title: string;
+  snippet?: string;
+  url?: string;
+  query: string;
+  originType: string;
+  originArtifactTitle?: string;
+  originSignalId?: string;
+  originLabel?: string;
+  deterministicTags: string[];
+}
+
+/**
+ * Adds the originating zine and search motif to the semantic tagging prompt.
+ * Gemini extracts themes only at the creator's explicit Save Finding boundary;
+ * deterministic origin tags remain available when funded generation is offline.
+ */
+export const generateOriginAwareFindingTags = async (
+  input: OriginAwareFindingTagInput,
+): Promise<{ tags: string[]; tagSource: "deterministic" | "mixed" }> => {
+  const originTags = mergeTags(input.deterministicTags, [
+    input.originType === "semiotic_signal" ? "grounding_signal" : "",
+    input.originArtifactTitle
+      ? `origin_zine_${input.originArtifactTitle}`
+      : "",
+    input.originSignalId ? `origin_signal_${input.originSignalId}` : "",
+  ]);
+  const context = [
+    `Saved finding: ${input.title}`,
+    input.snippet ? `Finding evidence: ${input.snippet}` : "",
+    input.url ? `Source URL: ${input.url}` : "",
+    input.originArtifactTitle
+      ? `Originating zine: ${input.originArtifactTitle}`
+      : "",
+    input.originLabel ? `Origin context: ${input.originLabel}` : "",
+    input.originSignalId ? `Origin signal: ${input.originSignalId}` : "",
+    `Search motif: ${input.query}`,
+    "Extract concise thematic concepts that will make this evidence easy to organize in a creative Build Brief.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return generateTagsForSavedArtifact(context, originTags);
+};

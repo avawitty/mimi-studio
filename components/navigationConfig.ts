@@ -19,7 +19,8 @@ import {
   Network, 
   Compass as GeoIcon, 
   Activity, 
-  Terminal 
+  Terminal,
+  Radar
 } from 'lucide-react';
 import React from 'react';
 
@@ -45,6 +46,13 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "Scribe",
         note: "project context and atoms",
         keywords: ["memory", "project", "atoms", "cite", "save", "persistence", "research", "knowledge", "scribe", "semantic portal"],
+      },
+      {
+        mode: "scry",
+        label: "Scry",
+        note: "grounded signals and research context",
+        icon: Radar,
+        keywords: ["scry", "research", "grounding", "signals", "world", "zines", "pocket", "shadow memory", "build brief"],
       },
       {
         mode: "darkroom",
