@@ -238,9 +238,9 @@ export const Visualizer: React.FC<{
  };
 
  return (
- <div className={`relative w-full flex flex-col items-center group/visualizer ${isArtifact ? 'h-full' : ''}`}>
+ <div className={`relative w-full flex flex-col items-center group/visualizer ${isArtifact ? 'h-full min-h-0' : ''}`}>
  <div 
- className={`relative w-full overflow-hidden border border-nous-border rounded-none bg-nous-base transition-all duration-700 ${isArtifact ? 'h-full flex items-center justify-center' : ''}`} 
+ className={`relative w-full overflow-hidden border border-nous-border rounded-none bg-nous-base transition-all duration-700 ${isArtifact ? 'h-full min-h-0' : ''}`} 
  style={isArtifact ? {} : { aspectRatio: aspectRatio.replace(':', '/') }}
  >
  <AnimatePresence>
@@ -255,7 +255,7 @@ export const Visualizer: React.FC<{
  </AnimatePresence>
 
  {(variants[selectedIdx] && !isEditing) ? (
- <div className="relative w-full h-full">
+ <div className="relative w-full h-full min-h-0">
  {isVideo(variants[selectedIdx]) ? (
  <video src={variants[selectedIdx]} autoPlay loop muted playsInline className="w-full h-full object-cover" />
  ) : (
@@ -264,7 +264,7 @@ export const Visualizer: React.FC<{
  alt="Generated Zine Plate"
  referrerPolicy="no-referrer"
  onLoad={() => setImgLoaded(true)}
- className={`w-full h-full transition-all duration-[2s] ease-out ${imgLoaded ? 'opacity-100 grayscale-0 contrast-100 brightness-100 blur-0' : 'opacity-0 scale-105 grayscale contrast-50 brightness-150 blur-xl'} object-contain z-10 relative cursor-zoom-in`} 
+ className={`w-full h-full transition-all duration-[2s] ease-out ${imgLoaded ? 'opacity-100 grayscale-0 contrast-100 brightness-100 blur-0' : 'opacity-0 scale-105 grayscale contrast-50 brightness-150 blur-xl'} ${isArtifact ? 'object-cover' : 'object-contain'} z-10 relative cursor-zoom-in`} 
  onClick={() => setIsLightboxOpen(true)}
  />
  )}

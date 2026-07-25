@@ -1545,8 +1545,8 @@ export const AnalysisDisplay: React.FC<{
  </motion.section>
 
  {/* 8. VISUAL PLATES - REDESIGNED AS EDITORIAL SPREADS */}
- <div className="bg-white py-32 space-y-32">
- <div className="px-6 md:px-24 w-full">
+ <div className="bg-white">
+ <div className="px-6 md:px-12 w-full py-16 md:py-20">
  <SectionHeader label="Visual Plates"icon={Grid3X3} style={{ color: accentColor }} />
  </div>
  
@@ -1556,9 +1556,9 @@ export const AnalysisDisplay: React.FC<{
  <motion.section key={i} initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start w-full">
  <div className={`flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-stretch h-[100dvh]`}>
  
- {/* VISUAL COMPONENT */}
- <div className="w-full md:w-1/2 relative group h-[50dvh] md:h-full flex items-center justify-center p-8 md:p-24">
- <div className="relative w-full h-full max-h-[80vh] border border-nous-border bg-nous-base overflow-hidden">
+ {/* VISUAL COMPONENT — majority of the spread so plates fill the canvas */}
+ <div className="w-full md:w-[58%] lg:w-[62%] relative group h-[58dvh] md:h-full flex items-stretch p-3 sm:p-4 md:p-5 lg:p-6">
+ <div className="relative w-full h-full min-h-0 border border-nous-border bg-nous-base overflow-hidden">
  <Visualizer 
  prompt={page.imagePrompt} 
  defaultAspectRatio="3:4"
@@ -1573,7 +1573,7 @@ export const AnalysisDisplay: React.FC<{
                 onImageGenerated={(base64) => handlePageImageGenerated(base64, i)}
  />
  {/* PLATE METADATA OVERLAY */}
- <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end pointer-events-none mix-blend-difference text-white opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+ <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none mix-blend-difference text-white opacity-0 group-hover:opacity-100 transition-opacity duration-700">
  <div className="flex flex-col gap-1">
  <span className="font-mono text-[7px] uppercase tracking-widest">FIG. 0{i+1}</span>
  <span className="font-sans text-[7px] font-black uppercase tracking-widest">Aspect: 3:4</span>
@@ -1584,7 +1584,7 @@ export const AnalysisDisplay: React.FC<{
  </div>
 
  {/* TEXT COMPONENT */}
- <div className="w-full md:w-1/2 flex flex-col justify-center p-12 md:p-24 space-y-8 md:space-y-12">
+ <div className="w-full md:w-[42%] lg:w-[38%] flex flex-col justify-center p-8 md:p-10 lg:p-12 xl:p-14 space-y-6 md:space-y-8 overflow-y-auto">
  <div className="flex items-center gap-4 text-nous-subtle">
  <span className="font-serif italic text-4xl text-nous-text">{i+1}.</span>
  <div className="h-px flex-1 bg-nous-base"/>
