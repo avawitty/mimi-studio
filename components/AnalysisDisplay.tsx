@@ -1695,15 +1695,21 @@ export const AnalysisDisplay: React.FC<{
  <div className="relative">
  <div className="absolute top-7 left-7 right-7 h-px bg-stone-300 hidden md:block" />
  <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4 relative">
- {metadata.content.roadmap.phases.map((phase, idx) => (
+ {metadata.content.roadmap.phases.map((phase, idx) => {
+ const artifactOutputs = Array.isArray(phase.artifactOutputs)
+   ? phase.artifactOutputs.filter((o): o is string => typeof o === 'string' && o.trim().length > 0)
+   : typeof phase.artifactOutputs === 'string' && phase.artifactOutputs.trim()
+     ? [phase.artifactOutputs.trim()]
+     : [];
+ return (
  <article key={idx} className="bg-[#171717] text-stone-50 p-6 min-h-[350px] flex flex-col">
  <div className="w-12 h-12 rounded-full border border-stone-500 bg-[#171717] flex items-center justify-center font-serif italic text-xl relative z-10" style={{ color: accentColor }}>{idx + 1}</div>
  <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-stone-400 mt-7">Phase · {phase.type}</span>
  <h4 className="font-serif text-2xl leading-tight mt-3">{phase.objective}</h4>
  <p className="font-sans text-xs leading-relaxed text-stone-300 mt-5">{phase.strategicMove}</p>
- {phase.artifactOutputs?.length > 0 && (
+ {artifactOutputs.length > 0 && (
  <div className="flex flex-wrap gap-1.5 mt-5">
- {phase.artifactOutputs.map((output, outputIndex) => (
+ {artifactOutputs.map((output, outputIndex) => (
  <span key={outputIndex} className="border border-stone-700 px-2 py-1 font-mono text-[7px] uppercase tracking-wider text-stone-300">{output}</span>
  ))}
  </div>
@@ -1713,7 +1719,8 @@ export const AnalysisDisplay: React.FC<{
  {phase.signalToMonitor && <p className="font-mono text-[8px] leading-relaxed text-emerald-300"><span className="uppercase tracking-wider">Watch signal</span><br />{phase.signalToMonitor}</p>}
  </div>
  </article>
- ))}
+ );
+ })}
  </div>
  </div>
  </div>

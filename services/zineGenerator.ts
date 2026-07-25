@@ -574,6 +574,20 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                         refusalPoint: "When expansion compromises the core claim."
                     }
                 };
+            } else if (Array.isArray(content.roadmap.phases)) {
+                // Grounded JSON sometimes returns artifactOutputs as a string — coerce to string[].
+                content.roadmap.phases = content.roadmap.phases.map((phase: any) => {
+                    const raw = phase?.artifactOutputs;
+                    let artifactOutputs: string[] = [];
+                    if (Array.isArray(raw)) {
+                        artifactOutputs = raw
+                            .map((o) => (typeof o === "string" ? o.trim() : String(o ?? "").trim()))
+                            .filter(Boolean);
+                    } else if (typeof raw === "string" && raw.trim()) {
+                        artifactOutputs = raw.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+                    }
+                    return { ...phase, artifactOutputs };
+                });
             }
             
             if (!content.poetic_provocation) {
