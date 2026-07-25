@@ -489,7 +489,6 @@ export const InputStudio: React.FC<{
   const [desiredFeeling, setDesiredFeeling] = useState("");
   const [avoidExclude, setAvoidExclude] = useState("");
   const [outputWanted, setOutputWanted] = useState("");
-  const [isBriefExpanded, setIsBriefExpanded] = useState(false);
 
   const [isShapingBrief, setIsShapingBrief] = useState(false);
   const [shapedBriefResult, setShapedBriefResult] = useState<{
