@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type, Part, Modality, ThinkingLevel } from "@google/genai";
+import { geminiInlineAudioToDataUrl } from "../lib/geminiAudio";
 import { app } from "./firebaseInit";
 import { 
   UserProfile, ZineContent, ToneTag, MediaFile, AspectRatio, ImageSize, 
@@ -4884,7 +4885,7 @@ export const generateZineSpeech = async (
       
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (base64Audio) {
-        return `data:audio/wav;base64,${base64Audio}`;
+        return geminiInlineAudioToDataUrl(base64Audio);
       }
       return null;
     }, apiKey);

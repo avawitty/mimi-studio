@@ -19,6 +19,7 @@ import { resolveApiKey } from '../services/apiKeyService';
 import { fetchMemoryAtoms } from '../services/memoryService';
 import { hasAccess } from '../constants';
 import { coerceToString } from '../lib/utils';
+import { decodeGeminiAudioBytes } from '../lib/geminiAudio';
 import { useRecorder } from '../hooks/useRecorder';
 import { ZineFlipbookShell, type ZineReadingMode } from './ZineFlipbookShell';
  import { useZineSEO } from '../utils/seoHelper';
@@ -769,9 +770,17 @@ export const AnalysisDisplay: React.FC<{
  window.dispatchEvent(new CustomEvent('mimi:open_patron_modal'));
  return;
  }
- if (isPlaying) { 
+ if (isPlaying || isReadingAloud) { 
  if (sourceRef.current) { try { sourceRef.current.stop(); } catch(e) {} }
- setIsPlaying(false); 
+ if (ttsAudioRef.current) {
+   try { ttsAudioRef.current.pause(); } catch (e) {}
+   ttsAudioRef.current = null;
+ }
+ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+   window.speechSynthesis.cancel();
+ }
+ setIsPlaying(false);
+ setIsReadingAloud(false);
  setAudioProgress(0);
  return; 
  }
@@ -788,25 +797,20 @@ export const AnalysisDisplay: React.FC<{
  }
  
  const displayTitle = metadata.content?.headlines?.[0] || metadata.title ||"Untitled";
- const narrationText = (vocalSummary || poeticInterpretation || displayTitle).trim();
+ const narrationText = [
+   displayTitle,
+   vocalSummary || poeticInterpretation || '',
+   metadata.content?.oracular_mirror || metadata.content?.the_reading || '',
+   metadata.content?.poetic_provocation || '',
+ ].filter((part) => typeof part === 'string' && part.trim()).join('. ').trim();
+
+ if (!narrationText) {
+   throw new Error("No narration text available for this zine.");
+ }
+
  const { key: personaKey } = resolveApiKey('gemini', activePersona?.apiKey, profile?.planStatus);
- const bytes = await generateAudio(narrationText, personaKey);
- 
- let audioBuffer: AudioBuffer;
- 
- // Check for RIFF header (WAV)
- if (bytes[0] === 82 && bytes[1] === 73 && bytes[2] === 70 && bytes[3] === 70) {
- audioBuffer = await audioCtxRef.current.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
- } else {
- // Fallback to raw 16-bit PCM 24kHz
- const length = Math.floor(bytes.byteLength / 2);
- const dataInt16 = new Int16Array(bytes.buffer, bytes.byteOffset, length);
- audioBuffer = audioCtxRef.current.createBuffer(1, length, 24000);
- const channelData = audioBuffer.getChannelData(0);
- for (let i = 0; i < length; i++) { 
- channelData[i] = dataInt16[i] / 32768.0; 
- }
- }
+ const bytes = await generateAudio(narrationText.slice(0, 2500), personaKey || undefined);
+ const audioBuffer = await decodeGeminiAudioBytes(audioCtxRef.current, bytes);
 
  const source = audioCtxRef.current.createBufferSource();
  source.buffer = audioBuffer;
@@ -823,12 +827,33 @@ export const AnalysisDisplay: React.FC<{
  } catch (e: any) {
  console.error("MIMI // Voice synthesis failed:", e);
  setIsPlaying(false);
- if (e.message?.includes('overloaded') || e.code === 'QUOTA_EXCEEDED') {
+ // Fall back to browser speech so Voice still works when Gemini TTS drifts.
+ const fallbackText = [
+   metadata.content?.headlines?.[0] || metadata.title || '',
+   vocalSummary || poeticInterpretation || '',
+   metadata.content?.oracular_mirror || '',
+ ].filter(Boolean).join('. ');
+ if (fallbackText) {
+   fallbackWebSpeech(fallbackText);
+   window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+     detail: {
+       message: "Oracle voice drifted — using local narration.",
+       icon: <Volume2 size={14} className="text-amber-500"/>
+     }
+   }));
+ } else if (e.message?.includes('overloaded') || e.code === 'QUOTA_EXCEEDED') {
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
  detail: { 
  message:"Oracle Overloaded. The frequency is too high.", 
  icon: <AlertCircle size={14} className="text-red-500"/> 
  } 
+ }));
+ } else {
+ window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+   detail: {
+     message: e?.message || "Voice transmission failed.",
+     icon: <AlertCircle size={14} className="text-red-500"/>
+   }
  }));
  }
  } finally { setIsVoiceLoading(false); }
@@ -1353,7 +1378,7 @@ export const AnalysisDisplay: React.FC<{
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg-nous-base print:min-h-0 print:py-12">
  <div className="w-full space-y-16 px-6 md:px-24">
  <SectionHeader label="Semiotics & Visual Directives"icon={Radar} style={{ color: accentColor }} />
- <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+ <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
  {(metadata.content.semiotic_signals?.length
    ? metadata.content.semiotic_signals
    : [{ motif: "Latent Motif", context: "No durable signals were attached to this issue.", visual_directive: "Hold negative space until sharper debris arrives.", type: "conceptual" }]
@@ -1375,37 +1400,39 @@ export const AnalysisDisplay: React.FC<{
      : 'Imagine this';
  
  return (
- <div key={i} className="group relative min-h-[390px] overflow-hidden border rounded-none transition-all hover:border-[var(--hover-accent)]" style={{ '--hover-accent': accentColor, perspective: '1200px', backgroundColor: 'var(--zine-surface)', borderColor: 'var(--zine-border)', color: 'var(--zine-text)' } as React.CSSProperties}>
+ <div
+   key={i}
+   className="group relative flex flex-col border rounded-none transition-all hover:border-[var(--hover-accent)] h-full"
+   style={{ '--hover-accent': accentColor, backgroundColor: 'var(--zine-surface)', borderColor: 'var(--zine-border)', color: 'var(--zine-text)' } as React.CSSProperties}
+ >
  <AnimatePresence mode="wait" initial={false}>
  {isFlipped && isCommerce ? (
  <motion.div
  key="commentary"
- initial={{ rotateY: -90, opacity: 0 }}
- animate={{ rotateY: 0, opacity: 1 }}
- exit={{ rotateY: 90, opacity: 0 }}
- transition={{ duration: 0.28, ease: 'easeOut' }}
- className="absolute inset-0 p-7 flex flex-col justify-between"
+ initial={{ opacity: 0, y: 8 }}
+ animate={{ opacity: 1, y: 0 }}
+ exit={{ opacity: 0, y: -8 }}
+ transition={{ duration: 0.22, ease: 'easeOut' }}
+ className="p-6 md:p-7 flex flex-col gap-5 flex-1 min-h-0"
  style={{ backgroundColor: 'var(--zine-surface)', color: 'var(--zine-text)' }}
  >
- <div>
- <div className="flex items-center justify-between gap-3 pb-4 border-b" style={{ borderColor: 'var(--zine-border)' }}>
+ <div className="flex items-center justify-between gap-3 pb-4 border-b shrink-0" style={{ borderColor: 'var(--zine-border)' }}>
  <span className="font-sans text-[8px] uppercase tracking-[0.22em] font-black opacity-60">Semiotic commentary</span>
  <span className="font-mono text-[8px] opacity-60">SIG_0{i+1}</span>
  </div>
  {t.semantic_trigger && (
- <div className="mt-6">
+ <div>
  <span className="font-mono text-[8px] uppercase tracking-wider opacity-60 block mb-2">Evidence trigger</span>
- <span className="inline-block font-mono text-[9px] text-[var(--hover-accent)] bg-[var(--hover-accent)]/10 px-2 py-1">{t.semantic_trigger}</span>
+ <span className="inline-block font-mono text-[9px] text-[var(--hover-accent)] bg-[var(--hover-accent)]/10 px-2 py-1 break-words">{t.semantic_trigger}</span>
  </div>
  )}
- <p className="font-serif text-xl italic leading-relaxed mt-6">
+ <p className="font-serif text-lg md:text-xl italic leading-relaxed break-words">
  {t.targeting_rationale || context}
  </p>
- <p className="font-sans text-[10px] leading-relaxed opacity-60 mt-5">
+ <p className="font-sans text-[10px] leading-relaxed opacity-60">
  This object is included as editorial evidence. It is optional context—not a purchase instruction.
  </p>
- </div>
- <div className="flex items-center justify-between gap-4 pt-6 border-t" style={{ borderColor: 'var(--zine-border)' }}>
+ <div className="mt-auto flex items-center justify-between gap-4 pt-4 border-t" style={{ borderColor: 'var(--zine-border)' }}>
  <button onClick={() => setFlippedSignalIndex(null)} className="font-sans text-[8px] uppercase tracking-widest font-black opacity-60 hover:opacity-100">
  View object
  </button>
@@ -1419,23 +1446,22 @@ export const AnalysisDisplay: React.FC<{
  ) : (
  <motion.div
  key="object"
- initial={{ rotateY: 90, opacity: 0 }}
- animate={{ rotateY: 0, opacity: 1 }}
- exit={{ rotateY: -90, opacity: 0 }}
- transition={{ duration: 0.28, ease: 'easeOut' }}
- className="absolute inset-0 p-7 flex flex-col justify-between"
+ initial={{ opacity: 0, y: 8 }}
+ animate={{ opacity: 1, y: 0 }}
+ exit={{ opacity: 0, y: -8 }}
+ transition={{ duration: 0.22, ease: 'easeOut' }}
+ className="p-6 md:p-7 flex flex-col gap-4 flex-1 min-h-0"
  style={{ backgroundColor: 'var(--zine-surface)', color: 'var(--zine-text)' }}
  >
- <div>
- <div className="flex items-center justify-between gap-3 mb-5">
- <div className="flex items-center gap-2">
- <Icon size={12} className="opacity-60 group-hover:text-[var(--hover-accent)] transition-colors"/>
- <span className="font-sans text-[8px] uppercase tracking-[0.2em] font-black opacity-60">{label}</span>
+ <div className="flex items-center justify-between gap-3 shrink-0">
+ <div className="flex items-center gap-2 min-w-0">
+ <Icon size={12} className="opacity-60 group-hover:text-[var(--hover-accent)] transition-colors shrink-0"/>
+ <span className="font-sans text-[8px] uppercase tracking-[0.2em] font-black opacity-60 truncate">{label}</span>
  </div>
- <span className="font-mono text-[8px] opacity-50">SIG_0{i+1}</span>
+ <span className="font-mono text-[8px] opacity-50 shrink-0">SIG_0{i+1}</span>
  </div>
  {isCommerce && (
- <div className="aspect-[16/10] mb-5 overflow-hidden border flex items-center justify-center" style={{ borderColor: 'var(--zine-border)', backgroundColor: 'var(--zine-bg)' }}>
+ <div className="aspect-[16/10] overflow-hidden border flex items-center justify-center shrink-0" style={{ borderColor: 'var(--zine-border)', backgroundColor: 'var(--zine-bg)' }}>
  {t.image_url ? (
  <img src={t.image_url} alt={`${motif} product reference`} loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
  ) : (
@@ -1446,25 +1472,24 @@ export const AnalysisDisplay: React.FC<{
  )}
  </div>
  )}
- <h4 className="font-serif text-2xl md:text-3xl italic tracking-tighter group-hover:text-[var(--hover-accent)] transition-colors">
+ <h4 className="font-serif text-2xl md:text-3xl italic tracking-tighter group-hover:text-[var(--hover-accent)] transition-colors break-words">
  {motif}
  </h4>
  {(t.vendor || t.price) && (
- <p className="font-mono text-[8px] uppercase tracking-wider opacity-60 mt-2">
+ <p className="font-mono text-[8px] uppercase tracking-wider opacity-60 break-words">
  {[t.vendor, t.price].filter(Boolean).join(' · ')}
  </p>
  )}
- <p className="font-serif italic text-sm leading-relaxed border-l-2 pl-4 mt-4 opacity-80" style={{ borderColor: 'var(--zine-border)' }}>
+ <p className="font-serif italic text-sm leading-relaxed border-l-2 pl-4 opacity-80 break-words whitespace-pre-wrap" style={{ borderColor: 'var(--zine-border)' }}>
  {context}
  </p>
  {!isCommerce && (
- <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--zine-border)' }}>
+ <div className="pt-4 border-t" style={{ borderColor: 'var(--zine-border)' }}>
  <span className="font-sans text-[7px] uppercase tracking-widest font-black opacity-60 block mb-2">Directive</span>
- <p className="font-mono text-[9px] opacity-80">{directive}</p>
+ <p className="font-mono text-[9px] leading-relaxed opacity-80 break-words whitespace-pre-wrap">{directive}</p>
  </div>
  )}
- </div>
- <div className="pt-6 flex justify-between items-center gap-4">
+ <div className="mt-auto pt-4 flex justify-between items-center gap-4 shrink-0">
  {isCommerce ? (
  <button onClick={() => setFlippedSignalIndex(i)} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black border-b border-current pb-0.5">
  <Target size={10} /> Read why
@@ -1505,19 +1530,19 @@ export const AnalysisDisplay: React.FC<{
        </div>
        <span className="font-mono text-[9px] opacity-50">{metadata.content.aesthetic_touchpoints.length}</span>
      </div>
-     <div className="flex flex-wrap gap-2">
+     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
        {metadata.content.aesthetic_touchpoints.map((point, index) => (
          <div
            key={`${point.motif}-${index}`}
-           className="border px-3 py-2 max-w-xs"
+           className="border px-4 py-3 flex flex-col gap-1.5 min-w-0"
            style={{ borderColor: 'var(--zine-border)', backgroundColor: 'var(--zine-surface)', color: 'var(--zine-text)' }}
          >
-           <span className="font-mono text-[7px] uppercase tracking-widest opacity-50 block mb-1">
+           <span className="font-mono text-[7px] uppercase tracking-widest opacity-50">
              {(point.type || "coordinate").replace(/_/g, " ")}
            </span>
-           <span className="font-serif italic text-sm block">{point.motif}</span>
+           <span className="font-serif italic text-sm break-words">{point.motif}</span>
            {point.context && (
-             <span className="font-sans text-[10px] opacity-70 block mt-1 leading-snug">
+             <span className="font-sans text-[10px] opacity-70 leading-snug break-words whitespace-pre-wrap">
                {point.context}
              </span>
            )}
@@ -2234,15 +2259,15 @@ export const AnalysisDisplay: React.FC<{
 
       <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
 
-      <button onClick={handleVoiceToggle} className="flex flex-col items-center gap-2 hover:text-[#1A1A1A] transition-colors group relative">
-        {isVoiceLoading ? (
+      <button onClick={handleVoiceToggle} className="flex flex-col items-center gap-2 hover:text-[#1A1A1A] transition-colors group relative" title="Narrate this zine">
+        {isVoiceLoading || isSynthesizingTTS ? (
             <Loader2 size={18} strokeWidth={1.5} className="animate-spin text-[#1A1A1A]"/>
-        ) : isPlaying ? (
+        ) : isPlaying || isReadingAloud ? (
             <Pause size={18} strokeWidth={1.5} className="text-[#1A1A1A]" />
         ) : (
             <Volume2 size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
         )}
-        {isPlaying && (
+        {(isPlaying || isReadingAloud) && (
           <svg className="absolute -inset-2 w-10 h-10 -rotate-90 pointer-events-none" viewBox="0 0 40 40">
             <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="113" strokeDashoffset={113 - (audioProgress * 113)} className="text-[#1A1A1A] transition-all duration-100"/>
           </svg>
