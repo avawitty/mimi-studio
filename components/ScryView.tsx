@@ -20,6 +20,7 @@ import {
   CheckCircle,
   ChevronRight,
   Download,
+  ExternalLink,
 } from "lucide-react";
 import { searchGrounding } from "../services/searchService";
 import { scryShadowMemory } from "../services/vectorSearch";
@@ -766,7 +767,7 @@ export const ScryView: React.FC<ScryViewProps> = ({
                   href={finding.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:underline"
+                  className="hover:underline decoration-1 underline-offset-4"
                 >
                   {finding.title}
                 </a>
@@ -777,6 +778,30 @@ export const ScryView: React.FC<ScryViewProps> = ({
             <p className="font-sans font-light text-sm text-stone-600 leading-relaxed line-clamp-3">
               {finding.snippet || "A relevant object from your creator archive."}
             </p>
+            {isWorld && (
+              <div className="mt-3">
+                {finding.url ? (
+                  <a
+                    href={finding.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[#004d40] border border-[#004d40]/40 px-2.5 py-1.5 hover:bg-[#004d40] hover:text-white transition-colors"
+                  >
+                    <ExternalLink size={11} strokeWidth={1.5} />
+                    Open source
+                    {finding.sourceDomain ? (
+                      <span className="opacity-70 normal-case tracking-normal">
+                        · {finding.sourceDomain}
+                      </span>
+                    ) : null}
+                  </a>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-stone-400 border border-stone-200 px-2.5 py-1.5">
+                    No live source link
+                  </span>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2 mt-4">
               {finding.tags.slice(0, 5).map((tag) => (
                 <span

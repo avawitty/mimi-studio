@@ -2905,9 +2905,106 @@ const normalizeWebSignalList = (value: unknown): ScryWebSignalResult[] => {
 
 /**
  * World-lane web research for Scry.
- * Prefer /api/you-search (live You.com, AI Gateway synthesis, or labeled demo),
- * then Gemini googleSearch without responseSchema (incompatible with grounding).
+ * Prefer linkable sources: live You.com / demo URLs when present,
+ * otherwise Gemini googleSearch grounding (real citation URIs).
+ * AI Gateway synthesis alone never invents URLs — enrich it with grounding.
  */
+const scryViaGeminiGrounding = async (
+  trimmed: string,
+): Promise<ScryWebSignalsPayload> => {
+  return await withResilience(async (ai) => {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: [
+        {
+          text: `Act as a cultural research scout. Use web search for emerging aesthetic signals related to: "${trimmed}".
+Return ONLY a JSON array (no markdown) of 5-8 objects with keys:
+title, snippet, url, relevance.
+Every item MUST include a real source url from the search grounding (publisher page, magazine, museum, or essay).
+Focus on visual / editorial / fashion / culture references.`,
+        },
+      ],
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+
+    const groundingChunks =
+      response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const groundingSupports =
+      response.candidates?.[0]?.groundingMetadata?.groundingSupports || [];
+    const parsed = normalizeWebSignalList(cleanAndParse(response.text));
+
+    const supportSnippetByUri = new Map<string, string>();
+    for (const support of groundingSupports as any[]) {
+      const text =
+        typeof support?.segment?.text === "string"
+          ? support.segment.text.trim()
+          : "";
+      const indices = Array.isArray(support?.groundingChunkIndices)
+        ? support.groundingChunkIndices
+        : [];
+      for (const index of indices) {
+        const chunk = groundingChunks[index];
+        const uri =
+          typeof chunk?.web?.uri === "string" ? chunk.web.uri.trim() : "";
+        if (uri && text && !supportSnippetByUri.has(uri)) {
+          supportSnippetByUri.set(uri, text);
+        }
+      }
+    }
+
+    const fromGrounding = (groundingChunks as any[])
+      .map((chunk) => {
+        const title =
+          (typeof chunk?.web?.title === "string" && chunk.web.title.trim()) ||
+          "";
+        const url =
+          (typeof chunk?.web?.uri === "string" && chunk.web.uri.trim()) ||
+          undefined;
+        if (!url) return null;
+        return {
+          title: title || "Grounded source",
+          snippet:
+            supportSnippetByUri.get(url) ||
+            title ||
+            "Referenced by grounded web search.",
+          url,
+        } satisfies ScryWebSignalResult;
+      })
+      .filter(Boolean) as ScryWebSignalResult[];
+
+    const byKey = new Map<string, ScryWebSignalResult>();
+    // Prefer grounded citation URIs first so Scry can offer openable links.
+    [...fromGrounding, ...parsed].forEach((item) => {
+      if (!item.url?.trim()) return;
+      const key = item.url.trim().toLowerCase();
+      const prior = byKey.get(key);
+      if (!prior) {
+        byKey.set(key, item);
+        return;
+      }
+      byKey.set(key, {
+        ...prior,
+        title:
+          prior.title === "Grounded source" && item.title
+            ? item.title
+            : prior.title,
+        snippet:
+          prior.snippet.length >= item.snippet.length
+            ? prior.snippet
+            : item.snippet,
+      });
+    });
+
+    return {
+      results: [...byKey.values()],
+      groundingChunks,
+      sourceMode: "gemini-grounding",
+    };
+  });
+};
+
 export const scryWebSignals = async (
   query: string,
   youApiKey?: string,
@@ -2917,7 +3014,10 @@ export const scryWebSignals = async (
     return { results: [], groundingChunks: [] };
   }
 
-  // 1) Server research path — already resilient (You.com → gateway → demo).
+  let searchResults: ScryWebSignalResult[] = [];
+  let searchMeta: Pick<ScryWebSignalsPayload, "sourceMode" | "notice"> = {};
+
+  // 1) Server research path — You.com / gateway / labeled demo.
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -2932,22 +3032,12 @@ export const scryWebSignals = async (
     });
     if (res.ok) {
       const data = await res.json();
-      const results = normalizeWebSignalList(data?.results).map((item) => ({
-        ...item,
-        // Preserve domain hints when URLs are absent (gateway synthesis).
-        snippet:
-          item.snippet ||
-          (typeof data?.notice === "string" ? data.notice : item.snippet),
-      }));
-      if (results.length > 0) {
-        return {
-          results,
-          groundingChunks: [],
-          sourceMode:
-            typeof data?.sourceMode === "string" ? data.sourceMode : undefined,
-          notice: typeof data?.notice === "string" ? data.notice : undefined,
-        };
-      }
+      searchResults = normalizeWebSignalList(data?.results);
+      searchMeta = {
+        sourceMode:
+          typeof data?.sourceMode === "string" ? data.sourceMode : undefined,
+        notice: typeof data?.notice === "string" ? data.notice : undefined,
+      };
     } else {
       console.warn(
         "MIMI // Scry web search endpoint returned",
@@ -2959,60 +3049,57 @@ export const scryWebSignals = async (
     console.warn("MIMI // Scry /api/you-search deferred.", error);
   }
 
-  // 2) Gemini grounding fallback — never pair googleSearch with responseSchema.
-  try {
-    return await withResilience(async (ai) => {
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: [
-          {
-            text: `Act as a cultural research scout. Use web search for emerging aesthetic signals related to: "${trimmed}".
-Return ONLY a JSON array (no markdown) of 5-8 objects with keys:
-title, snippet, url, relevance.
-Prefer real source URLs from grounding. Focus on visual / editorial / fashion / culture references.`,
-          },
-        ],
-        config: {
-          tools: [{ googleSearch: {} }],
-        },
-      });
+  const linkedSearch = searchResults.filter((item) => Boolean(item.url?.trim()));
 
-      const groundingChunks =
-        response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-      const parsed = normalizeWebSignalList(cleanAndParse(response.text));
-      const fromGrounding = (groundingChunks as any[])
-        .map((chunk) => {
-          const title =
-            (typeof chunk?.web?.title === "string" && chunk.web.title.trim()) ||
-            "";
-          const url =
-            (typeof chunk?.web?.uri === "string" && chunk.web.uri.trim()) ||
-            undefined;
-          if (!title && !url) return null;
-          return {
-            title: title || "Grounded source",
-            snippet: title || "Referenced by grounded web search.",
-            url,
-          } satisfies ScryWebSignalResult;
-        })
-        .filter(Boolean) as ScryWebSignalResult[];
-
-      const byKey = new Map<string, ScryWebSignalResult>();
-      [...parsed, ...fromGrounding].forEach((item) => {
-        const key = `${(item.url || "").toLowerCase()}|${item.title.toLowerCase()}`;
-        if (!byKey.has(key)) byKey.set(key, item);
-      });
-
-      return {
-        results: [...byKey.values()],
-        groundingChunks,
-        sourceMode: "gemini-grounding",
-      };
-    });
-  } catch (error) {
-    console.warn("MIMI // Scry Gemini grounding fallback failed.", error);
-    return { results: [], groundingChunks: [] };
+  // Enough real links already (You.com or demo) — return those.
+  if (linkedSearch.length >= 3) {
+    return {
+      results: linkedSearch,
+      groundingChunks: [],
+      ...searchMeta,
+    };
   }
+
+  // 2) Grounding enrichment — required when synthesis returns no citations.
+  try {
+    const grounded = await scryViaGeminiGrounding(trimmed);
+    if (grounded.results.length > 0) {
+      const byUrl = new Map<string, ScryWebSignalResult>();
+      [...grounded.results, ...linkedSearch].forEach((item) => {
+        const key = (item.url || "").trim().toLowerCase();
+        if (!key || byUrl.has(key)) return;
+        byUrl.set(key, item);
+      });
+      return {
+        results: [...byUrl.values()],
+        groundingChunks: grounded.groundingChunks,
+        sourceMode:
+          linkedSearch.length > 0
+            ? `${searchMeta.sourceMode || "search"}+gemini-grounding`
+            : grounded.sourceMode,
+        notice:
+          linkedSearch.length === 0 && searchMeta.sourceMode === "gateway-synthesis"
+            ? "Live citations attached via grounded web search. Synthesis leads without URLs were replaced."
+            : searchMeta.notice,
+      };
+    }
+  } catch (error) {
+    console.warn("MIMI // Scry Gemini grounding enrichment failed.", error);
+  }
+
+  // Last resort: return whatever search gave us (may be linkless synthesis).
+  if (searchResults.length > 0) {
+    return {
+      results: searchResults,
+      groundingChunks: [],
+      ...searchMeta,
+      notice:
+        searchMeta.notice ||
+        "Web leads are available, but no openable source URLs were returned by the active provider.",
+    };
+  }
+
+  return { results: [], groundingChunks: [] };
 };
 
 export const generateEditorialBrief = async (items: any[], profile: any) => {
