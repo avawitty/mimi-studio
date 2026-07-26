@@ -1566,6 +1566,77 @@ export const AnalysisDisplay: React.FC<{
  </div>
  </motion.section>
 
+ {/* 6.5 ARCHETYPE INDEX — editorial index of semiotic motifs (favorite export format, in-zine) */}
+ {(metadata.content.semiotic_signals?.length || metadata.content.archetype_weights) && (
+ <motion.section
+   initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }}
+   whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+   viewport={{ once: true, margin: '-10%' }}
+   transition={{ duration: 1, ease: 'easeOut' }}
+   data-section-title="Archetype Index"
+   className="min-h-[100dvh] h-[100dvh] flex flex-col justify-center snap-start print:min-h-0 print:py-12 overflow-y-auto pb-28"
+   style={{ color: 'var(--zine-text, #1c1917)' }}
+ >
+   <div className="w-full px-6 md:px-24 space-y-10 md:space-y-14">
+     <SectionHeader label="Archetype Index" icon={Layers} style={{ color: accentColor }} />
+
+     {metadata.content.archetype_weights && (
+       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 border-y py-6" style={{ borderColor: 'var(--zine-border)' }}>
+         {(['Architect', 'Dreamer', 'Archivist', 'Catalyst'] as const).map((key) => {
+           const raw = metadata.content.archetype_weights?.[key];
+           const pct = typeof raw === 'number' ? Math.round(raw * 100) : 0;
+           return (
+             <div key={key} className="space-y-2">
+               <span className="font-mono text-[8px] uppercase tracking-[0.2em] opacity-50 block">{key}</span>
+               <div className="h-1 w-full rounded-none" style={{ backgroundColor: 'var(--zine-border)' }}>
+                 <div className="h-full rounded-none transition-all" style={{ width: `${pct}%`, backgroundColor: accentColor }} />
+               </div>
+               <span className="font-serif italic text-lg" style={{ color: 'var(--zine-text, #1c1917)' }}>{pct}%</span>
+             </div>
+           );
+         })}
+       </div>
+     )}
+
+     <div className="flex-1 flex flex-col justify-center space-y-8 md:space-y-10 max-w-3xl">
+       {(metadata.content.semiotic_signals?.length
+         ? metadata.content.semiotic_signals
+         : []
+       ).slice(0, 6).map((t, i) => {
+         const motif = (t.motif || `Signal ${i + 1}`).trim();
+         const context =
+           (t.context || "").trim() ||
+           `An editorial coordinate orbiting “${motif}.”`;
+         return (
+           <div
+             key={`archetype-index-${i}`}
+             className="border-l-2 pl-6 space-y-2"
+             style={{ borderColor: 'var(--zine-border)' }}
+           >
+             <h4 className="font-serif text-2xl md:text-3xl italic leading-snug break-words" style={{ color: 'var(--zine-text, #1c1917)' }}>
+               {motif}
+             </h4>
+             <p className="font-sans text-[10px] md:text-xs uppercase tracking-widest leading-relaxed opacity-60 break-words whitespace-pre-wrap">
+               {context}
+             </p>
+             {t.type && (
+               <span className="font-mono text-[7px] uppercase tracking-[0.25em] opacity-40 block pt-1">
+                 {(t.type || 'coordinate').replace(/_/g, ' ')}
+               </span>
+             )}
+           </div>
+         );
+       })}
+       {!metadata.content.semiotic_signals?.length && (
+         <p className="font-serif italic text-lg opacity-50">
+           No archetype signals were indexed for this issue.
+         </p>
+       )}
+     </div>
+   </div>
+ </motion.section>
+ )}
+
  {/* 7. CELESTIAL CALIBRATION */}
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start print:min-h-0 print:py-12 pb-28" style={{ color: 'var(--zine-text)' }}>
  <div className="w-full space-y-12 px-6 md:px-24">
