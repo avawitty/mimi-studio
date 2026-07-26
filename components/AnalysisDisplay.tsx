@@ -1581,20 +1581,43 @@ export const AnalysisDisplay: React.FC<{
  </div>
  </motion.section>
 
- {/* 8. VISUAL PLATES - REDESIGNED AS EDITORIAL SPREADS */}
- <div className="bg-white">
- <div className="px-6 md:px-12 w-full py-16 md:py-20">
- <SectionHeader label="Visual Plates"icon={Grid3X3} style={{ color: accentColor }} />
- </div>
- 
+ {/* 8. VISUAL PLATES — each plate is a direct flipbook page (do not wrap in a div) */}
+ <motion.section
+   initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }}
+   whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+   viewport={{ once: true, margin: '-10%' }}
+   transition={{ duration: 1, ease: 'easeOut' }}
+   data-section-title="Visual Plates"
+   className="min-h-[100dvh] flex flex-col justify-center snap-start w-full print:min-h-0 print:py-12"
+ >
+   <div className="w-full px-6 md:px-12 space-y-4">
+     <SectionHeader label="Visual Plates" icon={Grid3X3} style={{ color: accentColor }} />
+     <p className="font-serif italic text-sm md:text-base opacity-70 max-w-xl" style={{ color: 'var(--zine-text)' }}>
+       Editorial spreads generated from this issue’s debris. Flip through each plate as its own page.
+     </p>
+     <p className="font-mono text-[9px] uppercase tracking-widest opacity-50">
+       {metadata.content.pages?.length || 0} plates
+     </p>
+   </div>
+ </motion.section>
+
  {metadata.content.pages?.map((page, i) => {
  const isEven = i % 2 === 0;
+ const plateLabel = `Plate ${String(i + 1).padStart(2, '0')}`;
  return (
- <motion.section key={i} initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start w-full">
- <div className={`flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-stretch h-[100dvh]`}>
+ <motion.section
+   key={i}
+   initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }}
+   whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+   viewport={{ once: true, margin: '-10%' }}
+   transition={{ duration: 1, ease: 'easeOut' }}
+   data-section-title={page.headline || plateLabel}
+   className="min-h-[100dvh] h-[100dvh] flex flex-col justify-center snap-start w-full overflow-hidden"
+ >
+ <div className={`flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-stretch h-full min-h-0`}>
  
  {/* VISUAL COMPONENT — majority of the spread so plates fill the canvas */}
- <div className="w-full md:w-[58%] lg:w-[62%] relative group h-[58dvh] md:h-full flex items-stretch p-3 sm:p-4 md:p-5 lg:p-6">
+ <div className="w-full md:w-[58%] lg:w-[62%] relative group h-[52dvh] md:h-full flex items-stretch p-3 sm:p-4 md:p-5 lg:p-6 min-h-0">
  <div className="relative w-full h-full min-h-0 border border-nous-border bg-nous-base overflow-hidden">
  <Visualizer 
  prompt={page.imagePrompt} 
@@ -1612,7 +1635,7 @@ export const AnalysisDisplay: React.FC<{
  {/* PLATE METADATA OVERLAY */}
  <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none mix-blend-difference text-white opacity-0 group-hover:opacity-100 transition-opacity duration-700">
  <div className="flex flex-col gap-1">
- <span className="font-mono text-[7px] uppercase tracking-widest">FIG. 0{i+1}</span>
+ <span className="font-mono text-[7px] uppercase tracking-widest">FIG. {String(i + 1).padStart(2, '0')}</span>
  <span className="font-sans text-[7px] font-black uppercase tracking-widest">Aspect: 3:4</span>
  </div>
  <div className="font-mono text-[7px] uppercase tracking-widest">PROMPT_REF_{i+1}</div>
@@ -1621,31 +1644,33 @@ export const AnalysisDisplay: React.FC<{
  </div>
 
  {/* TEXT COMPONENT */}
- <div className="w-full md:w-[42%] lg:w-[38%] flex flex-col justify-center p-8 md:p-10 lg:p-12 xl:p-14 space-y-6 md:space-y-8 overflow-y-auto">
- <div className="flex items-center gap-4 text-nous-subtle">
+ <div className="w-full md:w-[42%] lg:w-[38%] flex flex-col justify-center p-6 md:p-8 lg:p-10 xl:p-12 space-y-4 md:space-y-6 overflow-y-auto min-h-0 pb-24 md:pb-10">
+ <div className="flex items-center gap-4 text-nous-subtle shrink-0">
  <span className="font-serif italic text-4xl text-nous-text">{i+1}.</span>
  <div className="h-px flex-1 bg-nous-base"/>
+ <span className="font-mono text-[8px] uppercase tracking-widest opacity-50">{plateLabel}</span>
  </div>
- <h3 className={`${fontStyle} text-3xl sm:text-4xl md:text-5xl italic tracking-tight leading-snug text-nous-text`}>
+ <h3 className={`${fontStyle} text-2xl sm:text-3xl md:text-4xl lg:text-5xl italic tracking-tight leading-snug text-nous-text shrink-0`}>
  {page.headline}
  </h3>
- <div className="pl-6 border-l-2"style={{ borderColor: `${accentColor}40` }}>
- <ZineTextContent content={page.bodyCopy} className="text-base md:text-lg text-nous-text" />
+ <div className="pl-6 border-l-2 min-w-0" style={{ borderColor: `${accentColor}40` }}>
+ <ZineTextContent content={page.bodyCopy} className="text-sm md:text-base lg:text-lg text-nous-text" />
  {page.supportingText && (
- <div className="mt-6 pt-4 border-t border-stone-200 dark:border-stone-800">
+ <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-800">
  <ZineTextContent content={page.supportingText} className="text-sm italic text-nous-subtle" enableDropCap={false} />
  </div>
  )}
  </div>
  
  {/* CAPTION STYLE FOOTNOTE */}
- <div className="pt-8 flex gap-4 opacity-40">
+ <div className="pt-4 flex gap-4 opacity-40 shrink-0">
  <Hash size={12} />
  <p className="font-mono text-[8px] uppercase leading-relaxed max-w-xs">
  Generative Output • {metadata.tone} • Plate {i+1} of {metadata.content.pages.length}
  </p>
  </div>
 
+ <div className="shrink-0">
  <PlateVoiceMemo
    memo={page.voiceMemo}
    plateIndex={i}
@@ -1656,11 +1681,13 @@ export const AnalysisDisplay: React.FC<{
  />
  </div>
  </div>
- </motion.section> ); })}
  </div>
+ </motion.section>
+ );
+ })}
 
  {/* 9. THE ROADMAP (BLUEPRINT) - EDITORIAL JOURNEY */}
- <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] snap-start bg-[#F5F2EA] text-stone-950 print:min-h-0 print:py-12 relative overflow-hidden py-24 md:py-32">
+ <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} data-section-title="Authority Roadmap" className="min-h-[100dvh] h-[100dvh] snap-start bg-[#F5F2EA] text-stone-950 print:min-h-0 print:py-12 relative overflow-hidden overflow-y-auto">
  <div className="absolute inset-0 opacity-[0.035] pointer-events-none" style={{ backgroundImage: 'linear-gradient(#111 1px, transparent 1px), linear-gradient(90deg, #111 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
  <div className="w-full relative z-10 px-6 md:px-24">
  <div className="flex items-center gap-4 mb-12 text-stone-900">

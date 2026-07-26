@@ -4,6 +4,8 @@ import { BookOpen, ChevronLeft, ChevronRight, ScrollText, Type, Eye, Grid3X3, X 
 
 export type ZineReadingMode = "scroll" | "flipbook";
 
+const PAGE_SELECTOR = ":scope > section, :scope > footer";
+
 interface ZineFlipbookShellProps {
   mode: ZineReadingMode;
   onModeChange: (mode: ZineReadingMode) => void;
@@ -29,13 +31,15 @@ export const ZineFlipbookShell: React.FC<ZineFlipbookShellProps> = ({
   const refreshPageCount = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const pages = el.querySelectorAll<HTMLElement>(":scope > section, :scope > footer");
+    const pages = el.querySelectorAll<HTMLElement>(PAGE_SELECTOR);
     setPageCount(pages.length);
 
     const titles: string[] = [];
     pages.forEach((p, idx) => {
-      const h1 = p.querySelector("h1, h2, h3, [data-section-title]")?.textContent;
-      titles.push(h1 ? h1.trim().slice(0, 32) : `Plate 0${idx + 1}`);
+      const titled =
+        p.getAttribute("data-section-title") ||
+        p.querySelector("h1, h2, h3, [data-section-title]")?.textContent;
+      titles.push(titled ? titled.trim().slice(0, 40) : `Page ${String(idx + 1).padStart(2, "0")}`);
     });
     setPageTitles(titles);
   }, []);
@@ -55,7 +59,7 @@ export const ZineFlipbookShell: React.FC<ZineFlipbookShellProps> = ({
     if (!el) return;
 
     const onScroll = () => {
-      const pages = Array.from(el.querySelectorAll<HTMLElement>(":scope > section, :scope > footer"));
+      const pages = Array.from(el.querySelectorAll<HTMLElement>(PAGE_SELECTOR));
       if (pages.length === 0) return;
 
       if (isFlipbook) {
@@ -96,7 +100,7 @@ export const ZineFlipbookShell: React.FC<ZineFlipbookShellProps> = ({
     (index: number) => {
       const el = containerRef.current;
       if (!el) return;
-      const pages = el.querySelectorAll<HTMLElement>(":scope > section, :scope > footer");
+      const pages = el.querySelectorAll<HTMLElement>(PAGE_SELECTOR);
       const target = pages[Math.max(0, Math.min(index, pages.length - 1))];
       if (target) {
         if (isFlipbook) {
@@ -362,16 +366,23 @@ export const ZineFlipbookShell: React.FC<ZineFlipbookShellProps> = ({
         .zine-flipbook-track > footer {
           min-width: 100%;
           width: 100%;
+          max-width: 100%;
+          height: 100%;
+          min-height: 100%;
+          flex: 0 0 100%;
           flex-shrink: 0;
           scroll-snap-align: center;
           scroll-snap-stop: always;
           transform-style: preserve-3d;
+          overflow: hidden;
           transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
         }
         @media (max-width: 768px) {
           .zine-flipbook-track > section,
           .zine-flipbook-track > footer {
-            min-width: 100vw;
+            min-width: 100%;
+            width: 100%;
+            flex: 0 0 100%;
           }
         }
         @media print {
@@ -383,6 +394,10 @@ export const ZineFlipbookShell: React.FC<ZineFlipbookShellProps> = ({
           .zine-flipbook-track > footer {
             min-width: auto !important;
             width: auto !important;
+            height: auto !important;
+            min-height: auto !important;
+            flex: none !important;
+            overflow: visible !important;
             filter: none !important;
           }
         }
