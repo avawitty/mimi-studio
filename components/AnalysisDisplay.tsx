@@ -1042,6 +1042,16 @@ export const AnalysisDisplay: React.FC<{
  color: 'var(--zine-text)'
  } as React.CSSProperties}
  >
+  <button
+    type="button"
+    onClick={onReset}
+    aria-label="Exit zine to worktable"
+    title="Exit to worktable"
+    className="fixed top-5 right-5 md:top-6 md:right-6 z-[12000] print:hidden flex h-10 w-10 items-center justify-center rounded-full border border-nous-border/70 bg-white/90 text-nous-subtle shadow-md backdrop-blur-md transition-colors hover:bg-white hover:text-nous-text"
+  >
+    <X size={16} strokeWidth={2} />
+  </button>
+
   {/* Quick Preview Draft Banner */}
   {metadata.isQuickPreview && (
     <div className="bg-purple-950/90 border-b border-purple-800/80 text-purple-100 px-6 py-3.5 flex items-center justify-between font-mono text-[10px] tracking-wider z-[11000] relative backdrop-blur-md shrink-0 shadow-xl">
