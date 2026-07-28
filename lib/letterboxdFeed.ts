@@ -82,15 +82,20 @@ function readTag(block: string, name: string): string {
 }
 
 function decodeEntities(value = ''): string {
+  // Single-pass decode to avoid double-unescaping chains (e.g. &amp;lt; -> &lt; -> <).
+  const ENTITIES: Record<string, string> = {
+    amp: '&', lt: '<', gt: '>', quot: '"', apos: "'",
+  };
   return value
     .replace(/<!\[CDATA\[/g, '')
     .replace(/\]\]>/g, '')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#0*39;|&apos;/gi, "'")
-    .replace(/&#0*38;/gi, '&');
+    .replace(/&(?:([a-z]+)|#0*(\d+));/gi, (_, named, decimal) => {
+      if (named) return ENTITIES[named.toLowerCase()] ?? `&${named};`;
+      const code = Number(decimal);
+      if (code === 38) return '&';
+      if (code === 39) return "'";
+      return String.fromCharCode(code);
+    });
 }
 
 function ratingToStars(rating?: number): string | undefined {
