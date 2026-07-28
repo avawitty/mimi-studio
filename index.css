@@ -160,6 +160,37 @@
     border-color: var(--studio-border);
   }
 
+  /* Styled hover tooltips for the vertical icon rail */
+  .studio-rail [data-tip] { position: relative; }
+  .studio-rail [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 8px;
+    color: var(--studio-canvas);
+    background-color: var(--studio-ink);
+    border: 1px solid var(--studio-border);
+    border-radius: 2px;
+    box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 70;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .studio-rail [data-tip]:hover::after,
+  .studio-rail [data-tip]:focus-visible::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+
   .studio-worktable .studio-prompt-input {
     color: var(--studio-ink);
   }

@@ -2008,12 +2008,13 @@ ${finalInput}`;
         {(!isMobile || mobileStudioView === "editor") && (
           <div className="flex-1 min-w-0 h-full flex overflow-hidden studio-bg-workspace border-r border-dotted studio-divider">
             {/* 3a: Vertical Icon Rail */}
-            <div className="w-[50px] studio-bg-surface border-r studio-border flex flex-col items-center justify-start py-4 gap-2.5 shrink-0 overflow-y-auto no-scrollbar max-h-full">
+            <div className="studio-rail w-[50px] studio-bg-surface border-r studio-border flex flex-col items-center justify-start py-4 gap-2.5 shrink-0 overflow-y-auto md:overflow-visible no-scrollbar max-h-full">
               
               {/* Icon 1: Attachment clip */}
               <button
                 onClick={() => mediaInputRef.current?.click()}
-                title="Attach Media Artifact"
+                data-tip="Attach Media Artifact"
+                aria-label="Attach Media Artifact"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <Paperclip size={14} />
@@ -2027,7 +2028,14 @@ ${finalInput}`;
                   playClick();
                 }}
                 disabled={isTranscribing}
-                title={
+                data-tip={
+                  isTranscribing
+                    ? "Transcribing voice memo..."
+                    : isRecording
+                      ? "Stop recording"
+                      : "Record voice memo"
+                }
+                aria-label={
                   isTranscribing
                     ? "Transcribing voice memo..."
                     : isRecording
@@ -2058,7 +2066,8 @@ ${finalInput}`;
                   handleDictationToggle();
                   playClick();
                 }}
-                title={isDictating ? "Stop live dictation" : "Dictate narrative live"}
+                data-tip={isDictating ? "Stop live dictation" : "Dictate narrative live"}
+                aria-label={isDictating ? "Stop live dictation" : "Dictate narrative live"}
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   isDictating
                     ? "border-red-500 bg-red-500/20 text-red-500 animate-pulse"
@@ -2075,7 +2084,8 @@ ${finalInput}`;
                   setInput("");
                   playClick();
                 }}
-                title="Reset Workspace"
+                data-tip="Reset Workspace"
+                aria-label="Reset Workspace"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <ChevronLeft size={14} />
@@ -2089,7 +2099,8 @@ ${finalInput}`;
                   handleAutoGenerateTitle();
                   playClick();
                 }}
-                title="Whip Title Spark"
+                data-tip="Whip Title Spark"
+                aria-label="Whip Title Spark"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <Zap size={14} />
@@ -2101,7 +2112,8 @@ ${finalInput}`;
                   setDeepThinking(!deepThinking);
                   playClick();
                 }}
-                title="Superintelligence Engine"
+                data-tip="Superintelligence Engine"
+                aria-label="Superintelligence Engine"
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   deepThinking 
                     ? "border-purple-500/50 bg-purple-500/10 text-purple-400" 
@@ -2117,7 +2129,8 @@ ${finalInput}`;
                   setUseSearch(!useSearch);
                   playClick();
                 }}
-                title="Semantic Web Grounding"
+                data-tip="Semantic Web Grounding"
+                aria-label="Semantic Web Grounding"
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   useSearch 
                     ? "border-blue-500/50 bg-blue-500/10 text-blue-400" 
@@ -2133,7 +2146,8 @@ ${finalInput}`;
                   togglePanel("telemetry");
                   playClick();
                 }}
-                title="System Optics"
+                data-tip="System Optics"
+                aria-label="System Optics"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <Eye size={14} />
@@ -2153,7 +2167,8 @@ ${finalInput}`;
                   }
                   playClick();
                 }}
-                title="Generate Aesthetic Spark"
+                data-tip="Generate Aesthetic Spark"
+                aria-label="Generate Aesthetic Spark"
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   isGeneratingPrompt 
                     ? "border-yellow-500/50 bg-yellow-500/10 text-yellow-400 animate-pulse" 
@@ -2185,7 +2200,8 @@ ${finalInput}`;
                   setUseTailorProfile(!useTailorProfile);
                   playClick();
                 }}
-                title="Custom Tailor Override"
+                data-tip="Custom Tailor Override"
+                aria-label="Custom Tailor Override"
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   !useTailorProfile 
                     ? "border-orange-500/50 bg-orange-500/10 text-orange-400" 
@@ -2203,7 +2219,8 @@ ${finalInput}`;
                   setShowColophon(true);
                   playClick();
                 }}
-                title="Review Manifesto Colophon"
+                data-tip="Review Manifesto Colophon"
+                aria-label="Review Manifesto Colophon"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <FileText size={14} />
@@ -2215,7 +2232,8 @@ ${finalInput}`;
                   togglePanel("treatments");
                   playClick();
                 }}
-                title="Preset Treatments Canvas"
+                data-tip="Preset Treatments Canvas"
+                aria-label="Preset Treatments Canvas"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <Paintbrush size={14} />
@@ -2223,7 +2241,7 @@ ${finalInput}`;
             </div>
 
             {/* 3b: Center Dark Text Area */}
-            <div className={`flex-1 flex flex-col justify-between items-center py-12 px-6 relative overflow-y-auto no-scrollbar ${isMobile ? "pb-32" : ""}`}>
+            <div className={`flex-1 flex flex-col justify-between items-center py-12 px-6 relative overflow-y-auto no-scrollbar ${isMobile ? "pb-44" : ""}`}>
               
               {/* Practical creator promise with an editorial Mimi accent. */}
               <div className="text-center studio-text-muted mb-6 select-none flex flex-col items-center gap-1.5 shrink-0">
@@ -2344,7 +2362,7 @@ ${finalInput}`;
               </AnimatePresence>
 
               {/* Progressive Editorial Brief Form Container */}
-              <div className={`w-full max-w-2xl flex flex-col gap-5 relative z-15 ${isMobile ? "min-h-[160px]" : "flex-1 min-h-[220px]"}`}>
+              <div className={`w-full max-w-2xl flex flex-col gap-5 relative z-15 ${isMobile ? "min-h-[160px]" : "min-h-[220px]"}`}>
                 {/* Thinking Pulse Overlay */}
                 {isThinking && (
                   <div className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center bg-transparent">
@@ -2354,7 +2372,7 @@ ${finalInput}`;
                 )}
 
                 {/* Primary field: Source Material */}
-                <div className="flex flex-col gap-2 flex-1">
+                <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3">
                     <label className="font-mono text-[9px] uppercase tracking-[0.22em] text-stone-400 font-extrabold shrink-0">01 / Source material</label>
                     <div className="h-px flex-1 bg-stone-200/10 dark:bg-stone-800/50" />
@@ -2366,7 +2384,7 @@ ${finalInput}`;
                       setInput(e.target.value);
                       playClick();
                     }}
-                    className="w-full bg-transparent border-none focus:ring-0 text-md md:text-xl font-serif italic text-center studio-prompt-input outline-none resize-none flex-1 leading-relaxed no-scrollbar select-text focus:outline-none min-h-[90px]"
+                    className="w-full bg-transparent border-none focus:ring-0 text-md md:text-xl font-serif italic text-center studio-prompt-input outline-none resize-none leading-relaxed no-scrollbar select-text focus:outline-none min-h-[120px]"
                     placeholder="Paste a fragment, reference, question, or unfinished idea..."
                   />
                 </div>
@@ -2680,7 +2698,7 @@ ${finalInput}`;
 
               {/* Mobile Sticky Footer Actions (Only on Mobile) */}
               {isMobile && (
-                <div className="fixed bottom-14 left-0 right-0 p-3 bg-stone-950/95 border-t border-stone-900 z-45 flex flex-col gap-1.5 shrink-0">
+                <div className="fixed bottom-14 left-0 right-0 px-3 pt-3 pb-2.5 bg-stone-950/95 border-t border-stone-900 z-45 flex flex-col gap-2 shrink-0">
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -2720,7 +2738,7 @@ ${finalInput}`;
                       {isThinking ? "Developing..." : "Develop Issue"}
                     </button>
                   </div>
-                  <span className="font-sans text-[8px] text-stone-500 italic text-center select-none block mt-0.5">
+                  <span className="font-sans text-[9px] text-stone-500 italic text-center select-none block leading-tight">
                     Organize this material without flattening your voice.
                   </span>
                 </div>
@@ -2921,7 +2939,7 @@ ${finalInput}`;
 
         {/* COLUMN 3: COVER PROFILER / PREVIEW COLUMN */}
         {(!isMobile || mobileStudioView === "cover") && (
-          <div className="w-full studio-bg-panel border-l studio-border flex flex-col justify-between p-6 shrink-0 relative overflow-y-auto no-scrollbar"
+          <div className="w-full studio-bg-panel border-l studio-border flex flex-col justify-between p-6 md:pr-10 shrink-0 relative overflow-y-auto no-scrollbar"
             style={isMobile ? undefined : { width: coverPanelWidth }}>
             <div className="space-y-6">
               {/* Zine Title Input Header */}
@@ -3615,12 +3633,12 @@ ${finalInput}`;
       </div>
 
       {/* BOTTOM CONTROL/TABS NAVIGATION (5-Column Grid Layout) */}
-      <div className="w-full grid grid-cols-5 border-t studio-border studio-bg-tab py-2 text-left px-4 absolute bottom-0 left-0 right-0 h-14 z-30 select-none overflow-hidden shrink-0">
+      <div className="w-full flex overflow-x-auto no-scrollbar md:grid md:grid-cols-5 md:overflow-hidden border-t studio-border studio-bg-tab py-2 text-left px-4 absolute bottom-0 left-0 right-0 h-14 z-30 select-none shrink-0">
         
         {/* Tab 1: ANCHORS */}
         <button
           onClick={() => togglePanel("signal")}
-          className={`studio-footer-tab flex flex-col items-start border-r studio-divider pr-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider pr-4 group transition-colors cursor-pointer ${
             activePanel === "signal" ? "is-active" : ""
           }`}
         >
@@ -3637,7 +3655,7 @@ ${finalInput}`;
         {/* Tab 2: TREATMENTS */}
         <button
           onClick={() => togglePanel("treatments")}
-          className={`studio-footer-tab flex flex-col items-start border-r studio-divider px-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
             activePanel === "treatments" ? "is-active" : ""
           }`}
         >
@@ -3654,7 +3672,7 @@ ${finalInput}`;
         {/* Tab 3: POCKET */}
         <button
           onClick={() => togglePanel("procurement")}
-          className={`studio-footer-tab flex flex-col items-start border-r studio-divider px-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
             activePanel === "procurement" ? "is-active" : ""
           }`}
         >
@@ -3671,7 +3689,7 @@ ${finalInput}`;
         {/* Tab 4: CONTINUUM */}
         <button
           onClick={() => togglePanel("continuum")}
-          className={`studio-footer-tab flex flex-col items-start border-r studio-divider px-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
             activePanel === "continuum" ? "is-active" : ""
           }`}
         >
@@ -3688,7 +3706,7 @@ ${finalInput}`;
         {/* Tab 5: TELEMETRY */}
         <button
           onClick={() => togglePanel("telemetry")}
-          className={`studio-footer-tab flex flex-col items-start px-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 px-4 group transition-colors cursor-pointer ${
             activePanel === "telemetry" ? "is-active" : ""
           }`}
         >
