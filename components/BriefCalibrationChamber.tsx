@@ -9,6 +9,7 @@ import {
 } from './UseCaseSelector';
 import {
   getApprovedUsedContext,
+  projectResearchContextToStudio,
   subscribeUsedContext,
 } from '../services/usedContextService';
 import { UsedContextEntry } from '../types';
@@ -94,10 +95,10 @@ export const BriefCalibrationChamber: React.FC = () => {
 
   const applyToWorktable = () => {
     localStorage.setItem('mimi_cognitive_persona', JSON.stringify({ id: active.id }));
-    localStorage.setItem(
-      'mimi_active_brief_context_ids',
-      JSON.stringify(selectedContextIds),
+    const selectedResearch = researchContexts.filter((entry) =>
+      selectedContextIds.includes(entry.objectId || entry.atomId),
     );
+    projectResearchContextToStudio(selectedResearch);
     window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
       detail: { message: `${active.title} applied to the Worktable.`, type: 'success' },
     }));

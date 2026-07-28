@@ -107,6 +107,32 @@ export function addResearchContextToUsedContext(
   return entry;
 }
 
+/**
+ * Projects the given approved research-context entries (typically from the
+ * "build-brief" target) into the "studio" used-context target so that the
+ * Worktable generation, which consumes only getApprovedUsedContext("studio"),
+ * actually includes the selected Scry research. The source entries are left
+ * untouched so surfaces like the Build Brief Inspector continue to work.
+ */
+export function projectResearchContextToStudio(
+  sourceEntries: UsedContextEntry[],
+): void {
+  if (sourceEntries.length === 0) return;
+  const keyOf = (entry: UsedContextEntry) => entry.objectId || entry.atomId;
+  const projected: UsedContextEntry[] = sourceEntries.map((entry) => ({
+    ...entry,
+    target: "studio",
+    approved: true,
+    addedAt: Date.now(),
+  }));
+  const projectedKeys = new Set(projected.map(keyOf));
+  const store = readStore();
+  const withoutStale = store.filter(
+    (entry) => !(entry.target === "studio" && projectedKeys.has(keyOf(entry))),
+  );
+  writeStore([...projected, ...withoutStale]);
+}
+
 export function removeFromUsedContext(
   atomId: string,
   target?: UsedContextTarget,
