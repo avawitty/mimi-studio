@@ -23,9 +23,9 @@ const dossierSchema = z.object({
         mimeType: z.string().min(1, "Image mime type is required."),
       }),
     )
-    .min(3, "Upload between 3 and 8 reference images.")
-    .max(8, "Upload between 3 and 8 reference images."),
+    .max(8, "Upload at most 8 reference images."),
   userBlurb: z.string().optional(),
+  blueprintDigest: z.string().optional(),
 });
 
 export default async function handler(req: any, res: any) {
@@ -38,6 +38,16 @@ export default async function handler(req: any, res: any) {
     if (!input) return;
     const images = input.images as DossierImagePayload[];
     const userBlurb = input.userBlurb;
+    const blueprintDigest = input.blueprintDigest?.trim() || undefined;
+
+    if (images.length < 3 && !blueprintDigest) {
+      return sendError(
+        res,
+        400,
+        "Provide a Tailor blueprint or upload at least 3 reference images to compile a full read.",
+        "INSUFFICIENT_INPUT",
+      );
+    }
 
     const cost = fundedGatewayCreditCost(creditCostForTask("tailor_analysis"));
     const { apiKey, access } = await resolveFundedGatewayApiKey(req, cost);
@@ -51,7 +61,7 @@ export default async function handler(req: any, res: any) {
       );
     }
 
-    const userPrompt = buildCreativeDossierUserPrompt(images.length, userBlurb);
+    const userPrompt = buildCreativeDossierUserPrompt(images.length, userBlurb, blueprintDigest);
     const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
       { type: "text", text: userPrompt },
     ];
