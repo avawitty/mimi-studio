@@ -54,11 +54,11 @@ export const CreditMeter: React.FC = () => {
  <div className="relative"ref={meterRef}>
  <button 
  onClick={() => setIsOpen(!isOpen)}
- className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 ${
+ className={`flex items-center gap-2 px-3 py-1.5 min-h-9 rounded-full border transition-all duration-300 ${
  isPaid ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' :
  isExpired ? 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400' :
- credits <= 2 ? 'border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-400' :
- 'border-nous-border bg-white/50 /50 text-nous-subtle hover:bg-nous-base '
+ credits <= 2 ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+ 'border-nous-border bg-nous-base/50 text-nous-subtle hover:bg-nous-base'
  }`}
  >
  <Icon size={14} className={isPaid ? 'text-amber-500' : ''} />
@@ -143,9 +143,9 @@ export const CreditMeter: React.FC = () => {
  window.dispatchEvent(new CustomEvent('mimi:open_patron_modal'));
  }
  }}
- className={`w-full mt-4 py-2 font-sans text-white text-[10px] uppercase tracking-widest transition-colors ${isPaid ? 'bg-nous-subtle cursor-default' : 'bg-nous-text hover:opacity-80'}`}
+ className={`w-full mt-4 min-h-11 py-2 font-sans text-nous-base text-[10px] uppercase tracking-widest transition-opacity ${isPaid ? 'bg-nous-subtle cursor-default' : 'bg-nous-text hover:opacity-80'}`}
  >
- {isPaid ? 'Platform Unlocked' : (isGhost ? 'Claim your trial' : 'Upgrade to Patron')}
+ {isPaid ? 'Platform Unlocked' : (isGhost ? 'Claim your trial' : 'Become a Patron')}
  </button>
  </div>
  )}
