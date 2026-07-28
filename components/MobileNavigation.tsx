@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LayoutGrid, Scissors, ImageIcon, BookOpen, Activity, Loader2 } from 'lucide-react';
+import { LayoutGrid, Scissors, ImageIcon, BookOpen, Feather, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserProfile } from '../types';
 
@@ -39,7 +39,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
   const tabs = [
     { key: 'studio', label: 'Studio', icon: <LayoutGrid size={16} strokeWidth={1.5} /> },
     { key: 'pocket', label: 'Pocket', icon: <BookOpen size={16} strokeWidth={1.5} /> },
-    { key: 'mimi-drop', label: 'Drop', icon: <Activity size={16} strokeWidth={1.5} /> },
+    { key: 'scribe', label: 'Scribe', icon: <Feather size={16} strokeWidth={1.5} /> },
     { key: 'tailor', label: 'Tailor', icon: <Scissors size={16} strokeWidth={1.5} /> },
     { key: 'darkroom', label: 'Files', icon: <ImageIcon size={16} strokeWidth={1.5} /> }
   ];
