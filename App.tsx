@@ -1542,13 +1542,6 @@ export const App: React.FC = () => {
         }
         return;
       }
-      if (e.detail === "scribe") {
-        window.dispatchEvent(
-          new CustomEvent("mimi:sound", { detail: { type: "click" } }),
-        );
-        setScribeTab("mimi");
-        return;
-      }
       if (e.detail) {
         window.dispatchEvent(
           new CustomEvent("mimi:sound", { detail: { type: "click" } }),
