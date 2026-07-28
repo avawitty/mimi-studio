@@ -156,13 +156,21 @@ const getStripe = () => {
 };
 
 const resolvePlanFromPrice = async (stripe: Stripe, priceId?: string | null, metadataPlan?: string | null) => {
-  if (metadataPlan) return { plan: normalizeMimiPlan(metadataPlan), interval: 'month' as MimiBillingInterval };
-  if (!priceId) return { plan: 'free' as MimiPlan, interval: 'month' as MimiBillingInterval };
-  const price = await stripe.prices.retrieve(priceId);
-  return {
-    plan: normalizeMimiPlan(price.metadata?.plan),
-    interval: price.recurring?.interval === 'year' ? 'year' as MimiBillingInterval : 'month' as MimiBillingInterval,
-  };
+  // The billing interval MUST come from the actual Stripe price, never from
+  // checkout metadata: our checkout session only carries the plan tier in
+  // metadata (not the cadence), so trusting it alone mis-grants every annual
+  // subscriber a single month of credits and a 30-day period.
+  let interval: MimiBillingInterval = 'month';
+  let pricePlan: string | null = null;
+  if (priceId) {
+    const price = await stripe.prices.retrieve(priceId);
+    interval = price.recurring?.interval === 'year' ? 'year' : 'month';
+    pricePlan = price.metadata?.plan ?? null;
+  }
+  // Prefer the explicit checkout metadata plan when present, otherwise fall
+  // back to the price's own metadata. normalizeMimiPlan() maps empty -> 'free'.
+  const plan = normalizeMimiPlan(metadataPlan || pricePlan);
+  return { plan, interval };
 };
 
 app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {

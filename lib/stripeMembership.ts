@@ -86,36 +86,33 @@ const resolvePlanFromPriceId = async (
   priceId?: string | null,
   metadataPlan?: string | null,
 ): Promise<{ plan: MimiPlan; interval: MimiBillingInterval }> => {
-  if (metadataPlan) {
-    return {
-      plan: normalizeMimiPlan(metadataPlan),
-      interval: "month",
-    };
-  }
-  if (priceId && PRICE_ID_PLAN_MAP[priceId]) {
-    return { plan: PRICE_ID_PLAN_MAP[priceId], interval: "month" };
-  }
+  // The billing interval MUST be read from the live Stripe price. Checkout
+  // metadata (and our static price->plan map) only encode the plan tier, not
+  // the cadence, so short-circuiting on them mis-grants every annual
+  // subscriber a single month of credits and a 30-day period.
+  let interval: MimiBillingInterval = "month";
+  let pricePlan: MimiPlan | null = priceId ? PRICE_ID_PLAN_MAP[priceId] ?? null : null;
+
   if (priceId) {
     try {
       const price = await stripe.prices.retrieve(priceId);
-      const fromMeta = price.metadata?.plan;
-      if (fromMeta) {
-        return {
-          plan: normalizeMimiPlan(fromMeta),
-          interval: price.recurring?.interval === "year" ? "year" : "month",
-        };
-      }
-      if (price.id && PRICE_ID_PLAN_MAP[price.id]) {
-        return {
-          plan: PRICE_ID_PLAN_MAP[price.id],
-          interval: price.recurring?.interval === "year" ? "year" : "month",
-        };
+      if (price.recurring?.interval === "year") interval = "year";
+      if (!pricePlan) {
+        if (price.metadata?.plan) {
+          pricePlan = normalizeMimiPlan(price.metadata.plan);
+        } else if (price.id && PRICE_ID_PLAN_MAP[price.id]) {
+          pricePlan = PRICE_ID_PLAN_MAP[price.id];
+        }
       }
     } catch (error) {
       console.warn("MIMI // Stripe: failed to retrieve price", priceId, error);
     }
   }
-  return { plan: "free", interval: "month" };
+
+  // Prefer the explicit checkout metadata plan when present, else the price's
+  // resolved plan; normalizeMimiPlan() maps empty/unknown -> 'free'.
+  const plan = metadataPlan ? normalizeMimiPlan(metadataPlan) : pricePlan ?? "free";
+  return { plan, interval };
 };
 
 const findUidByStripeCustomer = async (db: Firestore, customerId: string): Promise<string | null> => {
