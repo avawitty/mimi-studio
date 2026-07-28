@@ -533,7 +533,7 @@ const NavigationDrawer: React.FC<{
                               }`}
                             >
                               <span
-                                className={`flex items-center gap-2 font-sans text-[15px] uppercase tracking-[0.08em] font-bold transition-colors ${
+                                className={`flex items-center gap-2 font-mono text-[15px] uppercase tracking-[0.18em] font-bold transition-colors ${
                                   isActive
                                     ? "text-amber-600 dark:text-amber-400"
                                     : "studio-text-ink group-hover:text-amber-600 dark:group-hover:text-amber-400"
