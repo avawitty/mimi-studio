@@ -511,107 +511,116 @@ export const IntelHub: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Individual Care Tier */}
-          <div className="border border-nous-border p-6 bg-white space-y-6 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-sans text-xs uppercase tracking-widest font-bold">Mimi Plus</h4>
-                  <p className="font-serif italic text-xs text-nous-subtle mt-1">Individual Taste OS</p>
-                </div>
-                <div className="text-right">
-                  <span className="font-serif text-2xl font-light">$12</span>
-                  <span className="font-sans text-[9px] uppercase tracking-widest text-nous-subtle block">/ month</span>
-                </div>
-              </div>
-              <ul className="font-sans text-[11px] text-nous-subtle space-y-2 list-none pl-0">
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Full Private Taste Graph</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Personal Closet Capsule analytics</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Decentralized Google Drive backup</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Confidential Sanctuary access</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> 20 editorial generation tokens / mo</li>
-              </ul>
-            </div>
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('mimi:open_patron_modal'))}
-              className="w-full py-3 bg-nous-text text-nous-base font-sans text-[9px] uppercase tracking-widest font-black rounded-none hover:bg-nous-text0 transition-all text-center"
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            {
+              name: "The Initiation",
+              tagline: "Mimi starts remembering you",
+              price: "$12",
+              recommended: false,
+              cta: "Begin Initiation",
+              bullets: [
+                "500 credits per cycle",
+                "Persistent profile memory",
+                "Doubt reports & basic archives",
+                "Access to the House chambers",
+              ],
+            },
+            {
+              name: "Optioning",
+              tagline: "Tailor visual treatments",
+              price: "$25",
+              recommended: true,
+              cta: "Deploy Optioning",
+              bullets: [
+                "1,500 credits per cycle",
+                "Mannequin flat-lay snapping",
+                "Outfit logic & styling boards",
+                "Wardrobe fragment curation",
+              ],
+            },
+            {
+              name: "The Atelier",
+              tagline: "Produce the signal",
+              price: "$40",
+              recommended: false,
+              cta: "Open the Atelier",
+              bullets: [
+                "3,000 credits per cycle",
+                "Full campaign zine director",
+                "Exportable creative assets",
+                "Drops & publishing pipeline",
+              ],
+            },
+            {
+              name: "The Lab",
+              tagline: "Advanced controls",
+              price: "$99",
+              recommended: false,
+              cta: "Enter the Lab",
+              bullets: [
+                "10,000 credits per cycle",
+                "Likeness Proxy & Style Rules",
+                "Approved external Keyring servers",
+                "Commercial & client-ready workflows",
+              ],
+            },
+          ].map((tier) => (
+            <div
+              key={tier.name}
+              className={`p-6 space-y-6 flex flex-col justify-between relative ${
+                tier.recommended
+                  ? "border-2 border-nous-text bg-nous-text/[0.03]"
+                  : "border border-nous-border bg-nous-paper"
+              }`}
             >
-              Mint Access Token
-            </button>
-          </div>
-
-          {/* Creator & Stylist Studio Tier */}
-          <div className="border-2 border-nous-text p-6 bg-[#EAE8E4]/30 space-y-6 flex flex-col justify-between relative">
-            <div className="absolute top-0 right-6 translate-y-[-50%] bg-stone-900 border border-stone-800 text-stone-200 text-[8px] uppercase tracking-widest px-3 py-1 font-black">
-              Most Popular
-            </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-sans text-xs uppercase tracking-widest font-bold">Mimi Studio</h4>
-                  <p className="font-serif italic text-xs text-nous-subtle mt-1">AI Creative Director</p>
+              {tier.recommended && (
+                <div className="absolute top-0 right-6 translate-y-[-50%] bg-nous-text text-nous-base text-[8px] uppercase tracking-widest px-3 py-1 font-black">
+                  Most Chosen
                 </div>
-                <div className="text-right">
-                  <span className="font-serif text-2xl font-light">$39</span>
-                  <span className="font-sans text-[9px] uppercase tracking-widest text-nous-subtle block">/ month</span>
+              )}
+              <div className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-sans text-xs uppercase tracking-widest font-bold text-nous-text">{tier.name}</h4>
+                    <p className="font-serif italic text-xs text-nous-subtle mt-1">{tier.tagline}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-serif text-2xl font-light text-nous-text">{tier.price}</span>
+                    <span className="font-sans text-[9px] uppercase tracking-widest text-nous-subtle block">/ month</span>
+                  </div>
                 </div>
+                <ul className="font-sans text-[11px] text-nous-subtle space-y-2 list-none pl-0">
+                  {tier.bullets.map((bullet) => (
+                    <li key={bullet} className="flex items-center gap-2">
+                      <Check size={10} className="text-nous-text shrink-0" /> {bullet}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="font-sans text-[11px] text-nous-subtle space-y-2 list-none pl-0">
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Everything in Plus tier</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> The Loom style distribution platform</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Multi-page print-ready PDF briefs</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Instagram campaign sets & TikTok plans</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> 100 high-fidelity tokens / mo</li>
-              </ul>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('mimi:open_patron_modal'))}
+                className={`w-full py-3 min-h-11 font-sans text-[9px] uppercase tracking-widest font-black rounded-none transition-all text-center ${
+                  tier.recommended
+                    ? "bg-nous-text text-nous-base hover:opacity-80"
+                    : "border border-nous-text text-nous-text hover:bg-nous-text hover:text-nous-base"
+                }`}
+              >
+                {tier.cta}
+              </button>
             </div>
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('mimi:open_patron_modal'))}
-              className="w-full py-3 bg-stone-950 text-[#fdfdfb] font-sans text-[9px] uppercase tracking-widest font-black rounded-none hover:bg-stone-800 transition-all text-center"
-            >
-              Deploy Studio Licence
-            </button>
-          </div>
-
-          {/* Enterprise Agency Brand Tier */}
-          <div className="border border-nous-border p-6 bg-white space-y-6 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-sans text-xs uppercase tracking-widest font-bold">Mimi Brand OS</h4>
-                  <p className="font-serif italic text-xs text-nous-subtle mt-1">SEO & Machine Visibility</p>
-                </div>
-                <div className="text-right">
-                  <span className="font-serif text-2xl font-light">$199</span>
-                  <span className="font-sans text-[9px] uppercase tracking-widest text-nous-subtle block">/ month</span>
-                </div>
-              </div>
-              <ul className="font-sans text-[11px] text-nous-subtle space-y-2 list-none pl-0">
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Everything in Studio tier</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> The GEO Engine LLM Search auditor</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Brand OS guidelines memory ingestion</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Color QC image standard analyzer</li>
-                <li className="flex items-center gap-2"><Check size={10} className="text-[#141414] shrink-0" /> Unlimited high-fidelity tokens</li>
-              </ul>
-            </div>
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('mimi:open_patron_modal'))}
-              className="w-full py-3 border border-nous-text text-[#141414] font-sans text-[9px] uppercase tracking-widest font-black rounded-none hover:bg-nous-base transition-all text-center"
-            >
-              Enterprise Request
-            </button>
-          </div>
+          ))}
         </div>
 
         {/* Dynamic Data Value Proposition Alert */}
-        <div className="mt-8 p-4 bg-stone-50 border border-nous-border/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="mt-8 p-4 bg-nous-paper border border-nous-border/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <ShieldCheck size={18} className="text-stone-700 shrink-0" />
-            <p className="font-sans text-[11px] text-stone-600 font-bold uppercase tracking-wider">
+            <ShieldCheck size={18} className="text-nous-subtle shrink-0" />
+            <p className="font-sans text-[11px] text-nous-subtle font-bold uppercase tracking-wider">
               Mimi operates as a first-party, closed-loop semantic asset sandbox.
             </p>
           </div>
-          <span className="font-mono text-[9px] text-[#222] bg-white border border-stone-200 px-3 py-1 font-bold uppercase">
+          <span className="font-mono text-[9px] text-nous-text bg-nous-base border border-nous-border px-3 py-1 font-bold uppercase">
             Sovereign Trust Rating: 100% Secure
           </span>
         </div>

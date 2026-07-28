@@ -630,6 +630,7 @@ export const MoodBoardChamber: React.FC = () => {
                 </button>
               </div>
             </div>
+
           ) : (
             <button
               type="button"

@@ -1,9 +1,11 @@
 {
   "name": "Mimi Studio",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20",
+
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
+
   "customizations": {
     "vscode": {
       "extensions": [
@@ -28,15 +30,15 @@
       }
     }
   },
+
   "remoteEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096"
   },
+
   "postCreateCommand": "npm ci",
-  "forwardPorts": [
-    5173,
-    3000,
-    5000
-  ],
+
+  "forwardPorts": [5173, 3000, 5000],
+
   "portsAttributes": {
     "5173": {
       "label": "Vite Dev Server",
@@ -51,6 +53,8 @@
       "onAutoForward": "notify"
     }
   },
+
   "waitFor": "postCreateCommand",
+
   "remoteUser": "node"
 }

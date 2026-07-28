@@ -1054,24 +1054,24 @@ export const AnalysisDisplay: React.FC<{
 
   {/* Quick Preview Draft Banner */}
   {metadata.isQuickPreview && (
-    <div className="bg-purple-950/90 border-b border-purple-800/80 text-purple-100 px-6 py-3.5 flex items-center justify-between font-mono text-[10px] tracking-wider z-[11000] relative backdrop-blur-md shrink-0 shadow-xl">
-      <div className="flex items-center gap-2.5">
-        <Eye size={14} className="text-purple-400 animate-pulse" />
-        <span className="font-bold">QUICK PREVIEW DRAFT // Layout & Typography Verified</span>
-        <span className="hidden md:inline text-purple-300/70 text-[9px]">(Low-fidelity draft without heavy image generation)</span>
+    <div className="bg-stone-900/95 border-b border-stone-700/70 text-stone-100 px-6 py-3.5 flex items-center justify-between gap-4 font-mono text-[10px] tracking-wider z-[11000] relative backdrop-blur-md shrink-0 shadow-xl">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <Eye size={14} className="text-amber-400 shrink-0" />
+        <span className="font-bold truncate">QUICK PREVIEW DRAFT // Layout & Typography Verified</span>
+        <span className="hidden md:inline text-stone-400 text-[9px]">(Low-fidelity draft without heavy image generation)</span>
       </div>
       <button
         onClick={() => {
           onReset();
           window.dispatchEvent(new CustomEvent('mimi:develop_highfi', { detail: { originalInput: metadata.originalInput } }));
         }}
-        className="px-4 py-1.5 bg-purple-400 hover:bg-purple-300 text-stone-950 font-extrabold rounded-xs transition-colors tracking-widest uppercase flex items-center gap-1.5 cursor-pointer shadow-md"
+        className="px-4 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-extrabold rounded-xs transition-colors tracking-widest uppercase shrink-0 cursor-pointer shadow-md"
       >
-        <Sparkles size={12} />
         Generate Full High-Fi Zine
       </button>
     </div>
   )}
+
 
  <style>{`
   .zine-theme-root section { background-color: transparent !important; }
@@ -1292,7 +1292,7 @@ export const AnalysisDisplay: React.FC<{
  
  {/* 1. HEADLINES (TITLE/TONE) */}
  <motion.section initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease: [0.16,1,0.3,1] }} className="min-h-[100dvh] flex flex-col justify-center snap-start border-b border-nous-border print:min-h-0 print:py-12 bg-nous-base">
- <div className="w-full space-y-16 px-6 md:px-24">
+ <div className="w-full space-y-10 md:space-y-16 px-6 md:px-24">
  <div className="flex items-center gap-4">
  <span className="font-mono text-[9px] uppercase tracking-[0.5em] text-nous-subtle">Issue_0{Math.floor(Math.random() * 10)}</span>
  {metadata.isDeepThinking && <div className="flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-none text-amber-500 font-sans text-[7px] font-black uppercase tracking-widest"><Radar size={10} className="animate-pulse"/> Deep Refraction</div>}
@@ -1303,7 +1303,7 @@ export const AnalysisDisplay: React.FC<{
  <h1 className={`${fontStyle} text-5xl sm:text-7xl md:text-8xl lg:text-[9rem] tracking-tight leading-[0.92] text-nous-text uppercase italic max-w-5xl`}>
  {metadata.content?.headlines?.[0] || metadata.title}
  </h1>
- <div className="flex flex-col md:flex-row md:items-center gap-12 pt-12 border-t border-nous-border">
+ <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-12 pt-8 md:pt-12 border-t border-nous-border">
  <div className="flex flex-col gap-1">
  <span className="font-sans text-[8px] uppercase tracking-[0.3em] font-black text-nous-subtle">Tone</span>
  <span className="font-serif italic text-3xl"style={{ color: accentColor }}>{metadata.tone}</span>

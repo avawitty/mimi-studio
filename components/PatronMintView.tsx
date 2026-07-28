@@ -39,7 +39,7 @@ export const PatronMintView: React.FC<{ onExit: () => void }> = ({ onExit }) => 
  };
 
  return (
- <div className="fixed inset-0 z-[20000] bg dark:bg flex flex-col items-center justify-center p-8 transition-colors duration-1000">
+ <div className="fixed inset-0 z-[20000] bg-nous-base text-nous-text flex flex-col items-center justify-center p-8 transition-colors duration-1000">
  
  {/* Background Texture */}
  <div className="absolute inset-0 pointer-events-none opacity-[0.05]"style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
@@ -58,7 +58,7 @@ export const PatronMintView: React.FC<{ onExit: () => void }> = ({ onExit }) => 
  </div>
  </div>
  <div className="space-y-2">
- <h1 className="font-serif text-4xl italic text-nous-text ">Forging Key...</h1>
+ <h1 className="font-serif text-4xl italic text-nous-text">Forging Key...</h1>
  <p className="font-sans text-[9px] uppercase tracking-[0.4em] text-nous-subtle font-black">Verifying Patronage Protocol</p>
  </div>
  </motion.div>
@@ -70,16 +70,16 @@ export const PatronMintView: React.FC<{ onExit: () => void }> = ({ onExit }) => 
  className="space-y-12"
  >
  <div className="space-y-4">
- <div className="w-16 h-16 bg-amber-500 text-white rounded-none flex items-center justify-center mx-auto mb-6">
+ <div className="w-16 h-16 bg-amber-500 text-nous-base rounded-none flex items-center justify-center mx-auto mb-6">
  <Key size={32} />
  </div>
- <h1 className="font-serif text-5xl md:text-6xl italic text-nous-text text-nous-text tracking-tighter">Sovereign Grant.</h1>
+ <h1 className="font-serif text-5xl md:text-6xl italic text-nous-text tracking-tighter">Sovereign Grant.</h1>
  <p className="font-sans text-[10px] uppercase tracking-[0.4em] text-nous-subtle font-black">Your Imperial Access Code</p>
  </div>
 
- <div className="p-8 bg-white border border-nous-border rounded-none relative overflow-hidden group">
- <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-300 to-amber-600"/>
- <p className="font-mono text-2xl md:text-3xl text-center tracking-widest text-nous-text text-nous-text font-black select-all">
+ <div className="p-8 bg-nous-paper border border-nous-border rounded-none relative overflow-hidden group">
+ <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"/>
+ <p className="font-mono text-2xl md:text-3xl text-center tracking-widest text-nous-text font-black select-all">
  {key}
  </p>
  <div className="flex justify-center mt-6">

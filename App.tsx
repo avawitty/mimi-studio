@@ -262,6 +262,9 @@ const MoodboardComposer = lazy(() =>
 const CodexView = lazy(() =>
   import("./components/CodexView").then((m) => ({ default: m.CodexView })),
 );
+const BrandVoiceView = lazy(() =>
+  import("./components/BrandVoiceView").then((m) => ({ default: m.BrandVoiceView })),
+);
 const TheForecast = lazy(() =>
   import("./components/TheForecast").then((m) => ({ default: m.TheForecast })),
 );
@@ -459,29 +462,22 @@ const NavigationDrawer: React.FC<{
             className="studio-worktable fixed top-0 left-0 h-full w-full max-w-sm z-[9995] studio-bg-panel border-r studio-border text-nous-text overflow-hidden flex flex-col shadow-2xl pointer-events-auto"
           >
             {/* Drawer Header */}
-            <div className="px-6 py-5 border-b studio-border flex items-center justify-between studio-bg-surface select-none">
-              <div className="flex items-center gap-3">
-                <img
-                  src={isDark ? "/brand/official/mimi-primary-wordmark-dark.svg" : "/brand/official/mimi-primary-wordmark-light.svg"}
-                  alt="Mimi"
-                  className="w-16 h-8 object-contain object-left shrink-0"
-                />
-                <div className="flex flex-col border-l studio-border pl-3">
-                  <span className="font-mono text-[8px] uppercase tracking-[0.22em] font-bold leading-none studio-text-ink">
-                    Rooms
-                  </span>
-                  <span className="font-sans text-[10px] leading-snug studio-text-muted mt-1">
-                    Start with the creator path, or browse every chamber.
-                  </span>
-                </div>
+            <div className="px-6 py-5 border-b studio-border flex items-start justify-between studio-bg-surface select-none">
+              <div className="flex flex-col">
+                <span className="font-mono text-[9px] uppercase tracking-[0.28em] font-bold leading-none studio-text-muted">
+                  Full Menu
+                </span>
+                <span className="font-serif italic text-2xl leading-tight studio-text-ink mt-1.5">
+                  All chambers
+                </span>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-full border studio-border flex items-center justify-center studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+                className="w-10 h-10 border studio-border flex items-center justify-center studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 transition-all shrink-0"
                 title="Close Menu"
               >
-                <X size={14} strokeWidth={1.5} />
+                <X size={16} strokeWidth={1.5} />
               </button>
             </div>
 
@@ -496,79 +492,6 @@ const NavigationDrawer: React.FC<{
               </div>
             )}
 
-            {!searchQuery && (
-              <div className="px-6 py-4 border-b studio-border studio-bg-surface">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.2em] font-extrabold studio-text-ink">
-                    Recommended creator path
-                  </span>
-                  <span className="font-sans text-[10px] studio-text-muted">4 steps</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {recommendedPath.map((step) => {
-                    const isActive = viewMode === canonicalizeMimiRoute(step.mode);
-                    return (
-                      <button
-                        key={step.mode}
-                        type="button"
-                        onClick={() => handleNav(step.mode)}
-                        className={`text-left p-3 border transition-colors ${
-                          isActive
-                            ? "border-amber-500/60 bg-amber-500/10"
-                            : "studio-border bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.05] dark:hover:bg-white/[0.05]"
-                        }`}
-                      >
-                        <span className="block font-mono text-[8px] uppercase tracking-[0.18em] text-amber-600 dark:text-amber-400 font-bold">
-                          {step.number} / {step.label}
-                        </span>
-                        <span className="block font-sans text-[10px] leading-snug studio-text-muted mt-1">
-                          {step.note}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Elegant Search Filter */}
-            <div className="px-6 py-4 border-b studio-border studio-bg-surface/50">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search all rooms..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
-                    className="w-full bg-stone-100/60 dark:bg-stone-900/60 border studio-border text-nous-text text-[11px] tracking-wide py-2.5 pl-9 pr-10 focus:outline-none focus:border-stone-450 dark:focus:border-stone-700 transition-colors placeholder:text-stone-400/85 font-sans"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery("");
-                        if (searchInputRef.current) {
-                          searchInputRef.current.focus();
-                        }
-                      }}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-all focus:outline-none p-1 rounded-full hover:bg-stone-200/50 dark:hover:bg-stone-800/50"
-                      title="Clear filter"
-                    >
-                      <X size={10} strokeWidth={2.5} />
-                    </button>
-                  )}
-                </div>
-                <div 
-                  id="chamber-filter-count"
-                  className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-extrabold bg-stone-100/60 dark:bg-stone-900/60 px-3 py-2.5 border studio-border select-none"
-                  title={`${filteredChambersCount} of ${totalChambersCount} chambers active`}
-                >
-                  {filteredChambersCount}/{totalChambersCount}
-                </div>
-              </div>
-            </div>
 
             {/* Canonical Directory (Scrollable Area) */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
@@ -581,14 +504,15 @@ const NavigationDrawer: React.FC<{
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.97, y: -15 }}
                     transition={{ type: "spring", damping: 30, stiffness: 280, mass: 1 }}
-                    className="space-y-3"
+                    className="space-y-1"
                   >
-                    <div className="flex items-center gap-2 px-1">
-                      <span className="font-mono text-[8px] uppercase tracking-[0.25em] font-black text-neutral-400 dark:text-neutral-500">
-                        ✥ {section.section}
+                    <div className="flex items-center gap-3 px-1 mb-2">
+                      <span className="font-mono text-[9px] uppercase tracking-[0.3em] font-bold text-neutral-400 dark:text-neutral-500 shrink-0">
+                        {section.section}
                       </span>
+                      <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" aria-hidden="true" />
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col">
                       <AnimatePresence mode="popLayout">
                         {section.items.map((item) => {
                           const isActive = viewMode === canonicalizeMimiRoute(item.mode);
@@ -607,22 +531,21 @@ const NavigationDrawer: React.FC<{
                               key={item.mode}
                               onClick={() => handleNav(item.mode)}
                               aria-current={isActive ? "page" : undefined}
-                              className={`w-full text-left group flex flex-col gap-1 p-3.5 border transition-all duration-200 rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/80 ${
-                                isActive
-                                  ? "bg-stone-100 dark:bg-stone-900 border-amber-500/70 dark:border-amber-500/50 shadow-sm"
-                                  : "bg-[#fcfcfa] dark:bg-[#161513] border-stone-200 dark:border-stone-850 hover:bg-stone-100 dark:hover:bg-[#1f1e1c] hover:border-stone-300 dark:hover:border-stone-700"
+                              className={`w-full text-left group flex flex-col gap-1 py-3.5 px-1 min-h-[44px] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
+                                isActive ? "" : ""
                               }`}
                             >
-                              <div className="flex items-center justify-between w-full">
-                                <span className="font-serif italic text-lg studio-text-ink group-hover:translate-x-1 transition-transform duration-200">
-                                  {isActive ? <span className="text-amber-500 font-sans font-bold not-italic mr-1">✥</span> : null}
-                                  {item.label}
-                                </span>
-                                <span className="font-mono text-[7px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 font-extrabold px-1.5 py-0.5 border border-transparent group-hover:border-neutral-200 dark:group-hover:border-neutral-800">
-                                  {item.mode}
-                                </span>
-                              </div>
-                              <span className="font-sans text-[8px] uppercase tracking-wider text-stone-500 group-hover:text-stone-400 block leading-normal">
+                              <span
+                                className={`flex items-center gap-2 font-sans text-[15px] uppercase tracking-[0.08em] font-bold transition-colors ${
+                                  isActive
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "studio-text-ink group-hover:text-amber-600 dark:group-hover:text-amber-400"
+                                }`}
+                              >
+                                {isActive ? <span className="text-amber-500 text-xs">✥</span> : null}
+                                {item.label}
+                              </span>
+                              <span className="font-sans text-[13px] leading-snug text-stone-500 dark:text-stone-400">
                                 {item.note}
                               </span>
                             </motion.button>
@@ -1384,7 +1307,7 @@ export const App: React.FC = () => {
   }, [user, authLoading, hasSeenGateway]);
 
   const [checkoutPlan, setCheckoutPlan] = useState<
-    "core" | "pro" | "lab" | null
+    "core" | "optioning" | "pro" | "lab" | null
   >(null);
   const [checkoutInterval, setCheckoutInterval] = useState<"month" | "year">(
     "month",
@@ -1470,14 +1393,17 @@ export const App: React.FC = () => {
     const isSuccessPath = window.location.pathname.includes("/success");
 
     if ((checkoutStatus === "success" || isSuccessPath) && planParam) {
-      if (planParam === "lab_annual") {
-        setCheckoutPlan("lab");
-        setCheckoutInterval("year");
-      } else {
-        setCheckoutPlan(planParam as "core" | "pro" | "lab");
-        setCheckoutInterval("month");
+      const intervalParam = params.get("interval");
+      // Legacy support: an older success_url used "lab_annual" as the plan.
+      const normalizedPlan = planParam === "lab_annual" ? "lab" : planParam;
+      const normalizedInterval =
+        planParam === "lab_annual" || intervalParam === "year" ? "year" : "month";
+      const validPlans = ["core", "optioning", "pro", "lab"] as const;
+      if ((validPlans as readonly string[]).includes(normalizedPlan)) {
+        setCheckoutPlan(normalizedPlan as (typeof validPlans)[number]);
+        setCheckoutInterval(normalizedInterval);
+        setViewMode("checkout-success");
       }
-      setViewMode("checkout-success");
       // Clean up URL
       window.history.replaceState({}, document.title, "/");
     } else if (
@@ -1542,13 +1468,6 @@ export const App: React.FC = () => {
           console.error("MIMI // Failed to fetch zine by id", err);
           setAppState(AppState.IDLE);
         }
-        return;
-      }
-      if (e.detail === "scribe") {
-        window.dispatchEvent(
-          new CustomEvent("mimi:sound", { detail: { type: "click" } }),
-        );
-        setScribeTab("mimi");
         return;
       }
       if (e.detail) {
@@ -2373,6 +2292,7 @@ export const App: React.FC = () => {
                         {viewMode === "obsidian-mirror" && <ObsidianMirror />}
                         {viewMode === "notifications" && <NotificationsView />}
                         {viewMode === "codex" && <CodexView />}
+                        {viewMode === "brand-voice" && <BrandVoiceView />}
                         {viewMode === "architecture" && <ArchitectureView />}
                         {viewMode === "aesthetic-tokens" && (
                           <AestheticTokensMap

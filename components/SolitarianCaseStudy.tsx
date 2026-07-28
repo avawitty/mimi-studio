@@ -526,16 +526,16 @@ export const SolitarianCaseStudy: React.FC<{ onClose?: () => void }> = ({ onClos
                 </p>
               </div>
 
-              <div className="flex justify-between items-center bg-stone-950 p-2 border border-stone-800">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-stone-950 p-2 border border-stone-800">
                 <div className="font-mono text-[9px] uppercase tracking-wider text-stone-500">
                   Select Spread Slide
                 </div>
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                   {[...Array(6)].map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedPreviewPage(index)}
-                      className={`w-6 h-6 border font-mono text-[9px] flex items-center justify-center transition-colors ${selectedPreviewPage === index ? 'bg-[#eae9e5] text-stone-900 font-bold border-[#eae9e5]' : 'border-stone-800 text-stone-500 hover:text-stone-300 hover:border-stone-700'}`}
+                      className={`w-7 h-7 border font-mono text-[9px] flex items-center justify-center transition-colors ${selectedPreviewPage === index ? 'bg-[#eae9e5] text-stone-900 font-bold border-[#eae9e5]' : 'border-stone-800 text-stone-500 hover:text-stone-300 hover:border-stone-700'}`}
                     >
                       {index + 1}
                     </button>

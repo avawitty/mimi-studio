@@ -1,4 +1,4 @@
-import { cors, requireMethod, sendJson } from "../lib/apiUtils.js";
+import { cors, requireMethod, sendError, sendJson } from "../lib/apiUtils.js";
 import { extractMimiSessionToken, getServerFirebaseAdmin, verifyMimiSession } from "../lib/serverFirebaseAdmin.js";
 import { proxyToFunctions } from "../lib/proxyToFunctions.js";
 import {
@@ -15,7 +15,7 @@ export default async function handler(req: any, res: any) {
     if (!auth || !db) {
       const token = extractMimiSessionToken(req.headers || {});
       if (!token) {
-        sendJson(res, 401, { error: "Mimi sign-in is required." });
+        sendError(res, 401, "Mimi sign-in is required.", "AUTH_REQUIRED");
         return;
       }
       const proxied = await proxyToFunctions("/api/sync-subscription", {
@@ -34,7 +34,7 @@ export default async function handler(req: any, res: any) {
     const email = "email" in decoded ? decoded.email : undefined;
 
     if (!email) {
-      sendJson(res, 400, { error: "No email address associated with this account token." });
+      sendError(res, 400, "No email address associated with this account token.", "NO_EMAIL");
       return;
     }
 
@@ -69,6 +69,6 @@ export default async function handler(req: any, res: any) {
   } catch (error: any) {
     const status = error?.status || 500;
     console.error("MIMI // Sync subscription error:", error);
-    sendJson(res, status, { error: error.message || "Failed to sync subscription" });
+    sendError(res, status, error?.message || "Failed to sync subscription", "SYNC_FAILED");
   }
 }

@@ -34,7 +34,7 @@ import {
 import { generateArtHistoryMatchesForProject } from '../../services/artHistoryService';
 import { saveArtworkMatches } from '../../services/tailorService';
 import { TailorStartScreen } from './TailorStartScreen';
-import { EvidenceUploadScreen } from './EvidenceUploadScreen';
+import { EvidenceUploadScreen, type EvidenceUploadItem } from './EvidenceUploadScreen';
 import { AnalysisProgressScreen } from './AnalysisProgressScreen';
 import { PatternGraphScreen } from './PatternGraphScreen';
 import { CreativeLawsScreen } from './CreativeLawsScreen';
@@ -107,9 +107,7 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
     setStep('upload');
   };
 
-  const handleUpload = async (
-    files: Array<{ dataUrl: string; title: string; sourceType: EvidenceSourceType }>,
-  ) => {
+  const handleUpload = async (files: EvidenceUploadItem[]) => {
     if (!uid || !project) return;
     setUploading(true);
     try {
@@ -117,8 +115,11 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
         await addEvidenceNode(uid, project.id, {
           sourceType: f.sourceType,
           title: f.title,
-          uploadedFileUrl: f.dataUrl,
-          thumbnailUrl: f.dataUrl,
+          ...(f.dataUrl ? { uploadedFileUrl: f.dataUrl } : {}),
+          ...(f.thumbnailUrl || f.dataUrl ? { thumbnailUrl: f.thumbnailUrl ?? f.dataUrl } : {}),
+          ...(f.sourceUrl ? { sourceUrl: f.sourceUrl } : {}),
+          ...(f.description ? { description: f.description } : {}),
+          ...(f.extractedMetadata ? { extractedMetadata: f.extractedMetadata } : {}),
         });
       }
       await refreshProjectData(project.id);

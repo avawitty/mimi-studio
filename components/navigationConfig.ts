@@ -242,6 +242,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         keywords: ["rules", "instructions", "system", "codex", "code", "architecture", "diagnostics"],
       },
       {
+        mode: "brand-voice",
+        label: "The Voice",
+        note: "brand voice dossier",
+        keywords: ["voice", "brand voice", "tone", "editorial", "copy", "language", "persona", "style guide", "principles"],
+      },
+      {
         mode: "chamber-map",
         label: "Chamber Map",
         note: "canonical module registry",
