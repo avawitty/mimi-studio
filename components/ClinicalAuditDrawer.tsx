@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Terminal, Shield, Check, Send, AlertTriangle } from 'lucide-react';
 
 export const ClinicalAuditDrawer: React.FC = () => {
+  // The floating AUDIT [FPS] evaluator widget is retired from the UI on all
+  // viewports. Returning null keeps the mount points harmless without churn.
+  return null;
+
   const [open, setOpen] = useState(false);
   const [comment, setContent] = useState('');
   const [rating, setRating] = useState<number>(5);

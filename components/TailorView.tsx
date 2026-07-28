@@ -6144,9 +6144,9 @@ export const TailorView: React.FC<{
             <div className="space-y-4 mt-12">
               <button
                 onClick={() => setShowLogicReport(true)}
-                className="w-full py-4 bg-transparent border border-stone-800 text-stone-100 hover:bg-stone-800/20 rounded-none font-sans text-[9px] uppercase tracking-[0.4em] font-black active:scale-95 transition-all flex items-center justify-center gap-3"
+                className="w-full py-4 bg-transparent border border-nous-border text-nous-text hover:bg-nous-text/10 rounded-none font-sans text-[9px] uppercase tracking-[0.4em] font-black active:scale-95 transition-all flex items-center justify-center gap-3"
               >
-                <Zap size={12} className="text-[#a8a29e]" /> View Mimi Logic
+                <Zap size={12} className="text-nous-subtle" /> View Mimi Logic
                 Report
               </button>
               <button
