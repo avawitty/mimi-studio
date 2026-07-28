@@ -1,4 +1,5 @@
-import { readJsonBody, requireMethod, sendJson } from "../lib/apiUtils.js";
+import { z } from "zod";
+import { readJsonBody, requireMethod, sendError, sendJson, validateBody } from "../lib/apiUtils.js";
 import {
   getServerFirebaseAdmin,
   verifyMimiSession,
@@ -10,26 +11,32 @@ import {
   parseCheckoutPlan,
 } from "../lib/stripePlans.js";
 
+const checkoutSchema = z.object({
+  plan: z.enum(["core", "optioning", "pro", "lab"]),
+});
+
 export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
 
   try {
     const body = await readJsonBody(req);
-    const plan = parseCheckoutPlan(body.plan);
+    const parsed = validateBody(res, checkoutSchema, body);
+    if (!parsed) return;
+    const plan = parseCheckoutPlan(parsed.plan);
     if (!plan) {
-      sendJson(res, 400, { error: "Choose a valid Mimi plan." });
+      sendError(res, 400, "Choose a valid Mimi plan.", "INVALID_PLAN");
       return;
     }
 
     const decoded = await verifyMimiSession(req.headers || {});
     if (decoded.firebase?.sign_in_provider === "anonymous") {
-      sendJson(res, 403, { error: "Link a Google or email account before subscribing." });
+      sendError(res, 403, "Link a Google or email account before subscribing.", "ANONYMOUS_USER");
       return;
     }
 
     const { db } = getServerFirebaseAdmin();
     if (!db) {
-      sendJson(res, 503, { error: "Mimi billing is temporarily unavailable." });
+      sendError(res, 503, "Mimi billing is temporarily unavailable.", "BILLING_UNAVAILABLE");
       return;
     }
 
@@ -78,8 +85,6 @@ export default async function handler(req: any, res: any) {
     sendJson(res, 200, { url: session.url });
   } catch (error: any) {
     console.error("MIMI // Stripe checkout error:", error);
-    sendJson(res, error?.status || 500, {
-      error: error.message || "Failed to create checkout session",
-    });
+    sendError(res, error?.status || 500, error?.message || "Failed to create checkout session");
   }
 }

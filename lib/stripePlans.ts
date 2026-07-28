@@ -1,10 +1,14 @@
+import { STRIPE_PRICES } from "../constants.js";
+
 export type MimiCheckoutPlan = "core" | "optioning" | "pro" | "lab";
 
+// Canonical fallback price IDs live in constants.ts (STRIPE_PRICES) so the
+// client and server never drift. Env vars (STRIPE_PRICE_*) still take priority.
 const TEST_PRICE_IDS: Record<MimiCheckoutPlan, string> = {
-  core: "price_1TyH1dPelakqdIL6lWwNf7Hw",
-  optioning: "price_1TyH1dPelakqdIL6qnkLnvan",
-  pro: "price_1TyH1ePelakqdIL6cL56uAzp",
-  lab: "price_1TyH1ePelakqdIL6VpQHXEKG",
+  core: STRIPE_PRICES.core,
+  optioning: STRIPE_PRICES.optioning,
+  pro: STRIPE_PRICES.pro,
+  lab: STRIPE_PRICES.lab,
 };
 
 const PLAN_TO_MIMI_PLAN = {
