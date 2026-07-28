@@ -22,7 +22,7 @@ export type TasteAuthority =
 
 export type TasteConfidence = 'low' | 'medium' | 'high';
 
-export interface TasteProvenance {
+export type TasteProvenance = {
   provider: TasteProvider;
   ingestionMethod: TasteIngestionMethod;
   authority: TasteAuthority;
@@ -30,7 +30,7 @@ export interface TasteProvenance {
   sourceLabel: string;
   kind?: string;
   detail?: string;
-}
+};
 
 // Evidence-node-ready item. Feeds directly into TailorProjectFlow.handleUpload.
 export interface TasteImportItem {
@@ -40,7 +40,7 @@ export interface TasteImportItem {
   thumbnailUrl?: string;
   sourceUrl?: string;
   description?: string;
-  extractedMetadata: TasteProvenance & Record<string, unknown>;
+  extractedMetadata: Record<string, unknown>;
 }
 
 export interface TasteImportResult {

@@ -1177,21 +1177,21 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <button
  type="button"
  onClick={() => setShowInjectModal(true)}
- className="px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest archive-text-ink hover:bg-archive-cream transition-colors"
+ className="hidden md:inline-flex px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest archive-text-ink hover:bg-archive-cream transition-colors"
  >
  Inject
  </button>
  <button
  type="button"
  onClick={() => setShowBatchDrop(true)}
- className="px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest archive-text-muted hover:archive-text-ink transition-colors"
+ className="hidden md:inline-flex px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest archive-text-muted hover:archive-text-ink transition-colors"
  >
  Batch links
  </button>
  <button
  type="button"
  onClick={() => setShowDriftReport(true)}
- className="px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest archive-text-muted hover:archive-text-ink transition-colors"
+ className="hidden md:inline-flex px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest archive-text-muted hover:archive-text-ink transition-colors"
  >
  Drift
  </button>
@@ -1260,12 +1260,19 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  </div>
 
  {!activeBoard && (
- <div className="shrink-0 px-4 md:px-8 py-4 border-b archive-border bg-white dark:bg-stone-950">
-   <div className="flex items-center justify-between mb-3">
-     <span className="font-mono text-[8px] uppercase tracking-[0.28em] archive-text-muted font-black">Collections</span>
-     <span className="font-mono text-[8px] archive-text-muted">{folders.length} folders</span>
+ <div className="shrink-0 px-4 md:px-8 py-3 border-b archive-border bg-white dark:bg-stone-950">
+   <div className="flex items-center justify-between">
+     <span className="font-mono text-[8px] uppercase tracking-[0.28em] archive-text-muted font-black">Collections · {folders.length}</span>
+     <button
+       type="button"
+       onClick={() => { setSelectedIds(new Set()); setShowFolderModal(true); }}
+       className="flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-widest archive-text-muted hover:archive-text-ink transition-colors min-h-11 md:min-h-0"
+     >
+       <FolderPlus size={13} /> New folder
+     </button>
    </div>
-   <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+   {folders.length > 0 && (
+   <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1 mt-3">
      {folders.map((folder) => {
        const memberThumbs = (folder.content.itemIds || [])
          .map((id) => items.find((i) => i.id === id))
@@ -1280,9 +1287,9 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
            onDragOver={(e) => { if (draggingItemId) { e.preventDefault(); setDropTargetFolderId(folder.id); } }}
            onDragLeave={() => setDropTargetFolderId((cur) => (cur === folder.id ? null : cur))}
            onDrop={(e) => { e.preventDefault(); if (draggingItemId) { addItemsToFolder(folder.id, [draggingItemId]); setDraggingItemId(null); setDropTargetFolderId(null); } }}
-           className={`group shrink-0 w-28 text-left transition-all ${isDrop ? 'scale-105' : ''}`}
+           className={`group shrink-0 w-20 md:w-28 text-left transition-all ${isDrop ? 'scale-105' : ''}`}
          >
-           <div className={`w-28 h-28 grid grid-cols-2 grid-rows-2 gap-px bg-nous-base border overflow-hidden transition-all ${isDrop ? 'border-archive-ink ring-2 ring-archive-ink' : 'archive-border group-hover:border-archive-ink'}`}>
+           <div className={`w-20 h-20 md:w-28 md:h-28 grid grid-cols-2 grid-rows-2 gap-px bg-nous-base border overflow-hidden transition-all ${isDrop ? 'border-archive-ink ring-2 ring-archive-ink' : 'archive-border group-hover:border-archive-ink'}`}>
              {memberThumbs.length > 0 ? (
                memberThumbs.map((s, i) => (
                  <div key={i} className="w-full h-full overflow-hidden bg-archive-cream">
@@ -1302,21 +1309,45 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
          </button>
        );
      })}
-     <button
-       type="button"
-       onClick={() => { setSelectedIds(new Set()); setShowFolderModal(true); }}
-       className="shrink-0 w-28 h-28 self-start border border-dashed archive-border flex flex-col items-center justify-center gap-2 archive-text-muted hover:archive-text-ink hover:border-archive-ink transition-colors"
-     >
-       <FolderPlus size={22} strokeWidth={1.25} />
-       <span className="font-mono text-[7px] uppercase tracking-widest">New Folder</span>
-     </button>
    </div>
+   )}
  </div>
  )}
 
  {!activeBoard ? (
- <div className="shrink-0 px-4 md:px-8 py-4 border-b archive-border bg-[#f7f5f0] dark:bg-stone-900">
-   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2">
+ <div className="shrink-0 px-4 md:px-8 py-3 md:py-4 border-b archive-border bg-[#f7f5f0] dark:bg-stone-900">
+   {/* Mobile: compact filter pills so the gallery stays above the fold */}
+   <div className="flex md:hidden gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+ {([
+   ['ALL', 'All', LayoutGrid],
+   ['ZINES', 'Zines', BookOpen],
+   ['IMAGES', 'Images', ImageIcon],
+   ['ANALYSES', 'Analyses', Radar],
+   ['NOTES', 'Notes', FileText],
+ ] as const).map(([tab, label, Icon]) => {
+   const counts = {
+     ALL: items.length,
+     ZINES: items.filter((item) => item.type === 'zine_card').length,
+     IMAGES: items.filter((item) => item.type === 'image' || item.type === 'video').length,
+     ANALYSES: items.filter((item) => item.type === 'analysis_report' || item.type === 'omen').length,
+     NOTES: items.filter((item) => ['text', 'script', 'link', 'voicenote'].includes(item.type)).length,
+   };
+   return (
+     <button
+       key={tab}
+       type="button"
+       onClick={() => setCategoryFilter(tab)}
+       className={`shrink-0 min-h-11 px-3 py-2 border font-mono text-[9px] uppercase tracking-widest whitespace-nowrap flex items-center gap-1.5 transition-colors ${categoryFilter === tab ? 'border-archive-ink bg-archive-ink text-white' : 'archive-border archive-text-muted'}`}
+     >
+       <Icon size={13} strokeWidth={1.5} />
+       {label}
+       <span className={categoryFilter === tab ? 'text-white/60' : 'archive-text-muted'}>{counts[tab]}</span>
+     </button>
+   );
+ })}
+   </div>
+   {/* Desktop: expanded category cards */}
+   <div className="hidden md:grid grid-cols-3 xl:grid-cols-5 gap-2">
  {([
    ['ALL', 'Everything', LayoutGrid],
    ['ZINES', 'Zines', BookOpen],
@@ -1401,7 +1432,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  )}
  </AnimatePresence>
 
- <div className="flex-1 overflow-y-auto no-scrollbar px-4 md:px-8 lg:px-12 pt-12 pb-64">
+ <div className="flex-1 overflow-y-auto no-scrollbar px-4 md:px-8 lg:px-12 pt-5 md:pt-12 pb-64">
  {/* SEARCH SUMMARY */}
  <AnimatePresence>
  {searchSummary && (
