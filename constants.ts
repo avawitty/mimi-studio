@@ -56,6 +56,31 @@ export const STRIPE_PRICES = {
   lab: "price_1TyH1ePelakqdIL6VpQHXEKG",
 } as const;
 
+export const STRIPE_PRICES_ANNUAL = {
+  core: "price_1TyHpcPelakqdIL6zNy9Pr9n",
+  optioning: "price_1TyHpcPelakqdIL6XOTs86AM",
+  pro: "price_1TyHpcPelakqdIL6TADmS9HW",
+  lab: "price_1TyHpdPelakqdIL6L5g4CKKw",
+} as const;
+
+/** Monthly price in USD per checkout plan, used for display and annual savings math. */
+export const PLAN_MONTHLY_USD = {
+  core: 12,
+  optioning: 25,
+  pro: 40,
+  lab: 99,
+} as const;
+
+/** Annual price in USD per checkout plan (~2 months free vs monthly). */
+export const PLAN_ANNUAL_USD = {
+  core: 120,
+  optioning: 250,
+  pro: 400,
+  lab: 990,
+} as const;
+
+export type BillingInterval = 'month' | 'year';
+
 export type PlanTier = 'free' | 'core' | 'optioning' | 'pro' | 'lab';
 
 export function hasAccess(userPlan: PlanTier | string | undefined | null, requiredPlan: PlanTier): boolean {

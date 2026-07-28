@@ -74,9 +74,9 @@ export const CreditMeter: React.FC = () => {
  animate={{ opacity: 1, y: 0, scale: 1 }}
  exit={{ opacity: 0, y: 10, scale: 0.95 }}
  transition={{ duration: 0.2 }}
- className="absolute top-full right-0 mt-2 w-64 bg-white border border-nous-border shadow-xl z-50 overflow-hidden"
+ className="absolute top-full right-0 mt-2 w-64 bg-nous-paper border border-nous-border shadow-xl z-50 overflow-hidden"
  >
- <div className="p-4 border-b border-nous-border bg-nous-base /50">
+ <div className="p-4 border-b border-nous-border bg-nous-base/50">
  <div className="flex items-center justify-between mb-2">
  <span className="font-serif italic text-sm text-nous-text">
  {isPaid ? 'Patron Status' : isGhost ? 'Ghost Protocol' : 'Trial Access'}
@@ -85,17 +85,17 @@ export const CreditMeter: React.FC = () => {
  </div>
  
  <div className="flex items-end justify-between mb-1">
- <span className="font-mono text-2xl font-light tracking-tighter text-nous-text ">
+ <span className="font-mono text-2xl font-light tracking-tighter text-nous-text">
  {credits}
  </span>
  <span className="font-sans text-[10px] uppercase tracking-widest text-nous-subtle mb-1">
  Credits Remaining
  </span>
  </div>
- <div className="w-full h-1 bg-stone-200 rounded-full overflow-hidden">
+ <div className="w-full h-1 bg-nous-border rounded-full overflow-hidden">
  <div 
  className={`h-full transition-all duration-500 ${
- credits <= 2 ? 'bg-orange-500' : 'bg-nous-base '
+ credits <= 2 ? 'bg-amber-500' : 'bg-nous-text'
  }`}
  style={{ width: `${percentage}%` }}
  />
@@ -113,7 +113,7 @@ export const CreditMeter: React.FC = () => {
  </div>
 
  {!isPaid && (
- <div className="p-4 bg-white">
+ <div className="p-4 bg-nous-paper">
  <h4 className="font-sans text-[9px] uppercase tracking-widest text-nous-subtle mb-3">Generation Costs</h4>
  <ul className="space-y-2">
  <li className="flex justify-between items-center text-[11px] font-sans">

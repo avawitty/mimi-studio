@@ -8,11 +8,13 @@ import { getStripeClient } from "../lib/stripeMembership.js";
 import {
   getMimiPlanForCheckout,
   getStripePriceForPlan,
+  parseBillingInterval,
   parseCheckoutPlan,
 } from "../lib/stripePlans.js";
 
 const checkoutSchema = z.object({
   plan: z.enum(["core", "optioning", "pro", "lab"]),
+  interval: z.enum(["month", "year"]).optional(),
 });
 
 export default async function handler(req: any, res: any) {
@@ -27,6 +29,7 @@ export default async function handler(req: any, res: any) {
       sendError(res, 400, "Choose a valid Mimi plan.", "INVALID_PLAN");
       return;
     }
+    const interval = parseBillingInterval(parsed.interval);
 
     const decoded = await verifyMimiSession(req.headers || {});
     if (decoded.firebase?.sign_in_provider === "anonymous") {
@@ -44,7 +47,7 @@ export default async function handler(req: any, res: any) {
     const existingCustomerId = String(userSnapshot.data()?.stripeCustomerId || "");
     const stripe = getStripeClient();
     const mimiPlan = getMimiPlanForCheckout(plan);
-    const priceId = getStripePriceForPlan(plan);
+    const priceId = getStripePriceForPlan(plan, interval);
 
     const configuredBase = String(process.env.MIMI_PUBLIC_BASE_URL || "")
       .trim()
@@ -78,7 +81,7 @@ export default async function handler(req: any, res: any) {
           quantity: 1,
         },
       ],
-      success_url: `${baseUrl}/?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/?checkout=success&plan=${plan}&interval=${interval}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/?checkout=canceled`,
     });
 
