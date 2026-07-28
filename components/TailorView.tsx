@@ -3928,7 +3928,7 @@ export const TailorView: React.FC<{
                   className="bg-nous-base border border-nous-border rounded-none flex flex-col xl:flex-row overflow-hidden min-h-[70vh]"
                 >
                   {/* SIDEBAR NAV */}
-                  <nav className="w-full xl:w-56 bg-nous-base border-b xl:border-b-0 xl:border-r border-nous-border p-3 md:p-4 xl:p-6 flex flex-row xl:flex-col gap-2 overflow-x-auto no-scrollbar xl:overflow-visible shrink-0">
+                  <nav className="w-full xl:w-56 bg-nous-base border-b xl:border-b-0 xl:border-r border-nous-border p-3 md:p-4 xl:p-6 flex flex-row xl:flex-col gap-2 overflow-x-auto no-scrollbar xl:overflow-visible shrink-0 scroll-fade-x">
                     {[
                       { key: "positioning", label: "Identity & Reference" },
                       { key: "visual", label: "Visual Language" },
@@ -3944,10 +3944,10 @@ export const TailorView: React.FC<{
                       <button
                         key={step.key}
                         onClick={() => setActiveStep(step.key as any)}
-                        className={`text-left px-4 py-3 rounded-none font-sans text-[9px] uppercase tracking-widest font-black transition-all flex items-center justify-between whitespace-nowrap ${activeStep === step.key ? "bg-nous-base text-nous-text border border-black/5" : "text-nous-subtle hover:text-nous-text"}`}
+                        className={`shrink-0 xl:shrink text-left px-4 py-3 min-h-11 rounded-none font-sans text-[9px] uppercase tracking-widest font-black transition-all flex items-center justify-between gap-2 whitespace-nowrap border ${activeStep === step.key ? "bg-nous-base text-nous-text border-black/10 dark:border-white/15" : "text-nous-subtle border-transparent hover:text-nous-text hover:border-nous-border/60"}`}
                       >
                         {step.label}{" "}
-                        {activeStep === step.key && <ChevronRight size={12} />}
+                        {activeStep === step.key && <ChevronRight size={12} className="shrink-0" />}
                       </button>
                     ))}
                   </nav>

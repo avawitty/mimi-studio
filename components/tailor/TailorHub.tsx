@@ -44,10 +44,9 @@ export const TailorHub: React.FC<TailorHubProps> = ({
   };
 
   const selectPanel = (panel: TailorPanel) => {
-    if (panel === 'intake' && !isSignedIn) {
-      void login(true);
-      return;
-    }
+    // Always switch panels so the tab visibly responds (esp. on mobile).
+    // Auth-gated panels render their own in-panel sign-in prompt below,
+    // instead of firing a full-page redirect that dies inside the preview.
     setMode(panel);
     navigate?.(panelPaths[panel]);
   };
@@ -136,19 +135,50 @@ export const TailorHub: React.FC<TailorHubProps> = ({
           />
         )}
         {mode === 'intake' && (
-          <TailorProjectFlow
-            initialProject={resumeProject ?? undefined}
-            initialEvidence={resumeEvidence}
-            onExit={() => selectPanel('blueprint')}
-            navigate={navigate}
-            onExportDraft={async (draft) => {
-              if (updateProfile && draft && profile) {
-                await updateProfile({ ...profile, tailorDraft: draft as any });
-              }
-              onOverridesConsumed?.();
-              selectPanel('blueprint');
-            }}
-          />
+          isSignedIn ? (
+            <TailorProjectFlow
+              initialProject={resumeProject ?? undefined}
+              initialEvidence={resumeEvidence}
+              onExit={() => selectPanel('blueprint')}
+              navigate={navigate}
+              onExportDraft={async (draft) => {
+                if (updateProfile && draft && profile) {
+                  await updateProfile({ ...profile, tailorDraft: draft as any });
+                }
+                onOverridesConsumed?.();
+                selectPanel('blueprint');
+              }}
+            />
+          ) : (
+            <div className="flex h-full min-h-0 items-center justify-center px-6 py-12">
+              <div className="w-full max-w-sm text-center">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#d4af37]">
+                  Evidence Intake
+                </p>
+                <h2 className="mt-3 font-serif text-2xl text-stone-900 dark:text-stone-100">
+                  Sign on to bring in your taste
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                  Evidence is saved to your private profile so Mimi can read your
+                  references over time. Sign on to start a fitting.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void login()}
+                  className="mt-6 inline-flex min-h-11 w-full items-center justify-center bg-stone-900 px-6 font-mono text-[11px] uppercase tracking-[0.2em] font-bold text-white transition-colors hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white"
+                >
+                  Sign on
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectPanel('blueprint')}
+                  className="mt-3 inline-flex min-h-11 w-full items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-200"
+                >
+                  Back to blueprint
+                </button>
+              </div>
+            </div>
+          )
         )}
         {mode === 'style-lab' && <ArtStyleChamber />}
         {mode === 'diagnostics' && <AestheticIntelligenceChamber />}
