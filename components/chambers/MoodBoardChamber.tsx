@@ -378,7 +378,7 @@ export const MoodBoardChamber: React.FC = () => {
           item.content?.title || "Imported Analysis",
           typeof body === "string" ? body : JSON.stringify(body, null, 2),
         );
-      } else if (item.type === "voicenote" || item.type === "audio") {
+      } else if (item.type === "voicenote") {
         artifactId = await createDossierArtifactFromText(
           uid,
           activeFolder.id,
@@ -487,7 +487,7 @@ export const MoodBoardChamber: React.FC = () => {
           initialMedia,
           isHighFidelity: true,
         },
-      }),
+      } as any),
     );
   };
 

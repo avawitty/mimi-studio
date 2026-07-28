@@ -1841,10 +1841,11 @@ export const AnalysisDisplay: React.FC<{
  <div className="absolute top-7 left-7 right-7 h-px bg-stone-300 hidden md:block" />
  <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4 relative">
  {metadata.content.roadmap.phases.map((phase, idx) => {
- const artifactOutputs = Array.isArray(phase.artifactOutputs)
-   ? phase.artifactOutputs.filter((o): o is string => typeof o === 'string' && o.trim().length > 0)
-   : typeof phase.artifactOutputs === 'string' && phase.artifactOutputs.trim()
-     ? [phase.artifactOutputs.trim()]
+ const rawArtifactOutputs = phase.artifactOutputs as unknown;
+ const artifactOutputs = Array.isArray(rawArtifactOutputs)
+   ? rawArtifactOutputs.filter((o): o is string => typeof o === 'string' && o.trim().length > 0)
+   : typeof rawArtifactOutputs === 'string' && rawArtifactOutputs.trim()
+     ? [rawArtifactOutputs.trim()]
      : [];
  return (
  <article key={idx} className="bg-[#171717] text-stone-50 p-6 min-h-[350px] flex flex-col">
