@@ -675,6 +675,99 @@ export const InputStudio: React.FC<{
         ))}
       </div>
     ) : null;
+
+  // Shared detailed-brief field panel (used on desktop in the brief section,
+  // and on mobile beneath the "Context Mimi will use" header via a deep link).
+  const renderDetailedBriefPanel = () => (
+    <AnimatePresence>
+      {isBriefExpanded && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="overflow-hidden w-full flex flex-col gap-3 bg-[#FAF9F6] dark:bg-[#11110F] border border-stone-300 dark:border-stone-700 p-3.5 rounded-sm shrink-0 shadow-lg"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {/* Editorial Intention */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Editorial Intention</span>
+              <textarea
+                value={editorialIntention}
+                onChange={(e) => setEditorialIntention(e.target.value)}
+                placeholder="Conceptual focus or creative goal?"
+                rows={2}
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Central Tension */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Central Tension</span>
+              <textarea
+                value={centralTension}
+                onChange={(e) => setCentralTension(e.target.value)}
+                placeholder="The contradiction, question, or mystery..."
+                rows={2}
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Anchors & References */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Anchors & References</span>
+              <input
+                type="text"
+                value={anchorsReferences}
+                onChange={(e) => setAnchorsReferences(e.target.value)}
+                placeholder="Objects, fragments, cultural citations..."
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Desired Feeling */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Desired Feeling</span>
+              <input
+                type="text"
+                value={desiredFeeling}
+                onChange={(e) => setDesiredFeeling(e.target.value)}
+                placeholder="Qualities, mood, evocative atmospheres..."
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Avoid */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Avoid</span>
+              <input
+                type="text"
+                value={avoidExclude}
+                onChange={(e) => setAvoidExclude(e.target.value)}
+                placeholder="Clichés, styles, or specific conclusions..."
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Output Wanted */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Output Wanted</span>
+              <select
+                value={outputWanted}
+                onChange={(e) => setOutputWanted(e.target.value)}
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 cursor-pointer"
+              >
+                <option value="">Poetic Complete Concept (Default)</option>
+                <option value="Issue Outline">Structured Issue Outline</option>
+                <option value="Editorial Essay">Full Editorial Essay</option>
+                <option value="Cover Design">Cover Plate Design Brief</option>
+              </select>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const [recentZinesLoading, setRecentZinesLoading] = useState(false);
   const [linkedZineIds, setLinkedZineIds] = useState<string[]>([]);
   const panelResizeRef = useRef({ startX: 0, startWidth: 340 });
@@ -2449,8 +2542,8 @@ ${finalInput}`;
                   />
                 </div>
 
-                {/* Expand Brief Toggle Button */}
-                <div className="flex justify-center select-none shrink-0">
+                {/* Expand Brief Toggle Button (desktop only) */}
+                <div className="hidden md:flex justify-center select-none shrink-0">
                   <button
                     type="button"
                     onClick={() => {
@@ -2470,94 +2563,8 @@ ${finalInput}`;
                   </button>
                 </div>
 
-                {/* Expandable detailed fields */}
-                <AnimatePresence>
-                  {isBriefExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden w-full flex flex-col gap-3 bg-[#FAF9F6] dark:bg-[#11110F] border border-stone-300 dark:border-stone-700 p-3.5 rounded-sm shrink-0 shadow-lg"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                        {/* Editorial Intention */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Editorial Intention</span>
-                          <textarea
-                            value={editorialIntention}
-                            onChange={(e) => setEditorialIntention(e.target.value)}
-                            placeholder="Conceptual focus or creative goal?"
-                            rows={2}
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Central Tension */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Central Tension</span>
-                          <textarea
-                            value={centralTension}
-                            onChange={(e) => setCentralTension(e.target.value)}
-                            placeholder="The contradiction, question, or mystery..."
-                            rows={2}
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Anchors & References */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Anchors & References</span>
-                          <input
-                            type="text"
-                            value={anchorsReferences}
-                            onChange={(e) => setAnchorsReferences(e.target.value)}
-                            placeholder="Objects, fragments, cultural citations..."
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Desired Feeling */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Desired Feeling</span>
-                          <input
-                            type="text"
-                            value={desiredFeeling}
-                            onChange={(e) => setDesiredFeeling(e.target.value)}
-                            placeholder="Qualities, mood, evocative atmospheres..."
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Avoid */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Avoid</span>
-                          <input
-                            type="text"
-                            value={avoidExclude}
-                            onChange={(e) => setAvoidExclude(e.target.value)}
-                            placeholder="Clichés, styles, or specific conclusions..."
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Output Wanted */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Output Wanted</span>
-                          <select
-                            value={outputWanted}
-                            onChange={(e) => setOutputWanted(e.target.value)}
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 cursor-pointer"
-                          >
-                            <option value="">Poetic Complete Concept (Default)</option>
-                            <option value="Issue Outline">Structured Issue Outline</option>
-                            <option value="Editorial Essay">Full Editorial Essay</option>
-                            <option value="Cover Design">Cover Plate Design Brief</option>
-                          </select>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Expandable detailed fields (desktop renders here; mobile renders under the context header) */}
+                {!isMobile && renderDetailedBriefPanel()}
               </div>
 
               {/* Used by Mimi // Active Context Strip */}
@@ -2566,6 +2573,31 @@ ${finalInput}`;
                   <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-500 font-extrabold">Context Mimi will use</span>
                   <div className="flex-1 h-px bg-stone-200/10 dark:bg-stone-800/50" />
                 </div>
+
+                {/* Mobile: detailed brief as a quiet deep link (replaces the large button) */}
+                {isMobile && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsBriefExpanded(!isBriefExpanded);
+                        playClick();
+                      }}
+                      aria-expanded={isBriefExpanded}
+                      className="mb-3 inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-stone-500 hover:studio-text-ink underline underline-offset-4 decoration-dotted decoration-stone-500/60 transition-colors"
+                    >
+                      <Settings size={11} strokeWidth={1.7} aria-hidden="true" />
+                      <span>{isBriefExpanded ? "Hide detailed brief" : "Configure detailed brief"}</span>
+                      <ChevronDown
+                        size={11}
+                        className={`transition-transform ${isBriefExpanded ? "rotate-180" : ""}`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    <div className="mb-3">{renderDetailedBriefPanel()}</div>
+                  </>
+                )}
+
                 <div className="flex flex-wrap gap-2 items-center min-h-[24px]">
                   {/* Deep Reasoning */}
                   {deepThinking && (
