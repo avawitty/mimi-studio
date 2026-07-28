@@ -2,12 +2,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PocketItem, DossierElement, TasteAuditReport, MaterialityConfig } from '../types';
-import { 
-  X, Check, Plus, Image as ImageIcon, Type, Layout, Palette, Pin, 
-  Trash2, Layers, Move, SlidersHorizontal, Upload, ArrowRight, 
-  LayoutGrid, Quote, Terminal, ZoomIn, ZoomOut, Maximize2, 
-  Compass, Radio, Sparkles, ShoppingBag, Music, Link2, Search,
-  Share2, Zap, AlertCircle
+import {
+  X, Pin, Trash2, ArrowRight, ZoomIn, ZoomOut, Maximize2,
+  Compass, ShoppingBag, Music, Link2, Search, SlidersHorizontal,
+  AlertCircle, Play,
 } from 'lucide-react';
 import { MaterialityPanel } from './MaterialityPanel';
 
@@ -24,33 +22,39 @@ const PINTEREST_INSPIRATIONS = [
   { id: 'pin_2', url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400', title: 'Chantilly laced veils', board: 'Mimi Visual Shards' },
   { id: 'pin_3', url: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=400', title: 'Monarch velvet collared fitting', board: 'BJD Editorial' },
   { id: 'pin_4', url: 'https://images.unsplash.com/photo-1581044777550-4cfa60707c03?q=80&w=400', title: 'Porcelain skin sheen', board: 'Aesthetic Theory' },
-  { id: 'pin_5', url: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=400', title: 'Gilded panopticon corset', board: 'Mimi Core' }
+  { id: 'pin_5', url: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=400', title: 'Gilded panopticon corset', board: 'Mimi Core' },
 ];
 
 // Simulated Shopify products that users can purchase
 const SHOPIFY_PRODUCTS = [
   { id: 'sh_1', name: 'Mimi Glossy Vinyl Outerwear', price: '$240.00', image: 'https://picsum.photos/seed/vinyl/200/200' },
   { id: 'sh_2', name: 'Baroque Gilded Neck Collar', price: '$120.00', image: 'https://picsum.photos/seed/collar/200/200' },
-  { id: 'sh_3', name: 'Sovereign Pearl Ear Drips', price: '$85.00', image: 'https://picsum.photos/seed/pearls/200/200' }
+  { id: 'sh_3', name: 'Sovereign Pearl Ear Drips', price: '$85.00', image: 'https://picsum.photos/seed/pearls/200/200' },
 ];
 
 // Simulated Are.na blocks
 const ARENA_BLOCKS = [
   { id: 'ar_1', title: 'Brutalist layout design system', channel: 'Brutalist Editorial', author: 'Savant-01' },
-  { id: 'ar_2', title: 'Cybernetic lace & semantic telemetry', channel: 'Occult Tech', author: 'LoomMaster' }
+  { id: 'ar_2', title: 'Cybernetic lace & semantic telemetry', channel: 'Occult Tech', author: 'LoomMaster' },
 ];
 
 const parseRoadmapToText = (content: any): string => {
-  if (!content || !content.roadmap) return "Unstructured Roadmap";
+  if (!content || !content.roadmap) return 'Unstructured Roadmap';
   const rm = content.roadmap;
   return `STRATEGIC THESIS\n${rm.strategicThesis || '---'}\n\nPOSITIONING AXIS\n${rm.positioningAxis || '---'}\n\nAUTHORITY ANCHOR\nCore Claim: ${rm.authorityAnchor?.coreClaim || '---'}\nRepetition Vector: ${rm.authorityAnchor?.repetitionVector || '---'}\nExclusion Principle: ${rm.authorityAnchor?.exclusionPrinciple || '---'}`;
+};
+
+const triggerSound = (type: string) => {
+  try {
+    window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type } }));
+  } catch (_) {}
 };
 
 export const MoodboardComposer: React.FC<MoodboardComposerProps> = ({ selectedItems, report, onCancel, onFinalize }) => {
   const [elements, setElements] = useState<DossierElement[]>([]);
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [connections, setConnections] = useState<Array<[string, string]>>([]);
-  
+
   // Viewport states for panning & zooming
   const [pan, setPan] = useState({ x: 150, y: 150 });
   const [zoom, setZoom] = useState(0.85);
@@ -65,7 +69,7 @@ export const MoodboardComposer: React.FC<MoodboardComposerProps> = ({ selectedIt
     paperStock: 'newsprint',
     typographyLineage: 'brutalist',
     negativeSpaceDensity: 5,
-    colorScheme: 'monochrome'
+    colorScheme: 'monochrome',
   });
 
   // Integration states
@@ -73,19 +77,25 @@ export const MoodboardComposer: React.FC<MoodboardComposerProps> = ({ selectedIt
   const [pinterestSearch, setPinterestSearch] = useState('');
   const [taggedProducts, setTaggedProducts] = useState<Record<string, any>>({});
   const [arenaUrl, setArenaUrl] = useState('');
-  
+
   // Spotify Ambient player states
   const [spotifyTrack, setSpotifyTrack] = useState({ name: 'Silent Loom hum', bpm: 72, playing: false });
   const [ambientBpm, setAmbientBpm] = useState(72);
 
+  // Mobile sheet + desktop panel visibility
+  const [mobileSheet, setMobileSheet] = useState<'materiality' | 'integrations' | null>(null);
+  const [showPanels, setShowPanels] = useState(true);
+
   // References
   const canvasRef = useRef<HTMLDivElement>(null);
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ dist: number; zoom: number }>({ dist: 0, zoom: 1 });
 
   // Setup initial elements and grid coordinates
   useEffect(() => {
     const items = selectedItems || [];
     const initialElements: DossierElement[] = items.map((item, idx) => {
-      let content = "";
+      let content = '';
       let type: 'image' | 'text' | 'analysis_pin' = 'text';
 
       if (item.type === 'image') {
@@ -108,11 +118,7 @@ export const MoodboardComposer: React.FC<MoodboardComposerProps> = ({ selectedIt
         type,
         content,
         notes: item.notes || (item.type === 'roadmap' ? `Strategy: ${item.content.title}` : ''),
-        style: {
-          zIndex: idx + 1,
-          isPolaroid: true,
-          hasPin: false
-        }
+        style: { zIndex: idx + 1, isPolaroid: true, hasPin: false },
       };
     });
 
@@ -121,28 +127,24 @@ export const MoodboardComposer: React.FC<MoodboardComposerProps> = ({ selectedIt
         id: 'el_report_brief',
         type: 'analysis_pin',
         content: report.design_brief,
-        style: {
-          zIndex: 0,
-          hasPin: true
-        }
+        style: { zIndex: 0, hasPin: true },
       });
     }
 
     setElements(initialElements);
 
-    // Position items in a spacious circular / scattered grid on the infinite plane
+    // Position items in a spacious scattered grid on the infinite plane
     const initialPositions: Record<string, { x: number; y: number }> = {};
     initialElements.forEach((el, idx) => {
       const radius = 350;
-      const angle = (idx / initialElements.length) * 2 * Math.PI;
+      const angle = (idx / Math.max(1, initialElements.length)) * 2 * Math.PI;
       initialPositions[el.id] = {
         x: Math.cos(angle) * radius + (Math.random() - 0.5) * 60,
-        y: Math.sin(angle) * radius + (Math.random() - 0.5) * 60
+        y: Math.sin(angle) * radius + (Math.random() - 0.5) * 60,
       };
     });
     setPositions(initialPositions);
 
-    // Create a initial sequence of connecting threads (connections) between sequential nodes
     const initialConnections: Array<[string, string]> = [];
     for (let i = 0; i < initialElements.length - 1; i++) {
       initialConnections.push([initialElements[i].id, initialElements[i + 1].id]);
@@ -152,63 +154,100 @@ export const MoodboardComposer: React.FC<MoodboardComposerProps> = ({ selectedIt
 
   // Actions
   const removeElement = (id: string) => {
-    setElements(prev => prev.filter(el => el.id !== id));
-    setConnections(prev => prev.filter(([a, b]) => a !== id && b !== id));
+    setElements((prev) => prev.filter((el) => el.id !== id));
+    setConnections((prev) => prev.filter(([a, b]) => a !== id && b !== id));
     if (selectedElementId === id) setSelectedElementId(null);
   };
 
   const togglePin = (id: string) => {
-    setElements(prev => prev.map(el => el.id === id ? { ...el, style: { ...el.style, hasPin: !el.style.hasPin } } : el));
+    setElements((prev) => prev.map((el) => (el.id === id ? { ...el, style: { ...el.style, hasPin: !el.style.hasPin } } : el)));
   };
 
-  const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) { // Left click
+  // ---- Unified pointer interaction (mouse + touch + pen) ----
+  const getPinchDistance = () => {
+    const pts = [...pointersRef.current.values()];
+    if (pts.length < 2) return 0;
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  };
+
+  const handleCanvasPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size === 1) {
       setIsPanning(true);
       setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    } else if (pointersRef.current.size === 2) {
+      // Entering pinch: stop panning/dragging and set baseline
+      setIsPanning(false);
+      setDraggedElement(null);
+      pinchRef.current = { dist: getPinchDistance(), zoom };
     }
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    if (isPanning) {
-      setPan({
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y
-      });
-    } else if (draggedElement) {
-      // Scale movement with current zoom
+  const handleCanvasPointerMove = (e: React.PointerEvent) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // Pinch-to-zoom with two pointers
+    if (pointersRef.current.size >= 2) {
+      const newDist = getPinchDistance();
+      if (pinchRef.current.dist > 0 && newDist > 0) {
+        const factor = newDist / pinchRef.current.dist;
+        setZoom(Math.max(0.2, Math.min(2.5, pinchRef.current.zoom * factor)));
+      }
+      return;
+    }
+
+    if (draggedElement) {
       const dx = (e.clientX - elementDragStart.x) / zoom;
       const dy = (e.clientY - elementDragStart.y) / zoom;
-      setPositions(prev => ({
+      setPositions((prev) => ({
         ...prev,
-        [draggedElement]: {
-          x: positions[draggedElement].x + dx,
-          y: positions[draggedElement].y + dy
-        }
+        [draggedElement]: { x: (prev[draggedElement]?.x || 0) + dx, y: (prev[draggedElement]?.y || 0) + dy },
       }));
       setElementDragStart({ x: e.clientX, y: e.clientY });
+    } else if (isPanning) {
+      setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
     }
   };
 
-  const handleCanvasMouseUp = () => {
-    setIsPanning(false);
-    setDraggedElement(null);
+  const handleCanvasPointerUp = (e: React.PointerEvent) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current.dist = 0;
+    if (pointersRef.current.size === 0) {
+      setIsPanning(false);
+      setDraggedElement(null);
+    }
   };
 
-  const startElementDrag = (e: React.MouseEvent, id: string) => {
+  const startElementDrag = (e: React.PointerEvent, id: string) => {
     e.stopPropagation();
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     setSelectedElementId(id);
     setDraggedElement(id);
     setElementDragStart({ x: e.clientX, y: e.clientY });
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    const factor = e.deltaY < 0 ? 1.08 : 0.92;
+    setZoom((prev) => Math.max(0.2, Math.min(2.5, prev * factor)));
   };
 
   const handleZoom = (factor: number) => {
-    setZoom(prev => Math.max(0.2, Math.min(2.5, prev * factor)));
+    setZoom((prev) => Math.max(0.2, Math.min(2.5, prev * factor)));
   };
 
   const resetViewport = () => {
     setPan({ x: 200, y: 150 });
     setZoom(0.8);
   };
+
+  const canvasCenterCoords = () => ({
+    x: -pan.x / zoom + window.innerWidth / 2 / zoom - 150,
+    y: -pan.y / zoom + window.innerHeight / 2 / zoom - 200,
+  });
 
   // Pinterest Inspiration action
   const addPinToCanvas = (pin: any) => {
@@ -218,28 +257,13 @@ export const MoodboardComposer: React.FC<MoodboardComposerProps> = ({ selectedIt
       type: 'image',
       content: pin.url,
       notes: `Inspiration: "${pin.title}" from Pinterest`,
-      style: { zIndex: elements.length + 1, isPolaroid: true, hasPin: true }
+      style: { zIndex: elements.length + 1, isPolaroid: true, hasPin: true },
     };
-    
-    // Position near the center of the screen
-    const centerCoords = {
-      x: -pan.x / zoom + (window.innerWidth / 2) / zoom - 150,
-      y: -pan.y / zoom + (window.innerHeight / 2) / zoom - 200
-    };
-    
-    setElements(prev => [...prev, newElement]);
-    setPositions(prev => ({ ...prev, [id]: centerCoords }));
-
-    // Link connection to the currently selected item if any
-    if (selectedElementId) {
-      setConnections(prev => [...prev, [selectedElementId, id]]);
-    }
-
-    window.dispatchEvent(
-      new CustomEvent("mimi:registry_alert", {
-        detail: { message: `Pinned "${pin.title}" to Infinite Canvas`, type: "success" },
-      })
-    );
+    setElements((prev) => [...prev, newElement]);
+    setPositions((prev) => ({ ...prev, [id]: canvasCenterCoords() }));
+    if (selectedElementId) setConnections((prev) => [...prev, [selectedElementId, id]]);
+    setMobileSheet(null);
+    window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message: `Pinned "${pin.title}" to canvas`, type: 'success' } }));
   };
 
   // Are.na Importer action
@@ -251,42 +275,21 @@ export const MoodboardComposer: React.FC<MoodboardComposerProps> = ({ selectedIt
       id,
       type: 'text',
       content: `${block.title}\n\nChannel: #${block.channel}\nCollected by: ${block.author}`,
-      notes: `Are.na channel block import`,
-      style: { zIndex: elements.length + 1, isPolaroid: false, hasPin: false }
+      notes: 'Are.na channel block import',
+      style: { zIndex: elements.length + 1, isPolaroid: false, hasPin: false },
     };
-
-    const centerCoords = {
-      x: -pan.x / zoom + (window.innerWidth / 2) / zoom - 150,
-      y: -pan.y / zoom + (window.innerHeight / 2) / zoom - 200
-    };
-
-    setElements(prev => [...prev, newElement]);
-    setPositions(prev => ({ ...prev, [id]: centerCoords }));
+    setElements((prev) => [...prev, newElement]);
+    setPositions((prev) => ({ ...prev, [id]: canvasCenterCoords() }));
     setArenaUrl('');
-
-    if (selectedElementId) {
-      setConnections(prev => [...prev, [selectedElementId, id]]);
-    }
-
-    window.dispatchEvent(
-      new CustomEvent("mimi:registry_alert", {
-        detail: { message: "Imported block from Are.na channel", type: "success" },
-      })
-    );
+    if (selectedElementId) setConnections((prev) => [...prev, [selectedElementId, id]]);
+    window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message: 'Imported block from Are.na channel', type: 'success' } }));
   };
 
   // Shopify Product tag action
   const tagProductToElement = (product: any) => {
     if (!selectedElementId) return;
-    setTaggedProducts(prev => ({
-      ...prev,
-      [selectedElementId]: product
-    }));
-    window.dispatchEvent(
-      new CustomEvent("mimi:registry_alert", {
-        detail: { message: `Tagged "${product.name}" to style fragment`, type: "success" },
-      })
-    );
+    setTaggedProducts((prev) => ({ ...prev, [selectedElementId]: product }));
+    window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message: `Tagged "${product.name}" to style fragment`, type: 'success' } }));
   };
 
   const getTypographyClass = () => {
@@ -299,571 +302,553 @@ export const MoodboardComposer: React.FC<MoodboardComposerProps> = ({ selectedIt
   };
 
   const getMoodboardStyle = () => {
-    let base = '';
     switch (materiality.colorScheme) {
-      case 'monochrome': base = 'bg-stone-950 text-stone-100'; break;
-      case 'high-contrast': base = 'bg-[#050505] text-[#FAFAFA]'; break;
-      case 'earth-tones': base = 'bg-[#181615] text-[#FAFAF9]'; break;
-      default: base = 'bg-[#0A0A0A] text-stone-200';
+      case 'monochrome': return 'bg-[#0a0a0b] text-stone-100';
+      case 'high-contrast': return 'bg-[#050505] text-[#FAFAFA]';
+      case 'earth-tones': return 'bg-[#161412] text-[#FAFAF9]';
+      default: return 'bg-[#0a0a0b] text-stone-200';
     }
-    return base;
   };
 
   const handleSpotifyPlay = () => {
-    setSpotifyTrack(prev => ({ ...prev, playing: !prev.playing }));
-    window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: 'transition' } }));
+    setSpotifyTrack((prev) => ({ ...prev, playing: !prev.playing }));
+    triggerSound('transition');
   };
 
+  // ---- Reusable panel bodies (shared by desktop panels + mobile sheets) ----
+  const materialityBody = (
+    <div className="flex flex-col gap-4">
+      <MaterialityPanel config={materiality} onChangeConfig={setMateriality} playClickSound={() => triggerSound('click')} />
+      <div className="border border-white/10 bg-white/[0.02] p-3">
+        <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-bold block mb-1">Canvas Guides</span>
+        <p className="text-[10px] text-stone-400 leading-relaxed font-sans">
+          Drag the background to pan. Drag an item to reposition. Pinch or scroll to zoom. Select an item to tag Shopify buy-triggers or thread it to imports.
+        </p>
+      </div>
+    </div>
+  );
+
+  const integrationTabs = [
+    { id: 'pinterest', icon: Compass, label: 'Pins' },
+    { id: 'shopify', icon: ShoppingBag, label: 'Shopify' },
+    { id: 'arena', icon: Link2, label: 'Are.na' },
+    { id: 'spotify', icon: Music, label: 'Music' },
+  ] as const;
+
+  const integrationsBody = (
+    <div className="flex flex-col h-full min-h-0">
+      {/* Tabs */}
+      <div className="flex border-b border-white/10 bg-white/[0.02] shrink-0">
+        {integrationTabs.map((tab) => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 min-h-11 py-2.5 text-[8px] uppercase tracking-widest font-black flex flex-col items-center gap-1 border-b-2 transition-all ${
+                active ? 'border-amber-400 text-amber-400 bg-white/[0.03]' : 'border-transparent text-stone-500 hover:text-stone-300'
+              }`}
+            >
+              <Icon size={14} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-y-auto p-4 no-scrollbar min-h-0">
+        <AnimatePresence mode="wait">
+          {activeTab === 'pinterest' && (
+            <motion.div key="pinterest" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <div className="space-y-1">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-stone-300 font-black flex items-center gap-1.5">
+                  <Compass size={12} className="text-amber-400" /> Pinterest Bridge
+                </span>
+                <p className="text-[10px] text-stone-500 leading-relaxed">
+                  Scry live inspiration boards matching the doll's aesthetic. Tap any item to pin it onto the canvas.
+                </p>
+              </div>
+
+              <div className="flex items-center border border-white/10 bg-black/40 px-2">
+                <Search size={12} className="text-stone-600 shrink-0" />
+                <input
+                  type="text"
+                  value={pinterestSearch}
+                  onChange={(e) => setPinterestSearch(e.target.value)}
+                  placeholder="Search boards (e.g. bjd, lace)"
+                  className="flex-1 bg-transparent border-none text-[16px] md:text-[11px] outline-none text-stone-200 placeholder:text-stone-600 px-2 py-2.5 font-mono"
+                />
+              </div>
+
+              <div className="space-y-2.5 pt-1">
+                {PINTEREST_INSPIRATIONS.map((pin) => (
+                  <button
+                    key={pin.id}
+                    onClick={() => addPinToCanvas(pin)}
+                    className="group w-full border border-white/10 bg-white/[0.02] p-2 cursor-pointer hover:border-amber-400/40 transition-all flex gap-3 items-center text-left"
+                  >
+                    <img src={pin.url || '/placeholder.svg'} alt={pin.title} className="w-12 h-16 object-cover grayscale group-hover:grayscale-0 transition-all shrink-0" />
+                    <div className="space-y-1 overflow-hidden">
+                      <h4 className="font-serif italic text-sm text-stone-300 group-hover:text-amber-400 transition-colors truncate">{pin.title}</h4>
+                      <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-bold block truncate">board // {pin.board}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'shopify' && (
+            <motion.div key="shopify" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <div className="space-y-1">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-stone-300 font-black flex items-center gap-1.5">
+                  <ShoppingBag size={12} className="text-amber-400" /> Shopify Buy-Trigger
+                </span>
+                <p className="text-[10px] text-stone-500 leading-relaxed">
+                  Tag runway items from connected Shopify stock. Tagged items inject a live Buy Button onto the card.
+                </p>
+              </div>
+
+              {selectedElementId ? (
+                <div className="space-y-3">
+                  <div className="p-3 bg-white/[0.02] border border-white/10">
+                    <span className="font-mono text-[7px] uppercase tracking-widest text-stone-500 block mb-1">Selected canvas shard</span>
+                    <p className="font-serif italic text-sm text-stone-300 truncate">
+                      {elements.find((el) => el.id === selectedElementId)?.notes || 'Aesthetic reference shard'}
+                    </p>
+                    {taggedProducts[selectedElementId] ? (
+                      <div className="mt-3 p-2 bg-amber-400/5 border border-amber-400/20 text-amber-300 font-mono text-[8px] uppercase font-bold flex justify-between items-center gap-2">
+                        <span className="truncate">Tagged: {taggedProducts[selectedElementId].name}</span>
+                        <button
+                          onClick={() => setTaggedProducts((prev) => { const c = { ...prev }; delete c[selectedElementId]; return c; })}
+                          className="text-[7px] text-stone-500 hover:text-red-400 shrink-0 min-h-11 flex items-center px-1"
+                        >
+                          [ CLEAR ]
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-white/10">
+                    <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-black block">Available store products</span>
+                    {SHOPIFY_PRODUCTS.map((prod) => (
+                      <button
+                        key={prod.id}
+                        onClick={() => tagProductToElement(prod)}
+                        className="w-full p-2 border border-white/10 bg-white/[0.02] cursor-pointer hover:border-amber-400/40 transition-all flex justify-between items-center gap-2 text-left"
+                      >
+                        <div className="flex gap-2 items-center overflow-hidden">
+                          <img src={prod.image || '/placeholder.svg'} alt={prod.name} className="w-9 h-9 object-cover shrink-0" />
+                          <div className="overflow-hidden">
+                            <h4 className="font-mono text-[9px] uppercase font-black text-stone-300 truncate">{prod.name}</h4>
+                            <span className="font-mono text-[8px] text-stone-500">{prod.price}</span>
+                          </div>
+                        </div>
+                        <span className="font-mono text-[8px] uppercase tracking-widest bg-amber-400/10 text-amber-300 px-2 py-1 border border-amber-400/20 font-bold shrink-0">TAG</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-12 text-center border border-dashed border-white/10 bg-white/[0.02]">
+                  <AlertCircle size={20} className="mx-auto text-stone-600 mb-2" />
+                  <p className="font-mono text-[9px] uppercase text-stone-400 font-black">[ Select an element ]</p>
+                  <p className="text-[9px] text-stone-600 px-4 mt-1 leading-relaxed">Select any element on the canvas to tag and configure merchant products.</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'arena' && (
+            <motion.div key="arena" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <div className="space-y-1">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-stone-300 font-black flex items-center gap-1.5">
+                  <Link2 size={12} className="text-amber-400" /> Are.na Channel Importer
+                </span>
+                <p className="text-[10px] text-stone-500 leading-relaxed">
+                  Import aesthetic reference blocks and editorial citations from public Are.na channels.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={arenaUrl}
+                  onChange={(e) => setArenaUrl(e.target.value)}
+                  placeholder="https://www.are.na/channel/..."
+                  className="w-full bg-black/40 border border-white/10 px-2.5 py-2.5 text-[16px] md:text-[11px] text-stone-200 outline-none focus:border-amber-400 transition-colors font-mono"
+                />
+                <button
+                  onClick={handleArenaImport}
+                  className="w-full min-h-11 py-2.5 bg-amber-400/10 border border-amber-400/30 hover:bg-amber-400/20 hover:border-amber-400 text-amber-300 font-mono text-[9px] uppercase tracking-widest font-black transition-all"
+                >
+                  [ Import Are.na blocks ]
+                </button>
+              </div>
+
+              <div className="space-y-2.5 pt-2 border-t border-white/10">
+                <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-black block">Simulated active feeds</span>
+                {ARENA_BLOCKS.map((block) => (
+                  <div key={block.id} className="p-3 bg-white/[0.02] border border-white/10 space-y-1">
+                    <div className="flex justify-between items-center text-[7px] font-mono uppercase text-stone-500 gap-2">
+                      <span className="truncate">Channel: #{block.channel}</span>
+                      <span className="shrink-0">By {block.author}</span>
+                    </div>
+                    <p className="font-serif italic text-sm text-stone-300 leading-tight">"{block.title}"</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'spotify' && (
+            <motion.div key="spotify" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <div className="space-y-1">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-stone-300 font-black flex items-center gap-1.5">
+                  <Music size={12} className="text-amber-400" /> Ambient Player
+                </span>
+                <p className="text-[10px] text-stone-500 leading-relaxed">
+                  Tweak the audio loops. Altering the synthesizer BPM speeds up or slows the canvas respiration lines.
+                </p>
+              </div>
+
+              <div className="border border-white/10 bg-white/[0.02] p-4 space-y-4 relative overflow-hidden">
+                <div className="absolute top-1 right-2 font-mono text-[6px] text-amber-400/40 animate-pulse font-bold uppercase tracking-widest">
+                  {spotifyTrack.playing ? 'STREAMING_FEED' : 'STANDBY'}
+                </div>
+                <div className="flex justify-between items-center gap-3">
+                  <div className="space-y-1 overflow-hidden">
+                    <h4 className="font-mono text-[9px] uppercase font-black text-amber-300 truncate">{spotifyTrack.name}</h4>
+                    <p className="text-[8px] text-stone-500 font-mono tracking-wider">Mimi Occult Loops · {ambientBpm} BPM</p>
+                  </div>
+                  <button
+                    onClick={handleSpotifyPlay}
+                    aria-label={spotifyTrack.playing ? 'Pause ambient track' : 'Play ambient track'}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center transition-all border shrink-0 ${
+                      spotifyTrack.playing ? 'bg-amber-400/10 border-amber-400 text-amber-300' : 'bg-white/[0.03] border-white/10 text-stone-400 hover:border-stone-500'
+                    }`}
+                  >
+                    {spotifyTrack.playing ? (
+                      <div className="flex gap-0.5 items-end justify-center h-4">
+                        <span className="w-1 bg-amber-400 h-2 animate-[bounce_0.6s_infinite_0.1s]" />
+                        <span className="w-1 bg-amber-400 h-4 animate-[bounce_0.6s_infinite_0.3s]" />
+                        <span className="w-1 bg-amber-400 h-3 animate-[bounce_0.6s_infinite_0.5s]" />
+                      </div>
+                    ) : (
+                      <Play size={16} className="ml-0.5 fill-current" />
+                    )}
+                  </button>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                  <div className="flex justify-between text-[8px] font-mono text-stone-500 uppercase">
+                    <span>Respiration Tempo</span>
+                    <span>{ambientBpm} BPM</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="40"
+                    max="160"
+                    value={ambientBpm}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setAmbientBpm(val);
+                      setSpotifyTrack((prev) => ({ ...prev, bpm: val }));
+                      window.dispatchEvent(new CustomEvent('mimi:respiration_speed', { detail: { bpm: val } }));
+                    }}
+                    className="w-full accent-amber-400 bg-white/10 h-1 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-bold block">Aesthetic playlists</span>
+                {[
+                  { name: 'Monarch Velvet frequencies', tracks: '12 tracks', duration: '48 min' },
+                  { name: 'Silken Panopticon synthesis', tracks: '8 tracks', duration: '32 min' },
+                  { name: 'Lace transmission telemetry', tracks: '15 tracks', duration: '54 min' },
+                ].map((playlist) => (
+                  <button
+                    key={playlist.name}
+                    onClick={() => { setSpotifyTrack({ name: playlist.name, bpm: ambientBpm, playing: true }); triggerSound('transition'); }}
+                    className="w-full p-2.5 border border-white/10 hover:border-amber-400/30 bg-white/[0.02] cursor-pointer transition-all flex justify-between items-center gap-2 text-left"
+                  >
+                    <span className="font-serif italic text-sm text-stone-300 truncate">{playlist.name}</span>
+                    <div className="text-[8px] font-mono text-stone-500 text-right shrink-0">
+                      <span>{playlist.tracks}</span>
+                      <span className="block">{playlist.duration}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="fixed inset-0 z-[6000] flex flex-col bg-[#050505] text-stone-100 overflow-hidden select-none"
     >
       {/* Top bar */}
-      <header className="h-16 border-b border-stone-850 px-6 flex justify-between items-center bg-[#0C0C0D] z-50">
-        <button onClick={onCancel} className="flex items-center gap-3 group">
-          <div className="p-1.5 border border-stone-800 group-hover:bg-stone-900 group-hover:text-amber-500 transition-all text-stone-400">
+      <header className="h-14 md:h-16 border-b border-white/10 px-3 md:px-6 flex justify-between items-center bg-[#0b0b0d] z-50 shrink-0">
+        <button onClick={onCancel} className="flex items-center gap-2 md:gap-3 group min-h-11">
+          <span className="p-2 border border-white/10 group-hover:bg-white/5 group-hover:text-amber-400 transition-all text-stone-400 flex items-center justify-center">
             <X size={14} />
-          </div>
-          <span className="font-mono text-[9px] uppercase tracking-widest font-black text-stone-400 group-hover:text-stone-200">
-            [ CLOSE WORKSPACE ]
           </span>
+          <span className="hidden sm:block font-mono text-[9px] uppercase tracking-widest font-black text-stone-400 group-hover:text-stone-200">Close workspace</span>
         </button>
 
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2 py-1 font-black">
-            MIMI INFINITE STUDIO // ACTIVE CANVAS
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => onFinalize(elements, { pan, zoom, positions, materiality, taggedProducts })} 
-            className="px-5 py-2 border border-stone-800 text-stone-300 hover:border-amber-500/50 hover:text-amber-500 font-mono text-[9px] uppercase tracking-widest font-black transition-all flex items-center gap-2"
-          >
-            [ SECURE WORKSPACE ARTIFACT ] <ArrowRight size={10} />
-          </button>
-        </div>
+        <span className="hidden md:block font-mono text-[9px] uppercase tracking-widest bg-amber-400/10 border border-amber-400/20 text-amber-400 px-3 py-1 font-black">
+          Mimi Infinite Studio
+        </span>
+
+        <button
+          onClick={() => onFinalize(elements, { pan, zoom, positions, materiality, taggedProducts })}
+          className="px-3 md:px-5 min-h-11 py-2 border border-amber-400/40 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 hover:border-amber-400 font-mono text-[9px] uppercase tracking-widest font-black transition-all flex items-center gap-2"
+        >
+          <span className="hidden sm:inline">Secure artifact</span>
+          <span className="sm:hidden">Save</span>
+          <ArrowRight size={12} />
+        </button>
       </header>
 
-      {/* Main workspace layout */}
-      <div className="flex flex-1 overflow-hidden relative">
-        
-        {/* Left Floating Toolpane (Materiality) */}
-        <aside className="absolute left-6 top-6 z-40 w-64 border border-stone-850 p-5 bg-[#0C0C0D]/90 backdrop-blur-md shadow-2xl flex flex-col gap-4">
-          <div className="flex items-center gap-2 border-b border-stone-800 pb-2">
-            <SlidersHorizontal size={12} className="text-amber-500" />
-            <span className="font-mono text-[9px] uppercase tracking-widest font-black text-stone-300">
-              Aesthetic Materiality
-            </span>
-          </div>
-          <MaterialityPanel config={materiality} onChange={setMateriality} />
-          <div className="border-t border-stone-850 pt-3 flex flex-col gap-2">
-            <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-bold">
-              Canvas Guides
-            </span>
-            <p className="text-[9px] text-stone-400 leading-normal font-sans italic">
-              Left-click and drag background to pan. Left-click and drag items to position. Select item to tag Shopify buy-triggers or review threads.
-            </p>
-          </div>
-        </aside>
+      {/* Main workspace */}
+      <div className="flex flex-1 overflow-hidden relative min-h-0">
+        {/* Desktop: Left materiality panel */}
+        {showPanels && (
+          <aside className="hidden md:flex absolute left-4 top-4 z-40 w-72 border border-white/10 p-4 bg-[#0b0b0d]/95 backdrop-blur-md shadow-2xl flex-col gap-3 max-h-[calc(100%-2rem)] overflow-y-auto no-scrollbar">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <span className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest font-black text-stone-300">
+                <SlidersHorizontal size={12} className="text-amber-400" /> Aesthetic Materiality
+              </span>
+            </div>
+            {materialityBody}
+          </aside>
+        )}
 
-        {/* Viewport Control Bar */}
-        <div className="absolute left-6 bottom-6 z-40 bg-[#0C0C0D]/95 border border-stone-850 p-2 flex items-center gap-2 shadow-2xl">
-          <button onClick={() => handleZoom(1.15)} className="p-1.5 hover:bg-stone-900 hover:text-amber-500 text-stone-400 transition-colors" title="Zoom In">
-            <ZoomIn size={14} />
-          </button>
-          <button onClick={() => handleZoom(0.85)} className="p-1.5 hover:bg-stone-900 hover:text-amber-500 text-stone-400 transition-colors" title="Zoom Out">
-            <ZoomOut size={14} />
-          </button>
-          <button onClick={resetViewport} className="p-1.5 hover:bg-stone-900 hover:text-amber-500 text-stone-400 transition-colors" title="Reset View">
-            <Maximize2 size={14} />
-          </button>
-          <div className="h-4 w-px bg-stone-850" />
-          <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-bold px-1">
-            {Math.round(zoom * 100)}%
-          </span>
+        {/* Desktop: Right integration drawer */}
+        {showPanels && (
+          <aside className="hidden md:flex absolute right-4 top-4 bottom-4 z-40 w-80 border border-white/10 bg-[#0b0b0d]/95 backdrop-blur-md shadow-2xl flex-col overflow-hidden">
+            {integrationsBody}
+          </aside>
+        )}
+
+        {/* Desktop: viewport controls + panel toggle (bottom-left) */}
+        <div className="hidden md:flex absolute left-4 bottom-4 z-40 bg-[#0b0b0d]/95 border border-white/10 p-1.5 items-center gap-1 shadow-2xl">
+          <button onClick={() => handleZoom(1.15)} className="p-2 hover:bg-white/5 hover:text-amber-400 text-stone-400 transition-colors" title="Zoom in" aria-label="Zoom in"><ZoomIn size={16} /></button>
+          <button onClick={() => handleZoom(0.85)} className="p-2 hover:bg-white/5 hover:text-amber-400 text-stone-400 transition-colors" title="Zoom out" aria-label="Zoom out"><ZoomOut size={16} /></button>
+          <button onClick={resetViewport} className="p-2 hover:bg-white/5 hover:text-amber-400 text-stone-400 transition-colors" title="Reset view" aria-label="Reset view"><Maximize2 size={16} /></button>
+          <div className="h-4 w-px bg-white/10" />
+          <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-bold px-1.5 tabular-nums">{Math.round(zoom * 100)}%</span>
+          <div className="h-4 w-px bg-white/10" />
+          <button onClick={() => setShowPanels((s) => !s)} className="p-2 hover:bg-white/5 hover:text-amber-400 text-stone-400 transition-colors" title="Toggle panels" aria-label="Toggle panels"><SlidersHorizontal size={16} /></button>
         </div>
 
-        {/* Right Tabbed Integration Drawer */}
-        <aside className="absolute right-6 top-6 bottom-6 z-40 w-80 border border-stone-850 bg-[#0C0C0D]/95 backdrop-blur-md shadow-2xl flex flex-col overflow-hidden">
-          
-          {/* Tabs */}
-          <div className="flex border-b border-stone-850 bg-[#121214]">
-            {[
-              { id: 'pinterest', icon: Compass, label: 'Pins' },
-              { id: 'shopify', icon: ShoppingBag, label: 'Shopify' },
-              { id: 'arena', icon: Link2, label: 'Are.na' },
-              { id: 'spotify', icon: Music, label: 'Music' }
-            ].map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => { setActiveTab(tab.id as any); }}
-                  className={`flex-1 py-2.5 text-[8px] uppercase tracking-widest font-black flex flex-col items-center gap-1 border-b-2 transition-all ${
-                    activeTab === tab.id 
-                      ? 'border-amber-500 text-amber-500 bg-stone-900/40' 
-                      : 'border-transparent text-stone-500 hover:text-stone-300'
-                  }`}
-                >
-                  <Icon size={12} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Tab content area */}
-          <div className="flex-1 overflow-y-auto p-4 no-scrollbar">
-            <AnimatePresence mode="wait">
-              
-              {/* Pinterest Tab */}
-              {activeTab === 'pinterest' && (
-                <motion.div 
-                  key="pinterest" 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  exit={{ opacity: 0 }}
-                  className="space-y-4"
-                >
-                  <div className="space-y-1">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400 font-black flex items-center gap-1.5">
-                      <Compass size={11} className="text-amber-500 animate-spin" /> Pinterest Bridge
-                    </span>
-                    <p className="text-[10px] text-stone-500 leading-normal">
-                      Scry live inspiration boards matching the doll's aesthetic. Click any item to pin it as a physical visual block on the canvas.
-                    </p>
-                  </div>
-
-                  <div className="flex border border-stone-800 bg-stone-950 p-1.5 rounded-sm">
-                    <input 
-                      type="text" 
-                      value={pinterestSearch}
-                      onChange={(e) => setPinterestSearch(e.target.value)}
-                      placeholder="Search boards (e.g. bjd, lace)"
-                      className="flex-1 bg-transparent border-none text-[10px] outline-none text-stone-200 placeholder:text-stone-600 px-1 font-mono"
-                    />
-                    <Search size={11} className="text-stone-600" />
-                  </div>
-
-                  <div className="space-y-3 pt-2">
-                    {PINTEREST_INSPIRATIONS.map(pin => (
-                      <div 
-                        key={pin.id}
-                        onClick={() => addPinToCanvas(pin)}
-                        className="group border border-stone-850 bg-stone-950 p-2 rounded-sm cursor-pointer hover:border-amber-500/40 transition-all flex gap-3 items-center"
-                      >
-                        <img src={pin.url} className="w-12 h-16 object-cover grayscale group-hover:grayscale-0 transition-all" />
-                        <div className="space-y-1 overflow-hidden">
-                          <h4 className="font-serif italic text-xs text-stone-300 group-hover:text-amber-500 transition-colors truncate">
-                            {pin.title}
-                          </h4>
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-stone-500 font-bold block">
-                            board // {pin.board}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Shopify Tab */}
-              {activeTab === 'shopify' && (
-                <motion.div 
-                  key="shopify" 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  exit={{ opacity: 0 }}
-                  className="space-y-4"
-                >
-                  <div className="space-y-1">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400 font-black flex items-center gap-1.5">
-                      <ShoppingBag size={11} className="text-emerald-500" /> Shopify Buy-Trigger
-                    </span>
-                    <p className="text-[10px] text-stone-500 leading-normal">
-                      Tag physical runway items or clothing wearables from connected Shopify merchant stock. Tagged items inject a real-time Buy Button onto the card!
-                    </p>
-                  </div>
-
-                  {selectedElementId ? (
-                    <div className="space-y-3">
-                      <div className="p-3 bg-stone-950 border border-stone-850 rounded-sm">
-                        <span className="font-mono text-[7px] uppercase tracking-widest text-stone-500 block mb-1">
-                          SELECTED CANVASS SHARD
-                        </span>
-                        <p className="font-serif italic text-xs text-stone-300 truncate">
-                          {elements.find(el => el.id === selectedElementId)?.notes || "Aesthetic reference shard"}
-                        </p>
-                        {taggedProducts[selectedElementId] ? (
-                          <div className="mt-3 p-2 bg-emerald-500/5 border border-emerald-500/20 text-emerald-400 font-mono text-[8px] uppercase font-bold flex justify-between items-center">
-                            <span>Tagged: {taggedProducts[selectedElementId].name}</span>
-                            <button onClick={() => setTaggedProducts(prev => { const c = {...prev}; delete c[selectedElementId]; return c; })} className="text-[7px] text-stone-500 hover:text-red-400">[ CLEAR ]</button>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="space-y-2 pt-2 border-t border-stone-850">
-                        <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-black block">
-                          Available Store Products
-                        </span>
-                        {SHOPIFY_PRODUCTS.map(prod => (
-                          <div 
-                            key={prod.id}
-                            onClick={() => tagProductToElement(prod)}
-                            className="p-2 border border-stone-850 bg-stone-950 rounded-sm cursor-pointer hover:border-emerald-500/40 transition-all flex justify-between items-center"
-                          >
-                            <div className="flex gap-2 items-center">
-                              <img src={prod.image} className="w-8 h-8 object-cover" />
-                              <div className="overflow-hidden">
-                                <h4 className="font-mono text-[9px] uppercase font-black text-stone-300 truncate max-w-[130px]">
-                                  {prod.name}
-                                </h4>
-                                <span className="font-mono text-[8px] text-stone-500">{prod.price}</span>
-                              </div>
-                            </div>
-                            <span className="font-mono text-[8px] uppercase tracking-widest bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 border border-emerald-500/10 font-bold hover:bg-emerald-500 hover:text-stone-950 transition-colors shrink-0">
-                              [ TAG ]
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-12 text-center border border-dashed border-stone-850 bg-stone-950/40">
-                      <AlertCircle size={20} className="mx-auto text-stone-600 mb-2" />
-                      <p className="font-mono text-[9px] uppercase text-stone-500 font-black">
-                        [ SELECT AN ELEMENT ]
-                      </p>
-                      <p className="text-[9px] text-stone-600 px-4 mt-1">
-                        Select any element on the infinite canvas to tag and configure merchant products.
-                      </p>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-
-              {/* Are.na Tab */}
-              {activeTab === 'arena' && (
-                <motion.div 
-                  key="arena" 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  exit={{ opacity: 0 }}
-                  className="space-y-4"
-                >
-                  <div className="space-y-1">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400 font-black flex items-center gap-1.5">
-                      <Link2 size={11} className="text-cyan-500" /> Are.na Channel Importer
-                    </span>
-                    <p className="text-[10px] text-stone-500 leading-normal">
-                      Import aesthetic reference blocks, mood links, and editorial citations from public Are.na channels into your active workspace.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <input 
-                      type="text" 
-                      value={arenaUrl}
-                      onChange={(e) => setArenaUrl(e.target.value)}
-                      placeholder="https://www.are.na/channel/..."
-                      className="w-full bg-stone-950 border border-stone-800 px-2.5 py-2 text-[9px] text-stone-200 outline-none focus:border-cyan-500 transition-colors font-mono rounded-sm"
-                    />
-                    <button 
-                      onClick={handleArenaImport}
-                      className="w-full py-2 bg-cyan-950/40 border border-cyan-800 hover:bg-cyan-900/50 hover:border-cyan-500 text-cyan-400 font-mono text-[8px] uppercase tracking-widest font-black transition-all rounded-sm"
-                    >
-                      [ IMPORT ARE.NA BLOCKS ]
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5 pt-2 border-t border-stone-850">
-                    <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-black block">
-                      Simulated Active Feeds
-                    </span>
-                    {ARENA_BLOCKS.map(block => (
-                      <div key={block.id} className="p-3 bg-stone-950 border border-stone-850 rounded-sm space-y-1">
-                        <div className="flex justify-between items-center text-[7px] font-mono uppercase text-stone-500">
-                          <span>Channel: #{block.channel}</span>
-                          <span>By {block.author}</span>
-                        </div>
-                        <p className="font-serif italic text-xs text-stone-300 leading-tight">
-                          "{block.title}"
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Spotify Tab */}
-              {activeTab === 'spotify' && (
-                <motion.div 
-                  key="spotify" 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  exit={{ opacity: 0 }}
-                  className="space-y-4"
-                >
-                  <div className="space-y-1">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400 font-black flex items-center gap-1.5">
-                      <Music size={11} className="text-rose-500" /> Occult Ambient Player
-                    </span>
-                    <p className="text-[10px] text-stone-500 leading-normal">
-                      Tweak the digital audio loops. Altering the synthesizer BPM speeds up or slows down the canvas grid respiration lines.
-                    </p>
-                  </div>
-
-                  {/* Tape Deck Player design */}
-                  <div className="border border-stone-800 bg-stone-950 p-4 rounded-sm space-y-4 shadow-inner relative overflow-hidden">
-                    <div className="absolute top-1 right-2 font-mono text-[6px] text-rose-500/40 animate-pulse font-bold uppercase tracking-widest">
-                      {spotifyTrack.playing ? "STREAMING_FEED" : "STANDBY"}
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="space-y-1">
-                        <h4 className="font-mono text-[9px] uppercase font-black text-rose-500">
-                          {spotifyTrack.name}
-                        </h4>
-                        <p className="text-[8px] text-stone-500 font-mono tracking-wider">
-                          Mimi Occult Loops · {ambientBpm} BPM
-                        </p>
-                      </div>
-                      
-                      <button 
-                        onClick={handleSpotifyPlay}
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border ${
-                          spotifyTrack.playing 
-                            ? 'bg-rose-500/10 border-rose-500 text-rose-400' 
-                            : 'bg-stone-900 border-stone-800 text-stone-400 hover:border-stone-500'
-                        }`}
-                      >
-                        {spotifyTrack.playing ? (
-                          <div className="flex gap-0.5 items-end justify-center h-4">
-                            <span className="w-1 bg-rose-500 h-2 animate-[bounce_0.6s_infinite_0.1s]" />
-                            <span className="w-1 bg-rose-500 h-4 animate-[bounce_0.6s_infinite_0.3s]" />
-                            <span className="w-1 bg-rose-500 h-3 animate-[bounce_0.6s_infinite_0.5s]" />
-                          </div>
-                        ) : (
-                          <Play size={14} className="ml-0.5 fill-current" />
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="space-y-2 pt-2 border-t border-stone-900">
-                      <div className="flex justify-between text-[8px] font-mono text-stone-500 uppercase">
-                        <span>Respiration Tempo</span>
-                        <span>{ambientBpm} BPM</span>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="40" 
-                        max="160" 
-                        value={ambientBpm}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setAmbientBpm(val);
-                          setSpotifyTrack(prev => ({ ...prev, bpm: val }));
-                          // trigger respiration acceleration event
-                          window.dispatchEvent(new CustomEvent('mimi:respiration_speed', { detail: { bpm: val } }));
-                        }}
-                        className="w-full accent-rose-500 bg-stone-800 h-1 outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-bold block">
-                      Aesthetic Playlists
-                    </span>
-                    {[
-                      { name: "Monarch Velvet frequencies", tracks: "12 tracks", duration: "48 min" },
-                      { name: "Silken Panopticon synthesis", tracks: "8 tracks", duration: "32 min" },
-                      { name: "Lace transmission telemetry", tracks: "15 tracks", duration: "54 min" }
-                    ].map(playlist => (
-                      <div 
-                        key={playlist.name}
-                        onClick={() => {
-                          setSpotifyTrack({ name: playlist.name, bpm: ambientBpm, playing: true });
-                          triggerSound('transition');
-                        }}
-                        className="p-2 border border-stone-850 hover:border-rose-500/30 bg-stone-950 rounded-sm cursor-pointer transition-all flex justify-between items-center"
-                      >
-                        <span className="font-serif italic text-xs text-stone-300 truncate max-w-[150px]">
-                          {playlist.name}
-                        </span>
-                        <div className="text-[8px] font-mono text-stone-500 text-right">
-                          <span>{playlist.tracks}</span>
-                          <span className="block">{playlist.duration}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-
-            </AnimatePresence>
-          </div>
-        </aside>
-
-        {/* Infinite Panning and Zooming Canvas */}
-        <main 
+        {/* Infinite pannable / zoomable canvas */}
+        <main
           ref={canvasRef}
-          onMouseDown={handleCanvasMouseDown}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-          onMouseLeave={handleCanvasMouseUp}
-          className={`flex-1 relative overflow-hidden transition-colors duration-1000 ${getMoodboardStyle()}`}
-          style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+          onPointerDown={handleCanvasPointerDown}
+          onPointerMove={handleCanvasPointerMove}
+          onPointerUp={handleCanvasPointerUp}
+          onPointerCancel={handleCanvasPointerUp}
+          onWheel={handleWheel}
+          className={`flex-1 relative overflow-hidden transition-colors duration-700 ${getMoodboardStyle()}`}
+          style={{ cursor: isPanning ? 'grabbing' : 'grab', touchAction: 'none' }}
         >
-          {/* Canvas coordinate dot grid background */}
-          <div 
-            className="absolute inset-0 pointer-events-none opacity-[0.06] dark:opacity-[0.15]"
+          {/* Dot grid background */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.12]"
             style={{
               backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
               backgroundSize: '24px 24px',
               backgroundPosition: `${pan.x}px ${pan.y}px`,
               transform: `scale(${zoom})`,
-              transformOrigin: '0 0'
+              transformOrigin: '0 0',
             }}
           />
 
-          {/* Connective Thread Lines (Occult Investigation Strings) */}
-          <svg className="absolute inset-0 pointer-events-none z-0">
+          {/* Connective thread lines */}
+          <svg className="absolute inset-0 pointer-events-none z-0 w-full h-full">
             <g style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
               {connections.map(([fromId, toId], idx) => {
                 const p1 = positions[fromId];
                 const p2 = positions[toId];
                 if (!p1 || !p2) return null;
-                
-                // Draw a beautiful curved bezier string line between cards
                 const midX = (p1.x + p2.x + 300) / 2;
-                const midY = (p1.y + p2.y + 200) / 2 + 30; // sag
+                const midY = (p1.y + p2.y + 200) / 2 + 30;
                 const path = `M ${p1.x + 150} ${p1.y + 150} Q ${midX} ${midY} ${p2.x + 150} ${p2.y + 150}`;
-
                 return (
-                  <motion.path 
+                  <motion.path
                     key={`line_${idx}`}
                     d={path}
                     fill="none"
-                    stroke="#D97706"
+                    stroke="#f59e0b"
                     strokeWidth="1.2"
                     strokeDasharray="4 2"
-                    opacity="0.35"
+                    opacity="0.3"
                     initial={{ strokeDashoffset: 0 }}
                     animate={{ strokeDashoffset: -20 }}
-                    transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                    transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
                   />
                 );
               })}
             </g>
           </svg>
 
-          {/* Dragging Canvas Viewport */}
-          <div 
-            style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              transformOrigin: '0 0'
-            }}
+          {/* Transformed element layer */}
+          <div
+            style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}
             className="absolute inset-0 pointer-events-none"
           >
             {elements.map((el, idx) => {
               const pos = positions[el.id] || { x: 0, y: 0 };
               const isSelected = selectedElementId === el.id;
               const hasShopifyTag = taggedProducts[el.id];
-              
               return (
                 <div
                   key={el.id}
-                  onMouseDown={(e) => startElementDrag(e, el.id)}
-                  style={{
-                    left: `${pos.x}px`,
-                    top: `${pos.y}px`,
-                    zIndex: el.style.zIndex + (isSelected ? 500 : 0),
-                  }}
-                  className={`absolute pointer-events-auto w-80 flex flex-col gap-3 p-4 bg-[#0C0C0D]/90 border transition-shadow rounded-sm select-none ${
-                    isSelected 
-                      ? 'border-amber-500 shadow-[0_0_25px_rgba(217,119,6,0.15)]' 
-                      : 'border-stone-850 shadow-md hover:border-stone-700'
+                  onPointerDown={(e) => startElementDrag(e, el.id)}
+                  style={{ left: `${pos.x}px`, top: `${pos.y}px`, zIndex: el.style.zIndex + (isSelected ? 500 : 0), touchAction: 'none' }}
+                  className={`absolute pointer-events-auto w-72 md:w-80 flex flex-col gap-3 p-4 bg-[#0b0b0d]/95 border transition-shadow ${
+                    isSelected ? 'border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.18)]' : 'border-white/10 shadow-md hover:border-white/25'
                   }`}
                 >
-                  <div className="flex justify-between items-center border-b border-stone-850 pb-2">
-                    <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-bold">
-                      {el.type === 'image' ? `SHRD_0${idx+1}` : `REF_0${idx+1}`} // {el.type === 'image' ? 'IMAGE' : el.type === 'analysis_pin' ? 'DEBRIEF' : 'THOUGHT'}
+                  <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                    <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-bold truncate">
+                      {el.type === 'image' ? `SHRD_0${idx + 1}` : `REF_0${idx + 1}`} // {el.type === 'image' ? 'IMAGE' : el.type === 'analysis_pin' ? 'DEBRIEF' : 'THOUGHT'}
                     </span>
-                    <div className="flex gap-1.5 pointer-events-auto">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); togglePin(el.id); }} 
-                        className={`p-1 hover:bg-stone-900 transition-colors ${el.style.hasPin ? 'text-amber-500' : 'text-stone-600'}`}
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); togglePin(el.id); }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        aria-label="Toggle pin"
+                        className={`p-2 hover:bg-white/5 transition-colors ${el.style.hasPin ? 'text-amber-400' : 'text-stone-600'}`}
                       >
-                        <Pin size={10} fill={el.style.hasPin ? 'currentColor' : 'none'} />
+                        <Pin size={12} fill={el.style.hasPin ? 'currentColor' : 'none'} />
                       </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); removeElement(el.id); }} 
-                        className="p-1 hover:bg-stone-900 text-stone-600 hover:text-red-500 transition-colors"
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeElement(el.id); }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        aria-label="Remove element"
+                        className="p-2 hover:bg-white/5 text-stone-600 hover:text-red-500 transition-colors"
                       >
-                        <Trash2 size={10} />
+                        <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
 
                   {el.type === 'image' ? (
                     <div className="space-y-3">
-                      <div className={`aspect-[3/4] overflow-hidden border border-stone-800 bg-stone-950 transition-all duration-700 ${
-                        materiality.paperStock === 'newsprint' ? 'grayscale' : 
-                        materiality.paperStock === 'vellum' ? 'opacity-90 blur-[0.5px]' :
-                        materiality.paperStock === 'raw-cardboard' ? 'sepia-[0.3]' : ''
+                      <div className={`aspect-[3/4] overflow-hidden border border-white/10 bg-black/40 transition-all duration-700 ${
+                        materiality.paperStock === 'newsprint' ? 'grayscale' : materiality.paperStock === 'vellum' ? 'opacity-90 blur-[0.5px]' : materiality.paperStock === 'raw-cardboard' ? 'sepia-[0.3]' : ''
                       }`}>
-                        <img src={el.content} className="w-full h-full object-cover select-none pointer-events-none" />
+                        <img src={el.content || '/placeholder.svg'} alt={el.notes || 'Moodboard image'} className="w-full h-full object-cover select-none pointer-events-none" />
                       </div>
-                      {el.notes && (
-                        <p className="font-serif italic text-[11px] text-stone-400 border-l border-stone-850 pl-2 leading-relaxed">
-                          "{el.notes}"
-                        </p>
-                      )}
+                      {el.notes && <p className="font-serif italic text-[11px] text-stone-400 border-l border-white/10 pl-2 leading-relaxed">"{el.notes}"</p>}
                     </div>
                   ) : (
                     <div className="space-y-3">
                       <div className="max-h-60 overflow-y-auto no-scrollbar">
-                        <p className={`${getTypographyClass()} text-xs text-stone-300 leading-relaxed whitespace-pre-wrap`}>
-                          "{el.content}"
-                        </p>
+                        <p className={`${getTypographyClass()} text-xs text-stone-300 leading-relaxed whitespace-pre-wrap`}>"{el.content}"</p>
                       </div>
                       {el.notes && (
-                        <div className="pt-2 border-t border-stone-850/50">
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-stone-500 font-bold block mb-0.5">
-                            Linked Remark
-                          </span>
-                          <p className="font-serif italic text-[10px] text-stone-400 leading-relaxed">
-                            "{el.notes}"
-                          </p>
+                        <div className="pt-2 border-t border-white/10">
+                          <span className="font-mono text-[7px] uppercase tracking-widest text-stone-500 font-bold block mb-0.5">Linked Remark</span>
+                          <p className="font-serif italic text-[10px] text-stone-400 leading-relaxed">"{el.notes}"</p>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Shopify Live Buy Badge overlay */}
                   {hasShopifyTag && (
-                    <div className="mt-2 pt-2 border-t border-emerald-500/10 flex justify-between items-center bg-emerald-500/5 px-2 py-1.5 rounded-sm">
-                      <div className="flex gap-1.5 items-center">
-                        <ShoppingBag size={10} className="text-emerald-400" />
-                        <span className="font-mono text-[8px] uppercase font-black text-stone-200 truncate max-w-[130px]">
-                          {hasShopifyTag.name}
-                        </span>
+                    <div className="mt-1 pt-2 border-t border-amber-400/10 flex justify-between items-center bg-amber-400/5 px-2 py-1.5 gap-2">
+                      <div className="flex gap-1.5 items-center overflow-hidden">
+                        <ShoppingBag size={12} className="text-amber-400 shrink-0" />
+                        <span className="font-mono text-[8px] uppercase font-black text-stone-200 truncate">{hasShopifyTag.name}</span>
                       </div>
-                      <span className="font-mono text-[8px] font-black text-emerald-400 tracking-wider">
-                        [ {hasShopifyTag.price} BUY ]
-                      </span>
+                      <span className="font-mono text-[8px] font-black text-amber-300 tracking-wider shrink-0">[ {hasShopifyTag.price} ]</span>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
+
+          {/* Mobile zoom indicator (top-right of canvas) */}
+          <div className="md:hidden absolute top-3 right-3 z-30 bg-[#0b0b0d]/90 border border-white/10 px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-stone-400 font-bold tabular-nums pointer-events-none">
+            {Math.round(zoom * 100)}%
+          </div>
         </main>
+
+        {/* Mobile: bottom toolbar */}
+        <div className="md:hidden absolute bottom-0 left-0 right-0 z-40 bg-[#0b0b0d]/95 border-t border-white/10 backdrop-blur-md flex items-stretch justify-around px-2 py-1.5" style={{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom))' }}>
+          <button onClick={() => setMobileSheet('materiality')} className="flex-1 min-h-11 flex flex-col items-center justify-center gap-0.5 text-stone-400 active:text-amber-400 transition-colors">
+            <SlidersHorizontal size={18} />
+            <span className="font-mono text-[7px] uppercase tracking-widest font-black">Materiality</span>
+          </button>
+          <button onClick={() => setMobileSheet('integrations')} className="flex-1 min-h-11 flex flex-col items-center justify-center gap-0.5 text-stone-400 active:text-amber-400 transition-colors">
+            <Compass size={18} />
+            <span className="font-mono text-[7px] uppercase tracking-widest font-black">Sources</span>
+          </button>
+          <button onClick={() => handleZoom(1.2)} className="flex-1 min-h-11 flex flex-col items-center justify-center gap-0.5 text-stone-400 active:text-amber-400 transition-colors">
+            <ZoomIn size={18} />
+            <span className="font-mono text-[7px] uppercase tracking-widest font-black">In</span>
+          </button>
+          <button onClick={() => handleZoom(0.8)} className="flex-1 min-h-11 flex flex-col items-center justify-center gap-0.5 text-stone-400 active:text-amber-400 transition-colors">
+            <ZoomOut size={18} />
+            <span className="font-mono text-[7px] uppercase tracking-widest font-black">Out</span>
+          </button>
+          <button onClick={resetViewport} className="flex-1 min-h-11 flex flex-col items-center justify-center gap-0.5 text-stone-400 active:text-amber-400 transition-colors">
+            <Maximize2 size={18} />
+            <span className="font-mono text-[7px] uppercase tracking-widest font-black">Reset</span>
+          </button>
+        </div>
       </div>
+
+      {/* Mobile: swipe-up bottom sheets */}
+      <AnimatePresence>
+        {mobileSheet && (
+          <motion.div
+            className="md:hidden fixed inset-0 z-[6100] flex flex-col justify-end"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <button aria-label="Close panel" className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileSheet(null)} />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.4 }}
+              onDragEnd={(_, info) => { if (info.offset.y > 120) setMobileSheet(null); }}
+              className="relative bg-[#0b0b0d] border-t border-white/10 rounded-t-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl"
+            >
+              <div className="flex flex-col items-center pt-2 pb-1 shrink-0">
+                <span className="w-10 h-1 rounded-full bg-white/20" />
+              </div>
+              <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 shrink-0">
+                <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest font-black text-stone-300">
+                  {mobileSheet === 'materiality' ? <><SlidersHorizontal size={13} className="text-amber-400" /> Aesthetic Materiality</> : <><Compass size={13} className="text-amber-400" /> Sources & Integrations</>}
+                </span>
+                <button onClick={() => setMobileSheet(null)} aria-label="Close" className="p-2 -mr-2 text-stone-400 hover:text-amber-400 min-h-11 flex items-center"><X size={16} /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto min-h-0 no-scrollbar">
+                {mobileSheet === 'materiality' ? <div className="p-4">{materialityBody}</div> : <div className="h-[60vh] flex flex-col">{integrationsBody}</div>}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
