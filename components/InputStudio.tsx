@@ -618,6 +618,63 @@ export const InputStudio: React.FC<{
   const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [recentZines, setRecentZines] = useState<ZineMetadata[]>([]);
+
+  // Mobile: swipe between the Input (editor) and Cover pages
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const handleStudioTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const handleStudioTouchEnd = (e: React.TouchEvent) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Only react to clearly-horizontal swipes so scrolling/typing is unaffected
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    if (dx < 0 && mobileStudioView === "editor") {
+      setMobileStudioView("cover");
+      playClick();
+    } else if (dx > 0 && mobileStudioView === "cover") {
+      setMobileStudioView("editor");
+      playClick();
+    }
+  };
+
+  // Mobile: two-dot page indicator (also tappable) shown above each page header
+  const renderStudioPager = () =>
+    isMobile ? (
+      <div
+        className="flex items-center justify-center gap-1 mb-2 select-none"
+        role="tablist"
+        aria-label="Studio pages"
+      >
+        {(["editor", "cover"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={mobileStudioView === v}
+            aria-label={v === "editor" ? "Input page" : "Cover page"}
+            onClick={() => {
+              setMobileStudioView(v);
+              playClick();
+            }}
+            className="px-2 py-2.5 flex items-center justify-center"
+          >
+            <span
+              className={`block w-1.5 h-1.5 rounded-full bg-current transition-all duration-300 ${
+                mobileStudioView === v
+                  ? "opacity-100 scale-125 studio-text-ink"
+                  : "opacity-30 studio-text-muted"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+    ) : null;
   const [recentZinesLoading, setRecentZinesLoading] = useState(false);
   const [linkedZineIds, setLinkedZineIds] = useState<string[]>([]);
   const panelResizeRef = useRef({ startX: 0, startWidth: 340 });
@@ -1999,7 +2056,12 @@ ${finalInput}`;
         isGenerating={isThinking || isGeneratingPrompt}
       />
       {/* MAIN STUDIO AREA */}
-      <div className="flex-1 w-full flex overflow-hidden relative pb-14">
+      <div
+        className="flex-1 w-full flex overflow-hidden relative pb-14"
+        {...(isMobile
+          ? { onTouchStart: handleStudioTouchStart, onTouchEnd: handleStudioTouchEnd }
+          : {})}
+      >
         
         {/* COLUMN 2: INPUT / EDITOR */}
         {(!isMobile || mobileStudioView === "editor") && (
@@ -2238,10 +2300,11 @@ ${finalInput}`;
             </div>
 
             {/* 3b: Center Dark Text Area */}
-            <div className={`flex-1 flex flex-col justify-between items-center py-12 px-6 relative overflow-y-auto no-scrollbar ${isMobile ? "pb-44" : ""}`}>
+            <div className={`flex-1 flex flex-col items-center px-6 relative overflow-y-auto no-scrollbar ${isMobile ? "justify-start gap-3 pt-6 pb-44" : "justify-between py-12"}`}>
               
               {/* Practical creator promise with an editorial Mimi accent. */}
               <div className="text-center studio-text-muted mb-6 select-none flex flex-col items-center gap-1.5 shrink-0">
+                {renderStudioPager()}
                 <span>{currentTime}</span>
                 {activeThread ? (
                   <span className="font-mono uppercase studio-text-ink text-[8px] border studio-border studio-bg-surface px-2 py-0.5 tracking-[0.2em] font-bold">
@@ -2944,9 +3007,10 @@ ${finalInput}`;
 
         {/* COLUMN 3: COVER PROFILER / PREVIEW COLUMN */}
         {(!isMobile || mobileStudioView === "cover") && (
-          <div className="w-full studio-bg-panel border-l studio-border flex flex-col justify-between p-6 md:pr-10 shrink-0 relative overflow-y-auto no-scrollbar"
+          <div className={`w-full studio-bg-panel border-l studio-border flex flex-col p-6 md:pr-10 shrink-0 relative overflow-y-auto no-scrollbar ${isMobile ? "justify-start pb-44" : "justify-between"}`}
             style={isMobile ? undefined : { width: coverPanelWidth }}>
             <div className="space-y-6">
+              {renderStudioPager()}
               {/* Zine Title Input Header */}
               <div>
                 <input
@@ -3777,7 +3841,7 @@ ${finalInput}`;
                 key: "more",
                 label: "More",
                 icon: <MoreHorizontal size={17} strokeWidth={1.7} />,
-                active: mobileStudioView === "cover",
+                active: moreSheetOpen,
                 onClick: () => setMoreSheetOpen(true),
               },
             ];
