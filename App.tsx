@@ -259,6 +259,9 @@ const MoodboardComposer = lazy(() =>
 const CodexView = lazy(() =>
   import("./components/CodexView").then((m) => ({ default: m.CodexView })),
 );
+const BrandVoiceView = lazy(() =>
+  import("./components/BrandVoiceView").then((m) => ({ default: m.BrandVoiceView })),
+);
 const TheForecast = lazy(() =>
   import("./components/TheForecast").then((m) => ({ default: m.TheForecast })),
 );
@@ -2400,6 +2403,7 @@ export const App: React.FC = () => {
                         {viewMode === "obsidian-mirror" && <ObsidianMirror />}
                         {viewMode === "notifications" && <NotificationsView />}
                         {viewMode === "codex" && <CodexView />}
+                        {viewMode === "brand-voice" && <BrandVoiceView />}
                         {viewMode === "architecture" && <ArchitectureView />}
                         {viewMode === "aesthetic-tokens" && (
                           <AestheticTokensMap
