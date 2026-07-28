@@ -64,7 +64,7 @@ export const ZineCoverCard: React.FC<ZineCoverCardProps> = ({ zine, onClick }) =
  
  {/* Bottom 25%: The Solid Tailor Color Swatch */}
  <div className="h-[25%] p-4 md:p-6 flex flex-col justify-between"style={{ backgroundColor: 'var(--zine-base-color)', color: 'var(--zine-accent-color)' }}>
- <h3 className="text-xl md:text-2xl leading-none font-medium truncate">
+ <h3 className="text-xl md:text-2xl leading-tight font-medium line-clamp-2 text-balance">
  {zine.content?.headlines?.[0] || zine.title ||"Untitled"}
  </h3>
  

@@ -27,6 +27,39 @@ export const sendJson = (res: any, status: number, payload: unknown) => {
   res.end(JSON.stringify(payload));
 };
 
+/**
+ * Standard error envelope used across all API handlers: { error: { message, code? } }.
+ * Use this instead of ad-hoc `{ error: "string" }` shapes so clients can rely on one format.
+ */
+export const sendError = (
+  res: any,
+  status: number,
+  message: string,
+  code?: string,
+) => {
+  sendJson(res, status, { error: { message, ...(code ? { code } : {}) } });
+};
+
+/**
+ * Validate `data` against a zod schema. On success returns the parsed value.
+ * On failure it sends a 400 with the standard error envelope and returns null,
+ * so callers can early-return: `const parsed = validateBody(res, schema, body); if (!parsed) return;`
+ */
+export const validateBody = <T>(
+  res: any,
+  schema: { safeParse: (input: unknown) => { success: boolean; data?: T; error?: any } },
+  data: unknown,
+): T | null => {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const issue = result.error?.issues?.[0];
+    const path = issue?.path?.length ? `${issue.path.join(".")}: ` : "";
+    sendError(res, 400, `${path}${issue?.message || "Invalid request body"}`, "INVALID_BODY");
+    return null;
+  }
+  return result.data as T;
+};
+
 export const sendText = (res: any, status: number, text: string, contentType = "text/plain; charset=utf-8") => {
   res.statusCode = status;
   res.setHeader("Content-Type", contentType);
@@ -69,6 +102,6 @@ export const providerKey = (req: any, provider: "gemini" | "anthropic" | "openai
 
 export const requireMethod = (req: any, res: any, method: string) => {
   if (req.method === method) return true;
-  sendJson(res, 405, { error: { message: `Method ${req.method} not allowed` } });
+  sendError(res, 405, `Method ${req.method} not allowed`, "METHOD_NOT_ALLOWED");
   return false;
 };

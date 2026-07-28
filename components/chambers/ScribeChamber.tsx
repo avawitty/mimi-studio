@@ -36,12 +36,12 @@ const TAB_WORKFLOW: Record<ScribeTab, ArchiveWorkflowStep> = {
 };
 
 const parseInitialTab = (): ScribeTab => {
-  if (typeof window === "undefined") return "retrieve";
+  if (typeof window === "undefined") return "ask";
   const param = new URLSearchParams(window.location.search).get("tab");
   if (param === "threads" || param === "ask" || param === "capture" || param === "atoms" || param === "retrieve") {
     return param;
   }
-  return "retrieve";
+  return "ask";
 };
 
 export const ScribeChamber: React.FC<{ initialTab?: ScribeTab }> = ({ initialTab }) => {

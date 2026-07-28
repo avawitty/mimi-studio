@@ -917,8 +917,8 @@ export const TasteGraph: React.FC = () => {
                 </div>
               </div>
               
-              {!ledgerMinimized ? <div className="flex-1 overflow-y-auto px-6 py-3 no-scrollbar">
-                <table className="w-full text-left border-collapse">
+        {!ledgerMinimized ? <div className="flex-1 overflow-y-auto overflow-x-auto px-6 py-3 no-scrollbar scroll-fade-x">
+                    <table className="w-full min-w-[480px] text-left border-collapse">
                   <thead>
                     <tr className="border-b border-stone-200/50 dark:border-stone-850/50">
                       <th className="font-mono text-[8.5px] uppercase tracking-widest text-stone-400 pb-2 font-bold w-24">Ref ID</th>

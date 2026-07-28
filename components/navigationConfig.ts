@@ -114,6 +114,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "Tailor",
         note: "profile, evidence, style lab, diagnostics",
         keywords: ["tailor", "brand", "style", "physics", "aesthetic", "voice", "references", "art-style", "scryer", "patterns", "diagnostics", "telemetry", "chromatics"],
+      },
+      {
+        mode: "tailor/dossier",
+        label: "Scry",
+        note: "full read of your Tailor blueprint",
+        keywords: ["scry", "dossier", "full read", "compile", "creative dossier", "evidence", "analysis", "synthesis", "tailor", "read"],
       }
     ]
   },
@@ -232,6 +238,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "System",
         note: "codex, architecture, diagnostics",
         keywords: ["rules", "instructions", "system", "codex", "code", "architecture", "diagnostics"],
+      },
+      {
+        mode: "brand-voice",
+        label: "The Voice",
+        note: "brand voice dossier",
+        keywords: ["voice", "brand voice", "tone", "editorial", "copy", "language", "persona", "style guide", "principles"],
       },
       {
         mode: "chamber-map",

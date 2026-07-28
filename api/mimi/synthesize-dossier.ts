@@ -1,4 +1,5 @@
-import { cors, readJsonBody, requireMethod, sendJson } from "../../lib/apiUtils.js";
+import { z } from "zod";
+import { cors, readJsonBody, requireMethod, sendError, sendJson, validateBody } from "../../lib/apiUtils.js";
 import {
   chargeMimiFundedGateway,
   fundedGatewayCreditCost,
@@ -14,30 +15,53 @@ const DOSSIER_MODEL = process.env.MIMI_DOSSIER_GATEWAY_MODEL || "google/gemini-3
 
 type DossierImagePayload = { base64: string; mimeType: string };
 
+const dossierSchema = z.object({
+  images: z
+    .array(
+      z.object({
+        base64: z.string().min(1, "Image data is required."),
+        mimeType: z.string().min(1, "Image mime type is required."),
+      }),
+    )
+    .max(8, "Upload at most 8 reference images."),
+  userBlurb: z.string().optional(),
+  blueprintDigest: z.string().optional(),
+});
+
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
   if (!requireMethod(req, res, "POST")) return;
 
   try {
     const body = await readJsonBody(req);
-    const images = Array.isArray(body.images) ? (body.images as DossierImagePayload[]) : [];
-    const userBlurb = typeof body.userBlurb === "string" ? body.userBlurb : undefined;
+    const input = validateBody(res, dossierSchema, body);
+    if (!input) return;
+    const images = input.images as DossierImagePayload[];
+    const userBlurb = input.userBlurb;
+    const blueprintDigest = input.blueprintDigest?.trim() || undefined;
 
-    if (images.length < 3 || images.length > 8) {
-      return sendJson(res, 400, { error: "Upload between 3 and 8 reference images." });
+    if (images.length < 3 && !blueprintDigest) {
+      return sendError(
+        res,
+        400,
+        "Provide a Tailor blueprint or upload at least 3 reference images to compile a full read.",
+        "INSUFFICIENT_INPUT",
+      );
     }
 
     const cost = fundedGatewayCreditCost(creditCostForTask("tailor_analysis"));
     const { apiKey, access } = await resolveFundedGatewayApiKey(req, cost);
 
     if (!apiKey) {
-      return sendJson(res, 403, {
-        error:
-          "Sign in with trial credits remaining, upgrade to a paid plan, or add your own Gemini key in Settings.",
-      });
+      return sendError(
+        res,
+        403,
+        "Sign in with trial credits remaining, upgrade to a paid plan, or add your own Gemini key in Settings.",
+        "NO_CREDITS",
+      );
     }
 
-    const userPrompt = buildCreativeDossierUserPrompt(images.length, userBlurb);
+    const userPrompt = buildCreativeDossierUserPrompt(images.length, userBlurb, blueprintDigest);
     const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
       { type: "text", text: userPrompt },
     ];
@@ -78,14 +102,14 @@ export default async function handler(req: any, res: any) {
       } catch {
         // keep raw text
       }
-      return sendJson(res, upstream.status, { error: message || "Dossier synthesis failed." });
+      return sendError(res, upstream.status, message || "Dossier synthesis failed.", "GATEWAY_ERROR");
     }
 
     let parsed: Record<string, unknown> = {};
     try {
       parsed = JSON.parse(text);
     } catch {
-      return sendJson(res, 502, { error: "Invalid response from AI Gateway." });
+      return sendError(res, 502, "Invalid response from AI Gateway.", "BAD_GATEWAY_RESPONSE");
     }
 
     const rawContent = parsed.choices?.[0]?.message?.content;
@@ -99,7 +123,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (!dossierRaw || typeof dossierRaw !== "object") {
-      return sendJson(res, 502, { error: "Model returned an invalid dossier payload." });
+      return sendError(res, 502, "Model returned an invalid dossier payload.", "INVALID_DOSSIER");
     }
 
     if (access?.billable) {
@@ -112,6 +136,7 @@ export default async function handler(req: any, res: any) {
 
     sendJson(res, 200, { dossier: dossierRaw, creditsCharged: access?.billable ? cost : 0 });
   } catch (error: any) {
-    sendJson(res, 500, { error: error?.message || String(error) });
+    console.error("MIMI // Dossier synthesis error:", error);
+    sendError(res, 500, error?.message || String(error), "DOSSIER_FAILED");
   }
 }

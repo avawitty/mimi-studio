@@ -37,28 +37,47 @@ Name the deliverable: "Evidence-Based Creative Dossier" — not "Art Style Repor
 export function buildCreativeDossierUserPrompt(
   imageCount: number,
   userBlurb?: string,
+  blueprintDigest?: string,
 ): string {
-  const refList = Array.from({ length: imageCount }, (_, i) => {
-    const id = `ref_${String(i + 1).padStart(2, '0')}`;
-    return `- ${id}: [image ${i + 1}]`;
-  }).join('\n');
+  const refList = imageCount > 0
+    ? Array.from({ length: imageCount }, (_, i) => {
+        const id = `ref_${String(i + 1).padStart(2, '0')}`;
+        return `- ${id}: [image ${i + 1}]`;
+      }).join('\n')
+    : '(no images uploaded — read the Tailor Blueprint below as primary evidence)';
 
   const blurbBlock = userBlurb?.trim()
     ? `"""\n${userBlurb.trim()}\n"""`
     : '(none provided)';
 
-  return `Synthesize an Evidence-Based Creative Dossier.
+  const digest = blueprintDigest?.trim();
+  const blueprintBlock = digest
+    ? `\nTAILOR BLUEPRINT — the creator's own declared inputs (treat as self-reported evidence):
+"""
+${digest}
+"""
+`
+    : '';
+
+  const evidenceGuidance = digest && imageCount > 0
+    ? `- Cross-reference the declared Tailor Blueprint against the uploaded images. Where they agree, raise confidence; where they diverge, surface the tension in userIntent and note which signals are declared vs. visually evidenced.
+- Treat blueprint fields (positioning, exclusions, palette, voice, strategic vectors) as ref_bp when citing.`
+    : digest
+      ? `- With no images provided, synthesize the dossier from the Tailor Blueprint. Ground every law/principle in a specific declared field and cite it as ref_bp. Be honest that these are self-reported, not visually verified (lower confidence than image-backed signals).`
+      : `- This may become: art style container, doll likeness, brand direction, or personal creative methodology.`;
+
+  return `Synthesize an Evidence-Based Creative Dossier — a full read of everything this creator has given Mimi.
 
 User blurb (optional):
 ${blurbBlock}
-
+${blueprintBlock}
 Uploaded references (in order):
 ${refList}
 
 Context for Mimi:
-- This may become: art style container, doll likeness, brand direction, or personal creative methodology.
+${evidenceGuidance}
 - Optimize for TRANSFERABLE principles across illustration, brand, UI, writing, and product.
-- Assign each image ref_id in order: ref_01 through ref_${String(imageCount).padStart(2, '0')}.
+${imageCount > 0 ? `- Assign each image ref_id in order: ref_01 through ref_${String(imageCount).padStart(2, '0')}.` : ''}
 
 Return JSON only per schema.`;
 }

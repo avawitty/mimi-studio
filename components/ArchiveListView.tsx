@@ -38,7 +38,8 @@ export const ArchiveListView: React.FC<ArchiveListViewProps> = ({ items, zines, 
  <div className="flex gap-4 mb-8">
  <button onClick={() => setSortConfig({ key: 'newest', direction: 'desc' })} className="font-sans text-[10px] uppercase tracking-widest font-black text-nous-subtle">Newest</button>
  </div>
- <table className="w-full text-left font-sans text-[10px] uppercase tracking-widest">
+            <div className="overflow-x-auto no-scrollbar scroll-fade-x">
+            <table className="w-full min-w-[520px] text-left font-sans text-[10px] uppercase tracking-widest">
  <thead>
  <tr className="border-b border-nous-border text-nous-subtle">
  <th className="p-4">Fragment</th>
@@ -62,8 +63,9 @@ export const ArchiveListView: React.FC<ArchiveListViewProps> = ({ items, zines, 
  </td>
  </tr>
  ))}
- </tbody>
- </table>
- </div>
- );
+                </tbody>
+            </table>
+            </div>
+        </div>
+    );
 };
