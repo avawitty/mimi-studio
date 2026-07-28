@@ -61,6 +61,10 @@ import {
   FileCode,
   BookOpen,
   GitMerge,
+  Menu,
+  MoreHorizontal,
+  PenLine,
+  LayoutGrid,
 } from "lucide-react";
 import {
   transcribeAudio,
@@ -107,6 +111,7 @@ import { UseCaseSelector, getBriefPreset } from "./UseCaseSelector";
 import type { BriefPreset } from "./UseCaseSelector";
 import { AestheticCustomizer } from "./AestheticCustomizer";
 import { StudioChrome, StudioColumnSplitHandle } from "./studio/StudioChrome";
+import { MENU_STRUCTURE } from "./navigationConfig";
 import { useStudioTheme } from "../hooks/useStudioTheme";
 import { useTheme } from "../contexts/ThemeContext";
 import { useStudioDollSelection } from "../hooks/useStudioDollSelection";
@@ -610,7 +615,159 @@ export const InputStudio: React.FC<{
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const [isResizingPanels, setIsResizingPanels] = useState(false);
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
+  const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [recentZines, setRecentZines] = useState<ZineMetadata[]>([]);
+
+  // Mobile: swipe between the Input (editor) and Cover pages
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const handleStudioTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const handleStudioTouchEnd = (e: React.TouchEvent) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Only react to clearly-horizontal swipes so scrolling/typing is unaffected
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    if (dx < 0 && mobileStudioView === "editor") {
+      setMobileStudioView("cover");
+      playClick();
+    } else if (dx > 0 && mobileStudioView === "cover") {
+      setMobileStudioView("editor");
+      playClick();
+    }
+  };
+
+  // Mobile: two-dot page indicator (also tappable) shown above each page header
+  const renderStudioPager = () =>
+    isMobile ? (
+      <div
+        className="flex items-center justify-center gap-1 mb-2 select-none"
+        role="tablist"
+        aria-label="Studio pages"
+      >
+        {(["editor", "cover"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={mobileStudioView === v}
+            aria-label={v === "editor" ? "Input page" : "Cover page"}
+            onClick={() => {
+              setMobileStudioView(v);
+              playClick();
+            }}
+            className="px-2 py-2.5 flex items-center justify-center"
+          >
+            <span
+              className={`block w-1.5 h-1.5 rounded-full bg-current transition-all duration-300 ${
+                mobileStudioView === v
+                  ? "opacity-100 scale-125 studio-text-ink"
+                  : "opacity-30 studio-text-muted"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+    ) : null;
+
+  // Shared detailed-brief field panel (used on desktop in the brief section,
+  // and on mobile beneath the "Context Mimi will use" header via a deep link).
+  const renderDetailedBriefPanel = () => (
+    <AnimatePresence>
+      {isBriefExpanded && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="overflow-hidden w-full flex flex-col gap-3 bg-[#FAF9F6] dark:bg-[#11110F] border border-stone-300 dark:border-stone-700 p-3.5 rounded-sm shrink-0 shadow-lg"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {/* Editorial Intention */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Editorial Intention</span>
+              <textarea
+                value={editorialIntention}
+                onChange={(e) => setEditorialIntention(e.target.value)}
+                placeholder="Conceptual focus or creative goal?"
+                rows={2}
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Central Tension */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Central Tension</span>
+              <textarea
+                value={centralTension}
+                onChange={(e) => setCentralTension(e.target.value)}
+                placeholder="The contradiction, question, or mystery..."
+                rows={2}
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Anchors & References */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Anchors & References</span>
+              <input
+                type="text"
+                value={anchorsReferences}
+                onChange={(e) => setAnchorsReferences(e.target.value)}
+                placeholder="Objects, fragments, cultural citations..."
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Desired Feeling */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Desired Feeling</span>
+              <input
+                type="text"
+                value={desiredFeeling}
+                onChange={(e) => setDesiredFeeling(e.target.value)}
+                placeholder="Qualities, mood, evocative atmospheres..."
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Avoid */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Avoid</span>
+              <input
+                type="text"
+                value={avoidExclude}
+                onChange={(e) => setAvoidExclude(e.target.value)}
+                placeholder="Clichés, styles, or specific conclusions..."
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
+              />
+            </div>
+
+            {/* Output Wanted */}
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Output Wanted</span>
+              <select
+                value={outputWanted}
+                onChange={(e) => setOutputWanted(e.target.value)}
+                className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 cursor-pointer"
+              >
+                <option value="">Poetic Complete Concept (Default)</option>
+                <option value="Issue Outline">Structured Issue Outline</option>
+                <option value="Editorial Essay">Full Editorial Essay</option>
+                <option value="Cover Design">Cover Plate Design Brief</option>
+              </select>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const [recentZinesLoading, setRecentZinesLoading] = useState(false);
   const [linkedZineIds, setLinkedZineIds] = useState<string[]>([]);
   const panelResizeRef = useRef({ startX: 0, startWidth: 340 });
@@ -727,16 +884,6 @@ export const InputStudio: React.FC<{
       window.removeEventListener("pointerup", onUp);
     };
   }, [isResizingPanels]);
-
-  const STUDIO_CHAMBER_LINKS = [
-    { id: "scribe", label: "Scribe" },
-    { id: "pocket", label: "Pocket" },
-    { id: "the-edit", label: "The Edit" },
-    { id: "intel-hub", label: "Intel Hub" },
-    { id: "mimi-dolls", label: "Mimi Dolls" },
-    { id: "tailor", label: "Tailor" },
-    { id: "moodboard", label: "Moodboard" },
-  ] as const;
 
   // --- Cybernoir Telemetry & Typewriter Suggestions ---
   const [isMobile, setIsMobile] = useState(false);
@@ -2002,18 +2149,24 @@ ${finalInput}`;
         isGenerating={isThinking || isGeneratingPrompt}
       />
       {/* MAIN STUDIO AREA */}
-      <div className="flex-1 w-full flex overflow-hidden relative pb-14">
+      <div
+        className="flex-1 w-full flex overflow-hidden relative pb-14"
+        {...(isMobile
+          ? { onTouchStart: handleStudioTouchStart, onTouchEnd: handleStudioTouchEnd }
+          : {})}
+      >
         
         {/* COLUMN 2: INPUT / EDITOR */}
         {(!isMobile || mobileStudioView === "editor") && (
           <div className="flex-1 min-w-0 h-full flex overflow-hidden studio-bg-workspace border-r border-dotted studio-divider">
             {/* 3a: Vertical Icon Rail */}
-            <div className="w-[50px] studio-bg-surface border-r studio-border flex flex-col items-center justify-start py-4 gap-2.5 shrink-0 overflow-y-auto no-scrollbar max-h-full">
+            <div className="studio-rail w-[50px] studio-bg-surface border-r studio-border hidden md:flex flex-col items-center justify-start py-4 gap-2.5 shrink-0 overflow-y-auto md:overflow-visible no-scrollbar max-h-full">
               
               {/* Icon 1: Attachment clip */}
               <button
                 onClick={() => mediaInputRef.current?.click()}
-                title="Attach Media Artifact"
+                data-tip="Attach Media Artifact"
+                aria-label="Attach Media Artifact"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <Paperclip size={14} />
@@ -2027,7 +2180,14 @@ ${finalInput}`;
                   playClick();
                 }}
                 disabled={isTranscribing}
-                title={
+                data-tip={
+                  isTranscribing
+                    ? "Transcribing voice memo..."
+                    : isRecording
+                      ? "Stop recording"
+                      : "Record voice memo"
+                }
+                aria-label={
                   isTranscribing
                     ? "Transcribing voice memo..."
                     : isRecording
@@ -2058,7 +2218,8 @@ ${finalInput}`;
                   handleDictationToggle();
                   playClick();
                 }}
-                title={isDictating ? "Stop live dictation" : "Dictate narrative live"}
+                data-tip={isDictating ? "Stop live dictation" : "Dictate narrative live"}
+                aria-label={isDictating ? "Stop live dictation" : "Dictate narrative live"}
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   isDictating
                     ? "border-red-500 bg-red-500/20 text-red-500 animate-pulse"
@@ -2075,7 +2236,8 @@ ${finalInput}`;
                   setInput("");
                   playClick();
                 }}
-                title="Reset Workspace"
+                data-tip="Reset Workspace"
+                aria-label="Reset Workspace"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <ChevronLeft size={14} />
@@ -2089,7 +2251,8 @@ ${finalInput}`;
                   handleAutoGenerateTitle();
                   playClick();
                 }}
-                title="Whip Title Spark"
+                data-tip="Whip Title Spark"
+                aria-label="Whip Title Spark"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <Zap size={14} />
@@ -2101,7 +2264,8 @@ ${finalInput}`;
                   setDeepThinking(!deepThinking);
                   playClick();
                 }}
-                title="Superintelligence Engine"
+                data-tip="Superintelligence Engine"
+                aria-label="Superintelligence Engine"
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   deepThinking 
                     ? "border-purple-500/50 bg-purple-500/10 text-purple-400" 
@@ -2117,7 +2281,8 @@ ${finalInput}`;
                   setUseSearch(!useSearch);
                   playClick();
                 }}
-                title="Semantic Web Grounding"
+                data-tip="Semantic Web Grounding"
+                aria-label="Semantic Web Grounding"
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   useSearch 
                     ? "border-blue-500/50 bg-blue-500/10 text-blue-400" 
@@ -2133,7 +2298,8 @@ ${finalInput}`;
                   togglePanel("telemetry");
                   playClick();
                 }}
-                title="System Optics"
+                data-tip="System Optics"
+                aria-label="System Optics"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <Eye size={14} />
@@ -2153,7 +2319,8 @@ ${finalInput}`;
                   }
                   playClick();
                 }}
-                title="Generate Aesthetic Spark"
+                data-tip="Generate Aesthetic Spark"
+                aria-label="Generate Aesthetic Spark"
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   isGeneratingPrompt 
                     ? "border-yellow-500/50 bg-yellow-500/10 text-yellow-400 animate-pulse" 
@@ -2185,7 +2352,8 @@ ${finalInput}`;
                   setUseTailorProfile(!useTailorProfile);
                   playClick();
                 }}
-                title="Custom Tailor Override"
+                data-tip="Custom Tailor Override"
+                aria-label="Custom Tailor Override"
                 className={`w-8 h-8 rounded-none border flex items-center justify-center transition-all ${
                   !useTailorProfile 
                     ? "border-orange-500/50 bg-orange-500/10 text-orange-400" 
@@ -2203,7 +2371,8 @@ ${finalInput}`;
                   setShowColophon(true);
                   playClick();
                 }}
-                title="Review Manifesto Colophon"
+                data-tip="Review Manifesto Colophon"
+                aria-label="Review Manifesto Colophon"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <FileText size={14} />
@@ -2215,7 +2384,8 @@ ${finalInput}`;
                   togglePanel("treatments");
                   playClick();
                 }}
-                title="Preset Treatments Canvas"
+                data-tip="Preset Treatments Canvas"
+                aria-label="Preset Treatments Canvas"
                 className="w-8 h-8 rounded-none border studio-icon-btn flex items-center justify-center transition-all"
               >
                 <Paintbrush size={14} />
@@ -2223,10 +2393,11 @@ ${finalInput}`;
             </div>
 
             {/* 3b: Center Dark Text Area */}
-            <div className={`flex-1 flex flex-col justify-between items-center py-12 px-6 relative overflow-y-auto no-scrollbar ${isMobile ? "pb-32" : ""}`}>
+            <div className={`flex-1 flex flex-col items-center px-6 relative overflow-y-auto no-scrollbar ${isMobile ? "justify-start gap-3 pt-6 pb-44" : "justify-between py-12"}`}>
               
               {/* Practical creator promise with an editorial Mimi accent. */}
               <div className="text-center studio-text-muted mb-6 select-none flex flex-col items-center gap-1.5 shrink-0">
+                {renderStudioPager()}
                 <span>{currentTime}</span>
                 {activeThread ? (
                   <span className="font-mono uppercase studio-text-ink text-[8px] border studio-border studio-bg-surface px-2 py-0.5 tracking-[0.2em] font-bold">
@@ -2344,7 +2515,7 @@ ${finalInput}`;
               </AnimatePresence>
 
               {/* Progressive Editorial Brief Form Container */}
-              <div className={`w-full max-w-2xl flex flex-col gap-5 relative z-15 ${isMobile ? "min-h-[160px]" : "flex-1 min-h-[220px]"}`}>
+              <div className={`w-full max-w-2xl flex flex-col gap-5 relative z-15 ${isMobile ? "min-h-[160px]" : "min-h-[220px]"}`}>
                 {/* Thinking Pulse Overlay */}
                 {isThinking && (
                   <div className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center bg-transparent">
@@ -2354,7 +2525,7 @@ ${finalInput}`;
                 )}
 
                 {/* Primary field: Source Material */}
-                <div className="flex flex-col gap-2 flex-1">
+                <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3">
                     <label className="font-mono text-[9px] uppercase tracking-[0.22em] text-stone-400 font-extrabold shrink-0">01 / Source material</label>
                     <div className="h-px flex-1 bg-stone-200/10 dark:bg-stone-800/50" />
@@ -2366,13 +2537,13 @@ ${finalInput}`;
                       setInput(e.target.value);
                       playClick();
                     }}
-                    className="w-full bg-transparent border-none focus:ring-0 text-md md:text-xl font-serif italic text-center studio-prompt-input outline-none resize-none flex-1 leading-relaxed no-scrollbar select-text focus:outline-none min-h-[90px]"
+                    className="w-full bg-transparent border-none focus:ring-0 text-md md:text-xl font-serif italic text-center studio-prompt-input outline-none resize-none leading-relaxed no-scrollbar select-text focus:outline-none min-h-[120px]"
                     placeholder="Paste a fragment, reference, question, or unfinished idea..."
                   />
                 </div>
 
-                {/* Expand Brief Toggle Button */}
-                <div className="flex justify-center select-none shrink-0">
+                {/* Expand Brief Toggle Button (desktop only) */}
+                <div className="hidden md:flex justify-center select-none shrink-0">
                   <button
                     type="button"
                     onClick={() => {
@@ -2392,94 +2563,8 @@ ${finalInput}`;
                   </button>
                 </div>
 
-                {/* Expandable detailed fields */}
-                <AnimatePresence>
-                  {isBriefExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden w-full flex flex-col gap-3 bg-[#FAF9F6] dark:bg-[#11110F] border border-stone-300 dark:border-stone-700 p-3.5 rounded-sm shrink-0 shadow-lg"
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                        {/* Editorial Intention */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Editorial Intention</span>
-                          <textarea
-                            value={editorialIntention}
-                            onChange={(e) => setEditorialIntention(e.target.value)}
-                            placeholder="Conceptual focus or creative goal?"
-                            rows={2}
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Central Tension */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Central Tension</span>
-                          <textarea
-                            value={centralTension}
-                            onChange={(e) => setCentralTension(e.target.value)}
-                            placeholder="The contradiction, question, or mystery..."
-                            rows={2}
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Anchors & References */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Anchors & References</span>
-                          <input
-                            type="text"
-                            value={anchorsReferences}
-                            onChange={(e) => setAnchorsReferences(e.target.value)}
-                            placeholder="Objects, fragments, cultural citations..."
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Desired Feeling */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Desired Feeling</span>
-                          <input
-                            type="text"
-                            value={desiredFeeling}
-                            onChange={(e) => setDesiredFeeling(e.target.value)}
-                            placeholder="Qualities, mood, evocative atmospheres..."
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Avoid */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Avoid</span>
-                          <input
-                            type="text"
-                            value={avoidExclude}
-                            onChange={(e) => setAvoidExclude(e.target.value)}
-                            placeholder="Clichés, styles, or specific conclusions..."
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
-                          />
-                        </div>
-
-                        {/* Output Wanted */}
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-wider text-stone-700 dark:text-stone-300 font-bold">Output Wanted</span>
-                          <select
-                            value={outputWanted}
-                            onChange={(e) => setOutputWanted(e.target.value)}
-                            className="w-full bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 p-2 text-[10px] font-sans rounded-xs focus:border-stone-700 dark:focus:border-stone-500 outline-none text-stone-900 dark:text-stone-100 cursor-pointer"
-                          >
-                            <option value="">Poetic Complete Concept (Default)</option>
-                            <option value="Issue Outline">Structured Issue Outline</option>
-                            <option value="Editorial Essay">Full Editorial Essay</option>
-                            <option value="Cover Design">Cover Plate Design Brief</option>
-                          </select>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Expandable detailed fields (desktop renders here; mobile renders under the context header) */}
+                {!isMobile && renderDetailedBriefPanel()}
               </div>
 
               {/* Used by Mimi // Active Context Strip */}
@@ -2488,6 +2573,31 @@ ${finalInput}`;
                   <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-500 font-extrabold">Context Mimi will use</span>
                   <div className="flex-1 h-px bg-stone-200/10 dark:bg-stone-800/50" />
                 </div>
+
+                {/* Mobile: detailed brief as a quiet deep link (replaces the large button) */}
+                {isMobile && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsBriefExpanded(!isBriefExpanded);
+                        playClick();
+                      }}
+                      aria-expanded={isBriefExpanded}
+                      className="mb-3 inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-stone-500 hover:studio-text-ink underline underline-offset-4 decoration-dotted decoration-stone-500/60 transition-colors"
+                    >
+                      <Settings size={11} strokeWidth={1.7} aria-hidden="true" />
+                      <span>{isBriefExpanded ? "Hide detailed brief" : "Configure detailed brief"}</span>
+                      <ChevronDown
+                        size={11}
+                        className={`transition-transform ${isBriefExpanded ? "rotate-180" : ""}`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    <div className="mb-3">{renderDetailedBriefPanel()}</div>
+                  </>
+                )}
+
                 <div className="flex flex-wrap gap-2 items-center min-h-[24px]">
                   {/* Deep Reasoning */}
                   {deepThinking && (
@@ -2678,23 +2788,29 @@ ${finalInput}`;
                 </div>
               )}
 
-              {/* Mobile Sticky Footer Actions (Only on Mobile) */}
+              {/* Mobile Sticky Action Cluster (sits directly above the bottom nav) */}
               {isMobile && (
-                <div className="fixed bottom-14 left-0 right-0 p-3 bg-stone-950/95 border-t border-stone-900 z-45 flex flex-col gap-1.5 shrink-0">
-                  <div className="flex gap-2">
+                <div className="studio-mobile-actions fixed left-0 right-0 px-3 pt-2.5 pb-3 studio-bg-panel border-t studio-border z-[45] flex flex-col gap-2">
+                  <div className="flex items-stretch gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setToolsSheetOpen(true);
+                        playClick();
+                      }}
+                      aria-label="Open creation tools"
+                      className="w-12 shrink-0 flex flex-col items-center justify-center gap-1 border studio-border studio-bg-surface studio-text-ink rounded-sm active:scale-95 transition-transform"
+                    >
+                      <LayoutGrid size={15} strokeWidth={1.7} />
+                      <span className="font-mono text-[6px] uppercase tracking-[0.12em] font-bold leading-none">Tools</span>
+                    </button>
                     <button
                       type="button"
                       disabled={isShapingBrief}
                       onClick={handleShapeBrief}
-                      className="px-3 py-3 bg-stone-900 hover:bg-stone-850 text-stone-300 text-[9px] font-mono uppercase tracking-wider font-extrabold border border-stone-800 rounded-xs transition-colors flex items-center justify-center gap-1"
+                      className="w-14 shrink-0 flex items-center justify-center border border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-mono uppercase tracking-wider font-extrabold rounded-sm active:scale-95 transition-transform"
                     >
-                      {isShapingBrief ? (
-                        <>
-                          <Loader2 size={11} className="animate-spin text-purple-500" />
-                        </>
-                      ) : (
-                        "SHAPE"
-                      )}
+                      {isShapingBrief ? <Loader2 size={13} className="animate-spin" /> : "Shape"}
                     </button>
                     <button
                       type="button"
@@ -2703,10 +2819,10 @@ ${finalInput}`;
                         triggerAccession(true);
                         playClick();
                       }}
-                      className="flex-1 py-3 bg-purple-950/40 border border-purple-800/60 text-purple-200 text-[9px] font-mono uppercase tracking-widest font-extrabold rounded-xs transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 border border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-300 text-[9px] font-mono uppercase tracking-widest font-extrabold rounded-sm active:scale-95 transition-transform"
                     >
-                      <Eye size={11} className="text-purple-400" />
-                      Quick Preview
+                      <Eye size={12} strokeWidth={1.8} />
+                      Preview
                     </button>
                     <button
                       type="button"
@@ -2715,14 +2831,16 @@ ${finalInput}`;
                         triggerAccession(false);
                         playClick();
                       }}
-                      className="flex-1 py-3 bg-[#FAF9F6] text-black text-[9px] font-mono uppercase tracking-widest font-extrabold rounded-xs hover:bg-stone-200 transition-colors"
+                      className="flex-[1.4] min-h-[44px] flex items-center justify-center gap-1.5 bg-stone-900 text-stone-50 dark:bg-[#FAF9F6] dark:text-black text-[9px] font-mono uppercase tracking-widest font-extrabold rounded-sm active:scale-95 transition-transform disabled:opacity-60"
                     >
-                      {isThinking ? "Developing..." : "Develop Issue"}
+                      {isThinking ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <BookOpen size={12} strokeWidth={1.8} />
+                      )}
+                      {isThinking ? "Developing" : "Develop"}
                     </button>
                   </div>
-                  <span className="font-sans text-[8px] text-stone-500 italic text-center select-none block mt-0.5">
-                    Organize this material without flattening your voice.
-                  </span>
                 </div>
               )}
 
@@ -2921,9 +3039,10 @@ ${finalInput}`;
 
         {/* COLUMN 3: COVER PROFILER / PREVIEW COLUMN */}
         {(!isMobile || mobileStudioView === "cover") && (
-          <div className="w-full studio-bg-panel border-l studio-border flex flex-col justify-between p-6 shrink-0 relative overflow-y-auto no-scrollbar"
+          <div className={`w-full studio-bg-panel border-l studio-border flex flex-col p-6 md:pr-10 shrink-0 relative overflow-y-auto no-scrollbar ${isMobile ? "justify-start pb-44" : "justify-between"}`}
             style={isMobile ? undefined : { width: coverPanelWidth }}>
             <div className="space-y-6">
+              {renderStudioPager()}
               {/* Zine Title Input Header */}
               <div>
                 <input
@@ -3614,13 +3733,13 @@ ${finalInput}`;
 
       </div>
 
-      {/* BOTTOM CONTROL/TABS NAVIGATION (5-Column Grid Layout) */}
-      <div className="w-full grid grid-cols-5 border-t studio-border studio-bg-tab py-2 text-left px-4 absolute bottom-0 left-0 right-0 h-14 z-30 select-none overflow-hidden shrink-0">
+      {/* BOTTOM CONTROL/TABS NAVIGATION (5-Column Grid Layout) — desktop only */}
+      <div className="hidden md:grid md:grid-cols-5 md:overflow-hidden w-full border-t studio-border studio-bg-tab py-2 text-left px-4 absolute bottom-0 left-0 right-0 h-14 z-30 select-none shrink-0">
         
         {/* Tab 1: ANCHORS */}
         <button
           onClick={() => togglePanel("signal")}
-          className={`studio-footer-tab flex flex-col items-start border-r studio-divider pr-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider pr-4 group transition-colors cursor-pointer ${
             activePanel === "signal" ? "is-active" : ""
           }`}
         >
@@ -3637,7 +3756,7 @@ ${finalInput}`;
         {/* Tab 2: TREATMENTS */}
         <button
           onClick={() => togglePanel("treatments")}
-          className={`studio-footer-tab flex flex-col items-start border-r studio-divider px-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
             activePanel === "treatments" ? "is-active" : ""
           }`}
         >
@@ -3654,7 +3773,7 @@ ${finalInput}`;
         {/* Tab 3: POCKET */}
         <button
           onClick={() => togglePanel("procurement")}
-          className={`studio-footer-tab flex flex-col items-start border-r studio-divider px-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
             activePanel === "procurement" ? "is-active" : ""
           }`}
         >
@@ -3671,7 +3790,7 @@ ${finalInput}`;
         {/* Tab 4: CONTINUUM */}
         <button
           onClick={() => togglePanel("continuum")}
-          className={`studio-footer-tab flex flex-col items-start border-r studio-divider px-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
             activePanel === "continuum" ? "is-active" : ""
           }`}
         >
@@ -3688,7 +3807,7 @@ ${finalInput}`;
         {/* Tab 5: TELEMETRY */}
         <button
           onClick={() => togglePanel("telemetry")}
-          className={`studio-footer-tab flex flex-col items-start px-4 group transition-colors cursor-pointer ${
+          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 px-4 group transition-colors cursor-pointer ${
             activePanel === "telemetry" ? "is-active" : ""
           }`}
         >
@@ -3704,6 +3823,394 @@ ${finalInput}`;
 
       </div>
 
+      {/* MOBILE BOTTOM NAV — focused, native-feeling primary navigation */}
+      {isMobile && (
+        <nav
+          aria-label="Studio navigation"
+          className="studio-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t studio-border studio-bg-tab"
+        >
+          {(() => {
+            const composeActive = activePanel === null && mobileStudioView === "editor";
+            const navItems: {
+              key: string;
+              label: string;
+              icon: React.ReactNode;
+              active: boolean;
+              onClick: () => void;
+            }[] = [
+              {
+                key: "compose",
+                label: "Compose",
+                icon: <PenLine size={17} strokeWidth={1.7} />,
+                active: composeActive,
+                onClick: () => {
+                  setActivePanel(null);
+                  setMobileStudioView("editor");
+                },
+              },
+              {
+                key: "anchors",
+                label: "Anchors",
+                icon: <Layers size={17} strokeWidth={1.7} />,
+                active: activePanel === "signal",
+                onClick: () => togglePanel("signal"),
+              },
+              {
+                key: "treatments",
+                label: "Treatments",
+                icon: <Paintbrush size={17} strokeWidth={1.7} />,
+                active: activePanel === "treatments",
+                onClick: () => togglePanel("treatments"),
+              },
+              {
+                key: "pocket",
+                label: "Pocket",
+                icon: <ShoppingBag size={17} strokeWidth={1.7} />,
+                active: activePanel === "procurement",
+                onClick: () => togglePanel("procurement"),
+              },
+              {
+                key: "more",
+                label: "More",
+                icon: <MoreHorizontal size={17} strokeWidth={1.7} />,
+                active: moreSheetOpen,
+                onClick: () => setMoreSheetOpen(true),
+              },
+            ];
+            return navItems.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => {
+                  item.onClick();
+                  playClick();
+                }}
+                aria-label={item.label}
+                aria-current={item.active ? "page" : undefined}
+                className={`studio-mobile-nav-item flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
+                  item.active ? "is-active studio-text-ink" : "studio-text-muted"
+                }`}
+              >
+                {item.icon}
+                <span className="font-mono text-[7.5px] uppercase tracking-[0.12em] font-bold leading-none">
+                  {item.label}
+                </span>
+              </button>
+            ));
+          })()}
+        </nav>
+      )}
+
+      {/* MOBILE TOOLS SHEET */}
+      {isMobile && (
+        <AnimatePresence>
+          {toolsSheetOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black z-[60]"
+                onClick={() => setToolsSheetOpen(false)}
+              />
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 340, damping: 34 }}
+                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[70] max-h-[80vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
+              >
+                <div className="sticky top-0 studio-bg-panel px-5 pt-3 pb-3 border-b studio-border">
+                  <div className="w-10 h-1 rounded-full bg-current opacity-20 mx-auto mb-3" />
+                  <div className="flex items-center justify-between">
+                    <span className="font-serif italic text-lg studio-text-ink">Tools</span>
+                    <button
+                      type="button"
+                      onClick={() => setToolsSheetOpen(false)}
+                      aria-label="Close tools"
+                      className="w-9 h-9 flex items-center justify-center border studio-border studio-text-muted hover:studio-text-ink"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2.5 p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+                  {([
+                    {
+                      key: "attach",
+                      label: "Attach Media",
+                      icon: <Paperclip size={18} strokeWidth={1.6} />,
+                      active: false,
+                      onClick: () => {
+                        mediaInputRef.current?.click();
+                        setToolsSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "voice",
+                      label: isRecording ? "Stop Memo" : "Voice Memo",
+                      icon: isTranscribing ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : isRecording ? (
+                        <Square size={16} fill="currentColor" />
+                      ) : (
+                        <Mic size={18} strokeWidth={1.6} />
+                      ),
+                      active: isRecording || isTranscribing,
+                      onClick: () => startRecording(),
+                    },
+                    {
+                      key: "dictate",
+                      label: isDictating ? "Stop Dictation" : "Live Dictation",
+                      icon: <Radio size={18} strokeWidth={1.6} />,
+                      active: isDictating,
+                      onClick: () => handleDictationToggle(),
+                    },
+                    {
+                      key: "title",
+                      label: "Title Spark",
+                      icon: <Zap size={18} strokeWidth={1.6} />,
+                      active: false,
+                      onClick: () => {
+                        handleAutoGenerateTitle();
+                        setToolsSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "spark",
+                      label: "Aesthetic Spark",
+                      icon: <Sparkles size={18} strokeWidth={1.6} />,
+                      active: isGeneratingPrompt,
+                      onClick: async () => {
+                        setToolsSheetOpen(false);
+                        setIsGeneratingPrompt(true);
+                        try {
+                          const newPrompt = await generateAutoAwesomePrompt();
+                          setInput(newPrompt);
+                        } catch (e) {
+                          console.error(e);
+                        } finally {
+                          setIsGeneratingPrompt(false);
+                        }
+                      },
+                    },
+                    {
+                      key: "deep",
+                      label: "Superintelligence",
+                      icon: <BrainCircuit size={18} strokeWidth={1.6} />,
+                      active: deepThinking,
+                      onClick: () => setDeepThinking(!deepThinking),
+                    },
+                    {
+                      key: "web",
+                      label: "Web Grounding",
+                      icon: <Globe size={18} strokeWidth={1.6} />,
+                      active: useSearch,
+                      onClick: () => setUseSearch(!useSearch),
+                    },
+                    {
+                      key: "tailor",
+                      label: "Tailor Override",
+                      icon: <Scissors size={18} strokeWidth={1.6} />,
+                      active: !useTailorProfile,
+                      onClick: () => setUseTailorProfile(!useTailorProfile),
+                    },
+                    {
+                      key: "optics",
+                      label: "System Optics",
+                      icon: <Eye size={18} strokeWidth={1.6} />,
+                      active: activePanel === "telemetry",
+                      onClick: () => {
+                        togglePanel("telemetry");
+                        setToolsSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "treatments",
+                      label: "Treatments",
+                      icon: <Paintbrush size={18} strokeWidth={1.6} />,
+                      active: activePanel === "treatments",
+                      onClick: () => {
+                        togglePanel("treatments");
+                        setToolsSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "colophon",
+                      label: "Colophon",
+                      icon: <FileText size={18} strokeWidth={1.6} />,
+                      active: false,
+                      onClick: () => {
+                        setShowColophon(true);
+                        setToolsSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "reset",
+                      label: "Reset Workspace",
+                      icon: <RotateCcw size={18} strokeWidth={1.6} />,
+                      active: false,
+                      onClick: () => {
+                        setActiveThread(null);
+                        setInput("");
+                        setToolsSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "doll",
+                      label: studioDoll.enabled ? "Doll: On" : "Studio Doll",
+                      icon: studioDoll.loading ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Users size={18} strokeWidth={1.6} />
+                      ),
+                      active: studioDoll.enabled,
+                      onClick: () => studioDoll.toggleDollInjection(!studioDoll.enabled),
+                    },
+                  ] as {
+                    key: string;
+                    label: string;
+                    icon: React.ReactNode;
+                    active: boolean;
+                    onClick: () => void;
+                  }[]).map((tool) => (
+                    <button
+                      key={tool.key}
+                      type="button"
+                      onClick={() => {
+                        tool.onClick();
+                        playClick();
+                      }}
+                      className={`studio-tool-tile flex flex-col items-center justify-center gap-2 aspect-square border rounded-sm p-2 text-center active:scale-95 transition-all ${
+                        tool.active
+                          ? "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                          : "studio-border studio-bg-surface studio-text-ink"
+                      }`}
+                    >
+                      {tool.icon}
+                      <span className="font-mono text-[7.5px] uppercase tracking-[0.1em] font-bold leading-tight">
+                        {tool.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      )}
+
+      {/* MOBILE "MORE" SHEET */}
+      {isMobile && (
+        <AnimatePresence>
+          {moreSheetOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black z-[60]"
+                onClick={() => setMoreSheetOpen(false)}
+              />
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 340, damping: 34 }}
+                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[70] max-h-[70vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
+              >
+                <div className="sticky top-0 studio-bg-panel px-5 pt-3 pb-3 border-b studio-border">
+                  <div className="w-10 h-1 rounded-full bg-current opacity-20 mx-auto mb-3" />
+                  <div className="flex items-center justify-between">
+                    <span className="font-serif italic text-lg studio-text-ink">More</span>
+                    <button
+                      type="button"
+                      onClick={() => setMoreSheetOpen(false)}
+                      aria-label="Close more"
+                      className="w-9 h-9 flex items-center justify-center border studio-border studio-text-muted hover:studio-text-ink"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                </div>
+                <div className="p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] space-y-2">
+                  {([
+                    {
+                      key: "cover",
+                      label: "Cover",
+                      note: "Design the issue cover plate",
+                      icon: <ImageIcon size={17} strokeWidth={1.6} />,
+                      onClick: () => {
+                        setMobileStudioView("cover");
+                        setMoreSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "continuum",
+                      label: "Continuum",
+                      note: "Link recent zines",
+                      icon: <GitMerge size={17} strokeWidth={1.6} />,
+                      onClick: () => {
+                        togglePanel("continuum");
+                        setMoreSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "telemetry",
+                      label: "Telemetry",
+                      note: "Aesthetic readings",
+                      icon: <Radar size={17} strokeWidth={1.6} />,
+                      onClick: () => {
+                        togglePanel("telemetry");
+                        setMoreSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "inspo",
+                      label: "Inspo",
+                      note: "Reference carousel",
+                      icon: <Sparkles size={17} strokeWidth={1.6} />,
+                      onClick: () => {
+                        togglePanel("inspo");
+                        setMoreSheetOpen(false);
+                      },
+                    },
+                  ] as {
+                    key: string;
+                    label: string;
+                    note: string;
+                    icon: React.ReactNode;
+                    onClick: () => void;
+                  }[]).map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => {
+                        item.onClick();
+                        playClick();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 border studio-border studio-bg-surface hover:studio-bg-panel active:scale-[0.99] transition-all text-left rounded-sm"
+                    >
+                      <span className="w-9 h-9 shrink-0 flex items-center justify-center border studio-border studio-text-ink">
+                        {item.icon}
+                      </span>
+                      <span className="flex flex-col gap-0.5 min-w-0">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.16em] studio-text-ink font-bold">
+                          {item.label}
+                        </span>
+                        <span className="font-sans text-[10px] text-stone-500 leading-tight truncate">
+                          {item.note}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      )}
+
       <AnimatePresence>
         {studioMenuOpen && (
           <>
@@ -3715,37 +4222,64 @@ ${finalInput}`;
               onClick={() => setStudioMenuOpen(false)}
             />
             <motion.div
-              initial={{ opacity: 0, x: 24 }}
+              initial={{ opacity: 0, x: 32 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 24 }}
-              className="fixed top-20 right-6 z-[70] w-64 border studio-border studio-bg-panel p-4 shadow-2xl"
+              exit={{ opacity: 0, x: 32 }}
+              transition={{ type: "spring", stiffness: 320, damping: 34 }}
+              className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-sm border-l studio-border studio-bg-panel shadow-2xl flex flex-col"
             >
-              <div className="flex items-center justify-between mb-4 pb-2 border-b studio-border">
-                <span className="font-mono text-[8px] uppercase tracking-[0.3em] studio-text-muted font-bold">
-                  Chambers
-                </span>
-                <button type="button" onClick={() => setStudioMenuOpen(false)} className="studio-text-muted hover:studio-text-ink">
-                  <X size={14} />
+              <div className="flex items-start justify-between px-6 py-5 border-b studio-border shrink-0 studio-bg-surface">
+                <div className="flex flex-col">
+                  <span className="font-mono text-[9px] uppercase tracking-[0.28em] studio-text-muted font-bold leading-none">
+                    Full Menu
+                  </span>
+                  <span className="font-serif italic text-2xl studio-text-ink leading-tight mt-1.5">
+                    All chambers
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStudioMenuOpen(false)}
+                  aria-label="Close menu"
+                  className="w-10 h-10 flex items-center justify-center border studio-border studio-text-muted hover:studio-text-ink hover:studio-bg-surface transition-colors"
+                >
+                  <X size={16} />
                 </button>
               </div>
-              <ul className="space-y-1">
-                {STUDIO_CHAMBER_LINKS.map((link) => (
-                  <li key={link.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStudioMenuOpen(false);
-                        window.dispatchEvent(
-                          new CustomEvent("mimi:change_view", { detail: link.id }),
-                        );
-                      }}
-                      className="w-full text-left px-2 py-2 font-mono text-[9px] uppercase tracking-widest studio-text-muted hover:studio-text-ink hover:studio-bg-surface transition-colors"
-                    >
-                      {link.label}
-                    </button>
-                  </li>
+              <nav className="flex-1 overflow-y-auto no-scrollbar px-6 py-6 space-y-6">
+                {MENU_STRUCTURE.map((section) => (
+                  <div key={section.section} className="space-y-1">
+                    <div className="flex items-center gap-3 px-1 mb-2">
+                      <span className="font-mono text-[9px] uppercase tracking-[0.3em] font-bold text-neutral-400 dark:text-neutral-500 shrink-0">
+                        {section.section}
+                      </span>
+                      <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" aria-hidden="true" />
+                    </div>
+                    <div className="flex flex-col">
+                      {section.items.map((item) => (
+                        <button
+                          key={item.mode}
+                          type="button"
+                          onClick={() => {
+                            setStudioMenuOpen(false);
+                            window.dispatchEvent(
+                              new CustomEvent("mimi:change_view", { detail: item.mode }),
+                            );
+                          }}
+                          className="w-full text-left group flex flex-col gap-1 py-3.5 px-1 min-h-[44px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                        >
+                          <span className="font-mono text-[15px] uppercase tracking-[0.18em] font-bold studio-text-ink group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                            {item.label}
+                          </span>
+                          <span className="font-sans text-[13px] leading-snug text-stone-500 dark:text-stone-400">
+                            {item.note}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </nav>
             </motion.div>
           </>
         )}

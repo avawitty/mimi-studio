@@ -5,7 +5,7 @@ import {
   CREATIVE_DOSSIER_SYSTEM_PROMPT,
   buildCreativeDossierUserPrompt,
 } from '../lib/creativeDossierPrompts';
-import type { EvidenceBasedCreativeDossier, PaperWarmth } from '../types';
+import type { EvidenceBasedCreativeDossier, PaperWarmth, TailorLogicDraft } from '../types';
 
 const MIN_IMAGES = 3;
 const MAX_IMAGES = 8;
@@ -19,6 +19,8 @@ export interface SynthesizeCreativeDossierInput {
   images: DossierImageInput[];
   userBlurb?: string;
   apiKey?: string;
+  /** Serialized Tailor blueprint (self-declared creator inputs) folded into the read. */
+  blueprintDigest?: string;
   /** When true, prefer Mimi-funded AI Gateway (Firebase session + trial/paid credits). */
   preferFundedGateway?: boolean;
 }
@@ -398,6 +400,131 @@ export function validateDossierImageCount(count: number): void {
   }
 }
 
+/** Validate a full-read request: needs a blueprint OR at least MIN_IMAGES images. */
+export function validateDossierInputs(count: number, hasBlueprint: boolean): void {
+  if (count > MAX_IMAGES) {
+    throw new Error(`At most ${MAX_IMAGES} reference images are allowed.`);
+  }
+  if (!hasBlueprint && count < MIN_IMAGES) {
+    throw new Error(
+      `Add your Tailor blueprint or upload at least ${MIN_IMAGES} reference images to compile a full read.`,
+    );
+  }
+}
+
+/**
+ * Serialize the Tailor blueprint into a labeled, human-readable digest the
+ * dossier model can read as self-declared evidence. Every field is optional and
+ * skipped when empty, so partial blueprints still produce a useful read.
+ */
+export function buildTailorBlueprintDigest(draft: Partial<TailorLogicDraft> | null | undefined): string {
+  if (!draft) return '';
+  const lines: string[] = [];
+  const push = (label: string, value: unknown) => {
+    if (value == null) return;
+    if (Array.isArray(value)) {
+      const items = value.filter((v) => typeof v === 'string' && v.trim());
+      if (items.length) lines.push(`${label}: ${items.join(', ')}`);
+      return;
+    }
+    if (typeof value === 'number') {
+      lines.push(`${label}: ${value}`);
+      return;
+    }
+    if (typeof value === 'string' && value.trim()) lines.push(`${label}: ${value.trim()}`);
+  };
+
+  const pc = draft.positioningCore;
+  if (pc) {
+    lines.push('— POSITIONING —');
+    push('Cultural references', pc.anchors?.culturalReferences);
+    push('Ideological bias', pc.anchors?.ideologicalBias);
+    push('Cultural synthesis', pc.anchors?.culturalSynthesis);
+    push('Trend clusters', pc.anchors?.trendClusters);
+    push('Positioning axis', pc.positioningAxis);
+    push('Authority claim', pc.authorityClaim);
+    push('Exclusion principles (what they refuse)', pc.exclusionPrinciples);
+    if (pc.aestheticCore) {
+      push('Silhouettes', pc.aestheticCore.silhouettes);
+      push('Materiality', pc.aestheticCore.materiality);
+      push('Era bias', pc.aestheticCore.eraBias);
+      push('Media style', pc.aestheticCore.mediaStyle);
+      push('Presentation', pc.aestheticCore.presentation);
+      push('Density (1-10)', pc.aestheticCore.density);
+      push('Entropy (1-10)', pc.aestheticCore.entropy);
+      push('Aesthetic tags', pc.aestheticCore.tags);
+    }
+  }
+
+  const ee = draft.expressionEngine;
+  if (ee) {
+    lines.push('— EXPRESSION —');
+    push('Primary color', ee.colorPalette?.primary);
+    push('Accent color', ee.colorPalette?.accent);
+    push('Palette preset', ee.colorPalette?.preset);
+    push('Base neutral', ee.chromaticRegistry?.baseNeutral);
+    push('Accent signal', ee.chromaticRegistry?.accentSignal);
+    push('Typography style', ee.typographyIntent?.styleDescription);
+    push('Weight preference', ee.typographyIntent?.weightPreference);
+    push('Serif / Sans / Mono', [ee.typography?.serif, ee.typography?.sans, ee.typography?.mono].filter(Boolean) as string[]);
+    push('Visual preset — silhouette', ee.visualPresets?.silhouette);
+    push('Visual preset — texture', ee.visualPresets?.texture);
+    push('Visual preset — era', ee.visualPresets?.era);
+    if (ee.narrativeVoice) {
+      push('Voice — emotional temperature', ee.narrativeVoice.emotionalTemperature);
+      push('Voice — structure bias', ee.narrativeVoice.structureBias);
+      push('Voice — lexical density (1-10)', ee.narrativeVoice.lexicalDensity);
+      push('Voice — restraint (1-10)', ee.narrativeVoice.restraintLevel);
+      push('Voice notes', ee.narrativeVoice.voiceNotes);
+      push('Tone', ee.narrativeVoice.tone);
+    }
+  }
+
+  const sv = draft.strategicVectors;
+  if (sv) {
+    lines.push('— STRATEGY —');
+    push('Expansion tolerance (1-10)', sv.expansionTolerance);
+    push('Fiscal velocity', sv.fiscalVelocity);
+    push('Deepen', sv.desireVectors?.deepen);
+    push('Reduce', sv.desireVectors?.reduce);
+    push('Experiment', sv.desireVectors?.experiment);
+    push('Refuse', sv.desireVectors?.refuse);
+    push('Oversaturated clusters', sv.saturationAwareness?.oversaturatedClusters);
+    push('Fragile differentiators', sv.saturationAwareness?.fragileDifferentiators);
+  }
+
+  const ss = draft.strategicSummary;
+  if (ss) {
+    lines.push('— SUMMARY —');
+    push('Identity vector', ss.identityVector);
+    push('Authority anchor', ss.authorityAnchor);
+    push('Exclusion rules', ss.exclusionRules);
+    push('Tonal constraints', ss.tonalConstraints);
+    push('Aesthetic DNA', ss.aestheticDNA);
+  }
+
+  const dg = draft.diagnostics;
+  if (dg) {
+    lines.push('— DIAGNOSTICS (self-reported) —');
+    push('Contradiction flags', dg.contradictionFlags);
+    push('Dilution risks', dg.dilutionRisks);
+    push('Authority strength (0-100)', dg.authorityStrengthScore);
+    push('Drift vulnerability (1-10)', dg.driftVulnerability);
+  }
+
+  if (Array.isArray(draft.styleEvidence) && draft.styleEvidence.length) {
+    const refs = draft.styleEvidence
+      .filter((e) => e && typeof e.value === 'string' && e.value.trim())
+      .map((e) => `${e.type === 'text_reference' ? 'text' : 'image'}${e.notes ? ` (${e.notes})` : ''}: ${e.value}`);
+    if (refs.length) {
+      lines.push('— SAVED STYLE EVIDENCE —');
+      lines.push(...refs);
+    }
+  }
+
+  return lines.join('\n').trim();
+}
+
 async function getFirebaseSessionToken(): Promise<string | undefined> {
   try {
     const { auth } = await import('./firebaseInit');
@@ -411,6 +538,7 @@ async function getFirebaseSessionToken(): Promise<string | undefined> {
 async function synthesizeViaFundedGateway(
   normalized: Array<{ base64: string; mimeType: string }>,
   userBlurb?: string,
+  blueprintDigest?: string,
 ): Promise<EvidenceBasedCreativeDossier> {
   const token = await getFirebaseSessionToken();
   if (!token) {
@@ -427,6 +555,7 @@ async function synthesizeViaFundedGateway(
     body: JSON.stringify({
       images: normalized.map((img) => ({ base64: img.base64, mimeType: img.mimeType })),
       userBlurb,
+      blueprintDigest,
     }),
   });
 
@@ -450,15 +579,17 @@ export async function synthesizeCreativeDossier({
   images,
   userBlurb,
   apiKey,
+  blueprintDigest,
   preferFundedGateway = true,
 }: SynthesizeCreativeDossierInput): Promise<EvidenceBasedCreativeDossier> {
-  validateDossierImageCount(images.length);
+  const digest = blueprintDigest?.trim() || undefined;
+  validateDossierInputs(images.length, Boolean(digest));
 
   const normalized = await Promise.all(images.map(normalizeImage));
 
   if (preferFundedGateway && !apiKey) {
     try {
-      return await synthesizeViaFundedGateway(normalized, userBlurb);
+      return await synthesizeViaFundedGateway(normalized, userBlurb, digest);
     } catch (fundedError) {
       const message = fundedError instanceof Error ? fundedError.message : String(fundedError);
       if (!message.includes('Sign in') && !message.includes('credits')) {
@@ -469,7 +600,7 @@ export async function synthesizeCreativeDossier({
     }
   }
 
-  const userPrompt = buildCreativeDossierUserPrompt(normalized.length, userBlurb);
+  const userPrompt = buildCreativeDossierUserPrompt(normalized.length, userBlurb, digest);
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
     { text: userPrompt },

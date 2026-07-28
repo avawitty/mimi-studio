@@ -474,7 +474,7 @@ export const ZineLayoutEditor: React.FC<ZineLayoutEditorProps> = ({ page, tone, 
  '--zine-accent-color': accentHex,
  } as React.CSSProperties}
  >
- <div className="absolute top-4 left-4 right-4 z-50 flex justify-between items-center bg-black/50 backdrop-blur-md rounded-none px-4 py-2 md:px-6 md:py-3 opacity-0 hover:opacity-100 transition-opacity duration-300 border border-white/10">
+ <div className="absolute top-4 left-4 right-4 z-50 flex justify-between items-center bg-black/50 backdrop-blur-md rounded-none px-4 py-2 md:px-6 md:py-3 opacity-100 lg:opacity-0 lg:hover:opacity-100 transition-opacity duration-300 border border-white/10">
  <div className="flex items-center gap-2 md:gap-6">
  <button onClick={onCancel} className="p-2 md:p-3 text-white/70 hover:text-red-500 rounded-none transition-all"><X size={18} /></button>
  <div className="h-4 md:h-6 w-px bg-white/20"/>
@@ -627,7 +627,7 @@ export const ZineLayoutEditor: React.FC<ZineLayoutEditorProps> = ({ page, tone, 
  ))}
  </div>
  </div>
- <motion.div initial={false} animate={{ y: isMobile ? (drawerOpen ? 0 : '100%') : 0, x: isMobile ? 0 : (selectedId ? 0 : 480) }} className={`fixed bottom-0 left-0 right-0 lg:absolute lg:right-0 lg:top-0 lg:bottom-0 lg:flex lg:w-[480px] bg-white/90 /90 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-nous-border/50 /10 flex-col pt-4 lg:pt-24 z-[2050] transition-all duration-500 ${isMobile ? 'h-[45vh] rounded-none overflow-hidden' : 'h-full'}`}>
+ <motion.div initial={false} animate={{ y: isMobile ? (drawerOpen ? 0 : '100%') : 0, x: isMobile ? 0 : (selectedId ? 0 : 480) }} className={`fixed bottom-0 left-0 right-0 lg:absolute lg:right-0 lg:top-0 lg:bottom-0 lg:flex lg:w-[480px] bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-nous-border/50 flex-col pt-4 lg:pt-24 z-[2050] transition-all duration-500 ${isMobile ? 'h-[45vh] rounded-none overflow-hidden' : 'h-full'}`}>
  <div className="flex lg:hidden justify-center pb-2"onClick={() => setDrawerOpen(false)}><div className="w-12 h-1 bg-stone-200 rounded-none"/></div>
  <div className="flex border-b border-nous-border h-14 lg:h-20 shrink-0 px-4"> 
  {['fragments', 'style', 'trace', 'materiality'].map((tab) => (

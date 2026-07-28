@@ -1,13 +1,51 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { ArrowLeft, Loader2, Sparkles, Upload, X } from 'lucide-react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Check, Loader2, Sparkles, Upload, X } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
 import { resolveApiKey } from '../../services/apiKeyService';
 import {
   synthesizeCreativeDossier,
   saveLikenessToLocalStorage,
   saveDossierToLocalStorage,
+  buildTailorBlueprintDigest,
 } from '../../services/creativeDossierService';
-import type { EvidenceBasedCreativeDossier } from '../../types';
+import type { EvidenceBasedCreativeDossier, TailorLogicDraft } from '../../types';
+
+interface IntakeSection {
+  label: string;
+  detail: string;
+  present: boolean;
+}
+
+function buildIntakeSections(draft: Partial<TailorLogicDraft> | null | undefined): IntakeSection[] {
+  const pc = draft?.positioningCore;
+  const ee = draft?.expressionEngine;
+  const sv = draft?.strategicVectors;
+  const ss = draft?.strategicSummary;
+  const arr = (a?: string[]) => (a ?? []).filter((v) => typeof v === 'string' && v.trim());
+  const refs = arr(pc?.anchors?.culturalReferences);
+  const excl = arr(pc?.exclusionPrinciples);
+  const aesthetic = [...arr(pc?.aestheticCore?.silhouettes), ...arr(pc?.aestheticCore?.materiality)];
+  const palette = [ee?.colorPalette?.primary, ee?.colorPalette?.accent].filter((v): v is string => Boolean(v));
+  const typo = [ee?.typographyIntent?.styleDescription, ee?.typography?.serif].filter((v): v is string => Boolean(v));
+  const voice = [ee?.narrativeVoice?.emotionalTemperature, ee?.narrativeVoice?.tone, ee?.narrativeVoice?.voiceNotes].filter(
+    (v): v is string => Boolean(v),
+  );
+  const strat = [...arr(sv?.desireVectors?.deepen), ...arr(sv?.desireVectors?.experiment)];
+  const evidence = (draft?.styleEvidence ?? []).filter((e) => e && typeof e.value === 'string' && e.value.trim());
+  const preview = (items: string[]) => items.slice(0, 3).join(', ');
+
+  return [
+    { label: 'References', detail: refs.length ? preview(refs) : 'Not set', present: refs.length > 0 },
+    { label: 'Refusals & exclusions', detail: excl.length ? preview(excl) : 'Not set', present: excl.length > 0 },
+    { label: 'Aesthetic core', detail: aesthetic.length ? preview(aesthetic) : 'Not set', present: aesthetic.length > 0 },
+    { label: 'Color palette', detail: palette.length ? palette.join(' · ') : 'Not set', present: palette.length > 0 },
+    { label: 'Typography', detail: typo.length ? preview(typo) : 'Not set', present: typo.length > 0 },
+    { label: 'Narrative voice', detail: voice.length ? preview(voice) : 'Not set', present: voice.length > 0 },
+    { label: 'Strategic direction', detail: strat.length ? preview(strat) : 'Not set', present: strat.length > 0 },
+    { label: 'Aesthetic DNA', detail: ss?.aestheticDNA?.trim() || 'Not set', present: Boolean(ss?.aestheticDNA?.trim()) },
+    { label: 'Saved evidence', detail: evidence.length ? `${evidence.length} saved` : 'None yet', present: evidence.length > 0 },
+  ];
+}
 import { EvidenceDossierView } from './EvidenceDossierView';
 import {
   trackLikenessAccepted,
@@ -36,6 +74,12 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
 }) => {
   const { user, profile, updateProfile, login, activePersona, canGenerate } = useUser();
   const isSignedIn = Boolean(user?.uid && !user?.isAnonymous);
+
+  const draft = (profile?.tailorDraft ?? activePersona?.tailorDraft ?? null) as Partial<TailorLogicDraft> | null;
+  const blueprintDigest = useMemo(() => buildTailorBlueprintDigest(draft), [draft]);
+  const hasBlueprint = blueprintDigest.length > 0;
+  const intakeSections = useMemo(() => buildIntakeSections(draft), [draft]);
+  const capturedCount = intakeSections.filter((s) => s.present).length;
 
   const [step, setStep] = useState<Step>('upload');
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -73,9 +117,11 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
+  const canCompile = hasBlueprint || images.length >= 3;
+
   const handleScry = async () => {
-    if (images.length < 3) {
-      setError('Upload at least 3 reference images.');
+    if (!canCompile) {
+      setError('Fill in your Tailor blueprint or upload at least 3 reference images.');
       return;
     }
 
@@ -101,6 +147,7 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
         images: images.map((img) => ({ dataUrl: img.dataUrl })),
         userBlurb: blurb || undefined,
         apiKey: apiKey ?? undefined,
+        blueprintDigest: blueprintDigest || undefined,
         preferFundedGateway: !apiKey,
       });
       setDossier(result);
@@ -165,9 +212,9 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
       <div className="min-h-full bg-[#FDFBF7] dark:bg-[#0A0A0A] flex flex-col items-center justify-center px-6 py-24">
         <Loader2 className="animate-spin text-nous-subtle mb-6" size={32} />
         <p className="text-[10px] uppercase tracking-[0.4em] text-nous-subtle mb-2">Scrying</p>
-        <h2 className="font-serif text-2xl text-nous-text mb-2">Reading your evidence</h2>
+        <h2 className="font-serif text-2xl text-nous-text mb-2">Reading everything you&apos;ve given Mimi</h2>
         <p className="text-sm text-nous-subtle text-center max-w-md">
-          Per-reference observation → pattern graph → creative laws → container → applications
+          Blueprint + references → pattern graph → creative laws → container → applications
         </p>
       </div>
     );
@@ -221,34 +268,71 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
           Back
         </button>
 
-        <p className="text-[10px] uppercase tracking-[0.3em] text-nous-subtle mb-2">Evidence intake</p>
-        <h1 className="font-serif text-3xl text-nous-text mb-2">Bring your references</h1>
+        <p className="text-[10px] uppercase tracking-[0.3em] text-nous-subtle mb-2">Full read</p>
+        <h1 className="font-serif text-3xl text-nous-text mb-2">Compile your dossier</h1>
         <p className="text-sm text-nous-subtle mb-8">
-          Upload 3–8 images. Mimi will synthesize an Evidence-Based Creative Dossier — not a style label.
+          Mimi reads your entire Tailor blueprint — positioning, palette, voice, strategy — plus any
+          references you add, and synthesizes one Evidence-Based Creative Dossier. Not a style label.
         </p>
 
         {!isSignedIn && (
           <div className="mb-6 px-4 py-3 border border-amber-500/30 bg-amber-500/5 text-sm text-nous-subtle">
-            Sign in to use trial credits for Scry, or add your own Gemini key in Settings.{' '}
-            <button type="button" onClick={() => void login(true)} className="underline text-nous-text">
+            Sign in to use trial credits for the read, or add your own Gemini key in Settings.{' '}
+            <button type="button" onClick={() => void login()} className="underline text-nous-text">
               Sign in
             </button>
           </div>
         )}
 
-        <div className="mb-6 p-4 border border-nous-border/30">
-          <div className="flex justify-between text-xs mb-2">
-            <span>{images.length} / 8 uploaded</span>
-            <span className="uppercase tracking-wider text-nous-subtle">
-              {images.length < 3 ? `Need ${3 - images.length} more` : 'Ready to scry'}
+        {/* Full intake summary — everything Mimi will read from your blueprint */}
+        <div className="mb-8 border border-nous-border/30">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-nous-border/20">
+            <span className="text-xs uppercase tracking-widest text-nous-text font-semibold">Tailor intake</span>
+            <span className="text-[10px] uppercase tracking-wider text-nous-subtle">
+              {capturedCount} of {intakeSections.length} captured
             </span>
           </div>
-          <div className="h-1 bg-nous-border/20">
-            <div
-              className="h-full bg-nous-text/60 transition-all"
-              style={{ width: `${Math.min(100, (images.length / 8) * 100)}%` }}
-            />
-          </div>
+          <ul className="divide-y divide-nous-border/15">
+            {intakeSections.map((s) => (
+              <li key={s.label} className="flex items-start gap-3 px-4 py-3">
+                <span
+                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                    s.present
+                      ? 'border-nous-text/40 bg-nous-text/5 text-nous-text'
+                      : 'border-nous-border/40 text-transparent'
+                  }`}
+                >
+                  <Check size={10} strokeWidth={2.5} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-nous-text">{s.label}</p>
+                  <p className="text-xs text-nous-subtle truncate">{s.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {!hasBlueprint && (
+            <p className="px-4 py-3 text-xs text-nous-subtle border-t border-nous-border/20 leading-relaxed">
+              Your blueprint is empty. Fill it in under Profile Blueprint, or upload at least 3
+              references below to compile from images alone.
+            </p>
+          )}
+        </div>
+
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-nous-subtle">
+            Supporting references {hasBlueprint ? '(optional)' : ''}
+          </p>
+          <span className="text-[10px] uppercase tracking-wider text-nous-subtle">
+            {images.length} / 8
+            {!hasBlueprint && images.length < 3 ? ` · need ${3 - images.length} more` : ''}
+          </span>
+        </div>
+        <div className="mb-6 h-1 bg-nous-border/20">
+          <div
+            className="h-full bg-nous-text/60 transition-all"
+            style={{ width: `${Math.min(100, (images.length / 8) * 100)}%` }}
+          />
         </div>
 
         <div
@@ -309,13 +393,13 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
           type="button"
           editorial
           inverse
-          disabled={images.length < 3}
+          disabled={!canCompile}
           likenessAccent={profile?.likenessManifest?.accentHex}
           onClick={() => void handleScry()}
           className="w-full py-4"
         >
           <Sparkles size={14} strokeWidth={1.25} />
-          Scry
+          Compile Full Read
         </PearlButton>
       </div>
     </div>

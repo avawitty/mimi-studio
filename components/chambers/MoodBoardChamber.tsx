@@ -320,9 +320,9 @@ export const MoodBoardChamber: React.FC = () => {
         </div>
       }
     >
-      <div className="flex h-full min-h-0 bg-stone-50">
+      <div className="flex flex-col md:flex-row h-full min-h-0 bg-stone-50">
         {/* Left Sidebar - Templates and Gallery */}
-        <div className="w-64 border-r border-nous-border bg-white flex flex-col min-h-0 select-none">
+        <div className="w-full md:w-64 shrink-0 max-h-[42vh] md:max-h-none border-b md:border-b-0 md:border-r border-nous-border bg-white flex flex-col min-h-0 select-none">
           <div className="p-4 border-b border-nous-border">
             <h3 className="font-serif italic text-base">Mood Board Maker</h3>
             <p className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle mt-1">Creative Canvas</p>
@@ -386,7 +386,7 @@ export const MoodBoardChamber: React.FC = () => {
           ref={containerRef}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          className="flex-1 relative overflow-hidden bg-stone-100 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] p-8 h-full"
+          className="flex-1 min-h-[55vh] md:min-h-0 relative overflow-hidden bg-stone-100 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] p-4 md:p-8 h-full"
           onClick={() => setSelectedItemId(null)}
         >
           {items.length === 0 ? (

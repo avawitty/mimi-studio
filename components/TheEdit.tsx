@@ -206,7 +206,7 @@ export const TheEdit: React.FC = () => {
             </button>
           </div>
           <div className="flex flex-col items-end gap-4 w-full md:w-auto">
-            <div className="flex bg-nous-surface border border-nous-border p-1 w-full md:w-auto overflow-x-auto">
+            <div className="flex bg-nous-surface border border-nous-border p-1 w-full md:w-auto overflow-x-auto no-scrollbar scroll-fade-x">
               <button onClick={() => setViewMode('profiling')} className={`whitespace-nowrap flex-1 md:flex-none px-4 py-2 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${viewMode === 'profiling' ? 'bg-nous-text text-nous-base' : 'hover:bg-nous-base'}`}><Database size={12} /> Target Profiling</button>
               <button onClick={() => setViewMode('shopmy')} className={`whitespace-nowrap flex-1 md:flex-none px-4 py-2 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${viewMode === 'shopmy' ? 'bg-nous-text text-nous-base' : 'hover:bg-nous-base'}`}><LinkIcon size={12} /> Affiliate Grid</button>
               <button onClick={() => setViewMode('bounties')} className={`whitespace-nowrap flex-1 md:flex-none px-4 py-2 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${viewMode === 'bounties' ? 'bg-nous-text text-nous-base' : 'hover:bg-nous-base'}`}><Code2 size={12} /> Live Bounties</button>
