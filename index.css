@@ -209,6 +209,43 @@
     border-left: 1px dotted var(--studio-divider);
   }
 
+  /* Mobile bottom navigation — native-feeling primary nav */
+  .studio-mobile-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+    backdrop-filter: blur(8px);
+  }
+  .studio-mobile-nav-item {
+    min-height: 56px;
+    position: relative;
+  }
+  .studio-mobile-nav-item.is-active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26px;
+    height: 2px;
+    background: var(--studio-tab-active, currentColor);
+  }
+  .studio-mobile-nav-item.is-active {
+    background: color-mix(in srgb, var(--studio-tab-active) 8%, transparent);
+  }
+
+  /* Mobile action cluster sits directly above the nav */
+  .studio-mobile-actions {
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    backdrop-filter: blur(8px);
+  }
+
+  /* Mobile bottom sheets (Tools / More) */
+  .studio-mobile-sheet {
+    color: var(--studio-ink);
+  }
+  .studio-tool-tile {
+    min-height: 84px;
+  }
+
   /* Archive chamber shell — working dossier palette (aligned with studio light) */
   .archive-chamber {
     --archive-cream: #f5f5f0;

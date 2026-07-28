@@ -1,5 +1,5 @@
 import React from "react";
-import { GripVertical, Moon, Sun, User } from "lucide-react";
+import { GripVertical, Menu, Moon, Sun, User } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 
@@ -196,29 +196,16 @@ export const StudioChrome: React.FC<{
 
       {/* Controls & Navigation Identity */}
       <div className="flex items-center gap-2 md:gap-3">
-        {isMobile && onMobileStudioViewChange ? (
-          <div className="flex border studio-border rounded-sm overflow-hidden mr-1">
-            <button
-              type="button"
-              disabled={isGenerating}
-              onClick={() => onMobileStudioViewChange("editor")}
-              className={`px-2 py-1 font-mono text-[7px] uppercase tracking-widest transition-all active:scale-95 duration-200 ${
-                mobileStudioView === "editor" ? "studio-bg-panel studio-text-ink font-bold" : "studio-text-muted hover:bg-black/5 dark:hover:bg-white/5"
-              } ${isGenerating ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              Input
-            </button>
-            <button
-              type="button"
-              disabled={isGenerating}
-              onClick={() => onMobileStudioViewChange("cover")}
-              className={`px-2 py-1 font-mono text-[7px] uppercase tracking-widest transition-all active:scale-95 duration-200 ${
-                mobileStudioView === "cover" ? "studio-bg-panel studio-text-ink font-bold" : "studio-text-muted hover:bg-black/5 dark:hover:bg-white/5"
-              } ${isGenerating ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              Cover
-            </button>
-          </div>
+        {/* Mobile: full-menu trigger (desktop uses the App spine sidebar) */}
+        {onOpenMenu ? (
+          <button
+            type="button"
+            onClick={onOpenMenu}
+            aria-label="Open full menu"
+            className="md:hidden w-9 h-9 border studio-border flex items-center justify-center studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 transition-all duration-300"
+          >
+            <Menu size={16} strokeWidth={1.5} />
+          </button>
         ) : null}
 
         {/* Minimalist running clock */}
