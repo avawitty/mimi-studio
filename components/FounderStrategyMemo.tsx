@@ -80,7 +80,7 @@ const DEFAULT_CLIENT: ClientStrategy = {
   },
   monetization: {
     tier1Title: "SaaS Subscriptions",
-    tier1Description: "$12–$39/month for active creators, digital curators, and brand developers wanting continuous graph memory.",
+    tier1Description: "$12–$99/month for active creators, digital curators, and brand developers wanting continuous graph memory.",
     tier2Title: "Enterprise APIs",
     tier2Description: "Licensing access permissions allowing outside luxury portals or commerce engines to index user vectors directly."
   },

@@ -1302,7 +1302,7 @@ export const App: React.FC = () => {
   }, [user, authLoading, hasSeenGateway]);
 
   const [checkoutPlan, setCheckoutPlan] = useState<
-    "core" | "pro" | "lab" | null
+    "core" | "optioning" | "pro" | "lab" | null
   >(null);
   const [checkoutInterval, setCheckoutInterval] = useState<"month" | "year">(
     "month",
@@ -1388,14 +1388,17 @@ export const App: React.FC = () => {
     const isSuccessPath = window.location.pathname.includes("/success");
 
     if ((checkoutStatus === "success" || isSuccessPath) && planParam) {
-      if (planParam === "lab_annual") {
-        setCheckoutPlan("lab");
-        setCheckoutInterval("year");
-      } else {
-        setCheckoutPlan(planParam as "core" | "pro" | "lab");
-        setCheckoutInterval("month");
+      const intervalParam = params.get("interval");
+      // Legacy support: an older success_url used "lab_annual" as the plan.
+      const normalizedPlan = planParam === "lab_annual" ? "lab" : planParam;
+      const normalizedInterval =
+        planParam === "lab_annual" || intervalParam === "year" ? "year" : "month";
+      const validPlans = ["core", "optioning", "pro", "lab"] as const;
+      if ((validPlans as readonly string[]).includes(normalizedPlan)) {
+        setCheckoutPlan(normalizedPlan as (typeof validPlans)[number]);
+        setCheckoutInterval(normalizedInterval);
+        setViewMode("checkout-success");
       }
-      setViewMode("checkout-success");
       // Clean up URL
       window.history.replaceState({}, document.title, "/");
     } else if (

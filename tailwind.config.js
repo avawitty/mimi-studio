@@ -41,6 +41,7 @@ export default {
           subtle: 'var(--nous-subtle)',
           accent: 'var(--nous-accent)',
           border: 'var(--nous-border)',
+          paper: 'var(--nous-paper)',
         }
       },
       backgroundImage: {

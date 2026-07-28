@@ -17,6 +17,7 @@
     --nous-olive: #5A5A40;
     --nous-charcoal: #262626;
     --nous-border: #e5e5e5;
+    --nous-paper: #f9f7f2; /* Warm cream paper */
 
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
@@ -32,6 +33,7 @@
     --nous-olive: #404040;
     --nous-charcoal: #1f1f1f;
     --nous-border: #262626;
+    --nous-paper: #121212; /* Deep charcoal paper */
     --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
   }
 
