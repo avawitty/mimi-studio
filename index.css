@@ -17,6 +17,7 @@
     --nous-olive: #5A5A40;
     --nous-charcoal: #262626;
     --nous-border: #e5e5e5;
+    --nous-paper: #f9f7f2; /* Warm cream paper */
 
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
@@ -32,6 +33,7 @@
     --nous-olive: #404040;
     --nous-charcoal: #1f1f1f;
     --nous-border: #262626;
+    --nous-paper: #121212; /* Deep charcoal paper */
     --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
   }
 
@@ -160,6 +162,37 @@
     border-color: var(--studio-border);
   }
 
+  /* Styled hover tooltips for the vertical icon rail */
+  .studio-rail [data-tip] { position: relative; }
+  .studio-rail [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 8px;
+    color: var(--studio-canvas);
+    background-color: var(--studio-ink);
+    border: 1px solid var(--studio-border);
+    border-radius: 2px;
+    box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 70;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .studio-rail [data-tip]:hover::after,
+  .studio-rail [data-tip]:focus-visible::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+
   .studio-worktable .studio-prompt-input {
     color: var(--studio-ink);
   }
@@ -176,6 +209,43 @@
 
   .studio-worktable .studio-dotted-rule {
     border-left: 1px dotted var(--studio-divider);
+  }
+
+  /* Mobile bottom navigation — native-feeling primary nav */
+  .studio-mobile-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+    backdrop-filter: blur(8px);
+  }
+  .studio-mobile-nav-item {
+    min-height: 56px;
+    position: relative;
+  }
+  .studio-mobile-nav-item.is-active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26px;
+    height: 2px;
+    background: var(--studio-tab-active, currentColor);
+  }
+  .studio-mobile-nav-item.is-active {
+    background: color-mix(in srgb, var(--studio-tab-active) 8%, transparent);
+  }
+
+  /* Mobile action cluster sits directly above the nav */
+  .studio-mobile-actions {
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    backdrop-filter: blur(8px);
+  }
+
+  /* Mobile bottom sheets (Tools / More) */
+  .studio-mobile-sheet {
+    color: var(--studio-ink);
+  }
+  .studio-tool-tile {
+    min-height: 84px;
   }
 
   /* Archive chamber shell — working dossier palette (aligned with studio light) */
@@ -598,6 +668,15 @@
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Horizontal scroll affordance: fade the right edge so overflowing
+   tab strips read as scrollable instead of clipped (mobile only). */
+@media (max-width: 767px) {
+  .scroll-fade-x {
+    -webkit-mask-image: linear-gradient(to right, #000 84%, transparent 100%);
+    mask-image: linear-gradient(to right, #000 84%, transparent 100%);
+  }
+}
 
 .rounded-sm { border-radius: 1px !important; }
 

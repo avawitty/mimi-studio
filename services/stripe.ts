@@ -1,4 +1,4 @@
-import { PlanTier } from '../constants';
+import { PlanTier, type BillingInterval } from '../constants';
 import { auth } from './firebaseInit';
 
 const authenticatedRequest = async (path: string, body?: Record<string, unknown>) => {
@@ -18,14 +18,21 @@ const authenticatedRequest = async (path: string, body?: Record<string, unknown>
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || 'Stripe request failed');
+    // API returns the standard envelope { error: { message } }; tolerate legacy string too.
+    const message =
+      (data?.error && typeof data.error === 'object' ? data.error.message : data?.error) ||
+      'Stripe request failed';
+    throw new Error(message);
   }
   return data;
 };
 
-export const createCheckoutSession = async (plan: Exclude<PlanTier, 'free'>) => {
+export const createCheckoutSession = async (
+  plan: Exclude<PlanTier, 'free'>,
+  interval: BillingInterval = 'month',
+) => {
   try {
-    const data = await authenticatedRequest('/api/create-checkout-session', { plan });
+    const data = await authenticatedRequest('/api/create-checkout-session', { plan, interval });
 
     if (data.url) {
       window.location.href = data.url;
