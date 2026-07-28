@@ -763,6 +763,12 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  
  const fileInputRef = useRef<HTMLInputElement>(null);
 
+ // Drag-and-drop + folder organization state
+ const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+ const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null);
+ const [isFileDropActive, setIsFileDropActive] = useState(false);
+ const [showFolderPicker, setShowFolderPicker] = useState(false);
+
  const loadPocket = useCallback(async (silent = false) => {
  if (!silent) setLoading(true);
  try {
@@ -799,9 +805,8 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  if (activeBoard) return items.filter(i => activeBoard.content.itemIds?.includes(i.id));
  
  const rootItems = items.filter(item => {
- // If we are at root, allow items that are NOT in a folder OR are folders themselves
- const isFolder = item.type === 'moodboard';
- if (isFolder) return true;
+ // Folders (moodboards) live in the visual strip, not the grid
+ if (item.type === 'moodboard') return false;
  
  const isInAnyFolder = items.some(mb => mb.type === 'moodboard' && mb.content.itemIds?.includes(item.id));
  return !isInAnyFolder;
@@ -811,10 +816,12 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
    if (categoryFilter === 'ZINES') return item.type === 'zine_card';
    if (categoryFilter === 'IMAGES') return item.type === 'image' || item.type === 'video';
    if (categoryFilter === 'ANALYSES') return item.type === 'analysis_report' || item.type === 'omen';
-   if (categoryFilter === 'COLLECTIONS') return item.type === 'moodboard';
    return ['text', 'script', 'link', 'voicenote'].includes(item.type);
  });
  }, [items, activeBoard, searchQuery, searchResults, categoryFilter]);
+
+ // Collections shown as visual folder cards in the strip
+ const folders = useMemo(() => items.filter(i => i.type === 'moodboard'), [items]);
 
  // --- ACTIONS ---
 
@@ -972,12 +979,26 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  } catch (e) { console.error(e); }
  };
 
- const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
- const files = e.target.files;
- if (!files || files.length === 0) return;
+ // Append selected items into an existing folder (used by selection picker + drag-drop)
+ const addItemsToFolder = async (folderId: string, ids: string[]) => {
+ const folder = items.find(i => i.id === folderId && i.type === 'moodboard');
+ if (!folder || ids.length === 0) return;
+ const existing = folder.content.itemIds || [];
+ const merged = Array.from(new Set([...existing, ...ids]));
+ const nextContent = { ...folder.content, itemIds: merged };
+ setItems(prev => prev.map(i => i.id === folderId ? { ...i, content: nextContent } : i));
+ try {
+ if (user?.uid) await updatePocketItem(user.uid, folderId, { content: nextContent });
+ } catch (err) { console.error('Add to folder failed', err); }
+ window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message: `Added ${merged.length - existing.length} to ${folder.content.name || 'collection'}.`, icon: <FolderOpen size={14} /> } }));
+ };
+
+ const processFiles = async (fileList: FileList | File[] | null) => {
+ const files = Array.from(fileList || []).filter(f => f.type.startsWith('image') || f.type.startsWith('audio'));
+ if (files.length === 0) return;
  setLoading(true);
  try {
- for (const file of Array.from(files)) {
+ for (const file of files) {
  const reader = new FileReader();
  const base64 = await new Promise<string>((resolve, reject) => {
  reader.onload = async (ev) => {
@@ -1019,6 +1040,11 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  }
  await loadPocket(true);
  } catch (err) { console.error(err); } finally { setLoading(false); }
+ };
+
+ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+ await processFiles(e.target.files);
+ if (e.target) e.target.value = '';
  };
 
  const handleItemClick = (item: PocketItem) => {
@@ -1133,7 +1159,14 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  contextDrawer={pocketContextDrawer}
  contextDrawerOpen
  actions={
- <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+ <button
+ type="button"
+ onClick={() => fileInputRef.current?.click()}
+ className="px-3 py-1.5 bg-archive-ink text-white font-mono text-[8px] uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center gap-1.5 min-h-11 md:min-h-0"
+ >
+ <Upload size={12} /> Upload
+ </button>
  <button
  type="button"
  onClick={() => { setIsSelectionMode(!isSelectionMode); if (isSelectionMode) setSelectedIds(new Set()); }}
@@ -1164,8 +1197,22 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  </button>
  </div>
  }
- canvas={
- <div className="w-full h-full flex flex-col overflow-hidden relative">
+      canvas={
+ <div
+ className="w-full h-full flex flex-col overflow-hidden relative"
+ onDragOver={(e) => { if (!draggingItemId && Array.from(e.dataTransfer.types || []).includes('Files')) { e.preventDefault(); setIsFileDropActive(true); } }}
+ onDragLeave={(e) => { if (e.currentTarget === e.target) setIsFileDropActive(false); }}
+ onDrop={(e) => { if (!draggingItemId && e.dataTransfer.files?.length) { e.preventDefault(); setIsFileDropActive(false); processFiles(e.dataTransfer.files); } }}
+ >
+ <AnimatePresence>
+ {isFileDropActive && (
+ <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[6500] bg-archive-cream/90 dark:bg-stone-950/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4 pointer-events-none border-2 border-dashed border-archive-ink m-4">
+ <Upload size={40} className="archive-text-ink" />
+ <p className="font-serif italic text-2xl archive-text-ink">Drop to inject into the registry</p>
+ <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">Images and audio · persisted with provenance</p>
+ </motion.div>
+ )}
+ </AnimatePresence>
  <AnimatePresence>
  {isAnalyzing && (
  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7000] bg-white/80 /80 backdrop-blur-xl flex flex-col items-center justify-center gap-8">
@@ -1212,16 +1259,70 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  </div>
  </div>
 
+ {!activeBoard && (
+ <div className="shrink-0 px-4 md:px-8 py-4 border-b archive-border bg-white dark:bg-stone-950">
+   <div className="flex items-center justify-between mb-3">
+     <span className="font-mono text-[8px] uppercase tracking-[0.28em] archive-text-muted font-black">Collections</span>
+     <span className="font-mono text-[8px] archive-text-muted">{folders.length} folders</span>
+   </div>
+   <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+     {folders.map((folder) => {
+       const memberThumbs = (folder.content.itemIds || [])
+         .map((id) => items.find((i) => i.id === id))
+         .filter(Boolean)
+         .slice(0, 4);
+       const isDrop = dropTargetFolderId === folder.id;
+       return (
+         <button
+           key={folder.id}
+           type="button"
+           onClick={() => setActiveBoard(folder)}
+           onDragOver={(e) => { if (draggingItemId) { e.preventDefault(); setDropTargetFolderId(folder.id); } }}
+           onDragLeave={() => setDropTargetFolderId((cur) => (cur === folder.id ? null : cur))}
+           onDrop={(e) => { e.preventDefault(); if (draggingItemId) { addItemsToFolder(folder.id, [draggingItemId]); setDraggingItemId(null); setDropTargetFolderId(null); } }}
+           className={`group shrink-0 w-28 text-left transition-all ${isDrop ? 'scale-105' : ''}`}
+         >
+           <div className={`w-28 h-28 grid grid-cols-2 grid-rows-2 gap-px bg-nous-base border overflow-hidden transition-all ${isDrop ? 'border-archive-ink ring-2 ring-archive-ink' : 'archive-border group-hover:border-archive-ink'}`}>
+             {memberThumbs.length > 0 ? (
+               memberThumbs.map((s, i) => (
+                 <div key={i} className="w-full h-full overflow-hidden bg-archive-cream">
+                   {s?.content?.imageUrl ? (
+                     <img src={s.content.thumbnailUrl || s.content.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                   ) : (
+                     <div className="w-full h-full flex items-center justify-center archive-text-muted"><Layers size={12} /></div>
+                   )}
+                 </div>
+               ))
+             ) : (
+               <div className="col-span-2 row-span-2 flex items-center justify-center archive-text-muted bg-archive-cream"><FolderOpen size={26} strokeWidth={1.25} /></div>
+             )}
+           </div>
+           <p className="font-serif italic text-sm archive-text-ink mt-2 truncate">{folder.content.name || 'Untitled'}</p>
+           <p className="font-mono text-[7px] uppercase tracking-widest archive-text-muted">{folder.content.itemIds?.length || 0} items</p>
+         </button>
+       );
+     })}
+     <button
+       type="button"
+       onClick={() => { setSelectedIds(new Set()); setShowFolderModal(true); }}
+       className="shrink-0 w-28 h-28 self-start border border-dashed archive-border flex flex-col items-center justify-center gap-2 archive-text-muted hover:archive-text-ink hover:border-archive-ink transition-colors"
+     >
+       <FolderPlus size={22} strokeWidth={1.25} />
+       <span className="font-mono text-[7px] uppercase tracking-widest">New Folder</span>
+     </button>
+   </div>
+ </div>
+ )}
+
  {!activeBoard ? (
  <div className="shrink-0 px-4 md:px-8 py-4 border-b archive-border bg-[#f7f5f0] dark:bg-stone-900">
-   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
+   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2">
  {([
    ['ALL', 'Everything', LayoutGrid],
    ['ZINES', 'Zines', BookOpen],
    ['IMAGES', 'Image saves', ImageIcon],
    ['ANALYSES', 'Analyses', Radar],
    ['NOTES', 'Notes & links', FileText],
-   ['COLLECTIONS', 'Collections', FolderOpen],
  ] as const).map(([tab, label, Icon]) => {
    const counts = {
      ALL: items.length,
@@ -1229,7 +1330,6 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
      IMAGES: items.filter((item) => item.type === 'image' || item.type === 'video').length,
      ANALYSES: items.filter((item) => item.type === 'analysis_report' || item.type === 'omen').length,
      NOTES: items.filter((item) => ['text', 'script', 'link', 'voicenote'].includes(item.type)).length,
-     COLLECTIONS: items.filter((item) => item.type === 'moodboard').length,
    };
    return (
      <button
@@ -1424,9 +1524,9 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-5">
           {folderItems.map(item => (
-            <motion.div key={item.id} layout onClick={() => handleItemClick(item)} className={`group relative bg-white border rounded-none flex flex-col transition-all cursor-pointer ${isSelectionMode && selectedIds.has(item.id) ? 'border-nous-border ring-2 ring-stone-500/20' : 'border-nous-border '}`}>
+            <motion.div key={item.id} layout draggable={!isSelectionMode} onDragStartCapture={() => setDraggingItemId(item.id)} onDragEndCapture={() => { setDraggingItemId(null); setDropTargetFolderId(null); }} onClick={() => handleItemClick(item)} className={`group relative bg-white border rounded-none flex flex-col transition-all cursor-pointer ${draggingItemId === item.id ? 'opacity-40' : ''} ${isSelectionMode && selectedIds.has(item.id) ? 'border-nous-border ring-2 ring-stone-500/20' : 'border-nous-border '}`}>
               <div className="relative aspect-square bg-nous-base overflow-hidden">
-                {item.type === 'image' && <img src={item.content.thumbnailUrl || item.content.imageUrl} className="w-full h-full object-contain p-2 transition-all duration-[2s]"loading="lazy"/>}
+                {item.type === 'image' && <img src={item.content.thumbnailUrl || item.content.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"loading="lazy"/>}
                 {item.content?.metadata?.type === 'geo_pack' && (
                   <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-nous-text text-nous-base gap-4 text-center border border-nous-border/20">
                     <Target size={32} className="text-[#a8b79f] opacity-80"/>
@@ -1448,7 +1548,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
                 return (
                 <div key={idx} className="w-full h-full bg-nous-base overflow-hidden">
                 {shard?.content?.imageUrl ? (
-                <img src={shard.content.imageUrl} className="w-full h-full object-contain opacity-60 group-hover:opacity-100 transition-opacity"/>
+                <img src={shard.content.imageUrl} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"/>
                 ) : (
                 <div className="w-full h-full flex items-center justify-center text-nous-subtle"><Layers size={12}/></div>
                 )}
@@ -1488,7 +1588,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
                 )}
                 {item.type === 'zine_card' && (
                 <div className="w-full h-full pointer-events-auto"onClick={(e) => { e.stopPropagation(); if(item.content.analysis && onSelectZine) onSelectZine({ id: item.content.zineId, title: item.content.title, content: item.content.analysis, tone: 'default', timestamp: item.timestamp, userHandle: 'Ghost' } as ZineMetadata); }}>
-                <img src={item.content.imageUrl} className="w-full h-full object-contain transition-all duration-[2s]"/>
+                <img src={item.content.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="font-sans text-[8px] uppercase tracking-widest text-white font-black">Absorb Zine</span>
                 </div>
@@ -1544,13 +1644,51 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white p-10 rounded-none border border-nous-border max-w-sm w-full space-y-8">
  <div className="space-y-2">
  <h3 className="font-serif text-3xl italic tracking-tighter">Stack Shards.</h3>
- <p className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle font-black">Group {selectedIds.size} fragments into a collection</p>
+ <p className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle font-black">{selectedIds.size > 0 ? `Group ${selectedIds.size} fragments into a collection` : 'Name your new collection'}</p>
  </div>
  <input type="text"value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder="Collection Name..."className="w-full bg-nous-base border-b border-nous-border p-4 font-serif italic text-xl focus:outline-none"/>
  <div className="flex gap-4">
  <button onClick={() => setShowFolderModal(false)} className="flex-1 py-4 font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle hover:text-nous-text transition-all">Cancel</button>
  <button onClick={handleCreateFolder} className="flex-[2] py-4 bg-nous-text text-nous-base font-sans text-[8px] uppercase tracking-widest font-black rounded-none hover:scale-105 transition-transform">Create Stack</button>
  </div>
+ </motion.div>
+ </motion.div>
+ )}
+
+ {showFolderPicker && (
+ <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[8000] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+ <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white dark:bg-stone-900 p-8 rounded-none border border-nous-border max-w-sm w-full space-y-6">
+ <div className="flex items-start justify-between gap-4">
+ <div className="space-y-1">
+ <h3 className="font-serif text-2xl italic tracking-tighter">Add to Collection.</h3>
+ <p className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle font-black">File {selectedIds.size} fragments into an existing stack</p>
+ </div>
+ <button onClick={() => setShowFolderPicker(false)} className="p-2 text-nous-subtle hover:text-nous-text transition-colors"><X size={18} /></button>
+ </div>
+ <div className="max-h-[50vh] overflow-y-auto -mx-2 px-2 space-y-2">
+ {folders.map((folder) => {
+ const thumb = (folder.content.itemIds || []).map((id) => items.find((i) => i.id === id)).find((s) => s?.content?.imageUrl);
+ return (
+ <button
+ key={folder.id}
+ onClick={async () => { await addItemsToFolder(folder.id, Array.from(selectedIds)); setShowFolderPicker(false); setIsSelectionMode(false); setSelectedIds(new Set()); }}
+ className="w-full flex items-center gap-3 p-2 border border-nous-border hover:bg-nous-base transition-colors text-left"
+ >
+ <div className="w-10 h-10 shrink-0 bg-archive-cream border border-nous-border/40 overflow-hidden flex items-center justify-center">
+ {thumb?.content?.imageUrl ? <img src={thumb.content.thumbnailUrl || thumb.content.imageUrl} alt="" className="w-full h-full object-cover" /> : <FolderOpen size={16} className="text-nous-subtle" />}
+ </div>
+ <div className="min-w-0 flex-1">
+ <p className="font-serif italic text-sm text-nous-text truncate">{folder.content.name || 'Untitled'}</p>
+ <p className="font-mono text-[7px] uppercase tracking-widest text-nous-subtle">{folder.content.itemIds?.length || 0} items</p>
+ </div>
+ <ChevronRight size={14} className="text-nous-subtle shrink-0" />
+ </button>
+ );
+ })}
+ </div>
+ <button onClick={() => { setShowFolderPicker(false); setShowFolderModal(true); }} className="w-full py-3 border border-dashed border-nous-border font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle hover:text-nous-text hover:border-nous-text transition-colors flex items-center justify-center gap-2">
+ <FolderPlus size={14} /> New Collection Instead
+ </button>
  </motion.div>
  </motion.div>
  )}
@@ -1658,6 +1796,14 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  >
  <FolderPlus size={18} />
  <span className="font-sans text-[7px] uppercase tracking-widest font-black">Stack</span>
+ </button>
+ <button
+ onClick={() => setShowFolderPicker(true)}
+ disabled={selectedIds.size === 0 || folders.length === 0}
+ className="flex flex-col items-center gap-1 px-4 py-2 rounded-none text-nous-subtle hover:text-nous-text hover:bg-white/5 transition-all disabled:opacity-30"
+ >
+ <FolderOpen size={18} />
+ <span className="font-sans text-[7px] uppercase tracking-widest font-black">Add to</span>
  </button>
  <button
  onClick={() => setShowBatchTagModal(true)}

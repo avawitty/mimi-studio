@@ -989,20 +989,19 @@ export const AnalysisDisplay: React.FC<{
  >
   {/* Quick Preview Draft Banner */}
   {metadata.isQuickPreview && (
-    <div className="bg-purple-950/90 border-b border-purple-800/80 text-purple-100 px-6 py-3.5 flex items-center justify-between font-mono text-[10px] tracking-wider z-[11000] relative backdrop-blur-md shrink-0 shadow-xl">
-      <div className="flex items-center gap-2.5">
-        <Eye size={14} className="text-purple-400 animate-pulse" />
-        <span className="font-bold">QUICK PREVIEW DRAFT // Layout & Typography Verified</span>
-        <span className="hidden md:inline text-purple-300/70 text-[9px]">(Low-fidelity draft without heavy image generation)</span>
+    <div className="bg-stone-900/95 border-b border-stone-700/70 text-stone-100 px-6 py-3.5 flex items-center justify-between gap-4 font-mono text-[10px] tracking-wider z-[11000] relative backdrop-blur-md shrink-0 shadow-xl">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <Eye size={14} className="text-amber-400 shrink-0" />
+        <span className="font-bold truncate">QUICK PREVIEW DRAFT // Layout & Typography Verified</span>
+        <span className="hidden md:inline text-stone-400 text-[9px]">(Low-fidelity draft without heavy image generation)</span>
       </div>
       <button
         onClick={() => {
           onReset();
           window.dispatchEvent(new CustomEvent('mimi:develop_highfi', { detail: { originalInput: metadata.originalInput } }));
         }}
-        className="px-4 py-1.5 bg-purple-400 hover:bg-purple-300 text-stone-950 font-extrabold rounded-xs transition-colors tracking-widest uppercase flex items-center gap-1.5 cursor-pointer shadow-md"
+        className="px-4 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-extrabold rounded-xs transition-colors tracking-widest uppercase shrink-0 cursor-pointer shadow-md"
       >
-        <Sparkles size={12} />
         Generate Full High-Fi Zine
       </button>
     </div>
@@ -1010,52 +1009,18 @@ export const AnalysisDisplay: React.FC<{
 
   <div className="fixed top-8 right-8 z-[10000] flex items-center gap-2">
     <button
-      onClick={handleReadToMe}
-      disabled={isSynthesizingTTS}
-      className={`font-mono text-[10px] uppercase tracking-[0.2em] font-black transition-all bg-white/95 dark:bg-stone-900/95 backdrop-blur-md px-4 py-3 border hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer ${
-        isReadingAloud
-          ? 'text-amber-400 bg-amber-950/80 border-amber-400 animate-pulse'
-          : 'text-purple-600 dark:text-purple-300 border-purple-500/40 hover:border-purple-400'
-      }`}
-      title={`Read full Zine aloud in ${ttsVoice} Voice`}
-    >
-      {isSynthesizingTTS ? (
-        <>
-          <Loader2 size={13} className="animate-spin text-purple-400" />
-          [ SYNTHESIZING VOICE... ]
-        </>
-      ) : isReadingAloud ? (
-        <>
-          <Square size={13} className="text-amber-400 fill-amber-400" />
-          [ STOP VOICE ({ttsVoice}) ]
-        </>
-      ) : (
-        <>
-          <Volume2 size={13} className="text-purple-400" />
-          [ READ TO ME ({ttsVoice}) ]
-        </>
-      )}
-    </button>
-    <button
-      onClick={() => setTtsVoice(prev => prev === 'Kore' ? 'Koral' : 'Kore')}
-      className="font-mono text-[9px] uppercase tracking-widest text-stone-300 bg-stone-900/90 hover:bg-stone-800 backdrop-blur-md px-2.5 py-3 border border-stone-700/60 transition-colors cursor-pointer"
-      title="Toggle between Kore and Koral voice models"
-    >
-      VOICE: {ttsVoice}
-    </button>
-    <button
       onClick={() => setIsDedicatedReadingMode(true)}
-      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-purple-600 dark:text-purple-400 hover:text-purple-500 transition-all bg-white/90 dark:bg-stone-900/90 backdrop-blur-md px-5 py-3 border border-purple-500/30 hover:border-purple-500/60 hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer"
+      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/90 dark:bg-stone-900/90 backdrop-blur-md px-4 md:px-5 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer"
       title="Enter dedicated Reading Mode with expanded line height, increased margins, and zero distraction chrome"
     >
       <BookOpen size={13} />
-      [ READING MODE ]
+      <span className="hidden sm:inline">[ READING MODE ]</span>
     </button>
     <button 
       onClick={onReset} 
-      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/80 dark:bg-stone-900/80 backdrop-blur-md px-6 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/80 dark:bg-stone-900/80 backdrop-blur-md px-4 md:px-6 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
     >
-      [ X CLOSE ]
+      [ X ]
     </button>
   </div>
  <style>{`
