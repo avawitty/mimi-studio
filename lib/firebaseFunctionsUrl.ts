@@ -1,7 +1,5 @@
-import firebaseConfig from '../firebase-applet-config.json';
-
 const DEFAULT_REGION = "us-central1";
-const DEFAULT_PROJECT_ID = firebaseConfig.projectId || "mimistudios";
+const DEFAULT_PROJECT_ID = "mimistudios";
 
 /** Base URL for the `api` Cloud Function (no trailing slash). */
 export const getFirebaseFunctionsBaseUrl = (): string => {
