@@ -1,26 +1,31 @@
-export type MimiCheckoutPlan = "core" | "pro" | "lab";
+export type MimiCheckoutPlan = "core" | "optioning" | "pro" | "lab";
 
 const TEST_PRICE_IDS: Record<MimiCheckoutPlan, string> = {
-  core: "price_1TwwYS8wdWcoxOPehfAp8HnJ",
-  pro: "price_1TwwYZ8wdWcoxOPeUxr0fReB",
-  lab: "price_1TwwYh8wdWcoxOPeK7j6HSm0",
+  core: "price_1TyH1dPelakqdIL6lWwNf7Hw",
+  optioning: "price_1TyH1dPelakqdIL6qnkLnvan",
+  pro: "price_1TyH1ePelakqdIL6cL56uAzp",
+  lab: "price_1TyH1ePelakqdIL6VpQHXEKG",
 };
 
 const PLAN_TO_MIMI_PLAN = {
   core: "initiation",
+  optioning: "optioning",
   pro: "atelier",
   lab: "lab",
 } as const;
 
 const PRICE_ENV_KEYS: Record<MimiCheckoutPlan, string> = {
   core: "STRIPE_PRICE_CORE",
+  optioning: "STRIPE_PRICE_OPTIONING",
   pro: "STRIPE_PRICE_PRO",
   lab: "STRIPE_PRICE_LAB",
 };
 
 export const parseCheckoutPlan = (input: unknown): MimiCheckoutPlan | null => {
   const value = String(input || "").trim().toLowerCase();
-  return value === "core" || value === "pro" || value === "lab" ? value : null;
+  return value === "core" || value === "optioning" || value === "pro" || value === "lab"
+    ? (value as MimiCheckoutPlan)
+    : null;
 };
 
 export const getStripePriceForPlan = (plan: MimiCheckoutPlan) => {
@@ -30,4 +35,3 @@ export const getStripePriceForPlan = (plan: MimiCheckoutPlan) => {
 
 export const getMimiPlanForCheckout = (plan: MimiCheckoutPlan) =>
   PLAN_TO_MIMI_PLAN[plan];
-

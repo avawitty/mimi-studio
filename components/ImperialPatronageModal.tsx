@@ -127,31 +127,53 @@ export const ImperialPatronageModal: React.FC<{ isOpen: boolean; onClose: () => 
  </p>
 
  {/* PRICING TIERS */}
- <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left mt-8">
- {/* CORE TIER */}
- <div className="border border-nous-text/20 dark:border-nous-base/20 p-6 flex flex-col bg-white/50 backdrop-blur-sm relative">
- <h3 className="font-serif italic text-2xl text-stone-900">Core</h3>
- <div className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle mb-4">Interpreter</div>
- <div className="text-3xl font-light tracking-tighter mb-6">$12<span className="text-sm text-nous-subtle">/mo</span></div>
- <ul className="space-y-3 mb-8 flex-1 text-sm text-nous-subtle">
- <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> 500 generation credits each month</li>
- <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Persistent Archive saves</li>
- <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Full Aesthetic DNA editing</li>
- <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Advanced Analysis (Trajectory, Biaxial maps)</li>
- <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Zine generation funded by your plan</li>
- </ul>
- <ManifestIdentityGate>
- <button 
- onClick={() => handleSubscribe('core')}
- disabled={!!isCheckoutLoading || activePaidPlan === 'core'}
- className={`w-full py-3 border border-nous-border font-sans text-[10px] uppercase tracking-[0.2em] font-bold transition-colors flex justify-center items-center gap-2 ${activePaidPlan === 'core' ? 'bg-nous-base text-nous-subtle border-nous-border cursor-not-allowed' : 'hover:bg-nous-base hover:text-nous-text'}`}
- >
- {isCheckoutLoading === 'core' ? <Loader2 size={14} className="animate-spin"/> : activePaidPlan === 'core' ? 'Current Plan' : 'Understand Your Taste'}
- </button>
- </ManifestIdentityGate>
- </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full text-left mt-8">
+            {/* CORE TIER */}
+            <div className="border border-nous-text/20 dark:border-nous-base/20 p-6 flex flex-col bg-white/50 backdrop-blur-sm relative">
+              <h3 className="font-serif italic text-2xl text-stone-900">Core</h3>
+              <div className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle mb-4">Interpreter</div>
+              <div className="text-3xl font-light tracking-tighter mb-6">$12<span className="text-sm text-nous-subtle">/mo</span></div>
+              <ul className="space-y-3 mb-8 flex-1 text-sm text-nous-subtle">
+                <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> 500 generation credits each month</li>
+                <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Persistent Archive saves</li>
+                <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Full Aesthetic DNA editing</li>
+                <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Advanced Analysis (Trajectory, Biaxial maps)</li>
+                <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Zine generation funded by your plan</li>
+              </ul>
+              <ManifestIdentityGate>
+                <button 
+                  onClick={() => handleSubscribe('core')}
+                  disabled={!!isCheckoutLoading || activePaidPlan === 'core'}
+                  className={`w-full py-3 border border-nous-border font-sans text-[10px] uppercase tracking-[0.2em] font-bold transition-colors flex justify-center items-center gap-2 ${activePaidPlan === 'core' ? 'bg-nous-base text-nous-subtle border-nous-border cursor-not-allowed' : 'hover:bg-nous-base hover:text-nous-text'}`}
+                >
+                  {isCheckoutLoading === 'core' ? <Loader2 size={14} className="animate-spin"/> : activePaidPlan === 'core' ? 'Current Plan' : 'Understand Your Taste'}
+                </button>
+              </ManifestIdentityGate>
+            </div>
 
- {/* PRO TIER */}
+            {/* OPTIONING TIER */}
+            <div className="border border-nous-text/20 dark:border-nous-base/20 p-6 flex flex-col bg-white/50 backdrop-blur-sm relative">
+              <h3 className="font-serif italic text-2xl text-stone-900">Optioning</h3>
+              <div className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle mb-4">Tailor</div>
+              <div className="text-3xl font-light tracking-tighter mb-6">$25<span className="text-sm text-nous-subtle">/mo</span></div>
+              <ul className="space-y-3 mb-8 flex-1 text-sm text-nous-subtle">
+                <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Everything in Core</li>
+                <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> 1,500 generation credits each month</li>
+                <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Tailor visual treatments</li>
+                <li className="flex items-start gap-2"><Check size={14} className="mt-1 shrink-0"/> Priority generation queue</li>
+              </ul>
+              <ManifestIdentityGate>
+                <button 
+                  onClick={() => handleSubscribe('optioning')}
+                  disabled={!!isCheckoutLoading || activePaidPlan === 'optioning'}
+                  className={`w-full py-3 border border-nous-border font-sans text-[10px] uppercase tracking-[0.2em] font-bold transition-colors flex justify-center items-center gap-2 ${activePaidPlan === 'optioning' ? 'bg-nous-base text-nous-subtle border-nous-border cursor-not-allowed' : 'hover:bg-nous-base hover:text-nous-text'}`}
+                >
+                  {isCheckoutLoading === 'optioning' ? <Loader2 size={14} className="animate-spin"/> : activePaidPlan === 'optioning' ? 'Current Plan' : 'Tailor Your Taste'}
+                </button>
+              </ManifestIdentityGate>
+            </div>
+
+            {/* PRO TIER */}
  <div className="border-2 border-stone-900 p-6 flex flex-col bg-white relative transform md:-translate-y-4 shadow-md">
  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[9px] font-mono uppercase tracking-widest px-3 py-1">Most Popular</div>
  <h3 className="font-serif italic text-2xl text-stone-900">Pro</h3>

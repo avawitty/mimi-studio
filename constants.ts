@@ -50,15 +50,16 @@ Recommend emerging, niche, or archival designers that perfectly execute the user
 Long-term vision: Keep a relevant understanding of what the user needs for their capsule, acting as a structural seam guide for their wardrobe expansion.`;
 
 export const STRIPE_PRICES = {
-  core: "price_1TwwYS8wdWcoxOPehfAp8HnJ",
-  pro: "price_1TwwYZ8wdWcoxOPeUxr0fReB",
-  lab: "price_1TwwYh8wdWcoxOPeK7j6HSm0",
+  core: "price_1TyH1dPelakqdIL6lWwNf7Hw",
+  optioning: "price_1TyH1dPelakqdIL6qnkLnvan",
+  pro: "price_1TyH1ePelakqdIL6cL56uAzp",
+  lab: "price_1TyH1ePelakqdIL6VpQHXEKG",
 } as const;
 
-export type PlanTier = 'free' | 'core' | 'pro' | 'lab';
+export type PlanTier = 'free' | 'core' | 'optioning' | 'pro' | 'lab';
 
 export function hasAccess(userPlan: PlanTier | string | undefined | null, requiredPlan: PlanTier): boolean {
-  const order = ["free", "core", "pro", "lab"];
+  const order = ["free", "core", "optioning", "pro", "lab"];
   const userIndex = order.indexOf(userPlan || "free");
   const requiredIndex = order.indexOf(requiredPlan);
   return userIndex >= requiredIndex;
