@@ -1514,7 +1514,7 @@ export const App: React.FC = () => {
   }, [profile?.zineOptions]);
 
   useEffect(() => {
-    if (isCaptiveInWebview() || new URLSearchParams(window.location.search).get("__sentinel") === "1") setShowCaptiveSentinel(true);
+    if (isCaptiveInWebview()) setShowCaptiveSentinel(true);
 
     // CHECK FOR PATRON MINT URL
     const searchParams = new URLSearchParams(window.location.search);
