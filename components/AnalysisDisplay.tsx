@@ -1259,7 +1259,7 @@ export const AnalysisDisplay: React.FC<{
  
  {/* 1. HEADLINES (TITLE/TONE) */}
  <motion.section initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease: [0.16,1,0.3,1] }} className="min-h-[100dvh] flex flex-col justify-center snap-start border-b border-nous-border print:min-h-0 print:py-12 bg-nous-base">
- <div className="w-full space-y-16 px-6 md:px-24">
+ <div className="w-full space-y-10 md:space-y-16 px-6 md:px-24">
  <div className="flex items-center gap-4">
  <span className="font-mono text-[9px] uppercase tracking-[0.5em] text-nous-subtle">Issue_0{Math.floor(Math.random() * 10)}</span>
  {metadata.isDeepThinking && <div className="flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-none text-amber-500 font-sans text-[7px] font-black uppercase tracking-widest"><Radar size={10} className="animate-pulse"/> Deep Refraction</div>}
@@ -1270,7 +1270,7 @@ export const AnalysisDisplay: React.FC<{
  <h1 className={`${fontStyle} text-5xl sm:text-7xl md:text-8xl lg:text-[9rem] tracking-tight leading-[0.92] text-nous-text uppercase italic max-w-5xl`}>
  {metadata.content?.headlines?.[0] || metadata.title}
  </h1>
- <div className="flex flex-col md:flex-row md:items-center gap-12 pt-12 border-t border-nous-border">
+ <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-12 pt-8 md:pt-12 border-t border-nous-border">
  <div className="flex flex-col gap-1">
  <span className="font-sans text-[8px] uppercase tracking-[0.3em] font-black text-nous-subtle">Tone</span>
  <span className="font-serif italic text-3xl"style={{ color: accentColor }}>{metadata.tone}</span>
@@ -1497,14 +1497,14 @@ export const AnalysisDisplay: React.FC<{
  </motion.section>
 
  {/* 7. CELESTIAL CALIBRATION */}
- <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg text-white print:min-h-0 print:py-12">
+ <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg-stone-950 text-white print:min-h-0 print:py-12">
  <div className="w-full space-y-12 px-6 md:px-24">
  <SectionHeader label="Celestial Calibration"icon={Moon} color="text-white"/>
  <div className="flex flex-col items-center text-center space-y-12">
  <div className="p-8 rounded-none border border-white/10 bg-white/5 animate-pulse-slow">
  <CelestialIcon size={48} style={{ color: accentColor }} />
  </div>
- <p className="font-mono text-xl md:text-3xl text-nous-text uppercase tracking-widest leading-relaxed max-w-2xl border-l-2 pl-8 text-left"style={{ borderColor: accentColor }}>
+ <p className="font-mono text-xl md:text-3xl text-stone-100 uppercase tracking-widest leading-relaxed max-w-2xl border-l-2 pl-6 md:pl-8 text-left"style={{ borderColor: accentColor }}>
  {metadata.content.celestial_calibration}
  </p>
  </div>
@@ -1521,10 +1521,10 @@ export const AnalysisDisplay: React.FC<{
  const isEven = i % 2 === 0;
  return (
  <motion.section key={i} initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start w-full">
- <div className={`flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-stretch h-[100dvh]`}>
+ <div className={`flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-stretch md:h-[100dvh]`}>
  
  {/* VISUAL COMPONENT */}
- <div className="w-full md:w-1/2 relative group h-[50dvh] md:h-full flex items-center justify-center p-8 md:p-24">
+ <div className="w-full md:w-1/2 relative group h-[42dvh] md:h-full flex items-center justify-center p-6 md:p-24">
  <div className="relative w-full h-full max-h-[80vh] border border-nous-border bg-nous-base overflow-hidden">
  <Visualizer 
  prompt={page.imagePrompt} 
@@ -1551,7 +1551,7 @@ export const AnalysisDisplay: React.FC<{
  </div>
 
  {/* TEXT COMPONENT */}
- <div className="w-full md:w-1/2 flex flex-col justify-center p-12 md:p-24 space-y-8 md:space-y-12">
+ <div className="w-full md:w-1/2 flex flex-col justify-center px-6 py-10 sm:px-8 md:p-24 space-y-6 md:space-y-12">
  <div className="flex items-center gap-4 text-nous-subtle">
  <span className="font-serif italic text-4xl text-nous-text">{i+1}.</span>
  <div className="h-px flex-1 bg-nous-base"/>
