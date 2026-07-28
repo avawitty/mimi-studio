@@ -69,8 +69,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Check if it is a local request or third-party asset (fonts, APIs)
-  const isLocalApi = requestUrl.pathname.startsWith('/api/');
+  // NOTE: Do NOT cache '/api/' requests. Many API endpoints are authenticated and
+  // return user-specific data. A stale-while-revalidate cache keyed only by URL (no
+  // token/Vary awareness) would replay a previously-cached authenticated response to a
+  // different session after logout or account switch on a shared browser, bypassing the
+  // server's authorization check. API GETs must always pass through to the network.
   const isAestheticAsset = requestUrl.pathname.includes('/components/chambers/') || 
                            requestUrl.pathname.includes('/services/') ||
                            requestUrl.pathname.includes('/lib/productCanon');
@@ -87,7 +90,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Handle with Stale-While-Revalidate caching strategy
-  if (isLocalApi || isAestheticAsset || isFontAsset || isStaticDoc) {
+  if (isAestheticAsset || isFontAsset || isStaticDoc) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {
