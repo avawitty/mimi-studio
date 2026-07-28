@@ -12,7 +12,6 @@ const PRECACHE_ASSETS = [
   '/index.css',
   '/favicon.svg',
   '/logo.svg',
-  '/mimi-header.png',
   '/mimi-logo-dark.png',
   '/mimi-logo-light.png',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap'
