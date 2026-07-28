@@ -667,6 +667,15 @@
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Horizontal scroll affordance: fade the right edge so overflowing
+   tab strips read as scrollable instead of clipped (mobile only). */
+@media (max-width: 767px) {
+  .scroll-fade-x {
+    -webkit-mask-image: linear-gradient(to right, #000 84%, transparent 100%);
+    mask-image: linear-gradient(to right, #000 84%, transparent 100%);
+  }
+}
+
 .rounded-sm { border-radius: 1px !important; }
 
 /* TAPE EFFECT */

@@ -92,7 +92,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
           </div>
           <nav
             aria-label="Tailor profile workflow"
-            className="flex max-w-full items-stretch gap-1 overflow-x-auto"
+            className="flex max-w-full items-stretch gap-1 overflow-x-auto no-scrollbar scroll-fade-x"
           >
             {tabs.map((tab, index) => {
               const isActive = mode === tab.id;

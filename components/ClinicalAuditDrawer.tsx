@@ -55,7 +55,7 @@ export const ClinicalAuditDrawer: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[5000] font-mono text-xs select-none">
+    <div className="fixed bottom-24 right-4 md:bottom-4 z-[5000] font-mono text-xs select-none">
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 border border-stone-200 dark:border-stone-800/85 bg-stone-50/20 dark:bg-stone-950/20 text-stone-400 dark:text-stone-500 hover:text-red-500/80 dark:hover:text-red-400/80 hover:border-red-500/30 dark:hover:border-red-500/35 transition-all px-2 py-1 rounded-none text-[8.5px] tracking-wider"

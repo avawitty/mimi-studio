@@ -161,7 +161,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {spine ? (
-          <aside className="archive-spine shrink-0 w-14 md:w-16 border-r archive-border flex flex-col items-center py-4 gap-2 overflow-y-auto">
+          <aside className="archive-spine shrink-0 w-14 md:w-16 border-r archive-border hidden md:flex flex-col items-center py-4 gap-2 overflow-y-auto">
             {spine}
           </aside>
         ) : null}
@@ -181,7 +181,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
 
         {contextDrawer && drawerOpen ? (
           <aside
-            className="archive-drawer shrink-0 w-72 md:w-80 border-l archive-border overflow-hidden flex flex-col"
+            className="archive-drawer shrink-0 w-full md:w-80 border-l archive-border overflow-hidden flex flex-col"
             aria-label={contextDrawerTitle}
           >
             {contextDrawer}
