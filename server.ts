@@ -93,7 +93,7 @@ try {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || process.env.DEV_PORT) || 3000;
   let viteInstance: any = null;
 
   // Lazy initialize Stripe to prevent crashing if key is missing
