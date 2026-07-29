@@ -8,7 +8,7 @@ import { useUser } from '../contexts/UserContext';
 import { MediaFile, ThimbleBoard, ThimbleItem } from '../types';
 import { handleFirestoreError, logFirestoreError, OperationType, saveTask } from '../services/firebaseUtils';
 import { db } from '../services/firebaseInit';
-import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 
 interface SourcingTarget {
  targetArchetype: string;
@@ -86,6 +86,16 @@ export const ThimbleDashboard = () => {
  const [isAuditingBoard, setIsAuditingBoard] = useState(false);
  const [boardAuditResult, setBoardAuditResult] = useState<BoardAuditResult | null>(null);
 
+ const toEpochMillis = (value: any) => {
+   if (typeof value === 'number') return value;
+   if (value && typeof value.toMillis === 'function') return value.toMillis();
+   if (value && typeof value.seconds === 'number') return value.seconds * 1000;
+   return 0;
+ };
+
+ const sortByCreatedAtDesc = <T extends { createdAt?: any }>(items: T[]) =>
+   [...items].sort((a, b) => toEpochMillis(b.createdAt) - toEpochMillis(a.createdAt));
+
  useEffect(() => {
  const handleNav = (e: any) => {
  if (e.detail === 'thimble' && e.detail_id) {
@@ -102,15 +112,48 @@ export const ThimbleDashboard = () => {
 
  useEffect(() => {
  if (!user?.uid) return;
- const q = query(collection(db, 'thimbleBoards'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const b = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ThimbleBoard));
- setBoards(b);
+ let ownedBoards: ThimbleBoard[] = [];
+ let sharedBoards: ThimbleBoard[] = [];
+ const syncBoards = () => {
+   const merged = new Map<string, ThimbleBoard>();
+   [...ownedBoards, ...sharedBoards].forEach((board) => merged.set(board.id, board));
+   setBoards(sortByCreatedAtDesc(Array.from(merged.values())));
+ };
+ const ownedQuery = query(collection(db, 'thimbleBoards'), where('userId', '==', user.uid));
+ const sharedQuery = query(collection(db, 'thimbleBoards'), where('collaborators', 'array-contains', user.uid));
+ const unsubscribeOwned = onSnapshot(ownedQuery, (snapshot) => {
+   ownedBoards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ThimbleBoard));
+   syncBoards();
  }, (error) => {
- logFirestoreError(error, OperationType.LIST, 'thimbleBoards');
+   logFirestoreError(error, OperationType.LIST, 'thimbleBoards');
  });
- return () => unsubscribe();
+ const unsubscribeShared = onSnapshot(sharedQuery, (snapshot) => {
+   sharedBoards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ThimbleBoard));
+   syncBoards();
+ }, (error) => {
+   logFirestoreError(error, OperationType.LIST, 'thimbleBoards');
+ });
+ return () => {
+   unsubscribeOwned();
+   unsubscribeShared();
+ };
  }, [user?.uid]);
+
+ useEffect(() => {
+   if (!selectedBoard) return;
+   const nextBoard = boards.find((board) => board.id === selectedBoard.id);
+   if (!nextBoard) {
+     setSelectedBoard(null);
+     return;
+   }
+   if (
+     nextBoard.title !== selectedBoard.title ||
+     nextBoard.userId !== selectedBoard.userId ||
+     (nextBoard.collaborators || []).join(',') !== (selectedBoard.collaborators || []).join(',')
+   ) {
+     setSelectedBoard(nextBoard);
+   }
+ }, [boards, selectedBoard]);
 
  useEffect(() => {
  if (!selectedBoard || !user?.uid) {
@@ -118,10 +161,10 @@ export const ThimbleDashboard = () => {
  setBoardAuditResult(null);
  return;
  }
- const q = query(collection(db, 'thimbleItems'), where('boardId', '==', selectedBoard.id), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+ const q = query(collection(db, 'thimbleItems'), where('boardId', '==', selectedBoard.id));
  const unsubscribe = onSnapshot(q, (snapshot) => {
  const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ThimbleItem));
- setBoardItems(items);
+ setBoardItems(sortByCreatedAtDesc(items));
  }, (error) => {
  logFirestoreError(error, OperationType.LIST, 'thimbleItems');
  });
@@ -133,6 +176,7 @@ export const ThimbleDashboard = () => {
  try {
  await addDoc(collection(db, 'thimbleBoards'), {
  userId: user.uid,
+ collaborators: [],
  title: newBoardTitle.trim(),
  createdAt: serverTimestamp()
  });
@@ -482,9 +526,11 @@ export const ThimbleDashboard = () => {
  >
  {b.title}
  </button>
+ {b.userId === user?.uid && (
  <button onClick={() => handleDeleteBoard(b.id)} className="p-2 opacity-0 group-hover:opacity-100 text-nous-subtle hover:text-red-800 transition-opacity">
  <Trash2 size={12} />
  </button>
+ )}
  </div>
  ))}
  </div>
@@ -1107,9 +1153,11 @@ export const ThimbleDashboard = () => {
  <div className="absolute top-4 left-4 bg-white/90 px-2 py-1 text-[10px] uppercase tracking-widest border border-nous-border z-10">
  REF: 00{idx + 1}
  </div>
+ {(item.userId === user?.uid || selectedBoard.userId === user?.uid) && (
  <button onClick={() => handleDeleteItem(item.id)} className="absolute top-4 right-4 bg-white/90 p-1.5 border border-nous-border z-10 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-800">
  <Trash2 size={12} />
  </button>
+ )}
  
  <div className="flex-grow flex flex-col p-6 bg-nous-base/30 relative">
  {item.imageUrl && (
