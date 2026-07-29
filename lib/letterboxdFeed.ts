@@ -89,8 +89,7 @@ function decodeEntities(value = ''): string {
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
-    .replace(/&#0*39;|&apos;/gi, "'")
-    .replace(/&#0*38;/gi, '&');
+    .replace(/&#0*39;|&apos;/gi, "'");
 }
 
 function ratingToStars(rating?: number): string | undefined {
@@ -158,8 +157,10 @@ export function parseLetterboxdFeed(xml: string, feedUrl: string): LetterboxdEnt
 export async function fetchLetterboxdFeed(rawUrl: string): Promise<LetterboxdFeedResult> {
   const feed = resolveLetterboxdFeedUrl(rawUrl);
   const username = feed.pathname.split('/').filter(Boolean)[0] || 'letterboxd';
+  // Reconstruct URL from validated components only to prevent SSRF via tainted input
+  const safeUrl = `https://letterboxd.com/${encodeURIComponent(username)}/rss/`;
 
-  const response = await fetch(feed.toString(), {
+  const response = await fetch(safeUrl, {
     redirect: 'follow',
     headers: {
       'User-Agent':
