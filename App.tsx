@@ -931,9 +931,8 @@ const getRestorableRoute = (candidate: string): string | null => {
 
   if (segments.length !== 1) return null;
 
-  return RESTORABLE_TOP_LEVEL_ROUTES.has(canonicalizeMimiRoute(firstSegment))
-    ? pathname
-    : null;
+  const canonical = canonicalizeMimiRoute(firstSegment);
+  return RESTORABLE_TOP_LEVEL_ROUTES.has(canonical) ? `/${canonical}` : null;
 };
 
 /**
