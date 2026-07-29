@@ -809,130 +809,34 @@ import { CreditMeter } from "./components/CreditMeter";
 
 const ROUTE_PERSIST_KEY = "mimi_last_route";
 
-// These are actual in-app pathname segments. A few legacy routes intentionally
-// remain snake_case because other app surfaces navigate to /geo_engine and
-// /qc_engine directly.
-const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
-  "action-board",
-  "archival",
-  "architecture",
-  "aesthetic-tokens",
-  "brand-intake",
-  "brand-voice",
-  "briefs",
-  "chamber-map",
-  "cliques",
-  "codex",
-  "connections",
-  "darkroom",
-  "editorial-home",
-  "forecast",
-  "geo_engine",
-  "intel-hub",
-  "latent-constellation",
-  "loom",
-  "manifesto",
-  "memberships",
-  "mimi-dolls",
-  "mimi-drop",
-  "moodboard",
-  "nebula",
-  "notifications",
-  "obsidian-mirror",
-  "oracle",
-  "pocket",
-  "private-studio",
-  "profile",
-  "proscenium",
-  "qc_engine",
-  "quiet-studio",
-  "sanctuary",
-  "scribe",
-  "scry",
-  "signals",
-  "signature",
-  "studio",
-  "syllabus",
-  "tailor",
-  "taste-discovery",
-  "taste-graph",
-  "taste-identity",
-  "the-edit",
-  "the-lens",
-  "the-press",
-  "thimble",
-  "threads",
-  "ui-audit",
-  "ward",
-  "wardrobe",
-]);
-
-const RESTORABLE_TAILOR_PANELS = new Set([
-  "diagnostics",
-  "dossier",
-  "evidence",
-  "style-lab",
-]);
-
 /**
- * Returns the private app route that is safe to persist for cold-launch
- * restoration. Public share, auth, checkout callbacks, legal, malformed, and
- * unknown routes are rejected so a cold launch only resumes supported in-app
- * destinations.
+ * Returns true for private app routes that should be persisted for cold-launch
+ * restoration. Public share, auth, checkout callbacks, legal, and the bare
+ * root are excluded so a user who opens a shared link never "inherits" it as
+ * their next cold-launch destination.
  */
-const getRestorableRoute = (candidate: string): string | null => {
-  if (!candidate || typeof candidate !== "string") return null;
-  if (!candidate.startsWith("/") || candidate.startsWith("//")) return null;
-
-  let url: URL;
-  try {
-    url = new URL(candidate, "https://mimi.local");
-  } catch {
-    return null;
-  }
-
-  if (url.origin !== "https://mimi.local") return null;
-
-  const pathname = url.pathname;
-  if (!pathname || pathname === "/") return null;
-
+const isRestorableRoute = (p: string): boolean => {
+  if (!p || p === "/" || p === "") return false;
+  // Reject anything that isn't a plain app-relative path (e.g. "javascript:…"
+  // or any value that doesn't start with "/").
+  if (!p.startsWith("/")) return false;
+  // Reject protocol-relative URLs (e.g. "//example.com").
+  if (p.startsWith("//")) return false;
   if (
-    pathname.startsWith("/s/") ||
-    pathname.startsWith("/@") ||
-    pathname.startsWith("/u/") ||
-    pathname.startsWith("/stacks/") ||
-    pathname.startsWith("/auth/") ||
-    pathname === "/privacy" ||
-    pathname === "/terms" ||
-    pathname === "/showcase" ||
-    pathname === "/success" ||
-    pathname === "/canceled"
+    p.startsWith("/s/") ||
+    p.startsWith("/@") ||
+    p.startsWith("/u/") ||
+    p.startsWith("/stacks/") ||
+    p.startsWith("/auth/") ||
+    p === "/privacy" ||
+    p === "/terms" ||
+    p === "/showcase" ||
+    p === "/success" ||
+    p === "/canceled"
   ) {
-    return null;
+    return false;
   }
-
-  const segments = pathname.split("/").filter(Boolean);
-  const [firstSegment, secondSegment] = segments;
-
-  if (!firstSegment) return null;
-
-  if (firstSegment === "zine") {
-    return segments.length === 2 && secondSegment ? pathname : null;
-  }
-
-  if (firstSegment === "tailor") {
-    if (segments.length === 1) return pathname;
-    return segments.length === 2 &&
-      secondSegment &&
-      RESTORABLE_TAILOR_PANELS.has(secondSegment)
-      ? pathname
-      : null;
-  }
-
-  if (segments.length !== 1) return null;
-
-  const canonical = canonicalizeMimiRoute(firstSegment);
-  return RESTORABLE_TOP_LEVEL_ROUTES.has(canonical) ? `/${canonical}` : null;
+  return true;
 };
 
 /**
@@ -977,10 +881,9 @@ const useAppRouter = (authReady: boolean) => {
   // always launches from start_url "/", so we restore the user's last private
   // route via localStorage).
   useEffect(() => {
-    const restorableRoute = getRestorableRoute(path);
-    if (restorableRoute) {
+    if (isRestorableRoute(path)) {
       try {
-        localStorage.setItem(ROUTE_PERSIST_KEY, restorableRoute);
+        localStorage.setItem(ROUTE_PERSIST_KEY, path);
       } catch {
         // Expected in Private Browsing mode (SecurityError) or when storage
         // quota is exceeded (QuotaExceededError). Neither case is actionable
@@ -1012,9 +915,8 @@ const useAppRouter = (authReady: boolean) => {
       let restoredPath = "/studio";
       try {
         const saved = localStorage.getItem(ROUTE_PERSIST_KEY);
-        const restorableRoute = saved ? getRestorableRoute(saved) : null;
-        if (restorableRoute) {
-          restoredPath = restorableRoute;
+        if (saved && isRestorableRoute(saved)) {
+          restoredPath = saved;
         }
       } catch {
         // Expected in Private Browsing mode (SecurityError) or on quota
