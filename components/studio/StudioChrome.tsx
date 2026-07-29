@@ -66,6 +66,8 @@ export const StudioChrome: React.FC<{
         return "The Oracle";
       case "nebula":
         return "Nebula";
+      case "stand":
+        return "The Stand";
       case "archival":
         return "Archival";
       case "profile":
@@ -111,9 +113,7 @@ export const StudioChrome: React.FC<{
 
   return (
     <header
-      className={`studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 py-3.5 flex items-center justify-between gap-3 z-20 overflow-hidden${
-        isMobile ? " studio-chrome--mobile-safe" : ""
-      }`}
+      className="studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 py-3.5 flex items-center justify-between gap-3 z-20 studio-chrome--mobile-safe"
     >
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (
@@ -123,7 +123,7 @@ export const StudioChrome: React.FC<{
       )}
 
       {/* Brand & View Title with Skeleton Fallback */}
-      <div className="flex flex-col leading-none select-none">
+      <div className="flex flex-col leading-none select-none min-w-0">
         {isLoading ? (
           <div className="space-y-1.5 py-1">
             <div className="h-6 w-20 bg-stone-200 dark:bg-stone-800 animate-pulse rounded-none" />

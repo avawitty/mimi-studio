@@ -602,6 +602,16 @@
   padding-bottom: 0.75rem;
 }
 
+/* Non-studio page content offset so titles clear chrome / safe-area */
+.mimi-page-pad {
+  padding-top: max(1.25rem, env(safe-area-inset-top, 0px));
+}
+@media (min-width: 768px) {
+  .mimi-page-pad {
+    padding-top: 1.75rem;
+  }
+}
+
 #root {
   height: 100dvh;
   width: 100%;

@@ -137,6 +137,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "Front Page",
         note: "editorial homepage",
         keywords: ["publisher", "note", "editorial", "home", "essays", "briefings", "front page"],
+      },
+      {
+        mode: "stand",
+        label: "The Stand",
+        note: "your published zines showcase",
+        keywords: ["stand", "showcase", "issues", "covers", "profile", "shelf", "archive", "published"],
       }
     ]
   },

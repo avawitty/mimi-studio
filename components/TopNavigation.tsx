@@ -42,7 +42,8 @@ const MENU_STRUCTURE = [
  { mode: 'scry', label: 'Trace & Scry', note: 'Aesthetic Drift Prediction' }
  ]},
  { section: 'Floor', items: [
- { mode: 'nebula', label: 'Resonance Feed', note: 'The Stand' },
+ { mode: 'stand', label: 'The Stand', note: 'Your Published Showcase' },
+ { mode: 'nebula', label: 'Resonance Feed', note: 'Community Floor' },
  { mode: 'press', label: 'Forecast Edit', note: 'Ad Profile & Affiliates' },
  { mode: 'proscenium', label: 'Proscenium', note: 'Manifested Visions' }
  ]},

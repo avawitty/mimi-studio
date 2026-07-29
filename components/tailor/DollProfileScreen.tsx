@@ -146,11 +146,17 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         body: JSON.stringify({
           prompt: imagePrompt,
           aspectRatio: '3:4',
-          provider: 'gemini',
+          // Omit provider — /api/mimi-image prefers AI Gateway when configured
         }),
       });
       
       const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error?.message || data?.error?.code || `Image route ${response.status}`);
+      }
+      if (data?.provider === 'simulated' || data?.metadata?.noKeyPreview) {
+        throw new Error(data?.warnings?.[0] || 'Image provider returned simulated plate');
+      }
       if (data?.imageUrl) {
         setCurrentDoll(prev => ({ ...prev, generatedImageUrl: data.imageUrl }));
         
@@ -169,16 +175,20 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
       }
     } catch (error: any) {
       console.error("MIMI // Portrait generation error:", error);
+      const errMsg = error?.message || String(error);
+      const isQuota =
+        /quota|billing|resource_exhausted|rate limit|credits/i.test(errMsg);
       window.dispatchEvent(
         new CustomEvent("mimi:registry_alert", {
-          detail: { message: `Using simulated model: Portrait generated for ${currentDoll.name}`, type: "info" },
+          detail: {
+            message: isQuota
+              ? `Portrait paused — provider quota/billing. ${errMsg.slice(0, 100)}`
+              : `Portrait generation failed: ${errMsg.slice(0, 140)}`,
+            type: isQuota ? "warning" : "error",
+          },
         })
       );
-      const fallbackUrl = `https://picsum.photos/seed/${currentDoll.id}_${Date.now()}/400/533`;
-      setCurrentDoll(prev => ({ ...prev, generatedImageUrl: fallbackUrl }));
-      if (user?.uid) {
-        await updateDoll(user.uid, currentDoll.id, { generatedImageUrl: fallbackUrl });
-      }
+      // Do not silently swap in a stock photo as "simulated success"
     } finally {
       setIsGeneratingPortrait(false);
     }

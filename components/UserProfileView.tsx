@@ -151,6 +151,7 @@ export const UserProfileView: React.FC = () => {
   const [showWard, setShowWard] = useState(false);
   const [showThePort, setShowThePort] = useState(false);
   const [showDevSettings, setShowDevSettings] = useState(false);
+  const [profilePane, setProfilePane] = useState<'share' | 'settings'>('share');
   const [isPatronActive, setIsPatronActive] = useState(false);
   const [isBillingPortalLoading, setIsBillingPortalLoading] = useState(false);
 
@@ -464,7 +465,7 @@ export const UserProfileView: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto no-scrollbar bg-nous-base text-nous-text p-4 md:p-8">
+    <div className="w-full h-full overflow-y-auto no-scrollbar bg-nous-base text-nous-text p-4 md:p-8 mimi-page-pad">
       <AnimatePresence>
         {message && (
           <motion.div
@@ -482,31 +483,105 @@ export const UserProfileView: React.FC = () => {
         {showWard && <TheWard onClose={() => setShowWard(false)} />}
       </AnimatePresence>
 
-      <header className="max-w-7xl mx-auto mb-8 flex justify-between items-end">
+      <header className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
         <div>
           <span className="text-[10px] uppercase tracking-[0.3em] font-mono text-nous-subtle mb-1 block">
-            System Profile // Access Level: Sovereign
+            Share Card · Settings
           </span>
           <h1 className="font-serif text-4xl italic">
-            Sovereign Profile & Logic Registry
+            Profile
           </h1>
         </div>
-        <div className="text-right hidden md:block">
-          <span className="text-[10px] uppercase tracking-widest font-mono text-nous-subtle">
-            Registry ID:{" "}
-            {profile?.handle
-              ? `@${profile.handle}`
-              : truncateUid(user?.uid)?.toUpperCase() || "—"}
-          </span>
-          <div className="flex items-center justify-end gap-2 mt-1">
-            <span className="text-[10px] uppercase tracking-widest font-mono text-nous-subtle">
-              Status: Synced
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setProfilePane('share')}
+            className={`px-4 py-2 border font-mono text-[9px] uppercase tracking-widest ${
+              profilePane === 'share'
+                ? 'border-nous-text text-nous-text bg-nous-base0/40'
+                : 'border-nous-border text-nous-subtle'
+            }`}
+          >
+            Share Card
+          </button>
+          <button
+            type="button"
+            onClick={() => setProfilePane('settings')}
+            className={`px-4 py-2 border font-mono text-[9px] uppercase tracking-widest ${
+              profilePane === 'settings'
+                ? 'border-nous-text text-nous-text bg-nous-base0/40'
+                : 'border-nous-border text-nous-subtle'
+            }`}
+          >
+            Settings
+          </button>
         </div>
       </header>
 
-      <main className="w-full max-w-3xl mx-auto flex flex-col gap-8 pb-20">
+      {profilePane === 'share' && (
+        <section className="w-full max-w-3xl mx-auto mb-10">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="border border-nous-border bg-white dark:bg-nous-base0/20 p-8 md:p-10 relative overflow-hidden"
+          >
+            <div
+              className="absolute inset-0 pointer-events-none opacity-30"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px)',
+                backgroundSize: 'calc(100% / 8) 100%',
+              }}
+            />
+            <div className="relative flex flex-col md:flex-row gap-8 items-start">
+              <div className="w-24 h-24 border border-nous-border bg-nous-base shrink-0 overflow-hidden">
+                {avatar ? (
+                  <img src={avatar} className="w-full h-full object-cover" referrerPolicy="no-referrer" alt="" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-nous-subtle">
+                    <Camera size={22} />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 space-y-3 min-w-0">
+                <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-nous-subtle">
+                  {profile?.handle ? `@${profile.handle}` : truncateUid(user?.uid)?.toUpperCase() || 'GUEST'}
+                </p>
+                <h2 className="font-serif italic text-3xl md:text-4xl text-nous-text leading-none truncate">
+                  {profile?.displayName || handle || 'Untitled Curator'}
+                </h2>
+                <p className="font-sans text-sm text-nous-subtle leading-relaxed max-w-lg">
+                  {profile?.tasteProfile?.aestheticSignature?.moodCluster ||
+                    profile?.tailorDraft?.strategicSummary?.identityVector ||
+                    'Aesthetic intelligence in progress. Publish issues to The Stand to flesh this card.'}
+                </p>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'stand' }))
+                    }
+                    className="px-4 py-2 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest"
+                  >
+                    View Stand
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'signature' }))
+                    }
+                    className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
+                  >
+                    Signature
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </section>
+      )}
+
+      <main className={`w-full max-w-3xl mx-auto flex flex-col gap-8 pb-20 ${profilePane === 'share' ? 'opacity-90' : ''}`}>
         {/* Clean Identity Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -682,9 +757,19 @@ export const UserProfileView: React.FC = () => {
             )}
 
             <div className="mt-6 pt-6 border-t border-nous-border">
-              <h3 className="text-[10px] uppercase tracking-widest font-mono text-nous-subtle mb-3 block">
-                INTELLIGENCE CONNECTIONS
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[10px] uppercase tracking-widest font-mono text-nous-subtle block">
+                  INTELLIGENCE CONNECTIONS
+                </h3>
+                <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
+                  Optional · Settings
+                </span>
+              </div>
+              <p className="text-[10px] text-nous-subtle mb-3 leading-relaxed">
+                Server AI Gateway covers most flows. Bring-your-own keys remain available for power users who want sovereign compute, but they are no longer required for the default product path.
+              </p>
+              {profilePane === 'settings' ? (
+              <>
               <div className="p-4 border border-nous-border bg-nous-base/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-mono text-xs">
                 <div className="flex items-center gap-3">
                   <div className="relative flex items-center justify-center w-8 h-8 bg-nous-base border border-nous-border">
@@ -793,6 +878,16 @@ export const UserProfileView: React.FC = () => {
                     </button>
                   )}
                 </div>
+              )}
+              </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setProfilePane('settings')}
+                  className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
+                >
+                  Manage keys in Settings →
+                </button>
               )}
             </div>
 
@@ -1606,16 +1701,20 @@ export const UserProfileView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-grow flex flex-col">
+            <div className="flex-grow flex flex-col">
             <h3 className="font-serif text-2xl italic mb-6">
               Social Resonance
             </h3>
             <div className="flex-grow overflow-y-auto no-scrollbar min-h-[150px]">
               <ConnectionsManager />
-              <div className="p-4 mb-4 border border-amber-500/50 bg-amber-950/10 text-amber-700 text-xs font-mono">
-                ✨ System keys active. Sovereign gating disabled.
-              </div>
-              <ApiKeyRing />
+              {profilePane === 'settings' && (
+                <>
+                  <div className="p-4 mb-4 border border-nous-border bg-nous-base/40 text-nous-subtle text-xs font-mono leading-relaxed">
+                    Optional BYOK vault. Prefer server AI Gateway for default flows; keep local keys only if you need sovereign override.
+                  </div>
+                  <ApiKeyRing />
+                </>
+              )}
             </div>
           </div>
         </motion.div>

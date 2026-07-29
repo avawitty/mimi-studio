@@ -70,6 +70,9 @@ import { MobileProfileModal } from "./components/MobileProfileModal";
 const ArchiveCloudNebula = lazy(
   () => import("./components/ArchiveCloudNebula"),
 );
+const TheStand = lazy(() =>
+  import("./components/TheStand").then((m) => ({ default: m.TheStand })),
+);
 const ArchivalView = lazy(() =>
   import("./components/ArchivalView").then((m) => ({
     default: m.ArchivalView,
@@ -836,6 +839,7 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "mimi-drop",
   "moodboard",
   "nebula",
+  "stand",
   "notifications",
   "obsidian-mirror",
   "oracle",
@@ -2100,6 +2104,7 @@ export const App: React.FC = () => {
     "intel-hub": "Aesthetic Intelligence Hub",
     threads: "Threads",
     nebula: "Floor",
+    stand: "The Stand",
     codex: "System",
     scry: "Scry",
     proscenium: "Proscenium",
@@ -2315,9 +2320,9 @@ export const App: React.FC = () => {
 
         {/* Main Content Area */}
         <main
-          className={`flex-1 flex flex-col relative ${
+          className={`flex-1 flex flex-col relative mimi-page-pad ${
             ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio"].includes(viewMode)
-              ? "overflow-hidden min-h-0 pb-0 h-full"
+              ? "overflow-hidden min-h-0 pb-0 h-full !pt-0"
               : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0"
           }`}
         >
@@ -2419,6 +2424,15 @@ export const App: React.FC = () => {
                               setAppState(AppState.REVEALED);
                             }}
                             onGenerateThreadZine={handleGenerateThreadZine}
+                          />
+                        )}
+                        {viewMode === "stand" && (
+                          <TheStand
+                            onSelectZine={(z) => {
+                              navigate("/zine/" + z.id);
+                              setZineMetadata(z);
+                              setAppState(AppState.REVEALED);
+                            }}
                           />
                         )}
                         {viewMode === "archival" && (
