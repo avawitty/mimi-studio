@@ -110,7 +110,11 @@ export const StudioChrome: React.FC<{
   };
 
   return (
-    <header className="studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 py-3.5 flex items-center justify-between gap-3 z-20 overflow-hidden">
+    <header
+      className={`studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 py-3.5 flex items-center justify-between gap-3 z-20 overflow-hidden${
+        isMobile ? " studio-chrome--mobile-safe" : ""
+      }`}
+    >
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-amber-500/20 overflow-hidden z-30">
