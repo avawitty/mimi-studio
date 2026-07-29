@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Battery, BatteryFull, BatteryLow, BatteryMedium, Zap, Clock, ShieldCheck } from 'lucide-react';
-
-const PAID_PLAN_STATUSES = new Set(['core', 'pro', 'lab', 'initiation', 'optioning', 'atelier', 'sovereign']);
+import { PAID_PLAN_STATUSES } from '../lib/mimiEntitlements';
 
 export const CreditMeter: React.FC = () => {
  const { profile } = useUser();

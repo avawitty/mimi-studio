@@ -145,6 +145,17 @@ export const normalizeMimiPlan = (plan?: unknown): MimiPlan => {
   return "free";
 };
 
+/** Canonical set of planStatus values that indicate a paid account (includes legacy aliases). */
+export const PAID_PLAN_STATUSES = new Set<string>([
+  "core",
+  "pro",
+  "lab",
+  "initiation",
+  "optioning",
+  "atelier",
+  "sovereign",
+]);
+
 export const isPaidMimiPlan = (planInput?: unknown) => {
   const plan = normalizeMimiPlan(planInput);
   return MIMI_PLAN_ORDER.indexOf(plan) >= MIMI_PLAN_ORDER.indexOf("initiation");

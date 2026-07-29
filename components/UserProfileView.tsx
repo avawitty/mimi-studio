@@ -38,6 +38,7 @@ import { getStoredKey, validateKey, clearKey, storeKey } from "../services/apiKe
 import { CheckCircle2 as CheckCircle2Icon, XCircle as XCircleIcon } from "lucide-react";
 import { useIntelligenceGate } from "../App";
 import { openBillingPortal } from "../services/stripe";
+import { PAID_PLAN_STATUSES } from "../lib/mimiEntitlements";
 
 const detectIframeContext = (): boolean => {
   if (typeof window === "undefined") return false;
@@ -204,20 +205,11 @@ export const UserProfileView: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const paidPlans = new Set([
-      "core",
-      "pro",
-      "lab",
-      "initiation",
-      "optioning",
-      "atelier",
-      "sovereign",
-    ]);
     const currentPlan = String(
       profile?.membershipPlan || profile?.planStatus || profile?.plan || "",
     ).toLowerCase();
     setIsPatronActive(
-      profile?.subscriptionStatus === "active" && paidPlans.has(currentPlan),
+      profile?.subscriptionStatus === "active" && PAID_PLAN_STATUSES.has(currentPlan),
     );
   }, [
     profile?.membershipPlan,
@@ -226,16 +218,6 @@ export const UserProfileView: React.FC = () => {
     profile?.subscriptionStatus,
   ]);
 
-  // Match CreditMeter's isPaid gate so banner and meter never diverge on stale planStatus.
-  const PAID_PLAN_STATUSES = new Set([
-    "core",
-    "pro",
-    "lab",
-    "initiation",
-    "optioning",
-    "atelier",
-    "sovereign",
-  ]);
   const creditMeterIsPaid =
     PAID_PLAN_STATUSES.has(String(profile?.planStatus || "ghost").toLowerCase()) ||
     Boolean(profile?.isPatron);
