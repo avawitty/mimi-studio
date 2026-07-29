@@ -264,17 +264,27 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
       {/* Top/Left: Communion Area */}
       <div className="flex-1 relative">
         {/* Entity Toggle
-            LiveMentor uses hardcoded bg-white (Mimi) or bg-black (Cyrus/Synthesis/Engine).
-            The toggle container and inactive text adapt accordingly:
-              Mimi   → white bg  → subtle dark container (bg-black/10) + dark inactive text
-              Others → dark bg   → subtle light container (bg-white/10) + light inactive text */}
-        <div className={`absolute top-8 right-8 z-20 flex p-1 rounded-full backdrop-blur-md ${
-          activeEntity === 'mimi' ? 'bg-black/10' : 'bg-white/10'
-        }`}>
-          {ENTITY_CONFIG.map(({ id, label, icon, activeClass }) => {
-            const inactiveClass = activeEntity === 'mimi'
-              ? 'text-black/60 hover:text-black'
+            The surface behind the toggle depends on the active entity:
+              - Mimi / Synthesis → LiveMentor theme 'mimi'  → hardcoded bg-white (white surface)
+              - Cyrus            → LiveMentor theme 'cyrus'  → hardcoded bg-black (dark surface)
+              - Engine           → TheGEOEngine bg-nous-base → adaptive (white in light-mode, dark in dark-mode)
+            The toggle container and inactive text adapt accordingly so they stay legible on each surface. */}
+        {(() => {
+          const isWhiteSurface = activeEntity === 'mimi' || activeEntity === 'synthesis';
+          const isAdaptiveSurface = activeEntity === 'engine';
+          const containerBg = isWhiteSurface
+            ? 'bg-black/10'
+            : isAdaptiveSurface
+              ? 'bg-black/10 dark:bg-white/10'
+              : 'bg-white/10';
+          const inactiveClass = isWhiteSurface
+            ? 'text-black/60 hover:text-black'
+            : isAdaptiveSurface
+              ? 'text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white'
               : 'text-white/60 hover:text-white';
+          return (
+        <div className={`absolute top-8 right-8 z-20 flex p-1 rounded-full backdrop-blur-md ${containerBg}`}>
+          {ENTITY_CONFIG.map(({ id, label, icon, activeClass }) => {
             return (
               <button
                 key={id}
@@ -289,6 +299,8 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
             );
           })}
         </div>
+          );
+        })()}
 
         {activeEntity === 'engine' ? (
           <TheGEOEngine 
