@@ -802,6 +802,7 @@ export interface ThimbleTasteEvent {
 export interface ThimbleBoard {
   id: string;
   userId: string;
+  collaborators?: string[];
   title: string;
   description?: string;
   createdAt: number;

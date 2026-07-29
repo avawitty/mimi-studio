@@ -48,6 +48,19 @@ service cloud.firestore {
       return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
     }
 
+    function hasThimbleBoardAccess(boardData) {
+      return isAuthenticated() && (
+        boardData.userId == request.auth.uid ||
+        (boardData.collaborators is list && request.auth.uid in boardData.collaborators)
+      );
+    }
+
+    function canAccessThimbleBoardById(boardId) {
+      return boardId is string &&
+        exists(/databases/$(database)/documents/thimbleBoards/$(boardId)) &&
+        hasThimbleBoardAccess(get(/databases/$(database)/documents/thimbleBoards/$(boardId)).data);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -271,18 +284,37 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
     }
 
-    // THIMBLE BOARDS (Owner only)
+    // THIMBLE BOARDS (Owner + Collaborators)
     match /thimbleBoards/{boardId} {
-      allow read: if isOwner(resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow read: if hasThimbleBoardAccess(resource.data);
+      allow create: if isOwner(request.resource.data.userId) &&
+        (!('collaborators' in request.resource.data) || request.resource.data.collaborators is list);
+      allow update: if hasThimbleBoardAccess(resource.data) &&
+        resource.data.userId == request.auth.uid &&
+        ownerUnchanged();
+      allow delete: if hasThimbleBoardAccess(resource.data) &&
+        resource.data.userId == request.auth.uid;
     }
 
-    // THIMBLE ITEMS (Owner only)
+    // THIMBLE ITEMS (Owner + Board Collaborators)
     match /thimbleItems/{itemId} {
-      allow read: if isOwner(resource.data.userId);
-      allow update, delete: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId);
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        canAccessThimbleBoardById(resource.data.boardId)
+      );
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        canAccessThimbleBoardById(request.resource.data.boardId);
+      allow update, delete: if isAuthenticated() &&
+        ownerUnchanged() &&
+        (
+          resource.data.userId == request.auth.uid ||
+          (
+            resource.data.boardId is string &&
+            exists(/databases/$(database)/documents/thimbleBoards/$(resource.data.boardId)) &&
+            get(/databases/$(database)/documents/thimbleBoards/$(resource.data.boardId)).data.userId == request.auth.uid
+          )
+        );
     }
 
     // USERS (Owner only - PATCHED FOR PRIVILEGE ESCALATION)

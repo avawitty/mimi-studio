@@ -6,6 +6,7 @@
       "type": "object",
       "properties": {
         "userId": { "type": "string", "description": "ID of the user who owns the board." },
+        "collaborators": { "type": "array", "description": "Optional list of collaborator user IDs with shared access.", "items": { "type": "string" } },
         "title": { "type": "string", "description": "Title of the board." },
         "description": { "type": "string", "description": "Optional description of the board." },
         "createdAt": { "type": "number", "description": "Timestamp of creation." },

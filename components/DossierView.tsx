@@ -581,13 +581,39 @@ export default function DossierView() {
  if (!activeFolder || !user?.uid) return;
  setIsGeneratingPunchlist(true);
  try {
- const boardsQuery = query(collection(db, 'thimbleBoards'), where('userId', '==', user.uid));
- const boardsSnapshot = await getDocs(boardsQuery);
- const boards = boardsSnapshot.docs.map(doc => doc.data());
+ const [ownedBoardsSnapshot, sharedBoardsSnapshot] = await Promise.all([
+   getDocs(query(collection(db, 'thimbleBoards'), where('userId', '==', user.uid))),
+   getDocs(query(collection(db, 'thimbleBoards'), where('collaborators', 'array-contains', user.uid)))
+ ]);
+ const boardMap = new Map<string, any>();
+ ownedBoardsSnapshot.docs.forEach((docSnap) => {
+   boardMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+ });
+ sharedBoardsSnapshot.docs.forEach((docSnap) => {
+   boardMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+ });
+ const boards = Array.from(boardMap.values());
+ const boardIds = boards.map((board) => board.id);
 
- const itemsQuery = query(collection(db, 'thimbleItems'), where('userId', '==', user.uid));
- const itemsSnapshot = await getDocs(itemsQuery);
- const items = itemsSnapshot.docs.map(doc => doc.data());
+ const itemsMap = new Map<string, any>();
+ if (boardIds.length > 0) {
+   const FIRESTORE_IN_QUERY_LIMIT = 10;
+   const boardIdChunks: string[][] = [];
+   for (let i = 0; i < boardIds.length; i += FIRESTORE_IN_QUERY_LIMIT) {
+     boardIdChunks.push(boardIds.slice(i, i + FIRESTORE_IN_QUERY_LIMIT));
+   }
+   const boardItemSnapshots = await Promise.all(
+     boardIdChunks.map((chunk) =>
+       getDocs(query(collection(db, 'thimbleItems'), where('boardId', 'in', chunk)))
+     )
+   );
+   boardItemSnapshots.forEach((snapshot) => {
+     snapshot.docs.forEach((docSnap) => {
+       itemsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+     });
+   });
+ }
+ const items = Array.from(itemsMap.values());
 
  const { ai } = getClient();
  const response = await ai.models.generateContent({

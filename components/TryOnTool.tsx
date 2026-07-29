@@ -6,7 +6,7 @@ import { analyzeTryOn, renderTryOn } from "@/services/geminiService";
 import { Loader2, Save, FolderPlus, Check, Pocket as PocketIcon, Info, User as UserIcon, Shirt, Sparkles } from "lucide-react";
 import { useUser } from '../contexts/UserContext';
 import { db } from '../services/firebaseInit';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ThimbleBoard } from '../types';
 import { handleFirestoreError, logFirestoreError, OperationType } from '../services/firebaseUtils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -38,19 +38,46 @@ export const TryOnTool: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [isPocketSaved, setIsPocketSaved] = useState(false);
 
+  const toEpochMillis = (value: any) => {
+    if (typeof value === 'number') return value;
+    if (value && typeof value.toMillis === 'function') return value.toMillis();
+    if (value && typeof value.seconds === 'number') return value.seconds * 1000;
+    return 0;
+  };
+
   useEffect(() => {
     if (!user?.uid) return;
-    const q = query(collection(db, 'thimbleBoards'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const b = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ThimbleBoard));
-      setBoards(b);
-      if (b.length > 0 && !selectedBoardId) {
-        setSelectedBoardId(b[0].id);
-      }
+    let ownedBoards: ThimbleBoard[] = [];
+    let sharedBoards: ThimbleBoard[] = [];
+    const syncBoards = () => {
+      const merged = new Map<string, ThimbleBoard>();
+      [...ownedBoards, ...sharedBoards].forEach((board) => merged.set(board.id, board));
+      const orderedBoards = Array.from(merged.values()).sort((a, b) => toEpochMillis(b.createdAt) - toEpochMillis(a.createdAt));
+      setBoards(orderedBoards);
+      setSelectedBoardId((prev) => {
+        if (orderedBoards.length === 0) return '';
+        if (prev && orderedBoards.some((board) => board.id === prev)) return prev;
+        return orderedBoards[0].id;
+      });
+    };
+    const ownedQuery = query(collection(db, 'thimbleBoards'), where('userId', '==', user.uid));
+    const sharedQuery = query(collection(db, 'thimbleBoards'), where('collaborators', 'array-contains', user.uid));
+    const unsubscribeOwned = onSnapshot(ownedQuery, (snapshot) => {
+      ownedBoards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ThimbleBoard));
+      syncBoards();
     }, (error) => {
       logFirestoreError(error, OperationType.LIST, 'thimbleBoards');
     });
-    return () => unsubscribe();
+    const unsubscribeShared = onSnapshot(sharedQuery, (snapshot) => {
+      sharedBoards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ThimbleBoard));
+      syncBoards();
+    }, (error) => {
+      logFirestoreError(error, OperationType.LIST, 'thimbleBoards');
+    });
+    return () => {
+      unsubscribeOwned();
+      unsubscribeShared();
+    };
   }, [user?.uid]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (url: string | null) => void) => {
