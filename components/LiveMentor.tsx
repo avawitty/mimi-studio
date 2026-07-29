@@ -30,20 +30,19 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
     }
   }, [transcript, onTranscriptUpdate]);
 
-  // Visualizer loop — re-runs whenever `analyser` changes (it's now reactive state)
-  // or when `isConnected` flips (the canvas is only mounted once connected, so the
-  // effect must re-run at that point to attach to the freshly-mounted canvas).
+  // Visualizer loop — depends on both analyser and isConnected because the canvas
+  // only mounts while connected. If either flips without the other, re-run.
   useEffect(() => {
-    if (!analyser) {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = 0;
-      }
-      return;
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = 0;
     }
+
+    if (!analyser || !isConnected) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
