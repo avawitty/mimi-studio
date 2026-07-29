@@ -4268,7 +4268,7 @@ ${finalInput}`;
                           }}
                           className="w-full text-left group flex flex-col gap-1 py-3.5 px-1 min-h-[44px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
                         >
-                          <span className="font-sans text-[15px] uppercase tracking-[0.08em] font-bold studio-text-ink group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                          <span className="font-mono text-[15px] uppercase tracking-[0.18em] font-bold studio-text-ink group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                             {item.label}
                           </span>
                           <span className="font-sans text-[13px] leading-snug text-stone-500 dark:text-stone-400">
