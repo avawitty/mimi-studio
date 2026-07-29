@@ -90,7 +90,7 @@ export default async function handler(req: any, res: any) {
       );
       sendJson(res, 200, { received: true });
     } catch (error) {
-      await eventRef.delete().catch(() => undefined);
+      await eventRef.delete().catch((): undefined => undefined);
       throw error;
     }
   } catch (error: any) {

@@ -79,8 +79,8 @@ export async function retrieveScribeContext(
   ] = await Promise.all([
     listTailorProjects(userId).catch(() => [] as TailorProject[]),
     fetchMemoryAtoms(userId).catch(() => [] as MemoryAtom[]),
-    getTasteGraph(userId).catch(() => ({ nodes: [] as TasteGraphNode[], edges: [] })),
-    projectId ? getTailorProject(userId, projectId).catch(() => null) : Promise.resolve(null),
+    getTasteGraph(userId).catch(() => ({ nodes: [] as TasteGraphNode[], edges: [] as any[] })),
+    projectId ? getTailorProject(userId, projectId).catch((): null => null) : Promise.resolve(null),
     projectId ? listCreativeLaws(userId, projectId).catch(() => [] as CreativeLaw[]) : Promise.resolve([] as CreativeLaw[]),
     projectId ? listEvidenceNodes(userId, projectId).catch(() => [] as EvidenceNode[]) : Promise.resolve([] as EvidenceNode[]),
     projectId ? listObservations(userId, projectId).catch(() => [] as Observation[]) : Promise.resolve([] as Observation[])

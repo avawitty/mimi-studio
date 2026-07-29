@@ -24,7 +24,7 @@ const legacyDraft = {
   positioningCore: {
     anchors: {
       culturalReferences: ['Brutalism', 'Cyber-Noir', 'Analog-Glitch'],
-      ideologicalBias: [],
+      ideologicalBias: [] as string[],
     },
     aestheticCore: {
       silhouettes: ['Architectural'],
@@ -45,7 +45,7 @@ const legacyDraft = {
     dissonance: 10,
   },
   visual_guidance: {
-    strict_palette: [],
+    strict_palette: [] as string[],
     negative_prompt: 'Decorative glitch without purpose',
   },
   expressionEngine: {
@@ -85,17 +85,17 @@ const legacyDraft = {
     fiscalVelocity: 'measured',
     desireVectors: {
       deepen: ['Controlled contrast'],
-      reduce: [],
-      experiment: [],
+      reduce: [] as string[],
+      experiment: [] as string[],
       refuse: ['Reactive trend commentary'],
     },
     saturationAwareness: {
-      oversaturatedClusters: [],
-      fragileDifferentiators: [],
+      oversaturatedClusters: [] as string[],
+      fragileDifferentiators: [] as string[],
     },
   },
   diagnostics: {
-    contradictionFlags: [],
+    contradictionFlags: [] as string[],
     dilutionRisks: ['Broad references need more concrete evidence'],
     authorityStrengthScore: 72,
     driftVulnerability: 5,

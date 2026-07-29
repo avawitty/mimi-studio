@@ -1831,7 +1831,7 @@ export const App: React.FC = () => {
   );
 
   const handleRefine = useCallback(
-    async (text, media, tone, opts) => {
+    async (text: string, media: any, tone: any, opts: any) => {
       if (!canGenerate) {
         if (profile?.planStatus === "ghost") {
           setShowGateway(true);
@@ -2424,7 +2424,7 @@ export const App: React.FC = () => {
                         )}
                         {viewMode === "archival" && (
                           <ArchivalView
-                            onSelectZine={(z) => {
+                            onSelectZine={(z: any) => {
                               navigate("/zine/" + z.id);
                               setZineMetadata(z);
                               setAppState(AppState.REVEALED);
