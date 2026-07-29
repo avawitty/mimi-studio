@@ -67,6 +67,7 @@ import { useTactileAudio } from "./hooks/useTactileAudio";
 
 // Lazy load views to reduce initial request count and prevent 429 errors
 import { MobileNavigation } from "./components/MobileNavigation";
+import { FloatingDialNav } from "./components/FloatingDialNav";
 import { MobileProfileModal } from "./components/MobileProfileModal";
 const ArchiveCloudNebula = lazy(
   () => import("./components/ArchiveCloudNebula"),
@@ -2451,6 +2452,15 @@ export const App: React.FC = () => {
             profile={profile}
             isGenerating={appState === AppState.THINKING}
           />
+          {/* PROTOTYPE: floating dial nav — activate with ?dialproto=1. Remove after sign-off. */}
+          {typeof window !== "undefined" &&
+            new URLSearchParams(window.location.search).get("dialproto") === "1" && (
+              <FloatingDialNav
+                currentView={viewMode}
+                onNavigate={setViewMode}
+                onOpenIndex={() => setIsNavOpen(true)}
+              />
+            )}
           <SelectionMemoryCapture />
           <CookieConsentBanner />
         </main>
