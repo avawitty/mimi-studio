@@ -11,7 +11,6 @@ import {
   onSnapshot,
   arrayUnion,
   arrayRemove,
-  serverTimestamp,
 } from "firebase/firestore";
 import { db, auth } from "./firebaseInit";
 import { handleFirestoreError, OperationType } from "./firebaseUtils";

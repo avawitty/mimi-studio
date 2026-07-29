@@ -240,7 +240,7 @@ export const CliqueView: React.FC = () => {
       if (updated) setSelectedClique(updated);
       else setSelectedClique(null); // deleted
     }
-  }, [cliques]);
+  }, [cliques, selectedClique?.id]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
