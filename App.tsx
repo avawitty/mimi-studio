@@ -876,6 +876,22 @@ const useAppRouter = () => {
 
   useEffect(() => {
     if (path === "/" || path === "") {
+      // Do not redirect while known callback query params are present on the
+      // root URL.  Each handler reads window.location.search (or .href);
+      // navigating away first would wipe those params before the handler runs:
+      //   • checkout=… / plan=… / tier=…  — Stripe checkout return URL
+      //   • mode=… / oobCode=… / apiKey=… — Firebase email-link sign-in
+      //   • view=patron_mint              — patron-mint overlay
+      const params = new URLSearchParams(window.location.search);
+      const hasCallbackParam =
+        params.has("checkout") ||
+        params.has("plan") ||
+        params.has("tier") ||
+        params.has("mode") ||
+        params.has("oobCode") ||
+        params.has("apiKey") ||
+        params.has("view");
+      if (hasCallbackParam) return;
       // Attempt to restore the last private route on cold launch.
       let restoredPath = "/studio";
       try {
