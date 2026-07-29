@@ -26,6 +26,28 @@ import {
 import { listTailorProjects } from "../services/tailorService";
 import type { TailorProject } from "../types";
 
+// Empty-state teaching prompts: one per core capability (retrieve / evaluate / produce)
+const SUGGESTED_PROMPTS: { label: string; hint: string; query: string; icon: React.ReactNode }[] = [
+  {
+    label: "Trace a pattern",
+    hint: "Surface recurring motifs across your saved work",
+    query: "What visual motifs and themes keep recurring across my saved context, and what do they say about my taste?",
+    icon: <Compass size={14} />,
+  },
+  {
+    label: "Challenge the direction",
+    hint: "Pressure-test the choice you're leaning toward",
+    query: "Challenge the creative direction I'm currently taking. Where might it be too safe, derivative, or inconsistent with my past decisions?",
+    icon: <AlertCircle size={14} />,
+  },
+  {
+    label: "Create an artifact",
+    hint: "Turn your memory into something usable",
+    query: "Using my saved context, draft a short creative brief I could hand to a collaborator.",
+    icon: <Sparkles size={14} />,
+  },
+];
+
 export const ScribeAskPanel: React.FC = () => {
   const { user, pocket } = useUser();
   const [query, setQuery] = useState("");
@@ -200,37 +222,44 @@ export const ScribeAskPanel: React.FC = () => {
         </div>
 
         {/* Project Scope Selector */}
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400">
-            Scope:
+        <div className="flex flex-col items-start md:items-end gap-1">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400">
+              Searching:
+            </span>
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="border border-stone-300 dark:border-stone-700 bg-transparent px-3 py-1.5 font-mono text-[10px] text-stone-800 dark:text-stone-200 outline-none hover:border-stone-400 dark:hover:border-stone-600 focus:border-stone-900 dark:focus:border-stone-100 transition-colors cursor-pointer"
+            >
+              <option value="">All of your memory</option>
+              {projects.map((proj) => (
+                <option key={proj.id} value={proj.id}>
+                  Project: {proj.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="font-mono text-[8px] tracking-wide text-stone-400 dark:text-stone-600">
+            {selectedProjectId
+              ? "Answers draw only from this project's saved context."
+              : "Answers draw from your whole taste + project history."}
           </span>
-          <select
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
-            className="border border-stone-300 dark:border-stone-700 bg-transparent px-3 py-1.5 font-mono text-[10px] text-stone-800 dark:text-stone-200 outline-none hover:border-stone-400 dark:hover:border-stone-600 focus:border-stone-900 dark:focus:border-stone-100 transition-colors"
-          >
-            <option value="">Global / Unscoped</option>
-            {projects.map((proj) => (
-              <option key={proj.id} value={proj.id}>
-                {proj.title}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
       {/* Input Area */}
       <div className="space-y-4">
         <div className="relative border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 focus-within:border-stone-900 dark:focus-within:border-stone-100 transition-colors p-4">
-          <span className="absolute top-2.5 right-3 font-mono text-[8px] uppercase tracking-widest text-stone-400 flex items-center gap-1">
-            <HelpCircle size={10} /> Query Reservoir
+          <span className="absolute top-2.5 right-3 font-mono text-[8px] uppercase tracking-widest text-stone-500 dark:text-stone-500 flex items-center gap-1">
+            <HelpCircle size={10} /> Ask the Scribe
           </span>
           <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             rows={4}
-            placeholder="Ask about your taste vectors, project directions, visual motifs, or strategic compromises..."
-            className="w-full bg-transparent font-serif text-sm leading-relaxed outline-none resize-none pt-2 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-600"
+            placeholder="e.g. What visual motifs keep recurring across my saved work? Or: challenge the direction I'm taking on this project."
+            className="w-full bg-transparent font-serif text-sm leading-relaxed outline-none resize-none pt-2 text-stone-900 dark:text-stone-100 placeholder:text-stone-500 dark:placeholder:text-stone-500"
           />
         </div>
 
@@ -255,6 +284,36 @@ export const ScribeAskPanel: React.FC = () => {
           )}
         </button>
       </div>
+
+      {/* Empty State — teaches what the Scribe can do before the first query */}
+      {!answer && !isRetrieving && !isAsking && (
+        <div className="space-y-4">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+            <Sparkles size={11} className="text-stone-400" /> Not sure where to start? Try one of these
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {SUGGESTED_PROMPTS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => setQuery(p.query)}
+                className="group text-left border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 hover:border-stone-900 dark:hover:border-stone-100 transition-colors p-4 flex flex-col gap-2 min-h-[44px]"
+              >
+                <span className="flex items-center gap-2 text-stone-700 dark:text-stone-300 group-hover:text-stone-950 dark:group-hover:text-stone-100 transition-colors">
+                  {p.icon}
+                  <span className="font-serif italic text-sm">{p.label}</span>
+                </span>
+                <span className="font-sans text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                  {p.hint}
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="font-sans text-xs leading-relaxed text-stone-500 dark:text-stone-500 border-t border-stone-100 dark:border-stone-900 pt-4">
+            The Scribe searches your saved context, shows the evidence it found, then reasons from it — so you can see exactly why it answers the way it does.
+          </p>
+        </div>
+      )}
 
       {/* Structured Output Grid */}
       <AnimatePresence>

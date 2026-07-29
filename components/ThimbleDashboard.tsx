@@ -685,8 +685,8 @@ export const ThimbleDashboard = () => {
  </div>
 
  {targets.length > 0 ? (
- <div className="border border-nous-border bg-white/40 /40 overflow-hidden">
- <table className="w-full text-left border-collapse">
+          <div className="border border-nous-border bg-white/40 /40 overflow-x-auto no-scrollbar scroll-fade-x">
+                <table className="w-full min-w-[560px] text-left border-collapse">
  <thead>
  <tr className="border-b border-nous-border text-[9px] uppercase tracking-widest font-bold bg-white/50 /50">
  <th className="px-4 py-3">Archetype</th>
