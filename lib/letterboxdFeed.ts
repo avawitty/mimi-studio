@@ -89,7 +89,8 @@ function decodeEntities(value = ''): string {
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
-    .replace(/&#0*39;|&apos;/gi, "'");
+    .replace(/&#0*39;|&apos;/gi, "'")
+    .replace(/&#0*38;/gi, '&');
 }
 
 function ratingToStars(rating?: number): string | undefined {
