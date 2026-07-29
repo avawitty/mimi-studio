@@ -107,7 +107,7 @@ export const TheOracle: React.FC = () => {
 
   // Mobile Dashboard View
   const MobileDashboard = () => (
-    <div className="flex flex-col h-full bg-nous-base overflow-y-auto pb-32 md:hidden mimi-page-pad">
+    <div className="flex flex-col h-full bg-nous-base overflow-y-auto pb-32 md:hidden">
       <div className="p-6 pt-8 space-y-8">
         <div>
           <h1 className="text-4xl font-serif italic text-nous-text mb-2 flex items-center gap-3">
@@ -197,7 +197,7 @@ export const TheOracle: React.FC = () => {
   return (
     <>
       <MobileDashboard />
-      <div className="hidden md:flex flex-col h-full bg overflow-y-auto pb-32 mimi-page-pad">
+      <div className="hidden md:flex flex-col h-full bg overflow-y-auto pb-32">
         <div className="p-4 md:p-8 pt-6 md:pt-10 space-y-10 max-w-5xl mx-auto w-full">
           
           {/* HEADER */}

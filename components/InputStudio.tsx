@@ -4675,9 +4675,23 @@ ${finalInput}`;
                     <div className="space-y-4">
                       {/* Tailor Draft Section */}
                       <div className="space-y-2 border-b border-stone-850 pb-4">
-                        <span className="block font-mono text-[8.5px] uppercase tracking-widest text-stone-400 font-bold">
-                          ACTIVE TAILOR DRAFT
-                        </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="block font-mono text-[8.5px] uppercase tracking-widest text-stone-400 font-bold">
+                            ACTIVE TAILOR DRAFT
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.dispatchEvent(
+                                new CustomEvent("mimi:change_view", { detail: "tailor/evidence" }),
+                              );
+                              setActivePanel(null);
+                            }}
+                            className="font-mono text-[7.5px] uppercase tracking-widest text-amber-500/90 hover:text-amber-400"
+                          >
+                            Add evidence →
+                          </button>
+                        </div>
                         {profile?.tailorDraft ? (
                           <div className="bg-stone-950/40 border border-stone-850 p-3 font-mono text-[9px] text-stone-300 rounded-sm">
                             <p className="mb-2"><strong className="text-stone-400">Positioning Axis:</strong> {profile.tailorDraft.positioningCore?.positioningAxis || "None"}</p>

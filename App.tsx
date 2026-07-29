@@ -1280,24 +1280,31 @@ export const App: React.FC = () => {
         ? "diagnostics"
         : pathParts[1] === "dossier"
           ? "dossier"
-          : pathParts[1] === "evidence"
+          : pathParts[1] === "evidence" || pathParts[1] === "intake"
             ? "intake"
             : pathParts[1] === "style-lab"
               ? "style-lab"
               : pathParts[1] === "diagnostics"
                 ? "diagnostics"
-                : "blueprint";
+                : pathParts[1] === "blueprint"
+                  ? "blueprint"
+                  : "intake"; // Evidence Intake is Tailor step 0
 
   useEffect(() => {
     if (isLegacyStyleLabRoute) {
       navigate("/tailor/style-lab", { replace: true });
     } else if (isLegacyDiagnosticsRoute) {
       navigate("/tailor/diagnostics", { replace: true });
+    } else if (viewMode === "tailor" && !pathParts[1]) {
+      // Evidence Intake is the default Tailor entry (step 0).
+      navigate("/tailor/evidence", { replace: true });
     }
   }, [
     isLegacyDiagnosticsRoute,
     isLegacyStyleLabRoute,
     navigate,
+    pathParts[1],
+    viewMode,
   ]);
 
   const setViewMode = useCallback(
@@ -1308,6 +1315,11 @@ export const App: React.FC = () => {
       }
       if (["aesthetic-intelligence", "style-diagnostics"].includes(mode)) {
         navigate("/tailor/diagnostics");
+        return;
+      }
+      // Nested chamber paths (e.g. tailor/evidence) skip alias flattening.
+      if (mode.includes("/")) {
+        navigate(`/${mode.replace(/^\//, "")}`);
         return;
       }
       const normalizedMode = canonicalizeMimiRoute(mode);
@@ -2323,10 +2335,10 @@ export const App: React.FC = () => {
 
         {/* Main Content Area */}
         <main
-          className={`flex-1 flex flex-col relative mimi-page-pad ${
+          className={`flex-1 flex flex-col relative ${
             ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio"].includes(viewMode)
-              ? "overflow-hidden min-h-0 pb-0 h-full !pt-0"
-              : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0"
+              ? "overflow-hidden min-h-0 pb-0 h-full"
+              : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0 mimi-page-pad"
           }`}
         >
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (

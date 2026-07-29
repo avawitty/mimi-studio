@@ -27,7 +27,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
   initialOverrides,
   onOverridesConsumed,
   navigate,
-  initialPanel = 'blueprint',
+  initialPanel = 'intake',
 }) => {
   const { updateProfile, profile, user, login } = useUser();
   const [mode, setMode] = useState<TailorPanel>(initialPanel);
@@ -36,7 +36,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
   const isSignedIn = Boolean(user?.uid && !user.isAnonymous);
 
   const panelPaths: Record<TailorPanel, string> = {
-    blueprint: '/tailor',
+    blueprint: '/tailor/blueprint',
     dossier: '/tailor/dossier',
     intake: '/tailor/evidence',
     'style-lab': '/tailor/style-lab',
@@ -70,9 +70,10 @@ export const TailorHub: React.FC<TailorHubProps> = ({
     }
   }, [user?.uid]);
 
+  // Evidence Intake is step 0 — collect before blueprint / laws / dolls.
   const tabs: Array<{ id: TailorPanel; label: string; note: string }> = [
-    { id: 'blueprint', label: 'Profile Blueprint', note: 'compile' },
     { id: 'intake', label: 'Evidence Intake', note: 'collect' },
+    { id: 'blueprint', label: 'Profile Blueprint', note: 'compile' },
     { id: 'style-lab', label: 'Style Lab', note: 'interpret' },
     { id: 'diagnostics', label: 'Diagnostics', note: 'review' },
     { id: 'dossier', label: 'Compiled Dossier', note: 'apply' },

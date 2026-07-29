@@ -109,13 +109,16 @@ First-module intake **already exists** under Tailor project flow, not buried in 
 3. **Upload** — arbitrary files into evidence nodes.
 
 ### Gaps / leftover work
-- Not the default first screen when opening Tailor hub for all users — easy to miss.
 - Letterboxd + Pinterest success depends on server fetchers + CORS; failures feel like “feature missing.”
 - Algo screenshot → pattern graph handoff is partial (confidence labels exist; bulk “approve into Tailor profile” needs a clearer CTA).
-- No single “Evidence Intake” entry from Studio chrome.
 
-### Recommended next module step
-Make **Evidence Intake** step 0 of Tailor (before Doll / Creative Laws): Letterboxd RSS → Pinterest board → Algo screenshots → free upload → Continue to dossier. Surface a “Add evidence” button on Profile Share Card and Studio Used Context tray.
+### Shipped next module step (this branch)
+- **Evidence Intake is Tailor step 0** — `/tailor` redirects to `/tailor/evidence`; hub tabs reorder Intake first.
+- **Add evidence** on Profile Share Card and Studio Used Context tray.
+- Moodboard **pages** + multi-select **bulk synthesize** → Studio / Tailor / Oracle.
+- Signature **Plate PNG**, **Story 9:16**, and share **link**.
+- Clique **rings**: Follow → Clique → Collab seat.
+- Stand Bugbot fixes: `stand` canon route, progressive local load, Firestore error unblocks UI, comments modal overlay, no double page pad.
 
 ---
 

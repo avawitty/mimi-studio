@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Upload,
   X,
@@ -96,6 +96,22 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
   const [importError, setImportError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [staged, setStaged] = useState<StagedItem[]>([]);
+  const [moodboardSeed, setMoodboardSeed] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const digest = sessionStorage.getItem('mimi_moodboard_evidence_digest');
+      if (digest) {
+        setMoodboardSeed(digest);
+        onBlurbChange(digest.slice(0, 1200));
+        sessionStorage.removeItem('mimi_moodboard_evidence_digest');
+      }
+    } catch {
+      /* ignore */
+    }
+    // Mount-only: consume one-shot moodboard handoff.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const committedCount = evidence.length;
   const stagedCount = staged.length;
@@ -186,6 +202,17 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
         Pull references from the places your taste already lives, or upload your own. Minimum 3 to compare — the more
         evidence, the stronger the read.
       </p>
+
+      {moodboardSeed && (
+        <div className="mb-6 border border-amber-600/30 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-3">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-amber-800 dark:text-amber-400 font-bold mb-1">
+            Moodboard synthesis received
+          </p>
+          <p className="font-sans text-xs text-nous-subtle leading-relaxed">
+            Selection notes were packed into your intent blurb. Add links or uploads, then continue.
+          </p>
+        </div>
+      )}
 
       {/* Confidence meter */}
       <div className="mb-6 p-4 border border-nous-border/30 bg-[#FDFBF7]/40 dark:bg-[#0A0A0A]/40">

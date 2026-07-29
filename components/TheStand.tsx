@@ -31,14 +31,20 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
       try {
         const local = (await getLocalZines()) || [];
         setLocalZines(local.filter((z) => z && z.id && z.content));
+        // Show merged local issues immediately; cloud sync is progressive.
+        setLoading(false);
 
         if (user && !user.isAnonymous) {
-          unsubUser = subscribeToUserZines(user.uid, (data) => {
-            setCloudZines((data || []).filter((z) => z && z.id && z.content));
-            setLoading(false);
-          });
-        } else {
-          setLoading(false);
+          unsubUser = subscribeToUserZines(
+            user.uid,
+            (data) => {
+              setCloudZines((data || []).filter((z) => z && z.id && z.content));
+              setLoading(false);
+            },
+            () => {
+              setLoading(false);
+            },
+          );
         }
 
         try {
@@ -87,10 +93,12 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   }, [mode, myZines, communityZines, searchQuery]);
 
   const handle = profile?.handle ? `@${profile.handle}` : 'Your Stand';
+  // Only block the grid while we have nothing local/cloud yet and are still booting.
+  const showFullLoader = loading && mode === 'mine' && myZines.length === 0;
 
   return (
     <>
-      <div className="flex-1 w-full h-full flex flex-col bg-nous-base transition-colors duration-1000 relative overflow-hidden mimi-page-pad">
+      <div className="flex-1 w-full h-full flex flex-col bg-nous-base transition-colors duration-1000 relative overflow-hidden">
         <div className="w-full h-8 bg-nous-text text-nous-base flex items-center overflow-hidden border-b border-black/5 shrink-0 z-20">
           <div className="flex items-center px-4 h-full bg-nous-base0 text-white shrink-0 font-sans text-[9px] uppercase tracking-widest font-black gap-2">
             <Radio size={10} className="animate-pulse" /> Stand
@@ -175,7 +183,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
           </header>
 
           <div className="px-4 md:px-12">
-            {loading ? (
+            {showFullLoader ? (
               <div className="py-48 flex flex-col items-center justify-center gap-6 opacity-50">
                 <Loader2 size={32} className="animate-spin text-nous-subtle" />
                 <span className="font-sans text-[8px] uppercase tracking-[0.4em] font-black">
@@ -226,7 +234,17 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
 
       <AnimatePresence>
         {commentZineId && (
-          <ZineComments zineId={commentZineId} onClose={() => setCommentZineId(null)} />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[11000] flex items-center justify-center p-6 bg-nous-base/80 backdrop-blur-xl"
+            onClick={() => setCommentZineId(null)}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <ZineComments zineId={commentZineId} onClose={() => setCommentZineId(null)} />
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>
