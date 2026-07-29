@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import {
   BarChart,
@@ -22,14 +22,19 @@ import {
   FileText,
   TrendingUp,
   RefreshCw,
-  Sliders,
   Award,
-  ChevronRight,
-  ShieldCheck,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Activity,
+  Shield,
+  Zap,
 } from "lucide-react";
 import { auth } from "../../services/firebaseInit";
 import { fetchUserZines } from "../../services/firebaseUtils";
 import { ZineMetadata, ToneTag } from "../../types";
+import { useUser } from "../../contexts/UserContext";
+import { createTailorProfileFromLegacyDraft, TailorProfile } from "../../services/tailorProfileContract";
 
 const CANONICAL_TONE_PALETTES: Record<string, string[]> = {
   chic: ["#0D0D0C", "#E5E5E2", "#A69E93", "#FFFFFF"],
@@ -57,10 +62,140 @@ const CANONICAL_TONE_PALETTES: Record<string, string[]> = {
   CONTRARY: ["#422006", "#b45309", "#fef3c7", "#fffbeb"],
 };
 
+// ── Profile Health Panel ──────────────────────────────────────────────────────
+
+interface ProfileHealthPanelProps {
+  contract: TailorProfile;
+  dominantTone: string;
+}
+
+const GaugeBar: React.FC<{ value: number; label: string; accent?: string }> = ({
+  value,
+  label,
+  accent = "#d97706",
+}) => {
+  const pct = Math.round(value * 100);
+  const color = value < 0.4 ? "#ef4444" : value < 0.7 ? "#f59e0b" : "#22c55e";
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between items-center">
+        <span className="font-mono text-[8px] uppercase tracking-wider text-stone-400">{label}</span>
+        <span className="font-mono text-[10px] font-bold" style={{ color }}>{pct}%</span>
+      </div>
+      <div className="h-1 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const ProfileHealthPanel: React.FC<ProfileHealthPanelProps> = ({ contract, dominantTone }) => {
+  const { diagnostics } = contract;
+  const readiness = diagnostics.readyForGeneration;
+  const driftLevel = diagnostics.driftVulnerability;
+  const driftLabel = driftLevel < 0.35 ? "Low" : driftLevel < 0.65 ? "Moderate" : "High";
+  const driftColor = driftLevel < 0.35 ? "text-green-500" : driftLevel < 0.65 ? "text-amber-500" : "text-red-500";
+
+  return (
+    <div className="bg-stone-900 text-stone-100 rounded-sm shadow-lg space-y-4 p-5 relative overflow-hidden">
+      <div className="absolute right-0 bottom-0 translate-x-6 translate-y-6 opacity-[0.04] pointer-events-none">
+        <Activity size={160} />
+      </div>
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <h4 className="font-mono text-[9px] uppercase tracking-[0.2em] text-amber-400 font-black flex items-center gap-2">
+          <Shield size={12} />
+          PROFILE HEALTH
+        </h4>
+        <span
+          className={`font-mono text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-sm font-extrabold flex items-center gap-1 ${
+            readiness
+              ? "bg-green-500/15 text-green-400 border border-green-500/25"
+              : "bg-red-500/15 text-red-400 border border-red-500/25"
+          }`}
+        >
+          {readiness ? <CheckCircle size={9} /> : <XCircle size={9} />}
+          {readiness ? "READY" : "INCOMPLETE"}
+        </span>
+      </div>
+
+      {/* Completeness gauges */}
+      <div className="space-y-2.5 pt-1">
+        <GaugeBar value={diagnostics.completeness.overall} label="OVERALL COMPLETENESS" />
+        <GaugeBar value={diagnostics.completeness.persistentProfile} label="PERSISTENT PROFILE" />
+        <GaugeBar value={diagnostics.confidence.aestheticDNA} label="AESTHETIC DNA" />
+        <GaugeBar value={diagnostics.confidence.visualGrammar} label="VISUAL GRAMMAR" />
+      </div>
+
+      {/* Drift vulnerability */}
+      <div className="flex items-center justify-between pt-1 border-t border-stone-800">
+        <span className="font-mono text-[8px] uppercase tracking-wider text-stone-400 flex items-center gap-1.5">
+          <Zap size={9} />
+          DRIFT VULNERABILITY
+        </span>
+        <span className={`font-mono text-[10px] font-bold ${driftColor}`}>{driftLabel}</span>
+      </div>
+
+      {/* Next best action */}
+      {diagnostics.nextBestAction && (
+        <div className="pt-1 border-t border-stone-800">
+          <p className="font-serif italic text-xs leading-relaxed text-stone-300">
+            &ldquo;{diagnostics.nextBestAction}&rdquo;
+          </p>
+        </div>
+      )}
+
+      {/* Contradictions */}
+      {diagnostics.contradictions.length > 0 && (
+        <div className="pt-1 border-t border-stone-800 space-y-1.5">
+          <span className="font-mono text-[8px] uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+            <AlertTriangle size={9} />
+            CONTRADICTIONS DETECTED
+          </span>
+          {diagnostics.contradictions.slice(0, 2).map((c, i) => (
+            <p key={i} className="font-sans text-[10px] text-stone-400 leading-relaxed pl-3 border-l border-red-500/30">
+              {c.message}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Missing high-value fields hint */}
+      {diagnostics.missingHighValueFields.length > 0 && !diagnostics.readyForGeneration && (
+        <p className="font-sans text-[9px] text-stone-500 leading-normal pt-1 border-t border-stone-800">
+          Missing: {diagnostics.missingHighValueFields.slice(0, 3).map(f => f.fieldName).join(", ")}
+          {diagnostics.missingHighValueFields.length > 3 ? ` +${diagnostics.missingHighValueFields.length - 3} more` : ""}
+        </p>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const AestheticIntelligenceChamber: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [zines, setZines] = useState<ZineMetadata[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "tones" | "chromatics" | "density">("overview");
+
+  const { profile, activePersona } = useUser();
+
+  const profileContract = useMemo((): TailorProfile | null => {
+    const draft = profile?.tailorDraft;
+    if (!draft) return null;
+    try {
+      return createTailorProfileFromLegacyDraft(draft, {
+        profileId: activePersona?.id ? `tailor_${activePersona.id}` : undefined,
+        profileName: activePersona?.name || draft.seedName || "Personal",
+      });
+    } catch {
+      return null;
+    }
+  }, [profile?.tailorDraft, activePersona?.id, activePersona?.name]);
 
   const loadData = async () => {
     setLoading(true);
@@ -79,8 +214,12 @@ export const AestheticIntelligenceChamber: React.FC = () => {
     loadData();
   }, []);
 
-  // Use elegant presets if user has no generated zines yet (so the UI looks premium from start)
-  const isDemo = zines.length === 0;
+  // Demo mode: no zines generated yet AND no meaningful profile draft
+  const hasDraftData = Boolean(
+    profile?.tailorDraft?.aestheticDNA?.primaryArchetype ||
+    profile?.tailorDraft?.positioningCore?.anchors?.culturalReferences?.length,
+  );
+  const isDemo = zines.length === 0 && !hasDraftData;
 
   const demoZines: Partial<ZineMetadata>[] = [
     {
@@ -264,12 +403,32 @@ export const AestheticIntelligenceChamber: React.FC = () => {
         </div>
       ) : (
         <div className="p-8 flex-1 space-y-8">
+          {/* Banner: fully empty (no zines, no profile) */}
           {isDemo && (
             <div className="p-4 bg-amber-500/5 border border-amber-500/20 text-stone-600 dark:text-stone-300 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <p className="font-serif italic text-sm">Welcome to your diagnostic canvas.</p>
                 <p className="font-sans text-[11px] leading-relaxed text-stone-400">
-                  You haven&apos;t generated any zines yet in this workspace. Below is an simulation of how Mimi analyzes zine signatures. Create some publications in the <strong>Worktable</strong> to begin real-time telemetry!
+                  You haven&apos;t generated any zines yet in this workspace. Below is a simulation of how Mimi analyzes zine signatures. Create some publications in the <strong>Worktable</strong> to begin real-time telemetry!
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent("mimi:change_view", { detail: "studio" }));
+                }}
+                className="self-start sm:self-center px-3.5 py-2 bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-950 font-mono text-[9px] uppercase tracking-widest font-black hover:opacity-90 transition-all rounded-sm shrink-0"
+              >
+                GO TO WORKTABLE
+              </button>
+            </div>
+          )}
+          {/* Banner: has profile data but no zines yet */}
+          {!isDemo && zines.length === 0 && hasDraftData && (
+            <div className="p-4 bg-stone-100/60 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="font-serif italic text-sm">Profile compiled — publications pending.</p>
+                <p className="font-sans text-[11px] leading-relaxed text-stone-400">
+                  Your Tailor profile is active. Generate zines in the <strong>Worktable</strong> to populate chromatic and density telemetry.
                 </p>
               </div>
               <button
@@ -333,22 +492,26 @@ export const AestheticIntelligenceChamber: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Aesthetic Recommendation */}
-                <div className="p-6 bg-stone-900 text-stone-100 rounded-sm shadow-lg space-y-3 relative overflow-hidden">
-                  <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-5 pointer-events-none">
-                    <Palette size={140} />
+                {/* Profile Health — real data when available, graceful fallback */}
+                {profileContract ? (
+                  <ProfileHealthPanel contract={profileContract} dominantTone={dominantTone} />
+                ) : (
+                  <div className="p-6 bg-stone-900 text-stone-100 rounded-sm shadow-lg space-y-3 relative overflow-hidden">
+                    <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-5 pointer-events-none">
+                      <Palette size={140} />
+                    </div>
+                    <h4 className="font-mono text-[9px] uppercase tracking-[0.2em] text-amber-400 font-black flex items-center gap-2">
+                      <Award size={12} />
+                      MIMI DIRECTIVE
+                    </h4>
+                    <p className="font-serif italic text-base leading-relaxed">
+                      &ldquo;Your alignment leans heavily towards <span className="text-amber-400 capitalize">{dominantTone}</span> aesthetics, characterized by a refined balance of dense copy blocks and high chromatic discipline.&rdquo;
+                    </p>
+                    <p className="font-sans text-[10px] text-stone-400 leading-normal pt-2 border-t border-stone-800">
+                      Build your Tailor profile to unlock real-time creative diagnostics.
+                    </p>
                   </div>
-                  <h4 className="font-mono text-[9px] uppercase tracking-[0.2em] text-amber-400 font-black flex items-center gap-2">
-                    <Award size={12} />
-                    MIMI DIRECTIVE
-                  </h4>
-                  <p className="font-serif italic text-base leading-relaxed">
-                    &ldquo;Your alignment leans heavily towards <span className="text-amber-400 capitalize">{dominantTone}</span> aesthetics, characterized by a refined balance of dense copy blocks and high chromatic discipline.&rdquo;
-                  </p>
-                  <p className="font-sans text-[10px] text-stone-400 leading-normal pt-2 border-t border-stone-800">
-                    Try generating an &ldquo;Unhinged&rdquo; zine to expand your taste envelope and build fresh cognitive vectors.
-                  </p>
-                </div>
+                )}
               </div>
 
               {/* Graphic Highlights */}
