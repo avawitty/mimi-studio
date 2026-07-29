@@ -39,6 +39,12 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  // Tracks the active connection attempt; any in-flight callbacks from a
+  // superseded attempt check this ref and bail out early.
+  // An incrementing counter is used instead of Date.now() so that rapid
+  // reconnects (or frozen clocks in tests) always produce distinct tokens.
+  const currentAttemptRef = useRef<number | null>(null);
+  const attemptCounterRef = useRef(0);
   
   // Audio Playback Queue
   const nextStartTimeRef = useRef<number>(0);
@@ -85,17 +91,27 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
   }, []);
 
   const disconnect = useCallback(() => {
-    (connect as any).currentAttempt = null;
+    currentAttemptRef.current = null;
     cleanup();
   }, [cleanup]);
 
     const connect = useCallback(async (retries = 3) => {
     setError(null);
+
+    // Prevent creating multiple audio contexts for one active session.
+    // If there is already an open audio context from a previous connect call,
+    // tear it down cleanly before starting a new one.
+    if (audioContextRef.current || inputContextRef.current) {
+      cleanup();
+    }
+
     setIsConnecting(true);
     
-    // Create a flag to track if this connection attempt is still valid
-    const currentAttempt = Date.now();
-    (connect as any).currentAttempt = currentAttempt;
+    // Create a unique token for this connection attempt. An incrementing
+    // counter guarantees uniqueness even when clocks are frozen (e.g. in
+    // tests with fake timers) or when reconnects happen faster than 1 ms.
+    const currentAttempt = ++attemptCounterRef.current;
+    currentAttemptRef.current = currentAttempt;
     
     for (let i = 0; i < retries; i++) {
       try {
@@ -152,7 +168,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
           },
           callbacks: {
             onopen: async () => {
-              if ((connect as any).currentAttempt !== currentAttempt) return;
+              if (currentAttemptRef.current !== currentAttempt) return;
               setIsConnected(true);
               setIsConnecting(false);
               setAnalyser(analyserRef.current);
@@ -160,7 +176,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
               // Start Mic Stream
               try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                if ((connect as any).currentAttempt !== currentAttempt) {
+                if (currentAttemptRef.current !== currentAttempt) {
                   stream.getTracks().forEach(t => t.stop());
                   return;
                 }
@@ -175,7 +191,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                 processorRef.current = processor;
                 
                 processor.onaudioprocess = (e) => {
-                  if ((connect as any).currentAttempt !== currentAttempt) return;
+                  if (currentAttemptRef.current !== currentAttempt) return;
                   const inputData = e.inputBuffer.getChannelData(0);
                   const pcmData = floatTo16BitPCM(inputData);
                   const uint8Buffer = new Uint8Array(pcmData.buffer);
@@ -189,7 +205,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                   const base64 = btoa(binary);
   
                   sessionPromise.then(session => {
-                    if ((connect as any).currentAttempt !== currentAttempt) return;
+                    if (currentAttemptRef.current !== currentAttempt) return;
                     return session.sendRealtimeInput({
                       audio: {
                         mimeType: 'audio/pcm;rate=16000',
@@ -217,7 +233,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
               }
             },
             onmessage: async (msg: LiveServerMessage) => {
-              if ((connect as any).currentAttempt !== currentAttempt) return;
+              if (currentAttemptRef.current !== currentAttempt) return;
               try {
                 // Handle Transcriptions
                 if (msg.serverContent?.modelTurn?.parts) {
@@ -237,7 +253,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                         try {
                           const response = await onToolCall(call.name, call.args);
                           sessionPromise.then(session => {
-                            if ((connect as any).currentAttempt !== currentAttempt) return;
+                            if (currentAttemptRef.current !== currentAttempt) return;
                             session.sendToolResponse({
                               functionResponses: [{
                                 id: call.id,
@@ -249,7 +265,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                         } catch (e) {
                           console.error("MIMI // Tool call failed:", e);
                           sessionPromise.then(session => {
-                            if ((connect as any).currentAttempt !== currentAttempt) return;
+                            if (currentAttemptRef.current !== currentAttempt) return;
                             session.sendToolResponse({
                               functionResponses: [{
                                 id: call.id,
@@ -315,12 +331,12 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
               }
             },
             onclose: () => {
-              if ((connect as any).currentAttempt !== currentAttempt) return;
+              if (currentAttemptRef.current !== currentAttempt) return;
               setIsConnected(false);
               cleanup();
             },
             onerror: (e: any) => {
-              if ((connect as any).currentAttempt !== currentAttempt) return;
+              if (currentAttemptRef.current !== currentAttempt) return;
               const errMsg = e?.message || String(e);
               if (errMsg.includes('Deadline expired')) {
                 console.warn("MIMI // Live Session ended (timeout).");
@@ -337,7 +353,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
         });
         
         const session = await sessionPromise;
-        if ((connect as any).currentAttempt !== currentAttempt) {
+        if (currentAttemptRef.current !== currentAttempt) {
           if (typeof session.close === 'function') {
             try { session.close(); } catch(e) {}
           }
@@ -346,7 +362,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
         sessionRef.current = session;
         return; // Success
       } catch (e: any) {
-        if ((connect as any).currentAttempt !== currentAttempt) return;
+        if (currentAttemptRef.current !== currentAttempt) return;
         console.error(`Connection Attempt ${i + 1} Failed`, e);
         cleanup(); // Ensure clean state before retry
         
@@ -358,7 +374,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
         }
       }
     }
-  }, [systemInstruction, cleanup, disconnect, voiceName, onToolCall]);
+  }, [systemInstruction, cleanup, voiceName, onToolCall]);
 
   const sendVideoFrame = useCallback((base64Image: string) => {
     if (sessionRef.current) {
@@ -380,10 +396,10 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
 
   useEffect(() => {
     return () => {
-      (connect as any).currentAttempt = null;
+      currentAttemptRef.current = null;
       cleanup();
     };
-  }, [cleanup, connect]);
+  }, [cleanup]);
 
   return { connect, disconnect, isConnected, isConnecting, isSpeaking, volume, error, sendVideoFrame, analyser, transcript };
 };

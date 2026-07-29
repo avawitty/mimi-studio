@@ -34,6 +34,14 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
   useEffect(() => {
     if (!analyser || !canvasRef.current) return;
     
+    // Cancel any loop that was running before this effect re-fired (e.g. Strict
+    // Mode double-invoke, theme change, or reconnection) so we never have two
+    // concurrent draw loops sharing the same animationRef slot.
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = 0;
+    }
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -82,6 +90,7 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = 0;
       }
     };
   }, [analyser, isConnected, isMimi, strokeColor]);

@@ -20,7 +20,9 @@
     "verify:pinterest-preview": "tsx scripts/verifyPinterestBoardPreview.ts",
     "verify:used-context": "tsx scripts/verifyUsedContextFlow.ts",
     "test:e2e": "playwright test",
-    "start": "node dist/server.cjs"
+    "start": "node dist/server.cjs",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
@@ -79,12 +81,18 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/express": "^5.0.6",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "esbuild": "^0.27.7",
+    "jsdom": "^30.0.1",
     "typescript": "~5.8.2",
-    "vite": "^6.4.2"
+    "vite": "^6.4.2",
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "node-domexception": "file:mocks/node-domexception"
