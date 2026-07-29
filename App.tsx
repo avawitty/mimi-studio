@@ -797,6 +797,36 @@ const KeyBlockedBanner: React.FC = () => {
 
 import { CreditMeter } from "./components/CreditMeter";
 
+const ROUTE_PERSIST_KEY = "mimi_last_route";
+
+/**
+ * Returns true for private app routes that should be persisted for cold-launch
+ * restoration. Public share, auth, legal, and the bare root are excluded so
+ * a user who opens a shared link never "inherits" it as their next cold-launch
+ * destination.
+ */
+const isRestorableRoute = (p: string): boolean => {
+  if (!p || p === "/" || p === "") return false;
+  // Reject anything that isn't a plain app-relative path (e.g. "javascript:…"
+  // or any value that doesn't start with "/").
+  if (!p.startsWith("/")) return false;
+  // Reject protocol-relative URLs (e.g. "//example.com").
+  if (p.startsWith("//")) return false;
+  if (
+    p.startsWith("/s/") ||
+    p.startsWith("/@") ||
+    p.startsWith("/u/") ||
+    p.startsWith("/stacks/") ||
+    p.startsWith("/auth/") ||
+    p === "/privacy" ||
+    p === "/terms" ||
+    p === "/showcase"
+  ) {
+    return false;
+  }
+  return true;
+};
+
 const useAppRouter = () => {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -829,9 +859,35 @@ const useAppRouter = () => {
     return () => window.removeEventListener("mimi:route-request", onRouteRequest);
   }, [navigate]);
 
+  // Persist the current route for cold-launch restoration (iOS installed PWA
+  // always launches from start_url "/", so we restore the user's last private
+  // route via localStorage).
+  useEffect(() => {
+    if (isRestorableRoute(path)) {
+      try {
+        localStorage.setItem(ROUTE_PERSIST_KEY, path);
+      } catch {
+        // Expected in Private Browsing mode (SecurityError) or when storage
+        // quota is exceeded (QuotaExceededError). Neither case is actionable
+        // at runtime, so silently skip persistence.
+      }
+    }
+  }, [path]);
+
   useEffect(() => {
     if (path === "/" || path === "") {
-      navigate("/studio", { replace: true });
+      // Attempt to restore the last private route on cold launch.
+      let restoredPath = "/studio";
+      try {
+        const saved = localStorage.getItem(ROUTE_PERSIST_KEY);
+        if (saved && isRestorableRoute(saved)) {
+          restoredPath = saved;
+        }
+      } catch {
+        // Expected in Private Browsing mode (SecurityError) or on quota
+        // exceeded (QuotaExceededError). Fall back to the default destination.
+      }
+      navigate(restoredPath, { replace: true });
     }
   }, [navigate, path]);
 

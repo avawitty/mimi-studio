@@ -16,6 +16,19 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      // Exclude the iOS PWA shell spec so it only runs under the ios-pwa project.
+      testIgnore: '**/ios-pwa-shell.spec.ts',
+    },
+    {
+      // Simulates an iPhone running Safari in installed-PWA (standalone) mode.
+      // The iOS PWA shell tests in e2e/ios-pwa-shell.spec.ts target this project.
+      name: 'ios-pwa',
+      use: {
+        // devices['iPhone 14'] uses the WebKit browser engine; Chromium launch
+        // flags are not applicable here and would break WebKit launches.
+        ...devices['iPhone 14'],
+      },
+      testMatch: '**/ios-pwa-shell.spec.ts',
     },
   ],
   webServer: {
