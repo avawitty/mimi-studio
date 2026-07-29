@@ -322,11 +322,31 @@ Do not claim that you browsed the live web and do not invent URLs.`,
   }));
 }
 
+/** Per-uid Apify call budget (in-memory; resets with the serverless instance). */
+const APIFY_QUOTA_WINDOW_MS = 60 * 60 * 1000;
+const APIFY_QUOTA_MAX_PER_WINDOW = 10;
+const apifyQuotaByUid = new Map<string, { windowStart: number; count: number }>();
+
+export function consumeApifyQuota(uid: string, now = Date.now()): boolean {
+  const key = String(uid || "").trim();
+  if (!key) return false;
+  const existing = apifyQuotaByUid.get(key);
+  if (!existing || now - existing.windowStart >= APIFY_QUOTA_WINDOW_MS) {
+    apifyQuotaByUid.set(key, { windowStart: now, count: 1 });
+    return true;
+  }
+  if (existing.count >= APIFY_QUOTA_MAX_PER_WINDOW) return false;
+  existing.count += 1;
+  return true;
+}
+
 export async function runYouSearch(params: {
   query: string;
   includeDomains?: string[];
   count?: number;
   youApiKey?: string;
+  /** Firebase uid — required before billable Apify actor runs. */
+  authenticatedUid?: string | null;
 }): Promise<YouSearchResponse> {
   const query = String(params.query || "").trim();
   const includeDomains = Array.isArray(params.includeDomains)
@@ -338,6 +358,7 @@ export async function runYouSearch(params: {
     String(process.env.YOU_API_KEY || process.env.YOU_COM_API_KEY || "").trim();
   const apifyToken = String(process.env.APIFY_TOKEN || "").trim();
   const gatewayKey = getServerAiGatewayKey();
+  const authenticatedUid = String(params.authenticatedUid || "").trim() || null;
 
   if (!query) {
     throw Object.assign(new Error("Query string is required."), {
@@ -363,22 +384,36 @@ export async function runYouSearch(params: {
     }
   }
 
+  // Billable Apify runs require a signed-in session + per-user quota.
   if (apifyToken) {
-    try {
-      const results = await fetchApifyResearchLeads({
-        token: apifyToken,
-        query,
-        includeDomains,
-        count: Math.min(count, 5),
-      });
-      return {
-        results,
-        sourceMode: "apify",
-        notice:
-          "Live research via Apify RAG Web Browser. Results are scraped page extracts from your query and domain filters.",
-      };
-    } catch (apifyError: any) {
-      console.warn("MIMI // Apify research failed. Falling back:", apifyError);
+    if (!authenticatedUid) {
+      console.warn(
+        "MIMI // Skipping Apify research: authenticated session required for billable actor runs.",
+      );
+    } else if (!consumeApifyQuota(authenticatedUid)) {
+      throw Object.assign(
+        new Error(
+          "Web Intelligence Apify quota exceeded for this hour. Try again later or use a personal You.com key.",
+        ),
+        { status: 429, code: "APIFY_QUOTA_EXCEEDED" },
+      );
+    } else {
+      try {
+        const results = await fetchApifyResearchLeads({
+          token: apifyToken,
+          query,
+          includeDomains,
+          count: Math.min(count, 5),
+        });
+        return {
+          results,
+          sourceMode: "apify",
+          notice:
+            "Live research via Apify RAG Web Browser. Results are scraped page extracts from your query and domain filters.",
+        };
+      } catch (apifyError: any) {
+        console.warn("MIMI // Apify research failed. Falling back:", apifyError);
+      }
     }
   }
 

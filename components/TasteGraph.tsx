@@ -12,6 +12,8 @@ import { getTasteGraph, saveTasteGraph } from '../services/tasteGraphService';
 import { extractTasteGraphNodes } from '../services/geminiService';
 import { getAllShadowMemory } from '../services/vectorSearch';
 import { generateClusterAnchors } from '../services/clusteringService';
+import { fetchPocketItems } from '../services/firebaseUtils';
+import { auth } from '../services/firebaseInit';
 import { TasteGraphNode, TasteGraphEdge } from '../types';
 import { useTasteGravity } from '../hooks/useTasteGravity';
 import {
@@ -23,7 +25,7 @@ type TabType = 'map' | 'radar' | 'clusters' | 'report';
 type RadarAxis = { axis: string; value: number; desc: string };
 
 export const TasteGraph: React.FC = () => {
-  const { user, apiKeys, pocket } = useUser();
+  const { user, apiKeys, pocket, setPocket } = useUser();
   const tasteGravity = useTasteGravity(user?.uid);
   
   const [nodes, setNodes] = useState<TasteGraphNode[]>([]);
@@ -75,6 +77,12 @@ export const TasteGraph: React.FC = () => {
       };
       if (apiKeys?.you_com) {
         headers['x-api-key'] = apiKeys.you_com;
+      }
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (token) headers['x-user-token'] = `Bearer ${token}`;
+      } catch {
+        // Anonymous / offline sessions still get gateway or demo fallbacks.
       }
 
       const res = await fetch('/api/you-search', {
@@ -203,22 +211,36 @@ export const TasteGraph: React.FC = () => {
     setExtractNotice(null);
     try {
       const shadow = await getAllShadowMemory();
-      const pocketArtifacts = Array.isArray(pocket)
-        ? pocket.map((item: any, idx: number) => ({
-            id: String(item.id || `pocket-${idx}`),
-            title: String(item.title || item.content?.title || item.type || `Pocket item ${idx + 1}`),
-            notes: String(
-              item.notes ||
-                item.content?.poetic_interpretation ||
-                item.content?.oracular_mirror ||
-                item.content?.prompt ||
-                "",
-            ),
-            tags: Array.isArray(item.tags) ? item.tags : [],
-            type: item.type,
-            content: item.content,
-          }))
-        : [];
+
+      // Prefer context pocket, but hydrate from Firestore when UserProvider
+      // has not yet subscribed (returning users with saved Pocket only).
+      let pocketItems = Array.isArray(pocket) ? pocket : [];
+      if (pocketItems.length === 0 && user?.uid && !user.isAnonymous) {
+        try {
+          const cloudPocket = await fetchPocketItems(user.uid, true);
+          if (cloudPocket.length > 0) {
+            pocketItems = cloudPocket;
+            setPocket(cloudPocket);
+          }
+        } catch (pocketErr) {
+          console.warn("MIMI // Pocket hydrate for re-scry failed:", pocketErr);
+        }
+      }
+
+      const pocketArtifacts = pocketItems.map((item: any, idx: number) => ({
+        id: String(item.id || `pocket-${idx}`),
+        title: String(item.title || item.content?.title || item.type || `Pocket item ${idx + 1}`),
+        notes: String(
+          item.notes ||
+            item.content?.poetic_interpretation ||
+            item.content?.oracular_mirror ||
+            item.content?.prompt ||
+            "",
+        ),
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        type: item.type,
+        content: item.content,
+      }));
 
       const artifacts =
         shadow.length > 0
@@ -250,13 +272,16 @@ export const TasteGraph: React.FC = () => {
         } catch (clusterErr) {
           console.warn("MIMI // Pattern synthesis clusters deferred:", clusterErr);
         }
-        await tasteGravity.refresh();
+        const gravity = await tasteGravity.refresh();
         const tagCount = graph.nodes.reduce(
           (acc, n) => acc + (Array.isArray(n.tags) ? n.tags.length : 0),
           0,
         );
+        const embeddingCount =
+          gravity.points.length ||
+          shadow.filter((m: any) => Array.isArray(m.embedding_field)).length;
         setExtractNotice(
-          `Pattern synthesis complete · ${graph.nodes.length} nodes · ${tagCount} retrieved tags · ${tasteGravity.points.length || shadow.filter((m: any) => Array.isArray(m.embedding_field)).length} embeddings listed.`,
+          `Pattern synthesis complete · ${graph.nodes.length} nodes · ${tagCount} retrieved tags · ${embeddingCount} embeddings listed.`,
         );
       } else {
         setExtractNotice("Extraction returned an empty graph. Try adding more varied artifacts.");
@@ -795,7 +820,7 @@ export const TasteGraph: React.FC = () => {
                           </div>
                           <div className="flex justify-between">
                             <span className="font-mono text-stone-400">Pattern Clusters:</span>
-                            <span className="font-mono font-bold text-[#10b981]">{tasteGravity.clusters.length || Math.max(1, Math.floor(nodes.length / 2))}</span>
+                            <span className="font-mono font-bold text-[#10b981]">{tasteGravity.clusters.length}</span>
                           </div>
                         </div>
 
