@@ -13,6 +13,13 @@ export const useAudioPlayer = (url: string | null): UseAudioPlayerReturn => {
   const [progress, setProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const sourceUrlRef = useRef<string | null>(null);
+  const playRequestRef = useRef(0);
+  const isPlayingRef = useRef(false);
+
+  const setPlaying = useCallback((next: boolean) => {
+    isPlayingRef.current = next;
+    setIsPlaying(next);
+  }, []);
 
   const teardownAudio = useCallback(() => {
     if (audioRef.current) {
@@ -23,9 +30,10 @@ export const useAudioPlayer = (url: string | null): UseAudioPlayerReturn => {
       audioRef.current = null;
     }
     sourceUrlRef.current = null;
-    setIsPlaying(false);
+    playRequestRef.current += 1;
+    setPlaying(false);
     setProgress(0);
-  }, []);
+  }, [setPlaying]);
 
   const ensureAudio = useCallback(() => {
     if (!url) return null;
@@ -39,9 +47,9 @@ export const useAudioPlayer = (url: string | null): UseAudioPlayerReturn => {
       audio.ontimeupdate = () => {
         if (audio.duration) setProgress(audio.currentTime / audio.duration);
       };
-      audio.onended = () => { setIsPlaying(false); setProgress(0); };
+      audio.onended = () => { setPlaying(false); setProgress(0); };
       audio.onerror = () => {
-        setIsPlaying(false);
+        setPlaying(false);
         window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
           detail: { message: "Audio failed to load. Try re-recording or replacing the memo.", type: 'error' }
         }));
@@ -51,31 +59,40 @@ export const useAudioPlayer = (url: string | null): UseAudioPlayerReturn => {
     }
 
     return audioRef.current;
-  }, [teardownAudio, url]);
+  }, [setPlaying, teardownAudio, url]);
 
   const toggle = useCallback(() => {
     const audio = ensureAudio();
     if (!audio) return;
-    if (isPlaying) {
+    if (isPlayingRef.current) {
+      playRequestRef.current += 1;
       audio.pause();
-      setIsPlaying(false);
+      setPlaying(false);
     } else {
+      const requestId = playRequestRef.current + 1;
+      playRequestRef.current = requestId;
       const playResult = audio.play();
       if (playResult && typeof playResult.then === 'function') {
         playResult
-          .then(() => setIsPlaying(true))
+          .then(() => {
+            if (playRequestRef.current === requestId) {
+              setPlaying(true);
+            }
+          })
           .catch((err) => {
             console.warn("MIMI // Audio playback failed:", err);
-            setIsPlaying(false);
+            if (playRequestRef.current === requestId) {
+              setPlaying(false);
+            }
             window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
               detail: { message: "Audio playback blocked. Interact with the page first.", type: 'error' }
             }));
           });
       } else {
-        setIsPlaying(true);
+        setPlaying(true);
       }
     }
-  }, [ensureAudio, isPlaying]);
+  }, [ensureAudio, setPlaying]);
 
   const reset = useCallback(() => {
     teardownAudio();

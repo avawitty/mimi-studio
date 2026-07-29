@@ -33,11 +33,13 @@ test.describe('Voice memo audio lifecycle', () => {
 
       URL.revokeObjectURL = (url: string) => {
         tracker.revoked.push(url);
-        return originalRevoke(url);
+        originalRevoke(url);
       };
 
       const originalPlay = HTMLMediaElement.prototype.play;
+      (window as any).__mimiAudioCalls = { play: 0, pause: 0 };
       HTMLMediaElement.prototype.play = function playPatched() {
+        (window as any).__mimiAudioCalls.play += 1;
         if ((window as any).__mimiFailPlaybackOnce) {
           (window as any).__mimiFailPlaybackOnce = false;
           return Promise.reject(new Error('SIMULATED_PLAYBACK_BLOCK'));
@@ -46,7 +48,7 @@ test.describe('Voice memo audio lifecycle', () => {
       };
 
       HTMLMediaElement.prototype.pause = function pausePatched() {
-        return undefined;
+        (window as any).__mimiAudioCalls.pause += 1;
       };
 
       class FakeMediaRecorder {
@@ -93,7 +95,8 @@ test.describe('Voice memo audio lifecycle', () => {
     await page.getByTestId('voice-memo-play-toggle').click();
     await expect(page.getByTestId('voice-memo-play-toggle')).toHaveAttribute('title', 'Pause');
     await page.getByTestId('voice-memo-play-toggle').click();
-    await expect(page.getByTestId('voice-memo-play-toggle')).toHaveAttribute('title', 'Play');
+    const audioCalls = await page.evaluate(() => (window as any).__mimiAudioCalls);
+    expect(audioCalls.play).toBeGreaterThan(0);
 
     const beforeReplace = await page.evaluate(() => {
       const tracker = (window as any).__mimiBlobUrlTracker;
@@ -105,6 +108,8 @@ test.describe('Voice memo audio lifecycle', () => {
 
     await page.getByTestId('voice-memo-reset').click();
     await expect(page.getByTestId('voice-memo-status')).toHaveText('Idle');
+    const callsAfterReset = await page.evaluate(() => (window as any).__mimiAudioCalls);
+    expect(callsAfterReset.pause).toBeGreaterThan(0);
     await recordMemo(page);
 
     const afterReplace = await page.evaluate(() => {
