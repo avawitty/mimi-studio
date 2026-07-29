@@ -24,7 +24,9 @@ export default async function handler(req: any, res: any) {
       // Sanitize upstream payload to avoid forwarding internal error details or stack traces
       const payload = proxied.status < 400
         ? proxied.payload
-        : { error: (proxied.payload as any)?.error || "Authentication failed." };
+        : { error: typeof (proxied.payload as any)?.error === 'string'
+            ? (proxied.payload as any).error
+            : (proxied.payload as any)?.error?.message || "Authentication failed." };
       sendJson(res, proxied.status, payload);
     } catch (error) {
       console.error("MIMI // sessionLogin proxy failed:", error);
