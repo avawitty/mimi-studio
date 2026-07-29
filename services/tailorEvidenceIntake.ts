@@ -287,6 +287,73 @@ export function evidenceScopeToLegacy(scope: TailorEvidenceScope): 'project' | '
   return scope === 'persistent' ? 'profile' : 'project';
 }
 
+/** Minimum accepted/staged references — or selected curiosity prompts — required to request a read. */
+export const MIN_READ_REFERENCES = 3;
+
+export type ReadUnlockReason = 'references' | 'curiosity_prompts' | 'custom_curiosity';
+
+/**
+ * Read CTA unlock for Let Mimi Read You:
+ * - at least {@link MIN_READ_REFERENCES} references (accepted + selected staged), OR
+ * - at least {@link MIN_READ_REFERENCES} curiosity prompts selected, OR
+ * - the free-text curiosity box fulfilled ("Or ask Mimi in your own words…").
+ */
+export function canRequestEvidenceRead(input: {
+  acceptedCount: number;
+  stagedSelectedCount?: number;
+  curiosityIds?: readonly CuriosityPromptId[] | CuriosityPromptId[];
+  customCuriosity?: string;
+}): {
+  canRequest: boolean;
+  referencesNeeded: number;
+  referenceCount: number;
+  curiosityNeeded: number;
+  unlockedBy: ReadUnlockReason | null;
+} {
+  const acceptedCount = Math.max(0, input.acceptedCount);
+  const stagedSelectedCount = Math.max(0, input.stagedSelectedCount ?? 0);
+  const referenceCount = acceptedCount + stagedSelectedCount;
+  const curiosityCount = input.curiosityIds?.length ?? 0;
+  const referencesNeeded = Math.max(0, MIN_READ_REFERENCES - referenceCount);
+  const curiosityNeeded = Math.max(0, MIN_READ_REFERENCES - curiosityCount);
+  const customFulfilled = Boolean(input.customCuriosity?.trim());
+
+  if (referenceCount >= MIN_READ_REFERENCES) {
+    return {
+      canRequest: true,
+      referencesNeeded: 0,
+      curiosityNeeded,
+      referenceCount,
+      unlockedBy: 'references',
+    };
+  }
+  if (customFulfilled) {
+    return {
+      canRequest: true,
+      referencesNeeded,
+      curiosityNeeded,
+      referenceCount,
+      unlockedBy: 'custom_curiosity',
+    };
+  }
+  if (curiosityCount >= MIN_READ_REFERENCES) {
+    return {
+      canRequest: true,
+      referencesNeeded,
+      curiosityNeeded: 0,
+      referenceCount,
+      unlockedBy: 'curiosity_prompts',
+    };
+  }
+  return {
+    canRequest: false,
+    referencesNeeded,
+    curiosityNeeded,
+    referenceCount,
+    unlockedBy: null,
+  };
+}
+
 /**
  * Truthful progress from accepted evidence — never claims "strong read"
  * before analysis has run.

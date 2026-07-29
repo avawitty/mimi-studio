@@ -9,6 +9,7 @@ import {
   buildProvenanceClaims,
   compileIntakeHandoff,
   createIntakeId,
+  canRequestEvidenceRead,
   deriveReadProgress,
   evidenceScopeToLegacy,
   groupIntoCollections,
@@ -245,6 +246,41 @@ assert(handoff.directStatements.length === 1, 'direct context becomes statement'
 assert(handoff.claims.some((c) => c.path === 'sourceMaterial.directStatements'), 'statement claim');
 assert(handoff.claims.every((c) => c.derivedFrom.length > 0), 'every claim has provenance');
 assert(handoff.intendedHelp.includes('What words describe my style?'), 'curiosity in handoff');
+
+// --- Read CTA unlock: 3 references OR 3 curiosity prompts OR free-text ---
+const blocked = canRequestEvidenceRead({ acceptedCount: 0, stagedSelectedCount: 0, customCuriosity: '' });
+assert(blocked.canRequest === false && blocked.referencesNeeded === 3, 'empty intake blocked');
+assert(blocked.curiosityNeeded === 3, 'empty curiosity needed');
+
+const twoRefs = canRequestEvidenceRead({ acceptedCount: 2, stagedSelectedCount: 0 });
+assert(twoRefs.canRequest === false && twoRefs.referencesNeeded === 1, 'two refs still blocked');
+
+const twoChips = canRequestEvidenceRead({
+  acceptedCount: 0,
+  curiosityIds: ['patterns', 'communicate'],
+});
+assert(twoChips.canRequest === false && twoChips.curiosityNeeded === 1, 'two chips need one more');
+
+const threeRefs = canRequestEvidenceRead({ acceptedCount: 3 });
+assert(threeRefs.canRequest === true && threeRefs.unlockedBy === 'references', 'three accepted unlock');
+
+const stagedPath = canRequestEvidenceRead({ acceptedCount: 1, stagedSelectedCount: 2 });
+assert(stagedPath.canRequest === true && stagedPath.unlockedBy === 'references', 'staged counts toward min');
+
+const threeChips = canRequestEvidenceRead({
+  acceptedCount: 0,
+  curiosityIds: ['patterns', 'communicate', 'drawn'],
+});
+assert(threeChips.canRequest === true && threeChips.unlockedBy === 'curiosity_prompts', 'three chips unlock');
+
+const customPath = canRequestEvidenceRead({
+  acceptedCount: 0,
+  customCuriosity: 'How can I achieve this',
+});
+assert(customPath.canRequest === true && customPath.unlockedBy === 'custom_curiosity', 'custom curiosity unlocks');
+
+const whitespaceCustom = canRequestEvidenceRead({ acceptedCount: 1, customCuriosity: '   ' });
+assert(whitespaceCustom.canRequest === false, 'whitespace custom does not unlock');
 
 // --- Upload payload retains scope + intake provenance ---
 const payload = toEvidenceUploadPayload(
