@@ -310,6 +310,8 @@ test.describe("Route restoration", () => {
     await page.waitForLoadState("domcontentloaded");
     await page.waitForFunction(
       () => localStorage.getItem("mimi_last_route") === "/studio",
+      undefined,
+      { timeout: 10_000 },
     );
     await page.evaluate(() => {
       localStorage.setItem("mimi_last_route", "/oracle");
