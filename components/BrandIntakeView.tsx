@@ -247,7 +247,7 @@ export const BrandIntakeView: React.FC = () => {
                     <CheckCircle size={12} className="text-[#a8b79f]" />
                     Intelligence Report
                     <span className="px-2 py-0.5 bg-black text-white text-[8px] tracking-widest uppercase font-bold">
-                      {REPORT_FORMAT_OPTIONS.find(o => o.value === reportFormat)?.label ?? 'Editorial'}
+                      {REPORT_FORMAT_OPTIONS.find(o => o.value === reportFormat)!.label}
                     </span>
                   </div>
                   <h2 className="font-serif italic text-4xl text-black">{brandName}: TasteOS Blueprint</h2>
