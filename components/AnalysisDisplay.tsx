@@ -1469,7 +1469,7 @@ export const AnalysisDisplay: React.FC<{
  <div className="p-8 rounded-none border border-white/10 bg-white/5 animate-pulse-slow">
  <CelestialIcon size={48} style={{ color: accentColor }} />
  </div>
- <p className="font-mono text-xl md:text-3xl text-stone-100 uppercase tracking-widest leading-relaxed max-w-2xl border-l-2 pl-6 md:pl-8 text-left"style={{ borderColor: accentColor }}>
+ <p className="font-mono text-xl md:text-3xl text-white uppercase tracking-widest leading-relaxed max-w-2xl border-l-2 pl-6 md:pl-8 text-left" style={{ borderColor: accentColor, color: 'white' }}>
  {metadata.content.celestial_calibration}
  </p>
  </div>
