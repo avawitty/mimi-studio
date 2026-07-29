@@ -895,8 +895,8 @@ export class MimiHeartbeatMonitor {
 
       // Fallback simulation metrics
       const metrics: Record<LLMProviderId, number> = { gemini: 0, openai: 0, anthropic: 0, gateway: 0 };
-      for (const id of ['gemini', 'openai', 'anthropic'] as LLMProviderId[]) {
-        let baseLatency = id === 'gemini' ? 120 : id === 'openai' ? 240 : 180;
+      for (const id of ['gemini', 'openai', 'anthropic', 'gateway'] as LLMProviderId[]) {
+        let baseLatency = id === 'gemini' ? 120 : id === 'openai' ? 240 : id === 'gateway' ? 150 : 180;
         const isSpike = Math.random() < 0.15;
         metrics[id] = baseLatency + Math.floor(Math.random() * 40) + (isSpike ? 300 : 0);
       }
