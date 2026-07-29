@@ -186,6 +186,18 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         keywords: ["theatre", "curtain", "social", "public", "connections", "proscenium", "feed"],
       },
       {
+        mode: "connections",
+        label: "Connections",
+        note: "friends, followers, and add people",
+        keywords: ["connections", "friends", "follow", "add friends", "social", "network", "people", "resonators"],
+      },
+      {
+        mode: "cliques",
+        label: "Cliques",
+        note: "manage inner circles and groups",
+        keywords: ["cliques", "groups", "circles", "inner circle", "social", "squad"],
+      },
+      {
         mode: "private-studio",
         label: "Private Studio",
         note: "services and portfolio proof",
