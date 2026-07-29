@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { inject } from '@vercel/analytics';
 
 const isIgnorableErrorString = (msg: string | null | undefined): boolean => {
   if (!msg || typeof msg !== 'string') return false;
@@ -95,6 +96,9 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AgentProvider } from './contexts/AgentContext';
+
+// Initialize Vercel Web Analytics
+inject();
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
