@@ -196,7 +196,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const stored = localStorage.getItem('mimi_active_llm');
     return stored === 'gemini' || stored === 'anthropic' || stored === 'openai' || stored === 'gateway'
       ? stored
-      : 'gateway';
+      : 'gemini';
   });
 
   useEffect(() => {

@@ -234,8 +234,13 @@ class GatewayProvider implements AIProvider {
 
     if (params.config?.systemInstruction) {
       const si = params.config.systemInstruction;
-      const systemText = typeof si === 'string' ? si : (si.parts?.[0]?.text || si.text || '');
+      let systemText = typeof si === 'string' ? si : (si.parts?.[0]?.text || si.text || '');
+      if (params.config?.responseMimeType === 'application/json' && !systemText.toLowerCase().includes('json')) {
+        systemText += '\nRespond strictly in valid JSON format.';
+      }
       if (systemText) messages.push({ role: 'system', content: systemText });
+    } else if (params.config?.responseMimeType === 'application/json') {
+      messages.push({ role: 'system', content: 'Respond strictly in valid JSON format.' });
     }
 
     if (typeof params.contents === 'string') {
@@ -266,8 +271,10 @@ class GatewayProvider implements AIProvider {
       method: 'POST',
       headers,
       body: JSON.stringify({
+        model: 'google/gemini-2.0-flash',
         messages,
         temperature: params.config?.temperature ?? 0.7,
+        ...(params.config?.responseMimeType === 'application/json' && { response_format: { type: 'json_object' } }),
       }),
     });
 
@@ -348,12 +355,14 @@ class IntelligenceGateProvider implements AIProvider {
     gemini: 5,
     openai: 3,
     anthropic: 2,
+    gateway: 0,
   };
 
   private static currentWeights: Record<LLMProviderId, number> = {
     gemini: 0,
     openai: 0,
     anthropic: 0,
+    gateway: 0,
   };
 
   // Circuit Breaker state structure for active error & rate-limit tracking
@@ -371,6 +380,7 @@ class IntelligenceGateProvider implements AIProvider {
     gemini: { state: 'CLOSED', failureCount: 0, lastFailureTime: 0, nextTrialTime: 0, cooldownDuration: 10000, predictedLatencySpike: false },
     openai: { state: 'CLOSED', failureCount: 0, lastFailureTime: 0, nextTrialTime: 0, cooldownDuration: 10000, predictedLatencySpike: false },
     anthropic: { state: 'CLOSED', failureCount: 0, lastFailureTime: 0, nextTrialTime: 0, cooldownDuration: 10000, predictedLatencySpike: false },
+    gateway: { state: 'CLOSED', failureCount: 0, lastFailureTime: 0, nextTrialTime: 0, cooldownDuration: 10000, predictedLatencySpike: false },
   };
 
   // Queue to serialize execution per provider to keep UI responsive
@@ -378,6 +388,7 @@ class IntelligenceGateProvider implements AIProvider {
     gemini: Promise.resolve(),
     openai: Promise.resolve(),
     anthropic: Promise.resolve(),
+    gateway: Promise.resolve(),
   };
 
   public static getBreakers() {
@@ -388,6 +399,7 @@ class IntelligenceGateProvider implements AIProvider {
     if (id === 'gemini') return this.gemini;
     if (id === 'openai') return this.openai;
     if (id === 'anthropic') return this.anthropic;
+    if (id === 'gateway') return new GatewayProvider();
     return this.gemini;
   }
 
@@ -787,7 +799,7 @@ export async function getResponseSchema(key: string): Promise<any | null> {
 // WebSocket Heartbeat Monitor & Predictive Latency Engine
 // ==========================================
 export class MimiHeartbeatMonitor {
-  private static latencyHistory: Record<LLMProviderId, number[]> = { gemini: [], openai: [], anthropic: [] };
+  private static latencyHistory: Record<LLMProviderId, number[]> = { gemini: [], openai: [], anthropic: [], gateway: [] };
   private static ws: WebSocket | null = null;
   private static reconnectTimer: any = null;
   private static pollInterval: any = null;
@@ -882,7 +894,7 @@ export class MimiHeartbeatMonitor {
       } catch (e) {}
 
       // Fallback simulation metrics
-      const metrics: Record<LLMProviderId, number> = { gemini: 0, openai: 0, anthropic: 0 };
+      const metrics: Record<LLMProviderId, number> = { gemini: 0, openai: 0, anthropic: 0, gateway: 0 };
       for (const id of ['gemini', 'openai', 'anthropic'] as LLMProviderId[]) {
         let baseLatency = id === 'gemini' ? 120 : id === 'openai' ? 240 : 180;
         const isSpike = Math.random() < 0.15;
