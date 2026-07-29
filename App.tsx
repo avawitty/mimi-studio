@@ -2054,7 +2054,20 @@ export const App: React.FC = () => {
     return <PublicDnaBadge handle={handle} />;
   }
 
-  if (window.location.pathname.startsWith("/u/") && !window.location.pathname.endsWith("/dna")) {
+  // Keep Tabs RSS — if the SPA ever receives feed.xml, bounce to the API handler.
+  if (/^\/u\/[^/]+\/feed\.xml$/i.test(window.location.pathname)) {
+    const feedHandle = window.location.pathname.split("/u/")[1]?.split("/")[0];
+    if (feedHandle) {
+      window.location.replace(`/api/feed?handle=${encodeURIComponent(feedHandle)}`);
+      return null;
+    }
+  }
+
+  if (
+    window.location.pathname.startsWith("/u/") &&
+    !window.location.pathname.endsWith("/dna") &&
+    !/^\/u\/[^/]+\/feed\.xml$/i.test(window.location.pathname)
+  ) {
     const handle = window.location.pathname.split("/u/")[1]?.split("/")[0];
     if (handle) {
       return <MimiYouPublicRoute handle={handle} navigate={navigate} />;

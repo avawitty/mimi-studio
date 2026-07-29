@@ -30,6 +30,7 @@ import { fetchLetterboxdFeed } from "./lib/letterboxdFeed";
 import { getShopifyConnectionStatus, publishShopifyDraft } from "./lib/shopifyAdmin";
 import { searchShopifyGlobalCatalog } from "./lib/shopifyCatalog";
 import { verifyMimiSession } from "./lib/serverFirebaseAdmin";
+import { handleCreatorFeedRequest } from "./api/feed";
 
 loadEnv({ path: ".env.local", override: false, quiet: true });
 loadEnv({ path: ".env.firebase.local", override: false, quiet: true });
@@ -1771,6 +1772,17 @@ Do not claim that you browsed the live web and do not invent URLs.`,
       console.error("MIMI // Letterboxd feed error:", message);
       res.status(clientError ? 400 : 502).json({ error: message });
     }
+  });
+
+  // Keep Tabs — creator public-issue RSS (also served at /u/:handle/feed.xml)
+  app.get("/api/feed", async (req, res) => {
+    await handleCreatorFeedRequest(req, res);
+  });
+  app.get("/api/feed/:handle", async (req, res) => {
+    await handleCreatorFeedRequest(req, res);
+  });
+  app.get("/u/:handle/feed.xml", async (req, res) => {
+    await handleCreatorFeedRequest(req, res);
   });
 
   app.get("/api/proxy-image", async (req, res) => {

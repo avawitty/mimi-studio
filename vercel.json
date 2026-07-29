@@ -58,6 +58,10 @@
       "destination": "/api/openai-apps-challenge"
     },
     {
+      "source": "/u/:handle/feed.xml",
+      "destination": "/api/feed?handle=:handle"
+    },
+    {
       "source": "/zine/:id",
       "has": [
         {

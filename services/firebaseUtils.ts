@@ -528,6 +528,7 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
     id: targetId, userId: uid, userHandle: handle, userAvatar: avatar || null,
     title: zine.title, tone, coverImageUrl: coverUrl || null, timestamp: Date.now(), likes: 0,
     content: zineWithoutThreadData, isDeepThinking: !!deep, isPublic: !!isPublic, isLite: !!isLite, isHighFidelity: !!isHighFidelity,
+    publishedAt: isPublic ? Date.now() : undefined,
     artifacts: [],
     fragmentsUsed: fragmentsUsed && fragmentsUsed.length > 0 ? fragmentsUsed : [],
     usedContextSnapshots: usedContextSnapshots && usedContextSnapshots.length > 0 ? usedContextSnapshots : undefined,
