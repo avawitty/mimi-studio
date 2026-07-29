@@ -807,9 +807,11 @@ const ROUTE_PERSIST_KEY = "mimi_last_route";
  */
 const isRestorableRoute = (p: string): boolean => {
   if (!p || p === "/" || p === "") return false;
-  // Reject anything that isn't a plain app-relative path (e.g. "javascript:…",
-  // protocol-relative "//example.com", or any value that doesn't start with "/").
-  if (!p.startsWith("/") || p.startsWith("//")) return false;
+  // Reject anything that isn't a plain app-relative path (e.g. "javascript:…"
+  // or any value that doesn't start with "/").
+  if (!p.startsWith("/")) return false;
+  // Reject protocol-relative URLs (e.g. "//example.com").
+  if (p.startsWith("//")) return false;
   if (
     p.startsWith("/s/") ||
     p.startsWith("/@") ||

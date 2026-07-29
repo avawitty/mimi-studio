@@ -19,7 +19,17 @@
  *                         off rather than always defaulting to "/studio".
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
+
+/**
+ * Drains `count` animation frames in the page so that React effects triggered
+ * during the current render cycle have had a chance to run before we assert.
+ */
+async function waitForAnimationFrames(page: Page, count = 2): Promise<void> {
+  for (let i = 0; i < count; i++) {
+    await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 1. SAFE AREAS
@@ -334,11 +344,9 @@ test.describe("Route restoration", () => {
     // Visit a public share URL.
     await page.goto("/s/some-share-id");
     await page.waitForLoadState("domcontentloaded");
-    // Drain two animation frames so the persistence effect has had a chance to
-    // run. If the route were incorrectly saved the value would change here.
-    await page.evaluate(
-      () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
-    );
+    // Drain animation frames so the persistence effect has had a chance to run.
+    // If the route were incorrectly saved the value would change here.
+    await waitForAnimationFrames(page);
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),
@@ -358,11 +366,9 @@ test.describe("Route restoration", () => {
 
     await page.goto("/auth/action?mode=signIn&oobCode=abc");
     await page.waitForLoadState("domcontentloaded");
-    // Drain two animation frames so the persistence effect has had a chance to
-    // run. If the auth route were incorrectly saved the value would change here.
-    await page.evaluate(
-      () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
-    );
+    // Drain animation frames so the persistence effect has had a chance to run.
+    // If the auth route were incorrectly saved the value would change here.
+    await waitForAnimationFrames(page);
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),
