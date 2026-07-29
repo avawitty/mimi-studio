@@ -527,8 +527,9 @@ export const InputStudio: React.FC<{
 
   const [coverBorder, setCoverBorder] = useState<"thin" | "double" | "none" | "dashed">("thin");
   const [coverPersonalizationTab, setCoverPersonalizationTab] = useState<
-    "border" | "text" | "image"
+    "border" | "text" | "image" | "index"
   >("border");
+  const [coverIndexText, setCoverIndexText] = useState("");
   const [coverOverlay, setCoverOverlay] = useState<boolean>(false);
   const [coverOverlayLayers, setCoverOverlayLayers] = useState<StudioCoverOverlayLayer[]>([]);
   const [isDraggingOverSlot, setIsDraggingOverSlot] = useState<boolean>(false);
@@ -3140,6 +3141,12 @@ ${finalInput}`;
                               />
                             </div>
                             <StudioCoverOverlayCanvas layers={coverOverlayLayers} visible={coverOverlay} />
+
+                            {coverIndexText && (
+                              <span className="absolute bottom-2 left-2 pointer-events-none select-none z-[3] font-mono text-[8px] uppercase tracking-[0.18em] text-[#FAF9F6] drop-shadow-sm leading-none">
+                                {coverIndexText}
+                              </span>
+                            )}
                             
                             {/* Hover Overlay - only show text if not panning */}
                             {!isPanningCover && (
@@ -3244,8 +3251,8 @@ ${finalInput}`;
 
               {/* Curation Controls */}
               <div className="space-y-3">
-                <div className="grid grid-cols-3 border-b studio-border" role="tablist" aria-label="Cover personalization">
-                  {(["border", "text", "image"] as const).map((tab) => (
+                <div className="grid grid-cols-4 border-b studio-border" role="tablist" aria-label="Cover personalization">
+                  {(["border", "text", "image", "index"] as const).map((tab) => (
                     <button
                       key={tab}
                       type="button"
@@ -3318,6 +3325,30 @@ ${finalInput}`;
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {coverPersonalizationTab === "index" && (
+                    <div className="space-y-2">
+                      <p className="font-mono text-[7px] uppercase tracking-widest studio-text-muted">
+                        Index overlay
+                      </p>
+                      <input
+                        type="text"
+                        value={coverIndexText}
+                        onChange={(e) => setCoverIndexText(e.target.value)}
+                        placeholder="Issue no., date, volume..."
+                        className="w-full bg-transparent border studio-border px-2 py-1.5 text-xs studio-text-ink placeholder:studio-text-muted outline-none focus:border-stone-500 dark:focus:border-stone-400 transition-colors"
+                      />
+                      {coverIndexText && (
+                        <button
+                          type="button"
+                          onClick={() => setCoverIndexText("")}
+                          className="font-mono text-[7px] uppercase tracking-widest studio-text-muted hover:studio-text-ink"
+                        >
+                          Clear
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -5319,6 +5350,11 @@ ${finalInput}`;
                               referrerPolicy="no-referrer"
                             />
                             <StudioCoverOverlayCanvas layers={coverOverlayLayers} visible={coverOverlay} />
+                            {coverIndexText && (
+                              <span className="absolute bottom-2 left-2 pointer-events-none select-none z-[3] font-mono text-[8px] uppercase tracking-[0.18em] text-[#FAF9F6] drop-shadow-sm leading-none">
+                                {coverIndexText}
+                              </span>
+                            )}
                           </div>
                         );
                       }
