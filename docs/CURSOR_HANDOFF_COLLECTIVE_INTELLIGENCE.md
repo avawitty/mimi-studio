@@ -514,10 +514,32 @@ Aesthetic: cultural ephemeris / observatory — not Bloomberg cosplay, not gener
 ## Privacy & consent (non-negotiable)
 
 - Private Scry / Tailor / memory **excluded by default**
-- Public display ≠ analytics contribution without explicit control
-- Suggested controls: contribute anonymous signals; allow topic/format analysis; exclude quotations; exclude from Forecast; revoke future contribution
+- **Publishing to The Proscenium is the consent moment for Mean Median Mode** — users must be told, before the artifact enters public view, that this act contributes anonymized signals to the collective statistical readout
+- Do not silently treat `isPublic = true` as analytics contribution without disclosure (current `ZineCard` publish toggle + “Zine Published to Press.” toast is insufficient)
+- Preferred product rule (locked unless product later splits the controls):
+
+| Act | Meaning |
+| --- | --- |
+| **Publish to The Proscenium** | Artifact enters public view **and** becomes eligible to contribute anonymized topic / motif / format / inquiry signals to **Mean Median Mode** |
+| **Unpublish** | Leaves the stage and stops future contribution to Mean Median Mode aggregates |
+| **Advanced opt-out** (settings or publish confirm) | Stage publicly **without** contributing to Mean Median Mode — available, but secondary |
+
+- Suggested publish-confirm copy (tone may be edited; meaning must remain):
+
+> **Stage on The Proscenium**  
+> This places your work in public view.  
+> Eligible structure from this artifact — themes, motifs, inquiry types, and form — may contribute anonymized signals to **Mean Median Mode**, Mimi’s collective statistical reading.  
+> Your private studio, Tailor memory, and personal Scry remain excluded.  
+> Exact wording and private excerpts are not shown in the collective readout.
+
+- Optional secondary line:
+
+> You can unpublish later to stop future contribution. Frozen historical reports may retain anonymized aggregates already computed.
+
+- Align existing legal language: `LegalOverlay` currently describes “Social Floor” anonymized trends — rename/redirect that concept to **Mean Median Mode** / **The Observatory** so legal, publish UI, and product vocabulary match
+- Additional fine-grained controls (still useful): exclude quotations; exclude from Forecast; revoke future contribution; contribution receipt
 - Sensitivity filtering; no low-volume deanonymization; no person ranking; no diagnosis/identity inference from form
-- Deletion updates future aggregates; define frozen-report policy
+- Deletion / unpublish updates future aggregates; define frozen-report policy
 - Contribution receipts for transparency
 
 ```ts
@@ -529,7 +551,26 @@ interface ContributionReceipt {
   aggregationWindows: string[];
   createdAt: number;
 }
+
+/** Set at Proscenium publish confirm */
+interface ProsceniumPublishConsent {
+  artifactId: string;
+  stagedPublicly: true;
+  contributeToMeanMedianMode: boolean; // default true when user confirms publish disclosure
+  disclosedAt: number;
+  disclosureVersion: string;
+}
 ```
+
+### Publish UX requirements
+
+1. Replace one-click silent publish with a confirm step (modal or inline disclosure) the first time per session or whenever contribution settings change.
+2. Primary CTA: **Stage on The Proscenium** (or equivalent) — not only “Publish.”
+3. Disclosure must name **Mean Median Mode** explicitly.
+4. Show what is and is not contributed (structure/signals vs private text/identity).
+5. After publish, toast/receipt should say both staged + contributing (or staged without contribution if opted out).
+6. Unpublish path must be equally discoverable.
+7. Tests: publish without acknowledging disclosure does not set contribution flag; acknowledging with default contributes; opt-out stages without aggregating; unpublish stops future aggregation.
 
 ---
 
@@ -543,6 +584,10 @@ Decorative metrics must not appear as data. No randomized confidence/sync scores
 ## Testing requirements (collective)
 
 - Private / no-consent zines never aggregate  
+- Proscenium publish without disclosure acknowledgment does not contribute to Mean Median Mode  
+- Default publish confirm (contributeToMeanMedianMode=true) creates a contribution receipt  
+- Publish with advanced opt-out stages publicly but does not aggregate  
+- Unpublish stops future contribution  
 - Consent creates receipt; sensitive signals removed; low-volume suppressed  
 - Deletion stops future contribution; aliases canonicalize  
 - Volume alone ≠ Emergent; Recurrent needs history  
@@ -553,7 +598,8 @@ Decorative metrics must not appear as data. No randomized confidence/sync scores
 - Multimodal sets do not invent a single dominant mood  
 - Insufficient sample returns `insufficient_evidence`, not fabricated central tendency  
 - Methodology shown; no private excerpts in public reports  
-- Mobile + a11y for dashboard
+- Mobile + a11y for dashboard  
+- Legal / publish copy name Mean Median Mode (not a leftover “Social Floor” only)
 
 ---
 
