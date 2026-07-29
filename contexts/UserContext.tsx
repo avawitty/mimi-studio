@@ -861,15 +861,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           clearTimeout(safetyTimeout); // Clear timeout as soon as we get a signal
           try {
             devLog.info("MIMI // onAuthStateChanged:", fbUser ? "(authenticated)" : "null", fbUser ? "isAnonymous: " + fbUser.isAnonymous : "");
+            clearLegacyUsedContextState();
+            clearLegacyEditCompileState();
             if (fbUser) {
-              clearLegacyUsedContextState();
-              clearLegacyEditCompileState();
               devLog.info("MIMI // Auth State Changed: Active");
               await syncSessionCookie();
               await reconcileProfile(fbUser);
             } else {
-               clearLegacyUsedContextState();
-               clearLegacyEditCompileState();
                console.info("MIMI // Auth State Changed: Null");
                
                // CRITICAL: Only fallback to ghost if we are NOT in a redirect flow

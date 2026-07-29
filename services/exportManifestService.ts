@@ -64,13 +64,13 @@ export function buildExportManifest(
     pendingCompile?.compiledAt;
   const editorialCompileOwnerUid =
     (metadataCompileMatchesOwner ? metadata.editorialCompileOwnerUid : undefined) ||
-    pendingCompile?.profileLink.ownerUid;
+    pendingCompile?.profileLink?.ownerUid;
   const editorialCompileOwnerHandle =
     (metadataCompileMatchesOwner ? metadata.editorialCompileOwnerHandle : undefined) ||
-    pendingCompile?.profileLink.ownerHandle;
+    pendingCompile?.profileLink?.ownerHandle;
   const editorialCompileLinkVersion =
     (metadataCompileMatchesOwner ? metadata.editorialCompileLinkVersion : undefined) ||
-    pendingCompile?.profileLink.version;
+    pendingCompile?.profileLink?.version;
   const studioCoverOverlays = readStudioCoverOverlays(metadata);
   const coverOverlayBaked = !!(
     metadata.coverImageUrl &&

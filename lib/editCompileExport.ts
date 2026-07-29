@@ -69,7 +69,7 @@ function ensureDraftShape(
   const next: CompileDraft = {
     thesis: parsed?.thesis || "",
     lead: parsed?.lead || "",
-    excludedAtomIds: Array.isArray(parsed?.excludedAtomIds) ? parsed!.excludedAtomIds : [],
+    excludedAtomIds: Array.isArray(parsed?.excludedAtomIds) ? parsed.excludedAtomIds : [],
   };
   if (identity?.uid) {
     next.profileLink = buildProfileLink(identity);
@@ -234,7 +234,7 @@ export function getEditorialCompileExport(
       });
       return null;
     }
-    return parsed;
+    return parsed as EditorialCompileExport;
   } catch {
     return null;
   }
