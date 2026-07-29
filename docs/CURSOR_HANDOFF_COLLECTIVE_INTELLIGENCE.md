@@ -464,6 +464,10 @@ Decorative metrics must not appear as data. No randomized confidence/sync scores
 - Volume alone ≠ Emergent; Recurrent needs history  
 - RSS failure preserves prior entries; duplicates deduped  
 - Speculative labeled; model failure invents nothing; no random confidence  
+- Mean, median, and mode are computed from the same windowed sample and unit basis  
+- Spike-driven interpretation fires when mean substantially exceeds median  
+- Multimodal sets do not invent a single dominant mood  
+- Insufficient sample returns `insufficient_evidence`, not fabricated central tendency  
 - Methodology shown; no private excerpts in public reports  
 - Mobile + a11y for dashboard
 
