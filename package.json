@@ -14,6 +14,7 @@
     "verify:tailor-contract": "tsx scripts/verifyTailorProfileContract.ts",
     "verify:shopify-pack": "tsx scripts/verifyShopifyProductPack.ts",
     "verify:shopify-integration": "tsx scripts/verifyShopifyIntegration.ts",
+    "verify:ingest-client": "tsx scripts/verifyIngestClient.ts",
     "verify:intel-hub": "tsx scripts/verifyIntelHubWorkflow.ts",
     "verify:zine-visual-policy": "node scripts/verifyZineVisualPolicy.mjs",
     "verify:pinterest-preview": "tsx scripts/verifyPinterestBoardPreview.ts",
