@@ -1229,15 +1229,15 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  )}
  </AnimatePresence>
 
- <div className="shrink-0 px-4 md:px-8 py-3 border-b archive-border flex flex-wrap items-center gap-4 bg-white dark:bg-stone-950">
- <form onSubmit={handleSearch} className="flex-1 min-w-[200px] max-w-md flex gap-2">
+ <div className="shrink-0 px-4 md:px-8 py-2.5 border-b archive-border flex flex-wrap items-center gap-x-4 gap-y-2 bg-white dark:bg-stone-950">
+ <form onSubmit={handleSearch} className="flex items-center gap-2 min-w-[180px]">
  <input
  id="pocket-registry-search"
  type="search"
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
  placeholder="Search registry..."
- className="flex-1 border archive-border bg-white dark:bg-stone-950 px-3 py-2 font-mono text-[10px]"
+ className="w-40 md:w-52 border archive-border bg-white dark:bg-stone-950 px-3 py-2 font-mono text-[10px]"
  />
  <button
  type="submit"
@@ -1252,27 +1252,56 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  </button>
  ) : null}
  </form>
- <div className="ml-auto flex items-center gap-2 font-mono text-[8px] uppercase tracking-widest archive-text-muted">
-   <span>{filteredItems.length} visible</span>
-   <span>·</span>
-   <span>{items.length} saved</span>
+
+ {!activeBoard && (
+ <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-1 min-w-0">
+ {([
+   ['ALL', 'All', LayoutGrid],
+   ['ZINES', 'Zines', BookOpen],
+   ['IMAGES', 'Images', ImageIcon],
+   ['ANALYSES', 'Analyses', Radar],
+   ['NOTES', 'Notes', FileText],
+ ] as const).map(([tab, label, Icon]) => {
+   const counts = {
+     ALL: items.length,
+     ZINES: items.filter((item) => item.type === 'zine_card').length,
+     IMAGES: items.filter((item) => item.type === 'image' || item.type === 'video').length,
+     ANALYSES: items.filter((item) => item.type === 'analysis_report' || item.type === 'omen').length,
+     NOTES: items.filter((item) => ['text', 'script', 'link', 'voicenote'].includes(item.type)).length,
+   };
+   return (
+     <button
+       key={tab}
+       type="button"
+       onClick={() => setCategoryFilter(tab)}
+       className={`shrink-0 min-h-9 px-2.5 py-1.5 border font-mono text-[9px] uppercase tracking-widest whitespace-nowrap flex items-center gap-1.5 transition-colors ${categoryFilter === tab ? 'border-archive-ink bg-archive-ink text-white' : 'archive-border archive-text-muted hover:archive-text-ink'}`}
+     >
+       <Icon size={12} strokeWidth={1.5} />
+       {label}
+       <span className={categoryFilter === tab ? 'text-white/60' : 'archive-text-muted'}>{counts[tab]}</span>
+     </button>
+   );
+ })}
+ </div>
+ )}
+
+ <div className="ml-auto flex items-center gap-3 font-mono text-[8px] uppercase tracking-widest archive-text-muted shrink-0">
+   {!activeBoard && (
+   <button
+     type="button"
+     onClick={() => { setSelectedIds(new Set()); setShowFolderModal(true); }}
+     className="flex items-center gap-1.5 hover:archive-text-ink transition-colors min-h-9"
+   >
+     <FolderPlus size={13} /> New folder
+   </button>
+   )}
+   <span>{filteredItems.length} · {items.length}</span>
  </div>
  </div>
 
- {!activeBoard && (
- <div className="shrink-0 px-4 md:px-8 py-3 border-b archive-border bg-white dark:bg-stone-950">
-   <div className="flex items-center justify-between">
-     <span className="font-mono text-[8px] uppercase tracking-[0.28em] archive-text-muted font-black">Collections · {folders.length}</span>
-     <button
-       type="button"
-       onClick={() => { setSelectedIds(new Set()); setShowFolderModal(true); }}
-       className="flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-widest archive-text-muted hover:archive-text-ink transition-colors min-h-11 md:min-h-0"
-     >
-       <FolderPlus size={13} /> New folder
-     </button>
-   </div>
-   {folders.length > 0 && (
-   <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1 mt-3">
+ {!activeBoard && folders.length > 0 && (
+ <div className="shrink-0 px-4 md:px-8 py-2.5 border-b archive-border bg-white dark:bg-stone-950">
+   <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
      {folders.map((folder) => {
        const memberThumbs = (folder.content.itemIds || [])
          .map((id) => items.find((i) => i.id === id))
@@ -1310,76 +1339,10 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
        );
      })}
    </div>
-   )}
  </div>
  )}
 
- {!activeBoard ? (
- <div className="shrink-0 px-4 md:px-8 py-3 md:py-4 border-b archive-border bg-[#f7f5f0] dark:bg-stone-900">
-   {/* Mobile: compact filter pills so the gallery stays above the fold */}
-   <div className="flex md:hidden gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
- {([
-   ['ALL', 'All', LayoutGrid],
-   ['ZINES', 'Zines', BookOpen],
-   ['IMAGES', 'Images', ImageIcon],
-   ['ANALYSES', 'Analyses', Radar],
-   ['NOTES', 'Notes', FileText],
- ] as const).map(([tab, label, Icon]) => {
-   const counts = {
-     ALL: items.length,
-     ZINES: items.filter((item) => item.type === 'zine_card').length,
-     IMAGES: items.filter((item) => item.type === 'image' || item.type === 'video').length,
-     ANALYSES: items.filter((item) => item.type === 'analysis_report' || item.type === 'omen').length,
-     NOTES: items.filter((item) => ['text', 'script', 'link', 'voicenote'].includes(item.type)).length,
-   };
-   return (
-     <button
-       key={tab}
-       type="button"
-       onClick={() => setCategoryFilter(tab)}
-       className={`shrink-0 min-h-11 px-3 py-2 border font-mono text-[9px] uppercase tracking-widest whitespace-nowrap flex items-center gap-1.5 transition-colors ${categoryFilter === tab ? 'border-archive-ink bg-archive-ink text-white' : 'archive-border archive-text-muted'}`}
-     >
-       <Icon size={13} strokeWidth={1.5} />
-       {label}
-       <span className={categoryFilter === tab ? 'text-white/60' : 'archive-text-muted'}>{counts[tab]}</span>
-     </button>
-   );
- })}
-   </div>
-   {/* Desktop: expanded category cards */}
-   <div className="hidden md:grid grid-cols-3 xl:grid-cols-5 gap-2">
- {([
-   ['ALL', 'Everything', LayoutGrid],
-   ['ZINES', 'Zines', BookOpen],
-   ['IMAGES', 'Image saves', ImageIcon],
-   ['ANALYSES', 'Analyses', Radar],
-   ['NOTES', 'Notes & links', FileText],
- ] as const).map(([tab, label, Icon]) => {
-   const counts = {
-     ALL: items.length,
-     ZINES: items.filter((item) => item.type === 'zine_card').length,
-     IMAGES: items.filter((item) => item.type === 'image' || item.type === 'video').length,
-     ANALYSES: items.filter((item) => item.type === 'analysis_report' || item.type === 'omen').length,
-     NOTES: items.filter((item) => ['text', 'script', 'link', 'voicenote'].includes(item.type)).length,
-   };
-   return (
-     <button
-       key={tab}
-       type="button"
-       onClick={() => setCategoryFilter(tab)}
-       className={`min-h-20 p-3 border text-left transition-colors flex flex-col justify-between ${categoryFilter === tab ? 'border-archive-ink bg-white dark:bg-stone-950 archive-text-ink' : 'archive-border bg-white/50 dark:bg-stone-950/50 archive-text-muted hover:archive-text-ink hover:bg-white dark:hover:bg-stone-950'}`}
-     >
-       <div className="flex items-center justify-between gap-2">
-         <Icon size={17} strokeWidth={1.25} />
-         <span className="font-mono text-[10px]">{counts[tab]}</span>
-       </div>
-       <span className="font-sans text-[9px] uppercase tracking-[0.16em] font-bold">{label}</span>
-     </button>
-   );
- })}
-   </div>
- </div>
- ) : (
+ {activeBoard && (
    <div className="shrink-0 px-4 md:px-8 py-3 border-b archive-border flex items-center justify-between">
      <div className="flex items-center gap-3">
        <FolderOpen size={18} />
@@ -1553,7 +1516,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
           </h3>
           <span className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">{folderItems.length} items</span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4">
           {folderItems.map(item => (
             <motion.div key={item.id} layout draggable={!isSelectionMode} onDragStartCapture={() => setDraggingItemId(item.id)} onDragEndCapture={() => { setDraggingItemId(null); setDropTargetFolderId(null); }} onClick={() => handleItemClick(item)} className={`group relative bg-white border rounded-none flex flex-col transition-all cursor-pointer ${draggingItemId === item.id ? 'opacity-40' : ''} ${isSelectionMode && selectedIds.has(item.id) ? 'border-nous-border ring-2 ring-stone-500/20' : 'border-nous-border '}`}>
               <div className="relative aspect-square bg-nous-base overflow-hidden">

@@ -109,17 +109,9 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  if (!user) return;
  setIsSubmitting(true);
  try {
- let audioUrl: string;
- try {
- audioUrl = await archiveManager.uploadMedia(user.uid, blob, 'voice_comments');
- } catch (uploadError) {
- console.error("MIMI // Voice upload failed:", uploadError);
- window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
- detail: { message: "Voice memo upload failed. Check your connection and try again.", type: 'error' }
- }));
- // Re-throw so the outer finally still runs setIsSubmitting(false)
- throw uploadError;
- }
+ const audioUrl = await archiveManager.uploadMedia(user.uid, blob, 'voice_comments', {
+ allowStorageFallback: false,
+ });
  await addDoc(collection(db, 'zine_comments'), {
  zineId,
  userId: user.uid,
@@ -132,7 +124,11 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  timestamp: Date.now()
  });
  } catch (error) {
- // Upload errors have already been surfaced; swallow to avoid double-toast
+ console.error("MIMI // Voice memo submit failed:", error);
+ window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+ detail: { message: "Voice memo upload failed. Check your connection and try again.", type: 'error' }
+ }));
+ throw new Error("VOICE_MEMO_UPLOAD_FAILED");
  } finally {
  setIsSubmitting(false);
  }

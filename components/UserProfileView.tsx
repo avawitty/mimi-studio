@@ -22,6 +22,7 @@ import {
   ChevronRight,
   UserCircle2,
   RotateCcw,
+  Smartphone,
 } from "lucide-react";
 import { useTheme, PALETTES } from "../contexts/ThemeContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -33,6 +34,7 @@ import { TheWard } from "./TheWard";
 import { ConnectionsManager } from "./ConnectionsManager";
 import { ApiKeyRing } from "./ApiKeyRing";
 import { ThePort } from "./ThePort";
+import { AddToHomeScreenBanner } from "./AddToHomeScreenBanner";
 import { getStoredKey, validateKey, clearKey, storeKey } from "../services/apiKeyService";
 import { CheckCircle2 as CheckCircle2Icon, XCircle as XCircleIcon } from "lucide-react";
 import { useIntelligenceGate } from "../App";
@@ -224,6 +226,39 @@ export const UserProfileView: React.FC = () => {
     profile?.plan,
     profile?.subscriptionStatus,
   ]);
+
+  // Match CreditMeter's isPaid gate so banner and meter never diverge on stale planStatus.
+  const PAID_PLAN_STATUSES = new Set([
+    "core",
+    "pro",
+    "lab",
+    "initiation",
+    "optioning",
+    "atelier",
+    "sovereign",
+  ]);
+  const creditMeterIsPaid =
+    PAID_PLAN_STATUSES.has(String(profile?.planStatus || "ghost").toLowerCase()) ||
+    Boolean(profile?.isPatron);
+  const membershipCredits = profile?.membershipCredits;
+  const trialCreditsRemaining = profile?.trial?.remainingCredits ?? 0;
+  const patronCreditsRemaining = creditMeterIsPaid
+    ? Number(membershipCredits?.remaining ?? trialCreditsRemaining)
+    : trialCreditsRemaining;
+  const patronCreditsAllowance = creditMeterIsPaid
+    ? Number(
+        membershipCredits?.allowance ??
+          membershipCredits?.remaining ??
+          profile?.trial?.grantedCredits ??
+          0,
+      )
+    : Number(profile?.trial?.grantedCredits || 12);
+  const patronAiCreditsLabel =
+    patronCreditsAllowance > 0
+      ? `${patronCreditsRemaining.toLocaleString()} / ${patronCreditsAllowance.toLocaleString()}`
+      : patronCreditsRemaining > 0
+        ? patronCreditsRemaining.toLocaleString()
+        : "—";
 
   const handleOpenBillingPortal = async () => {
     setIsBillingPortalLoading(true);
@@ -476,7 +511,7 @@ export const UserProfileView: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full bg-white rounded-none overflow-hidden border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none overflow-hidden border border-nous-border p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -619,6 +654,7 @@ export const UserProfileView: React.FC = () => {
           </div>
 
           <div className="mt-auto space-y-2">
+            <AddToHomeScreenBanner />
             {user?.isAnonymous ? (
               <>
                 <button
@@ -651,7 +687,7 @@ export const UserProfileView: React.FC = () => {
               </h3>
               <div className="p-4 border border-nous-border bg-nous-base/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-mono text-xs">
                 <div className="flex items-center gap-3">
-                  <div className="relative flex items-center justify-center w-8 h-8 bg-white border border-nous-border">
+                  <div className="relative flex items-center justify-center w-8 h-8 bg-nous-base border border-nous-border">
                     <Key size={14} className="text-nous-subtle" />
                   </div>
                   <div>
@@ -832,7 +868,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -994,7 +1030,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1452,44 +1488,108 @@ export const UserProfileView: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Billing Registry & Social Resonance */}
+        {/* Patron Status & Social Resonance */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="w-full bg-white rounded-none border border-nous-border p-8"
         >
+          {/* Patron Status Bar */}
           <div className="mb-8 pb-8 border-b border-nous-border">
             <div className="flex justify-between items-start mb-6">
-              <h3 className="font-serif text-2xl italic">Billing Registry</h3>
-              <span className="text-[10px] font-mono text-nous-subtle bg-nous-base px-3 py-1 rounded-none border border-nous-border">
-                Minted:{" "}
+              <div>
+                <h3 className="font-serif text-2xl italic">Patron Status</h3>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle mt-1">
+                  Membership &amp; Access Level
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-nous-subtle bg-nous-base px-3 py-1 rounded-none border border-nous-border shrink-0">
+                Since{" "}
                 {new Date(
                   profile?.createdAt || Date.now(),
                 ).toLocaleDateString()}
               </span>
             </div>
-            <div className="flex items-center gap-4">
-              <div
-                className={`w-12 h-6 rounded-none ${isPatronActive ? "bg-nous-base " : "bg-stone-200 dark:bg-stone-700"}`}
-              ></div>
-              <span className="text-xs font-mono tracking-widest">
-                {isPatronActive ? "PATRON ACTIVE" : "STANDARD"}
-              </span>
+
+            {/* Status Banner */}
+            <div
+              className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 border ${
+                isPatronActive
+                  ? "border-nous-border bg-nous-base/40"
+                  : "border-dashed border-nous-border bg-nous-base/20"
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className={`w-2 h-10 rounded-none shrink-0 ${
+                    isPatronActive
+                      ? "bg-nous-text"
+                      : "bg-stone-300 dark:bg-stone-600"
+                  }`}
+                />
+                <div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-serif text-xl italic capitalize">
+                      {isPatronActive
+                        ? profile?.membershipPlan ||
+                          profile?.planStatus ||
+                          profile?.plan ||
+                          "Patron"
+                        : "Standard"}
+                    </span>
+                    <span
+                      className={`text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 border ${
+                        isPatronActive
+                          ? "border-nous-border text-nous-text bg-nous-base"
+                          : "border-stone-300 text-nous-subtle dark:border-stone-600"
+                      }`}
+                    >
+                      {isPatronActive ? "Active" : "Free Tier"}
+                    </span>
+                  </div>
+                  <p className="text-[9px] font-mono uppercase tracking-widest text-nous-subtle mt-1">
+                    {isPatronActive
+                      ? `Subscription active · ${profile?.subscriptionStatus || "confirmed"}`
+                      : "No active membership · upgrade to unlock full access"}
+                  </p>
+                </div>
+              </div>
+
+              {isPatronActive && (
+                <div className="flex gap-6 shrink-0">
+                  {[
+                    { label: "AI Credits", value: patronAiCreditsLabel },
+                    { label: "Modules", value: "All Access" },
+                    { label: "Storage", value: "Extended" },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="text-center">
+                      <span className="block font-mono text-[9px] uppercase tracking-widest text-nous-subtle">
+                        {label}
+                      </span>
+                      <span className="block font-serif text-sm italic mt-0.5 text-nous-text">
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex gap-4 mt-6">
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-4">
               <button
                 type="button"
                 onClick={handleOpenBillingPortal}
                 disabled={isBillingPortalLoading}
-                className="flex-1 flex items-center justify-center gap-2 py-4 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-all rounded-none"
+                className="flex items-center justify-center gap-2 px-6 py-3 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-all rounded-none"
               >
                 {isBillingPortalLoading ? (
-                  <Loader2 size={14} className="animate-spin" />
+                  <Loader2 size={13} className="animate-spin" />
                 ) : (
-                  <ExternalLink size={14} />
+                  <ExternalLink size={13} />
                 )}
-                Manage
+                {isPatronActive ? "Manage Membership" : "Billing Portal"}
               </button>
               {!isPatronActive && (
                 <button
@@ -1498,9 +1598,9 @@ export const UserProfileView: React.FC = () => {
                       new CustomEvent("mimi:open_patron_modal"),
                     )
                   }
-                  className="flex-1 py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest hover:bg-nous-text0 transition-colors rounded-none"
+                  className="flex-1 py-3 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity rounded-none font-bold"
                 >
-                  Upgrade to Patron
+                  Upgrade to Patron →
                 </button>
               )}
             </div>

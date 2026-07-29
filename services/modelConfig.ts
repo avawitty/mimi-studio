@@ -18,6 +18,7 @@ export type ModelRole =
   | 'textDeep'   // heavy reasoning / long structured JSON
   | 'image'      // image generation
   | 'imageEdit'  // image editing / inpainting
+  | 'video'      // video generation
   | 'tts'        // text-to-speech
   | 'live'       // realtime / streaming session
   | 'embedding'; // vector embeddings
@@ -37,6 +38,7 @@ export const MODELS: Record<LLMProviderId, RoleMap> = {
     textDeep:  env('GEMINI_TEXT_DEEP_MODEL',  'gemini-3.1-pro-preview'),
     image:     env('GEMINI_IMAGE_MODEL',      'gemini-3.1-flash-image'),
     imageEdit: env('GEMINI_IMAGE_EDIT_MODEL', 'gemini-3.1-flash-image'),
+    video:     env('GEMINI_VIDEO_MODEL',      'veo-3.1-fast-generate-preview'),
     tts:       env('GEMINI_TTS_MODEL',        'gemini-3.1-flash-tts-preview'),
     live:      env('GEMINI_LIVE_MODEL',       'gemini-3.1-flash-live-preview'),
     embedding: env('GEMINI_EMBEDDING_MODEL',  'text-embedding-004'),
@@ -66,6 +68,7 @@ export const MODELS: Record<LLMProviderId, RoleMap> = {
     textDeep:  env('AI_GATEWAY_MODEL',            'openai/gpt-5.6-luna'),
     image:     env('AI_GATEWAY_IMAGE_MODEL',      'openai/gpt-image-1.5'),
     imageEdit: env('AI_GATEWAY_IMAGE_EDIT_MODEL', 'openai/gpt-image-1.5'),
+    video:     env('AI_GATEWAY_VIDEO_MODEL',      'google/veo-3.1-fast-generate-001'),
     embedding: env('AI_GATEWAY_EMBEDDING_MODEL',  'openai/text-embedding-3-small'),
   },
 };

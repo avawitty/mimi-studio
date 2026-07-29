@@ -31,6 +31,14 @@ async function waitForAnimationFrames(page: Page, count = 2): Promise<void> {
   }
 }
 
+async function waitForRouterEffects(page: Page): Promise<void> {
+  await page.waitForLoadState("domcontentloaded");
+  // The installed-PWA router registers its custom event listeners in React
+  // effects after the shell mounts, so give the initial render cycle time to
+  // flush before dispatching `mimi:route-request`.
+  await waitForAnimationFrames(page, 4);
+}
+
 // ---------------------------------------------------------------------------
 // 1. SAFE AREAS
 // ---------------------------------------------------------------------------
@@ -138,8 +146,12 @@ test.describe("Navigation", () => {
     page,
   }) => {
     await page.goto("/studio");
+<<<<<<< HEAD
     await page.waitForLoadState("domcontentloaded");
     await waitForAnimationFrames(page);
+=======
+    await waitForRouterEffects(page);
+>>>>>>> origin/main
 
     await page.evaluate(() => {
       window.dispatchEvent(
@@ -228,8 +240,7 @@ test.describe("Cold launch", () => {
     page,
   }) => {
     // These routes bypass the main shell entirely; the app must not crash.
-    await page.goto("/s/nonexistent-zine-id");
-    await page.waitForLoadState("domcontentloaded");
+    await page.goto("/s/nonexistent-zine-id", { waitUntil: "domcontentloaded" });
     // No JS crash → #root still rendered.
     const rootVisible = await page.locator("#root").isVisible();
     expect(rootVisible).toBe(true);
@@ -303,6 +314,7 @@ test.describe("Route restoration", () => {
   test("cold launch from / restores the last saved private route", async ({
     page,
   }) => {
+<<<<<<< HEAD
     // Pre-seed localStorage with a saved route.
     await page.goto("/studio");
     await page.waitForLoadState("domcontentloaded");
@@ -312,6 +324,11 @@ test.describe("Route restoration", () => {
       )
       .toBe("/studio");
     await page.evaluate(() => {
+=======
+    // Seed storage before any app code runs so the current /studio page can't
+    // overwrite the saved route during its own persistence effect.
+    await page.addInitScript(() => {
+>>>>>>> origin/main
       localStorage.setItem("mimi_last_route", "/oracle");
     });
     await expect
@@ -356,8 +373,7 @@ test.describe("Route restoration", () => {
     });
 
     // Visit a public share URL.
-    await page.goto("/s/some-share-id");
-    await page.waitForLoadState("domcontentloaded");
+    await page.goto("/s/some-share-id", { waitUntil: "domcontentloaded" });
     // Drain animation frames so the persistence effect has had a chance to run.
     // If the route were incorrectly saved the value would change here.
     await waitForAnimationFrames(page);
@@ -379,6 +395,7 @@ test.describe("Route restoration", () => {
     });
 
     await page.goto("/auth/action?mode=signIn&oobCode=abc");
+<<<<<<< HEAD
     await page.waitForLoadState("domcontentloaded");
     await expect
       .poll(async () => {
@@ -410,6 +427,9 @@ test.describe("Route restoration", () => {
     await page.goto("/success?checkout=success&plan=core&interval=month");
     await page.waitForLoadState("domcontentloaded");
     await waitForAnimationFrames(page);
+=======
+    await page.waitForURL((url) => !url.pathname.startsWith("/auth/action"));
+>>>>>>> origin/main
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),
