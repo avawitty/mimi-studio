@@ -1210,7 +1210,8 @@ export interface UserProfile extends UserPreferences {
   createdAt: number;
   lastActive?: number;
   isSwan?: boolean;
-  hiddenMenuItems?: string[]; 
+  hiddenMenuItems?: string[];
+  pinnedNavItems?: string[]; // ordered list of mode keys for the persistent bottom nav (max 5)
   useLikeness?: boolean;
   syncedUsers?: string[];
   tasteVector?: Record<string, number>;

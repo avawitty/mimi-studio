@@ -42,7 +42,15 @@ export default {
           accent: 'var(--nous-accent)',
           border: 'var(--nous-border)',
           paper: 'var(--nous-paper)',
+          positive: 'var(--nous-positive)',
+          warning: 'var(--nous-warning)',
+          danger: 'var(--nous-danger)',
         }
+      },
+      borderRadius: {
+        nous: 'var(--nous-radius)',
+        'nous-sm': 'var(--nous-radius-sm)',
+        'nous-lg': 'var(--nous-radius-lg)',
       },
       backgroundImage: {
          'tape-strip': 'linear-gradient(-45deg, rgba(255,255,255,0.3) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.3) 75%, transparent 75%, transparent)',

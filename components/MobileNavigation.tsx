@@ -1,7 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { LayoutGrid, Scissors, ImageIcon, BookOpen, Feather, Loader2 } from 'lucide-react';
+import {
+  LayoutGrid,
+  Scissors,
+  ImageIcon,
+  BookOpen,
+  Feather,
+  Loader2,
+  User,
+  Layers,
+  Compass,
+  Archive,
+  Star,
+  Share2,
+  Sparkles,
+  FolderOpen,
+  Shirt,
+  Edit3,
+  Activity,
+  Network,
+  Terminal,
+  Award,
+  SlidersHorizontal,
+  Book,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserProfile } from '../types';
+import { MENU_STRUCTURE } from './navigationConfig';
 
 interface MobileNavigationProps {
   currentView: string;
@@ -11,12 +35,50 @@ interface MobileNavigationProps {
   isLoading?: boolean;
 }
 
-export const MobileNavigation: React.FC<MobileNavigationProps> = ({ 
-  currentView, 
-  setViewMode, 
+const ICON_MAP: Record<string, React.ReactNode> = {
+  studio: <LayoutGrid size={16} strokeWidth={1.5} />,
+  pocket: <BookOpen size={16} strokeWidth={1.5} />,
+  scribe: <Feather size={16} strokeWidth={1.5} />,
+  tailor: <Scissors size={16} strokeWidth={1.5} />,
+  darkroom: <ImageIcon size={16} strokeWidth={1.5} />,
+  profile: <User size={16} strokeWidth={1.5} />,
+  wardrobe: <Shirt size={16} strokeWidth={1.5} />,
+  scry: <Compass size={16} strokeWidth={1.5} />,
+  archival: <Archive size={16} strokeWidth={1.5} />,
+  signature: <Star size={16} strokeWidth={1.5} />,
+  proscenium: <Share2 size={16} strokeWidth={1.5} />,
+  oracle: <Sparkles size={16} strokeWidth={1.5} />,
+  moodboard: <Layers size={16} strokeWidth={1.5} />,
+  'the-edit': <Edit3 size={16} strokeWidth={1.5} />,
+  'editorial-home': <Book size={16} strokeWidth={1.5} />,
+  'the-press': <FolderOpen size={16} strokeWidth={1.5} />,
+  'taste-graph': <Network size={16} strokeWidth={1.5} />,
+  connections: <Activity size={16} strokeWidth={1.5} />,
+  memberships: <Award size={16} strokeWidth={1.5} />,
+  briefs: <SlidersHorizontal size={16} strokeWidth={1.5} />,
+  codex: <Terminal size={16} strokeWidth={1.5} />,
+};
+
+const DEFAULT_NAV_KEYS = ['studio', 'pocket', 'scribe', 'tailor', 'darkroom'];
+
+function getLabelForKey(key: string): string {
+  for (const section of MENU_STRUCTURE) {
+    const item = section.items.find((i) => i.mode === key);
+    if (item) return item.label;
+  }
+  return key.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getIconForKey(key: string): React.ReactNode {
+  return ICON_MAP[key] ?? <LayoutGrid size={16} strokeWidth={1.5} />;
+}
+
+export const MobileNavigation: React.FC<MobileNavigationProps> = ({
+  currentView,
+  setViewMode,
   profile,
   isGenerating = false,
-  isLoading = false
+  isLoading = false,
 }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -36,13 +98,16 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  const tabs = [
-    { key: 'studio', label: 'Studio', icon: <LayoutGrid size={16} strokeWidth={1.5} /> },
-    { key: 'pocket', label: 'Pocket', icon: <BookOpen size={16} strokeWidth={1.5} /> },
-    { key: 'scribe', label: 'Scribe', icon: <Feather size={16} strokeWidth={1.5} /> },
-    { key: 'tailor', label: 'Tailor', icon: <Scissors size={16} strokeWidth={1.5} /> },
-    { key: 'darkroom', label: 'Files', icon: <ImageIcon size={16} strokeWidth={1.5} /> }
-  ];
+  const pinnedKeys =
+    profile?.pinnedNavItems && profile.pinnedNavItems.length > 0
+      ? profile.pinnedNavItems.slice(0, 5)
+      : DEFAULT_NAV_KEYS;
+
+  const tabs = pinnedKeys.map((key) => ({
+    key,
+    label: getLabelForKey(key),
+    icon: getIconForKey(key),
+  }));
 
   return (
     <AnimatePresence>
@@ -51,7 +116,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
           initial={{ y: 100 }}
           animate={{ y: 0 }}
           exit={{ y: 100 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className="fixed bottom-5 left-0 right-0 z-[100] md:hidden px-4 pointer-events-none flex justify-center"
         >
           <div className="bg-nous-text/95 backdrop-blur-md text-nous-base p-1.5 rounded-[26px] flex items-center justify-between gap-0.5 pointer-events-auto shadow-2xl border border-white/10 max-w-md w-full relative overflow-hidden">
@@ -62,7 +127,10 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
             {isLoading ? (
               <div className="flex items-center justify-between w-full px-2 py-2">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-10 flex-1 mx-0.5 bg-white/10 animate-pulse rounded-[18px]" />
+                  <div
+                    key={i}
+                    className="h-10 flex-1 mx-0.5 bg-white/10 animate-pulse rounded-[18px]"
+                  />
                 ))}
               </div>
             ) : (
@@ -101,7 +169,11 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
                         tab.icon
                       )}
                     </div>
-                    <span className={`relative z-10 text-[8px] uppercase tracking-[0.12em] font-sans leading-none ${isActive ? 'font-bold' : 'font-semibold'}`}>
+                    <span
+                      className={`relative z-10 text-[8px] uppercase tracking-[0.12em] font-sans leading-none ${
+                        isActive ? 'font-bold' : 'font-semibold'
+                      }`}
+                    >
                       {tab.label}
                     </span>
                   </button>

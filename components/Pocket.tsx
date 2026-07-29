@@ -60,8 +60,8 @@ const SonicShardPlayer: React.FC<{ url: string }> = ({ url }) => {
  <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-nous-base gap-6 text-center group">
  <audio ref={audioRef} src={url} onEnded={() => setIsPlaying(false)} className="hidden"/>
  <div className="relative">
- <div className={`absolute inset-0 bg-nous-base0/20 blur-xl rounded-none transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-0'}`} />
- <button onClick={togglePlay} className="relative z-10 p-5 bg-white rounded-none hover:scale-110 active:scale-95 transition-all text-nous-subtle">
+ <div className={`absolute inset-0 bg-nous-base0/20 blur-xl rounded-nous-sm transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-0'}`} />
+ <button onClick={togglePlay} className="relative z-10 p-5 bg-nous-base rounded-nous-sm hover:scale-110 active:scale-95 transition-all text-nous-subtle">
  {isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1"/>}
  </button>
  </div>
@@ -77,7 +77,7 @@ const ColorStory: React.FC<{ colors: ColorShard[] }> = ({ colors = [] }) => (
  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
  {colors?.map((c, i) => (
  <div key={i} className="space-y-3">
- <div className="aspect-square rounded-none border border-black/5 /10"style={{ backgroundColor: c.hex }} />
+ <div className="aspect-square rounded-nous-sm border border-black/5" style={{ backgroundColor: c.hex }} />
  <div className="space-y-1">
  <span className="font-mono text-[9px] uppercase font-black text-nous-text ">{c.name}</span>
  <p className="font-serif italic text-[10px] text-nous-subtle leading-tight">{c.descriptor}</p>
@@ -98,7 +98,7 @@ const FinancialBriefOverlay: React.FC<{ report: InvestmentReport; onClose: () =>
  role="dialog"
  aria-modal="true"
  aria-labelledby="financial-brief-title"
- className="w-full max-w-4xl bg-nous-base text-nous-text border border-nous-border rounded-none overflow-hidden flex flex-col max-h-[90vh] shadow-2xl"
+ className="w-full max-w-4xl bg-nous-base text-nous-text border border-nous-border rounded-nous-sm overflow-hidden flex flex-col max-h-[90vh] shadow-2xl"
  >
  <header className="flex justify-between items-center gap-4 p-5 md:p-8 border-b border-nous-border bg-nous-text text-nous-base shrink-0">
  <div className="flex items-center gap-4">
@@ -119,7 +119,7 @@ const FinancialBriefOverlay: React.FC<{ report: InvestmentReport; onClose: () =>
  <section className="space-y-6">
  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
  <span className="font-sans text-xs uppercase tracking-widest font-black text-nous-subtle">Executive Thesis</span>
- <div className="flex items-center self-start gap-2 px-3 py-2 bg-nous-base border border-nous-border rounded-none">
+ <div className="flex items-center self-start gap-2 px-3 py-2 bg-nous-base border border-nous-border rounded-nous-sm">
  <Activity size={12} className="text-nous-subtle"/>
  <span className="font-mono text-xs text-nous-subtle font-bold">IMPACT: {report.capsule_impact_score}/100</span>
  </div>
@@ -134,9 +134,9 @@ const FinancialBriefOverlay: React.FC<{ report: InvestmentReport; onClose: () =>
  <span className="font-sans text-xs uppercase tracking-widest font-black text-nous-subtle border-b border-nous-border pb-2 block">Capital Allocation Roadmap</span>
  <div className="grid gap-4">
  {report.capital_allocation.map((item, i) => (
- <div key={i} className="p-6 bg-nous-base border border-nous-border rounded-none flex flex-col md:flex-row gap-6">
+ <div key={i} className="p-6 bg-nous-base border border-nous-border rounded-nous-sm flex flex-col md:flex-row gap-6">
  <div className="md:w-1/4 space-y-2 shrink-0">
- <span className={`inline-block font-sans text-xs uppercase tracking-widest font-black px-2 py-1 rounded-none ${item.category === 'KEYSTONE ASSET' ? 'bg-nous-text text-nous-base' : item.category === 'VANITY METRIC' ? 'bg-red-700 text-white' : 'border border-nous-border bg-nous-base text-nous-subtle'}`}>
+ <span className={`inline-block font-sans text-xs uppercase tracking-widest font-black px-2 py-1 rounded-nous-sm ${item.category === 'KEYSTONE ASSET' ? 'bg-nous-text text-nous-base' : item.category === 'VANITY METRIC' ? 'bg-danger text-nous-base' : 'border border-nous-border bg-nous-base text-nous-subtle'}`}>
  {item.category}
  </span>
  <p className="font-mono text-xs text-nous-subtle pt-2">{item.fiscal_route}</p>
@@ -155,7 +155,7 @@ const FinancialBriefOverlay: React.FC<{ report: InvestmentReport; onClose: () =>
  </section>
 
  {report.missing_infrastructure && (
- <section className="p-6 bg-amber-50 dark:bg-amber-950 border border-amber-700 dark:border-amber-400 rounded-none space-y-2">
+ <section className="p-6 bg-amber-50 dark:bg-amber-950 border border-amber-700 dark:border-amber-400 rounded-nous-sm space-y-2">
  <span className="font-sans text-xs uppercase tracking-widest font-black text-amber-900 dark:text-amber-200 flex items-center gap-2"><AlertTriangle size={12} /> Missing Infrastructure</span>
  <p className="font-serif italic text-base text-amber-950 dark:text-amber-100 leading-relaxed">{report.missing_infrastructure}</p>
  </section>
@@ -402,8 +402,8 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  };
 
  return (
- <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9000] bg-white flex flex-col md:flex-row overflow-hidden">
- <button type="button" onClick={onClose} aria-label="Close shard record" className="absolute top-6 right-6 z-50 min-h-11 min-w-11 p-3 bg-black/10 /10 rounded-none hover:bg-red-500 hover:text-white transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nous-text">
+ <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9000] bg-nous-base flex flex-col md:flex-row overflow-hidden">
+ <button type="button" onClick={onClose} aria-label="Close shard record" className="absolute top-6 right-6 z-50 min-h-11 min-w-11 p-3 bg-black/10 rounded-nous-sm hover:bg-danger hover:text-nous-base transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nous-text">
  <X size={24} aria-hidden="true" />
  </button>
  
@@ -420,7 +420,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  {/* Expanded Metadata */}
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
  {item.agentEnrichment && (
- <div className="p-6 bg-nous-base /50 rounded-none border border-nous-border space-y-4">
+ <div className="p-6 bg-nous-base /50 rounded-nous-sm border border-nous-border space-y-4">
  <div className="flex items-center gap-2">
  <Fingerprint size={14} className="text-nous-subtle"/>
  <span className="font-sans text-[9px] uppercase tracking-widest font-black text-nous-subtle">Agent Enrichment</span>
@@ -439,14 +439,14 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  )}
 
  {item.content.semiotic_touchpoints && (
- <div className="p-6 bg-nous-base /50 rounded-none border border-nous-border space-y-4">
+ <div className="p-6 bg-nous-base /50 rounded-nous-sm border border-nous-border space-y-4">
  <div className="flex items-center gap-2">
  <Zap size={14} className="text-indigo-500"/>
  <span className="font-sans text-[9px] uppercase tracking-widest font-black text-nous-subtle">Semiotic Signals</span>
  </div>
  <div className="flex flex-wrap gap-2">
  {item.content.semiotic_touchpoints.map((pt: string, i: number) => (
- <span key={i} className="px-2 py-1 bg-white text-nous-subtle font-mono text-[8px] rounded-none border border-nous-border">
+ <span key={i} className="px-2 py-1 bg-nous-base text-nous-subtle font-mono text-[8px] rounded-nous-sm border border-nous-border">
  {pt}
  </span>
  ))}
@@ -457,7 +457,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  </div>
  )}
  {item.type === 'zine_card' && (
- <div className="w-full max-w-2xl bg-white p-6 md:p-12 space-y-8 overflow-y-auto max-h-[80vh] border border-nous-border">
+ <div className="w-full max-w-2xl bg-nous-base p-6 md:p-12 space-y-8 overflow-y-auto max-h-[80vh] border border-nous-border">
  <div className="space-y-2 border-b border-nous-border pb-6">
  <span className="font-sans text-[10px] uppercase tracking-[0.4em] text-nous-subtle font-black">Zine Inspection</span>
  <h2 className="font-serif text-4xl italic text-nous-text text-nous-text">{item.content.title}</h2>
@@ -469,7 +469,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  ...(item.content.analysis?.pages?.map(p => p.imageUrl) || []),
  ...(item.content.analysis?.visual_shards?.map(s => s.imageUrl) || [])
  ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).map((url, i) => (
- <div key={i} className="group relative aspect-square bg-nous-base rounded-none overflow-hidden border border-nous-border">
+ <div key={i} className="group relative aspect-square bg-nous-base rounded-nous-sm overflow-hidden border border-nous-border">
  <img src={url} className="w-full h-full object-cover transition-all"/>
  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">
  <button 
@@ -500,7 +500,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Failed to inject shard.", type: 'error' } }));
  }
  }}
- className="w-full py-2 bg-nous-base0 text-white font-sans text-[8px] uppercase tracking-widest font-black rounded-none hover:scale-105 active:scale-95 transition-all"
+ className="w-full py-2 bg-nous-base0 text-white font-sans text-[8px] uppercase tracking-widest font-black rounded-nous-sm hover:scale-105 active:scale-95 transition-all"
  >
  Inject Shard
  </button>
@@ -526,11 +526,11 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  </div>
 
  <div className="grid grid-cols-2 gap-4">
- <div className="p-4 bg-black/40 rounded-none">
+ <div className="p-4 bg-black/40 rounded-nous-sm">
  <span className="block font-mono text-[8px] text-nous-subtle mb-2">LIGHTING</span>
  <span className="font-serif italic text-sm text-white">{item.content.content?.lighting_analysis}</span>
  </div>
- <div className="p-4 bg-black/40 rounded-none">
+ <div className="p-4 bg-black/40 rounded-nous-sm">
  <span className="block font-mono text-[8px] text-nous-subtle mb-2">CULTURE</span>
  <span className="font-serif italic text-sm text-white">{item.content.content?.cultural_parallel}</span>
  </div>
@@ -550,7 +550,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  <span className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle">Semiotic Touchpoints</span>
  <div className="flex flex-wrap gap-2">
  {item.content.content.semiotic_touchpoints.map((pt: string, i: number) => (
- <span key={i} className="px-3 py-1.5 bg-black/40 text-nous-subtle font-mono text-[9px] rounded-none border border-white/5">
+ <span key={i} className="px-3 py-1.5 bg-black/40 text-nous-subtle font-mono text-[9px] rounded-nous-sm border border-white/5">
  {pt}
  </span>
  ))}
@@ -560,7 +560,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  </div>
  )}
  {!['image', 'zine_card', 'voicenote', 'audio', 'analysis_report'].includes(item.type) && (
- <article className="w-full max-w-3xl max-h-[80vh] overflow-y-auto border border-nous-border bg-white p-6 md:p-12">
+ <article className="w-full max-w-3xl max-h-[80vh] overflow-y-auto border border-nous-border bg-nous-base p-6 md:p-12">
  <div className="mb-8 space-y-2 border-b border-nous-border pb-6">
  <span className="font-sans text-[9px] uppercase tracking-[0.35em] font-black text-nous-subtle">Saved artifact</span>
  <h1 className="font-serif text-3xl lg:text-5xl italic leading-tight text-nous-text">{title || 'Untitled Fragment'}</h1>
@@ -572,7 +572,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  </div>
  
  {/* DATA SIDE */}
- <div className="w-full md:w-[380px] lg:w-[450px] bg-white border-l border-nous-border p-6 md:p-8 lg:p-12 flex flex-col gap-12 overflow-y-auto">
+ <div className="w-full md:w-[380px] lg:w-[450px] bg-nous-base border-l border-nous-border p-6 md:p-8 lg:p-12 flex flex-col gap-12 overflow-y-auto">
  <div className="space-y-8">
  <div className="flex justify-between items-center border-b border-nous-border pb-2">
  <span className="font-sans text-[10px] uppercase tracking-[0.5em] text-nous-subtle font-black italic">Shard Metadata</span>
@@ -587,15 +587,15 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  <div className="space-y-6">
  <div className="space-y-2">
  <label className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle font-black">Title</label>
- <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-nous-base p-3 font-serif italic text-xl focus:outline-none rounded-none border-b border-nous-border"placeholder="Shard Title..."/>
+ <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-nous-base p-3 font-serif italic text-xl focus:outline-none rounded-nous-sm border-b border-nous-border"placeholder="Shard Title..."/>
  </div>
  <div className="space-y-2">
  <label className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle font-black">Description</label>
- <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full h-24 bg-nous-base p-3 font-serif italic text-sm focus:outline-none rounded-none border-b border-nous-border"placeholder="Aesthetic description..."/>
+ <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full h-24 bg-nous-base p-3 font-serif italic text-sm focus:outline-none rounded-nous-sm border-b border-nous-border"placeholder="Aesthetic description..."/>
  </div>
  <div className="space-y-2">
  <label className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle font-black">Price / Valuation</label>
- <input value={price} onChange={e => setPrice(e.target.value)} className="w-full bg-nous-base p-3 font-mono text-sm focus:outline-none rounded-none border-b border-nous-border"placeholder="$0.00"/>
+ <input value={price} onChange={e => setPrice(e.target.value)} className="w-full bg-nous-base p-3 font-mono text-sm focus:outline-none rounded-nous-sm border-b border-nous-border"placeholder="$0.00"/>
  </div>
  </div>
  ) : (
@@ -603,7 +603,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  <h2 className="font-serif text-4xl italic text-nous-text text-nous-text leading-tight">{title || 'Untitled Fragment'}</h2>
  {description && <p className="font-serif text-sm text-nous-subtle italic leading-relaxed">{description}</p>}
  {price && (
- <div className="flex items-center gap-2 text-nous-subtle font-mono text-sm bg-nous-base0/5 px-3 py-2 rounded-none w-fit border border-nous-border/10">
+ <div className="flex items-center gap-2 text-nous-subtle font-mono text-sm bg-nous-base0/5 px-3 py-2 rounded-nous-sm w-fit border border-nous-border/10">
  <DollarSign size={14} />
  <span className="font-black">{price}</span>
  </div>
@@ -629,7 +629,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  <textarea 
  value={notes} 
  onChange={e => setNotes(e.target.value)}
- className="w-full h-48 bg-nous-base p-4 font-serif italic text-lg focus:outline-none rounded-none border-b border-nous-border"
+ className="w-full h-48 bg-nous-base p-4 font-serif italic text-lg focus:outline-none rounded-nous-sm border-b border-nous-border"
  placeholder="Record your perception..."
  />
  ) : (
@@ -650,14 +650,14 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  // But better to just ensure onAcquire is passed.
  }
  }}
- className="w-full min-h-11 py-4 bg-nous-text text-nous-base border border-nous-text rounded-none font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 hover:opacity-85 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nous-text"
+ className="w-full min-h-11 py-4 bg-nous-text text-nous-base border border-nous-text rounded-nous-sm font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 hover:opacity-85 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nous-text"
  >
  <Target size={14} aria-hidden="true" /> Run strategist analysis
  </button>
  <div className="grid grid-cols-2 gap-4">
  <button 
  onClick={handleShare}
- className="py-4 border border-nous-border rounded-none font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 hover:bg-nous-base transition-colors"
+ className="py-4 border border-nous-border rounded-nous-sm font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 hover:bg-nous-base transition-colors"
  >
  <Share2 size={14} /> Share Shard
  </button>
@@ -665,13 +665,13 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  <button 
  onClick={handleRefract}
  disabled={isRefracting}
- className="py-4 border border-nous-border rounded-none font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 hover:bg-nous-base transition-colors disabled:opacity-50"
+ className="py-4 border border-nous-border rounded-nous-sm font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 hover:bg-nous-base transition-colors disabled:opacity-50"
  >
  {isRefracting ? <Loader2 size={14} className="animate-spin"/> : <Wand2 size={14} />} Refract Style
  </button>
  )}
  </div>
- <button className="w-full py-4 border border-nous-border rounded-none font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 hover:bg-nous-base transition-colors">
+ <button className="w-full py-4 border border-nous-border rounded-nous-sm font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 hover:bg-nous-base transition-colors">
  <Volume2 size={14} /> Voice Memo
  </button>
  </div>
@@ -1215,7 +1215,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  </AnimatePresence>
  <AnimatePresence>
  {isAnalyzing && (
- <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7000] bg-white/80 /80 backdrop-blur-xl flex flex-col items-center justify-center gap-8">
+ <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7000] bg-nous-base/80 backdrop-blur-xl flex flex-col items-center justify-center gap-8">
  <Loader2 size={48} className={`animate-spin ${activeAgent === 'strategist' ? 'text-nous-subtle' : 'text-indigo-500'}`} />
  <div className="text-center space-y-2">
  <h3 className="font-serif text-3xl italic text-nous-text text-nous-text">
@@ -1229,7 +1229,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  )}
  </AnimatePresence>
 
- <div className="shrink-0 px-4 md:px-8 py-2.5 border-b archive-border flex flex-wrap items-center gap-x-4 gap-y-2 bg-white dark:bg-stone-950">
+ <div className="shrink-0 px-4 md:px-8 py-2.5 border-b archive-border flex flex-wrap items-center gap-x-4 gap-y-2 bg-nous-base">
  <form onSubmit={handleSearch} className="flex items-center gap-2 min-w-[180px]">
  <input
  id="pocket-registry-search"
@@ -1237,7 +1237,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
  placeholder="Search registry..."
- className="w-40 md:w-52 border archive-border bg-white dark:bg-stone-950 px-3 py-2 font-mono text-[10px]"
+ className="w-40 md:w-52 border archive-border bg-nous-base px-3 py-2 font-mono text-[10px]"
  />
  <button
  type="submit"
@@ -1300,7 +1300,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  </div>
 
  {!activeBoard && folders.length > 0 && (
- <div className="shrink-0 px-4 md:px-8 py-2.5 border-b archive-border bg-white dark:bg-stone-950">
+ <div className="shrink-0 px-4 md:px-8 py-2.5 border-b archive-border bg-nous-base">
    <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
      {folders.map((folder) => {
        const memberThumbs = (folder.content.itemIds || [])
@@ -1360,19 +1360,19 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <AnimatePresence>
  {showInjectModal && (
  <div className="fixed inset-0 z-[10000] flex items-center justify-center p-8 bg-nous-base/90 backdrop-blur-xl">
- <div className="w-full max-w-md bg-white p-8 rounded-none space-y-8 border border-nous-border">
+ <div className="w-full max-w-md bg-nous-base p-8 rounded-nous-sm space-y-8 border border-nous-border">
  <div className="flex justify-between items-center">
  <div className="space-y-1">
  <h3 className="font-serif text-2xl italic">Inject Shard.</h3>
  <p className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle font-black">Material Ingestion Protocol</p>
  </div>
- <button onClick={() => setShowInjectModal(false)} className="p-2 text-nous-subtle hover:text-red-500 transition-colors"><X size={20}/></button>
+ <button onClick={() => setShowInjectModal(false)} className="p-2 text-nous-subtle hover:text-danger transition-colors"><X size={20}/></button>
  </div>
  <div className="grid gap-4">
- <button onClick={() => { fileInputRef.current?.click(); setShowInjectModal(false); }} className="w-full py-4 bg-nous-base hover:bg-nous-base0 hover:text-nous-text transition-all rounded-none font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 group">
+ <button onClick={() => { fileInputRef.current?.click(); setShowInjectModal(false); }} className="w-full py-4 bg-nous-base hover:bg-nous-base0 hover:text-nous-text transition-all rounded-nous-sm font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 group">
  <Upload size={14} className="text-nous-subtle group-hover:text-nous-text"/> Upload Local File
  </button>
- <button onClick={() => { window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'archival' })); setShowInjectModal(false); }} className="w-full py-4 bg-nous-base hover:bg-nous-base0 hover:text-nous-text transition-all rounded-none font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 group">
+ <button onClick={() => { window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'archival' })); setShowInjectModal(false); }} className="w-full py-4 bg-nous-base hover:bg-nous-base0 hover:text-nous-text transition-all rounded-nous-sm font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-3 group">
  <FileText size={14} className="text-nous-subtle group-hover:text-nous-text"/> From Authored Registry
  </button>
  </div>
@@ -1403,7 +1403,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  initial={{ opacity: 0, height: 0 }} 
  animate={{ opacity: 1, height: 'auto' }} 
  exit={{ opacity: 0, height: 0 }}
- className="mb-12 p-6 bg-nous-base0/5 border border-nous-border/20 rounded-none overflow-hidden"
+ className="mb-12 p-6 bg-nous-base0/5 border border-nous-border/20 rounded-nous-sm overflow-hidden"
  >
  <div className="flex items-center gap-3 mb-4">
  <Sparkles size={16} className="text-nous-subtle"/>
@@ -1419,7 +1419,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  {/* REPORT OVERLAYS */}
  <AnimatePresence>
  {activeTrendReport && (
- <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="mb-24 p-10 md:p-20 bg-nous-text text-nous-base border border-nous-border/30 rounded-none relative overflow-hidden group">
+ <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="mb-24 p-10 md:p-20 bg-nous-text text-nous-base border border-nous-border/30 rounded-nous-sm relative overflow-hidden group">
  <div className="flex justify-between items-start mb-16">
  <div className="flex items-center gap-4 text-nous-subtle">
  <Radar size={20} className="animate-pulse"/>
@@ -1446,7 +1446,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  )}
 
  {activeAudit && (
- <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="mb-24 p-10 md:p-20 bg-white border-2 border-nous-border/20 rounded-none relative overflow-hidden group">
+ <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="mb-24 p-10 md:p-20 bg-nous-base border-2 border-nous-border/20 rounded-nous-sm relative overflow-hidden group">
  <div className="flex justify-between items-start mb-16">
  <div className="flex items-center gap-4 text-nous-subtle">
  <Briefcase size={20} />
@@ -1457,7 +1457,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
    {isExportingBrief ? <Loader2 size={12} className="animate-spin text-nous-subtle" /> : <FileText size={12} />}
    {isExportingBrief ? "Exporting..." : "Export to Docs"}
   </button>
-  <button onClick={() => setActiveAudit(null)} className="p-3 text-nous-subtle hover:text-red-500 transition-all"><X size={24} /></button>
+  <button onClick={() => setActiveAudit(null)} className="p-3 text-nous-subtle hover:text-danger transition-all"><X size={24} /></button>
  </div>
  </div>
  <div className="grid md:grid-cols-12 gap-16 md:gap-24">
@@ -1518,7 +1518,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4">
           {folderItems.map(item => (
-            <motion.div key={item.id} layout draggable={!isSelectionMode} onDragStartCapture={() => setDraggingItemId(item.id)} onDragEndCapture={() => { setDraggingItemId(null); setDropTargetFolderId(null); }} onClick={() => handleItemClick(item)} className={`group relative bg-white border rounded-none flex flex-col transition-all cursor-pointer ${draggingItemId === item.id ? 'opacity-40' : ''} ${isSelectionMode && selectedIds.has(item.id) ? 'border-nous-border ring-2 ring-stone-500/20' : 'border-nous-border '}`}>
+            <motion.div key={item.id} layout draggable={!isSelectionMode} onDragStartCapture={() => setDraggingItemId(item.id)} onDragEndCapture={() => { setDraggingItemId(null); setDropTargetFolderId(null); }} onClick={() => handleItemClick(item)} className={`group relative bg-nous-base border rounded-nous-sm flex flex-col transition-all cursor-pointer ${draggingItemId === item.id ? 'opacity-40' : ''} ${isSelectionMode && selectedIds.has(item.id) ? 'border-nous-border ring-2 ring-nous-border/40' : 'border-nous-border '}`}>
               <div className="relative aspect-square bg-nous-base overflow-hidden">
                 {item.type === 'image' && <img src={item.content.thumbnailUrl || item.content.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"loading="lazy"/>}
                 {item.content?.metadata?.type === 'geo_pack' && (
@@ -1592,13 +1592,13 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
                 {/* SELECTION CHECKBOX */}
                 {isSelectionMode && (
                 <div className="absolute inset-0 bg-black/10 flex items-start justify-end p-3">
-                <div className={`w-6 h-6 rounded-none border-2 flex items-center justify-center transition-all ${selectedIds.has(item.id) ? 'bg-nous-base0 border-nous-border' : 'bg-white/20 border-white/60'}`}>
+                <div className={`w-6 h-6 rounded-nous-sm border-2 flex items-center justify-center transition-all ${selectedIds.has(item.id) ? 'bg-nous-base0 border-nous-border' : 'bg-white/20 border-white/60'}`}>
                 {selectedIds.has(item.id) && <CheckCircle2 size={12} className="text-white"/>}
                 </div>
                 </div>
                 )}
               </div>
-              <div className="p-3 bg-white dark:bg-stone-900 flex flex-col justify-between flex-1 min-h-[92px]">
+              <div className="p-3 bg-nous-base flex flex-col justify-between flex-1 min-h-[92px]">
                 <div>
                 {item.content.metadata?.folder && (
                   <span className="font-mono text-[8px] uppercase tracking-widest text-[#a8b79f] block mb-2 font-black tracking-[0.2em]">{item.content.metadata.folder}</span>
@@ -1635,7 +1635,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <AnimatePresence>
  {showFolderModal && (
  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[8000] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
- <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white p-10 rounded-none border border-nous-border max-w-sm w-full space-y-8">
+ <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-nous-base p-10 rounded-nous-sm border border-nous-border max-w-sm w-full space-y-8">
  <div className="space-y-2">
  <h3 className="font-serif text-3xl italic tracking-tighter">Stack Shards.</h3>
  <p className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle font-black">{selectedIds.size > 0 ? `Group ${selectedIds.size} fragments into a collection` : 'Name your new collection'}</p>
@@ -1643,7 +1643,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <input type="text"value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder="Collection Name..."className="w-full bg-nous-base border-b border-nous-border p-4 font-serif italic text-xl focus:outline-none"/>
  <div className="flex gap-4">
  <button onClick={() => setShowFolderModal(false)} className="flex-1 py-4 font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle hover:text-nous-text transition-all">Cancel</button>
- <button onClick={handleCreateFolder} className="flex-[2] py-4 bg-nous-text text-nous-base font-sans text-[8px] uppercase tracking-widest font-black rounded-none hover:scale-105 transition-transform">Create Stack</button>
+ <button onClick={handleCreateFolder} className="flex-[2] py-4 bg-nous-text text-nous-base font-sans text-[8px] uppercase tracking-widest font-black rounded-nous-sm hover:scale-105 transition-transform">Create Stack</button>
  </div>
  </motion.div>
  </motion.div>
@@ -1651,7 +1651,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
 
  {showFolderPicker && (
  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[8000] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
- <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white dark:bg-stone-900 p-8 rounded-none border border-nous-border max-w-sm w-full space-y-6">
+ <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-nous-base p-8 rounded-nous-sm border border-nous-border max-w-sm w-full space-y-6">
  <div className="flex items-start justify-between gap-4">
  <div className="space-y-1">
  <h3 className="font-serif text-2xl italic tracking-tighter">Add to Collection.</h3>
@@ -1780,13 +1780,13 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  initial={{ y: 20, opacity: 0 }}
  animate={{ y: 0, opacity: 1 }}
  exit={{ y: 20, opacity: 0 }}
- className="pointer-events-auto bg-nous-base/95 backdrop-blur-3xl p-3 rounded-none flex items-center justify-between border border-white/10 gap-2"
+ className="pointer-events-auto bg-nous-base/95 backdrop-blur-3xl p-3 rounded-nous-sm flex items-center justify-between border border-white/10 gap-2"
  >
  <div className="flex items-center gap-1">
  <button
  onClick={() => setShowFolderModal(true)}
  disabled={selectedIds.size === 0}
- className="flex flex-col items-center gap-1 px-4 py-2 rounded-none text-nous-subtle hover:text-nous-text hover:bg-white/5 transition-all disabled:opacity-30"
+ className="flex flex-col items-center gap-1 px-4 py-2 rounded-nous-sm text-nous-subtle hover:text-nous-text hover:bg-white/5 transition-all disabled:opacity-30"
  >
  <FolderPlus size={18} />
  <span className="font-sans text-[7px] uppercase tracking-widest font-black">Stack</span>
@@ -1794,7 +1794,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <button
  onClick={() => setShowFolderPicker(true)}
  disabled={selectedIds.size === 0 || folders.length === 0}
- className="flex flex-col items-center gap-1 px-4 py-2 rounded-none text-nous-subtle hover:text-nous-text hover:bg-white/5 transition-all disabled:opacity-30"
+ className="flex flex-col items-center gap-1 px-4 py-2 rounded-nous-sm text-nous-subtle hover:text-nous-text hover:bg-white/5 transition-all disabled:opacity-30"
  >
  <FolderOpen size={18} />
  <span className="font-sans text-[7px] uppercase tracking-widest font-black">Add to</span>
@@ -1802,7 +1802,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <button
  onClick={() => setShowBatchTagModal(true)}
  disabled={selectedIds.size === 0}
- className="flex flex-col items-center gap-1 px-4 py-2 rounded-none text-nous-subtle hover:text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-30"
+ className="flex flex-col items-center gap-1 px-4 py-2 rounded-nous-sm text-nous-subtle hover:text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-30"
  >
  <Tag size={18} />
  <span className="font-sans text-[7px] uppercase tracking-widest font-black">Batch Tag</span>
@@ -1811,7 +1811,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <button
  onClick={handleDesignerAudit}
  disabled={selectedIds.size === 0}
- className="flex flex-col items-center gap-1 px-4 py-2 rounded-none text-nous-subtle hover:text-indigo-400 hover:bg-indigo-500/10 transition-all disabled:opacity-30"
+ className="flex flex-col items-center gap-1 px-4 py-2 rounded-nous-sm text-nous-subtle hover:text-indigo-400 hover:bg-indigo-500/10 transition-all disabled:opacity-30"
  >
  <Briefcase size={18} />
  <span className="font-sans text-[7px] uppercase tracking-widest font-black">Audit</span>
@@ -1819,7 +1819,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <button
  onClick={handleBatchRefract}
  disabled={selectedIds.size === 0}
- className="flex flex-col items-center gap-1 px-4 py-2 rounded-none text-nous-subtle hover:text-purple-400 hover:bg-purple-500/10 transition-all disabled:opacity-30"
+ className="flex flex-col items-center gap-1 px-4 py-2 rounded-nous-sm text-nous-subtle hover:text-purple-400 hover:bg-purple-500/10 transition-all disabled:opacity-30"
  >
  <Wand2 size={18} />
  <span className="font-sans text-[7px] uppercase tracking-widest font-black">Refract</span>
@@ -1857,7 +1857,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  }
  }}
  disabled={selectedIds.size === 0}
- className="flex flex-col items-center gap-1 px-4 py-2 rounded-none text-nous-subtle hover:text-nous-subtle hover:bg-nous-base0/10 transition-all disabled:opacity-30"
+ className="flex flex-col items-center gap-1 px-4 py-2 rounded-nous-sm text-nous-subtle hover:text-nous-subtle hover:bg-nous-base0/10 transition-all disabled:opacity-30"
  >
  <Radio size={18} />
  <span className="font-sans text-[7px] uppercase tracking-widest font-black">Broadcast</span>
@@ -1874,7 +1874,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  }} className="font-sans text-[9px] uppercase tracking-widest font-black text-nous-subtle hover:text-nous-text transition-colors">
  {selectedIds.size === filteredItems.length ? 'Deselect All' : 'Select All'}
  </button>
- <button onClick={() => { setIsSelectionMode(!isSelectionMode); if(isSelectionMode) setSelectedIds(new Set()); }} className={`p-2 rounded-none transition-colors ${isSelectionMode ? 'bg-red-500 text-white' : 'bg-white/10 text-nous-subtle hover:bg-white/20'}`}>
+ <button onClick={() => { setIsSelectionMode(!isSelectionMode); if(isSelectionMode) setSelectedIds(new Set()); }} className={`p-2 rounded-nous-sm transition-colors ${isSelectionMode ? 'bg-danger text-nous-base' : 'bg-white/10 text-nous-subtle hover:bg-white/20'}`}>
  {isSelectionMode ? <X size={16} /> : <CheckCircle2 size={16} />}
  </button>
  </div>

@@ -527,8 +527,9 @@ export const InputStudio: React.FC<{
 
   const [coverBorder, setCoverBorder] = useState<"thin" | "double" | "none" | "dashed">("thin");
   const [coverPersonalizationTab, setCoverPersonalizationTab] = useState<
-    "border" | "text" | "image"
+    "border" | "text" | "image" | "index"
   >("border");
+  const [coverIndexText, setCoverIndexText] = useState("");
   const [coverOverlay, setCoverOverlay] = useState<boolean>(false);
   const [coverOverlayLayers, setCoverOverlayLayers] = useState<StudioCoverOverlayLayer[]>([]);
   const [isDraggingOverSlot, setIsDraggingOverSlot] = useState<boolean>(false);
@@ -1101,7 +1102,7 @@ export const InputStudio: React.FC<{
     onUrlAppend: (url) => setInput((prev) => (prev ? `${prev}\n${url}` : url)),
   });
 
-  const triggerAccession = useCallback((isQuickPreview = false) => {
+  const triggerAccession = useCallback((isQuickPreview = false, isPublic = false) => {
     let finalInput = input;
     if (activeThread && activeThread.narrative) {
       finalInput = `${input}\n\n[THREAD CONTEXT: ${activeThread.narrative}]`;
@@ -1164,7 +1165,7 @@ ${finalInput}`;
 
     onRefine(finalInput, mediaFiles, selectedTone || "CONTENT", {
       deepThinking,
-      isPublic: false,
+      isPublic,
       isLite: isQuickPreview ? true : liteMode,
       isQuickPreview,
       bypassTailor: !useTailorProfile,
@@ -3140,6 +3141,12 @@ ${finalInput}`;
                               />
                             </div>
                             <StudioCoverOverlayCanvas layers={coverOverlayLayers} visible={coverOverlay} />
+
+                            {coverIndexText && (
+                              <span className="absolute bottom-2 left-2 pointer-events-none select-none z-[3] font-mono text-[8px] uppercase tracking-[0.18em] text-[#FAF9F6] drop-shadow-sm leading-none">
+                                {coverIndexText}
+                              </span>
+                            )}
                             
                             {/* Hover Overlay - only show text if not panning */}
                             {!isPanningCover && (
@@ -3244,8 +3251,8 @@ ${finalInput}`;
 
               {/* Curation Controls */}
               <div className="space-y-3">
-                <div className="grid grid-cols-3 border-b studio-border" role="tablist" aria-label="Cover personalization">
-                  {(["border", "text", "image"] as const).map((tab) => (
+                <div className="grid grid-cols-4 border-b studio-border" role="tablist" aria-label="Cover personalization">
+                  {(["border", "text", "image", "index"] as const).map((tab) => (
                     <button
                       key={tab}
                       type="button"
@@ -3321,6 +3328,30 @@ ${finalInput}`;
                     </div>
                   )}
 
+                  {coverPersonalizationTab === "index" && (
+                    <div className="space-y-2">
+                      <p className="font-mono text-[7px] uppercase tracking-widest studio-text-muted">
+                        Index overlay
+                      </p>
+                      <input
+                        type="text"
+                        value={coverIndexText}
+                        onChange={(e) => setCoverIndexText(e.target.value)}
+                        placeholder="Issue no., date, volume..."
+                        className="w-full bg-transparent border studio-border px-2 py-1.5 text-xs studio-text-ink placeholder:studio-text-muted outline-none focus:border-stone-500 dark:focus:border-stone-400 transition-colors"
+                      />
+                      {coverIndexText && (
+                        <button
+                          type="button"
+                          onClick={() => setCoverIndexText("")}
+                          className="font-mono text-[7px] uppercase tracking-widest studio-text-muted hover:studio-text-ink"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {coverPersonalizationTab === "image" && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
@@ -3375,7 +3406,26 @@ ${finalInput}`;
                   )}
                 </div>
 
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-between">
+                  {/* Submit to Zine button */}
+                  <button
+                    type="button"
+                    disabled={isThinking || !input.trim()}
+                    onClick={() => {
+                      triggerAccession(false, true);
+                      playClick();
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-950 dark:bg-stone-100 text-stone-50 dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-white font-mono text-[7.5px] uppercase tracking-widest font-extrabold transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    title="Develop and publish this issue to the Zine"
+                  >
+                    {isThinking ? (
+                      <Loader2 size={10} className="animate-spin" />
+                    ) : (
+                      <BookOpen size={10} strokeWidth={2} aria-hidden="true" />
+                    )}
+                    {isThinking ? "Developing..." : "Submit to Zine"}
+                  </button>
+
                   {/* Overlay toggle — stickers, logos, text layers */}
                   <button
                     type="button"
@@ -3405,7 +3455,7 @@ ${finalInput}`;
                     </span>
                     <span className="sr-only">{coverOverlay ? "On" : "Off"}</span>
                   </button>
-                  </div>
+                </div>
 
                 {coverOverlay && (
                   <StudioCoverOverlayPanel
@@ -5319,6 +5369,11 @@ ${finalInput}`;
                               referrerPolicy="no-referrer"
                             />
                             <StudioCoverOverlayCanvas layers={coverOverlayLayers} visible={coverOverlay} />
+                            {coverIndexText && (
+                              <span className="absolute bottom-2 left-2 pointer-events-none select-none z-[3] font-mono text-[8px] uppercase tracking-[0.18em] text-[#FAF9F6] drop-shadow-sm leading-none">
+                                {coverIndexText}
+                              </span>
+                            )}
                           </div>
                         );
                       }
