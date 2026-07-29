@@ -324,13 +324,15 @@ export const ArtStyleMintVisual: React.FC<ArtStyleMintVisualProps> = ({
             <div key={c} className="h-1.5 flex-1 border border-white/10" style={{ backgroundColor: c }} />
           ))}
         </div>
-        <div className="flex justify-between items-end font-mono text-[8px] text-stone-400 uppercase tracking-widest">
-          <span>{sysCode}</span>
-          <span className="text-stone-500 truncate max-w-[40%] text-right">{tactile.dominant}</span>
-          <span>{latCoords}</span>
+        <div className="flex justify-between items-end gap-2 font-mono text-[8px] text-stone-400 uppercase tracking-widest">
+          <span className="shrink-0">{sysCode}</span>
+          <span className="shrink-0 text-right">{latCoords.replace("LAT_COORDS // ", "LAT // ")}</span>
         </div>
-        <div className="mt-1 font-mono text-[7px] text-stone-600 uppercase tracking-wider truncate">
-          {fonts.serif} · {fonts.sans}
+        <div className="mt-1 flex justify-between gap-2 font-mono text-[7px] text-stone-600 uppercase tracking-wider">
+          <span className="truncate">{tactile.dominant}</span>
+          <span className="truncate text-right">
+            {fonts.serif} · {fonts.sans}
+          </span>
         </div>
       </div>
     </div>
