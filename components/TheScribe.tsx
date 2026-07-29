@@ -52,8 +52,24 @@ interface TheScribeProps {
   initialIntent?: string;
 }
 
+type EntityId = 'mimi' | 'cyrus' | 'engine' | 'synthesis';
+
+// Static entity config — kept outside the component to avoid recreation on every render.
+// Icons are rendered lazily inside the map to stay within JSX render context.
+const ENTITY_CONFIG: ReadonlyArray<{
+  id: EntityId;
+  label: string;
+  icon: React.ReactElement;
+  activeClass: string;
+}> = [
+  { id: 'mimi',      label: 'Mimi',      icon: <Sparkles size={12} />,  activeClass: 'bg-white text-black shadow-sm' },
+  { id: 'cyrus',     label: 'Cyrus',     icon: <Briefcase size={12} />, activeClass: 'bg-black text-white shadow-sm' },
+  { id: 'engine',    label: 'Engine',    icon: <PenTool size={12} />,   activeClass: 'bg-stone-800 text-white shadow-sm' },
+  { id: 'synthesis', label: 'Synthesis', icon: <Zap size={12} />,       activeClass: 'bg-indigo-600 text-white shadow-sm' },
+] as const;
+
 export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mimi', initialIntent = '' }) => {
-  const [activeEntity, setActiveEntity] = useState<'mimi' | 'cyrus' | 'engine' | 'synthesis'>(initialTab);
+  const [activeEntity, setActiveEntity] = useState<EntityId>(initialTab);
   const [userNotes, setUserNotes] = useState('');
   const [aiTranscript, setAiTranscript] = useState('');
   const [activeCaptureTab, setActiveCaptureTab] = useState<'notes' | 'sketch' | 'context'>('notes');
@@ -247,45 +263,44 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
     >
       {/* Top/Left: Communion Area */}
       <div className="flex-1 relative">
-        {/* Entity Toggle */}
-        <div className="absolute top-8 right-8 z-20 flex bg-black/10 dark:bg-white/10 p-1 rounded-full backdrop-blur-md">
-          <button
-            onClick={() => setActiveEntity('mimi')}
-            className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-              activeEntity === 'mimi' ? 'bg-white text-black shadow-sm' : 'text-white/60 hover:text-white'
-            }`}
-          >
-            <Sparkles size={12} />
-            Mimi
-          </button>
-          <button
-            onClick={() => setActiveEntity('cyrus')}
-            className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-              activeEntity === 'cyrus' ? 'bg-black text-white shadow-sm' : 'text-white/60 hover:text-white'
-            }`}
-          >
-            <Briefcase size={12} />
-            Cyrus
-          </button>
-          <button
-            onClick={() => setActiveEntity('engine')}
-            className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-              activeEntity === 'engine' ? 'bg-stone-800 text-white shadow-sm' : 'text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white'
-            }`}
-          >
-            <PenTool size={12} />
-            Engine
-          </button>
-          <button
-            onClick={() => setActiveEntity('synthesis')}
-            className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-              activeEntity === 'synthesis' ? 'bg-indigo-600 text-white shadow-sm' : 'text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white'
-            }`}
-          >
-            <Zap size={12} />
-            Synthesis
-          </button>
+        {/* Entity Toggle
+            The surface behind the toggle depends on the active entity:
+              - Mimi / Synthesis → LiveMentor theme 'mimi'  → hardcoded bg-white (white surface)
+              - Cyrus            → LiveMentor theme 'cyrus'  → hardcoded bg-black (dark surface)
+              - Engine           → TheGEOEngine bg-nous-base → adaptive (white in light-mode, dark in dark-mode)
+            The toggle container and inactive text adapt accordingly so they stay legible on each surface. */}
+        {(() => {
+          const isWhiteSurface = activeEntity === 'mimi' || activeEntity === 'synthesis';
+          const isAdaptiveSurface = activeEntity === 'engine';
+          const containerBg = isWhiteSurface
+            ? 'bg-black/10'
+            : isAdaptiveSurface
+              ? 'bg-black/10 dark:bg-white/10'
+              : 'bg-white/10';
+          const inactiveClass = isWhiteSurface
+            ? 'text-black/60 hover:text-black'
+            : isAdaptiveSurface
+              ? 'text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white'
+              : 'text-white/60 hover:text-white';
+          return (
+        <div className={`absolute top-8 right-8 z-20 flex p-1 rounded-full backdrop-blur-md ${containerBg}`}>
+          {ENTITY_CONFIG.map(({ id, label, icon, activeClass }) => {
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveEntity(id)}
+                className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
+                  activeEntity === id ? activeClass : inactiveClass
+                }`}
+              >
+                {icon}
+                {label}
+              </button>
+            );
+          })}
         </div>
+          );
+        })()}
 
         {activeEntity === 'engine' ? (
           <TheGEOEngine 
