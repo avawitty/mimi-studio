@@ -1372,6 +1372,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.warn("MIMI // Auth Bypassed by User.");
   }, []);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('mimi_simulated_mode', isSimulatedMode ? '1' : '0');
+    } catch {
+      // no-op
+    }
+    setSystemStatus((prev) => ({
+      ...prev,
+      storage: isSimulatedMode ? 'limited' : (prev.storage === 'limited' ? 'nominal' : prev.storage)
+    }));
+  }, [isSimulatedMode]);
+
   return (
     <UserContext.Provider value={{ 
       user, profile, loading, isElevatorLoading, setElevatorLoading, updateProfile, toggleZineStar,
@@ -1407,14 +1419,3 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </UserContext.Provider>
   );
 };
-  useEffect(() => {
-    try {
-      localStorage.setItem('mimi_simulated_mode', isSimulatedMode ? '1' : '0');
-    } catch {
-      // no-op
-    }
-    setSystemStatus((prev) => ({
-      ...prev,
-      storage: isSimulatedMode ? 'limited' : (prev.storage === 'limited' ? 'nominal' : prev.storage)
-    }));
-  }, [isSimulatedMode]);
