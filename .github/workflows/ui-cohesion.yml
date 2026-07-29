@@ -22,8 +22,8 @@ jobs:
       - name: Install dependencies
         run: |
           for attempt in 1 2 3; do
-            npm ci
-            status=$?
+            status=0
+            npm ci || status=$?
             if [ "$status" -eq 0 ]; then
               break
             fi
