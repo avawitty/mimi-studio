@@ -831,6 +831,12 @@ const useAppRouter = () => {
 
   useEffect(() => {
     if (path === "/" || path === "") {
+      // Do not redirect while callback query params are still present on the
+      // root URL.  Checkout (?checkout=…), Firebase email-link (?mode=…/
+      // ?oobCode=…), and patron-mint (?view=…) handlers all read
+      // window.location.search; navigating away first would wipe those params
+      // before the handlers can inspect them.
+      if (window.location.search) return;
       navigate("/studio", { replace: true });
     }
   }, [navigate, path]);
