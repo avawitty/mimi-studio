@@ -2150,7 +2150,8 @@ ${finalInput}`;
       />
       {/* MAIN STUDIO AREA */}
       <div
-        className="flex-1 w-full flex overflow-hidden relative pb-14"
+        className="flex-1 w-full flex overflow-hidden relative pb-14 md:pb-14"
+        style={isMobile ? { paddingBottom: 'calc(44px + 64px + env(safe-area-inset-bottom, 0px))' } : undefined}
         {...(isMobile
           ? { onTouchStart: handleStudioTouchStart, onTouchEnd: handleStudioTouchEnd }
           : {})}
@@ -2790,20 +2791,144 @@ ${finalInput}`;
 
               {/* Mobile Sticky Action Cluster (sits directly above the bottom nav) */}
               {isMobile && (
-                <div className="studio-mobile-actions fixed left-0 right-0 px-3 pt-2.5 pb-3 studio-bg-panel border-t studio-border z-[45] flex flex-col gap-2">
-                  <div className="flex items-stretch gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setToolsSheetOpen(true);
-                        playClick();
-                      }}
-                      aria-label="Open creation tools"
-                      className="w-12 shrink-0 flex flex-col items-center justify-center gap-1 border studio-border studio-bg-surface studio-text-ink rounded-sm active:scale-95 transition-transform"
-                    >
-                      <LayoutGrid size={15} strokeWidth={1.7} />
-                      <span className="font-mono text-[6px] uppercase tracking-[0.12em] font-bold leading-none">Tools</span>
-                    </button>
+                <div className="studio-mobile-actions fixed left-0 right-0 studio-bg-panel border-t studio-border z-[45] flex flex-col">
+                  {/* Floating scrollable tools toolbar */}
+                  <div className="flex items-center gap-0 overflow-x-auto no-scrollbar border-b studio-border px-2 py-1.5">
+                    {([
+                      {
+                        key: "attach",
+                        label: "Attach",
+                        icon: <Paperclip size={14} strokeWidth={1.6} />,
+                        active: false,
+                        onClick: () => { mediaInputRef.current?.click(); playClick(); },
+                      },
+                      {
+                        key: "voice",
+                        label: isRecording ? "Stop" : "Voice",
+                        icon: isTranscribing ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : isRecording ? (
+                          <Square size={13} fill="currentColor" />
+                        ) : (
+                          <Mic size={14} strokeWidth={1.6} />
+                        ),
+                        active: isRecording || isTranscribing,
+                        onClick: () => { startRecording(); playClick(); },
+                      },
+                      {
+                        key: "dictate",
+                        label: isDictating ? "Stop" : "Dictate",
+                        icon: <Radio size={14} strokeWidth={1.6} />,
+                        active: isDictating,
+                        onClick: () => { handleDictationToggle(); playClick(); },
+                      },
+                      {
+                        key: "title",
+                        label: "Title",
+                        icon: <Zap size={14} strokeWidth={1.6} />,
+                        active: false,
+                        onClick: () => { handleAutoGenerateTitle(); playClick(); },
+                      },
+                      {
+                        key: "spark",
+                        label: "Spark",
+                        icon: <Sparkles size={14} strokeWidth={1.6} />,
+                        active: isGeneratingPrompt,
+                        onClick: async () => {
+                          playClick();
+                          setIsGeneratingPrompt(true);
+                          try {
+                            const newPrompt = await generateAutoAwesomePrompt();
+                            setInput(newPrompt);
+                          } catch (e) {
+                            console.error(e);
+                          } finally {
+                            setIsGeneratingPrompt(false);
+                          }
+                        },
+                      },
+                      {
+                        key: "deep",
+                        label: "Deep",
+                        icon: <BrainCircuit size={14} strokeWidth={1.6} />,
+                        active: deepThinking,
+                        onClick: () => { setDeepThinking(!deepThinking); playClick(); },
+                      },
+                      {
+                        key: "web",
+                        label: "Web",
+                        icon: <Globe size={14} strokeWidth={1.6} />,
+                        active: useSearch,
+                        onClick: () => { setUseSearch(!useSearch); playClick(); },
+                      },
+                      {
+                        key: "tailor",
+                        label: "Tailor",
+                        icon: <Scissors size={14} strokeWidth={1.6} />,
+                        active: !useTailorProfile,
+                        onClick: () => { setUseTailorProfile(!useTailorProfile); playClick(); },
+                      },
+                      {
+                        key: "optics",
+                        label: "Optics",
+                        icon: <Eye size={14} strokeWidth={1.6} />,
+                        active: activePanel === "telemetry",
+                        onClick: () => { togglePanel("telemetry"); playClick(); },
+                      },
+                      {
+                        key: "treatments",
+                        label: "Treatments",
+                        icon: <Paintbrush size={14} strokeWidth={1.6} />,
+                        active: activePanel === "treatments",
+                        onClick: () => { togglePanel("treatments"); playClick(); },
+                      },
+                      {
+                        key: "colophon",
+                        label: "Colophon",
+                        icon: <FileText size={14} strokeWidth={1.6} />,
+                        active: false,
+                        onClick: () => { setShowColophon(true); playClick(); },
+                      },
+                      {
+                        key: "reset",
+                        label: "Reset",
+                        icon: <RotateCcw size={14} strokeWidth={1.6} />,
+                        active: false,
+                        onClick: () => { setActiveThread(null); setInput(""); playClick(); },
+                      },
+                      {
+                        key: "doll",
+                        label: studioDoll.enabled ? "Doll: On" : "Doll",
+                        icon: studioDoll.loading ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Users size={14} strokeWidth={1.6} />
+                        ),
+                        active: studioDoll.enabled,
+                        onClick: () => { studioDoll.toggleDollInjection(!studioDoll.enabled); playClick(); },
+                      },
+                    ] as { key: string; label: string; icon: React.ReactNode; active: boolean; onClick: () => void }[]).map((tool) => (
+                      <button
+                        key={tool.key}
+                        type="button"
+                        onClick={tool.onClick}
+                        aria-label={tool.label}
+                        className={`shrink-0 flex flex-col items-center justify-center gap-0.5 w-[52px] py-1.5 rounded-sm active:scale-95 transition-all ${
+                          tool.active
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "studio-text-muted"
+                        }`}
+                      >
+                        {tool.icon}
+                        <span className="font-mono text-[6px] uppercase tracking-[0.1em] font-bold leading-none truncate w-full text-center">
+                          {tool.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Primary action row */}
+                  <div className="flex items-stretch gap-2 px-3 pt-2 pb-3">
                     <button
                       type="button"
                       disabled={isShapingBrief}
