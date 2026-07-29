@@ -641,6 +641,8 @@ export interface ZineMetadata {
   imageFilter?: string;
   isHighFidelity?: boolean;
   isPublic?: boolean;
+  /** When the zine was last made public (Keep Tabs / RSS pubDate). */
+  publishedAt?: number;
   isLocked?: boolean;
   mask?: string;
   useSearch?: boolean;
