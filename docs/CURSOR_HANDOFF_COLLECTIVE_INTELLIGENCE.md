@@ -596,15 +596,17 @@ Changed files · DB/rules/env changes · migration instructions · tests · comm
 2. Prompt 4 Scry evidence repair (unblocks trustworthy collective inputs).  
 3. Phase 1–4 collective intelligence vertical slice (include `CentralTendencyProfile`).  
 4. Phase 5 Mean Median Mode prototype with literal mean/median/mode + summation.  
-5. Prompt 8 Forecast metric dictionary + RSS Phase 7.  
+5. Prompt 8 Forecast repair: live research provider via existing `ResearchSynthesisResponse`, consume Mean Median Mode baselines, kill random drift.  
 6. Prompt 9 Proscenium integrity before social vocabulary copy changes.  
 7. Prompt 10 release tribunal before any “ship” claim.
 
 ---
 
-## Related existing docs
+## Related existing docs / code
 
 - `docs/mimi-system-architecture.md` — canonical personal workflow grammar  
 - `docs/CHAMBER_EVIDENCE_AUDIT.md` — chamber routing honesty  
 - `docs/EVIDENCE_FOR_MIMI.md` — evidence/provenance thesis  
+- `components/TheForecast.tsx` — Forecast UI spine (scopes, vectors, content forecasting)  
+- `services/researchService.ts` — provider-normalized projection shape (currently simulated)  
 - Existing `npm run verify:*` and Playwright suites — extend; do not replace
