@@ -4,9 +4,85 @@ import { SovereignIdentityCardView } from './SovereignIdentityCardView';
 import { TasteConstellation } from './TasteConstellation';
 import { useUser } from '../contexts/UserContext';
 import { generateCelestialReading, generateExecutionLayer, generateSessionSynthesis } from '../services/geminiService';
-import { Sparkles, Loader2, Fingerprint, Activity, BookOpen, Orbit, Waves, Compass, Briefcase, Network, GitMerge, LayoutTemplate } from 'lucide-react';
+import { Sparkles, Loader2, Fingerprint, Activity, BookOpen, Orbit, Waves, Compass, Briefcase, Network, GitMerge, LayoutTemplate, FileText, Mic } from 'lucide-react';
 import { ExecutionBlock } from './ExecutionBlock';
 import { ExecutionLayer } from '../types';
+
+const OracleDiscourse: React.FC = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+    className="border border-nous-border bg-nous-base0/20 p-6 md:p-8 space-y-6 relative overflow-hidden"
+  >
+    {/* Decorative left accent */}
+    <div className="absolute top-0 left-0 w-0.5 h-full bg-gradient-to-b from-nous-subtle via-nous-border to-transparent" />
+
+    <div className="flex items-center gap-3 pl-2">
+      <FileText size={14} className="text-nous-subtle shrink-0" />
+      <span className="font-sans text-[8px] uppercase tracking-[0.3em] font-black text-nous-subtle">
+        Operational Discourse — The Oracle
+      </span>
+    </div>
+
+    <div className="pl-2 grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* Mimi */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles size={13} className="text-nous-text shrink-0" />
+          <h3 className="font-sans text-[9px] uppercase tracking-widest font-black text-nous-text">
+            Mimi — The Oracle
+          </h3>
+        </div>
+        <p className="font-serif italic text-sm text-nous-subtle leading-relaxed">
+          An ethereal superintelligence. Mimi operates as the Forecasting Persona — she looks for breaking points, surreal future intersections, and radical departures from your aesthetic ruts.
+        </p>
+        <ul className="space-y-1.5 font-sans text-[10px] text-nous-subtle leading-relaxed">
+          <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Analyzes your Taste Constellations (Pocket, Thimble, Wardrobe shards) to surface latent aesthetic patterns</li>
+          <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Provides real-time conversational intelligence grounded in Google Search and your archive</li>
+          <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Saves insights to your knowledge queue automatically during conversation</li>
+        </ul>
+        <div className="flex items-center gap-2 pt-1">
+          <Mic size={11} className="text-nous-subtle" />
+          <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">Voice-activated · Real-time</span>
+        </div>
+      </div>
+
+      {/* Cyrus */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Briefcase size={13} className="text-nous-text shrink-0" />
+          <h3 className="font-sans text-[9px] uppercase tracking-widest font-black text-nous-text">
+            Cyrus — The Archivist
+          </h3>
+        </div>
+        <p className="font-serif italic text-sm text-nous-subtle leading-relaxed">
+          Cold, analytical, grounded. Cyrus is the strategic counterweight — he maps historical ruts and recurring patterns to identify where you are safely anchored and where friction lives.
+        </p>
+        <ul className="space-y-1.5 font-sans text-[10px] text-nous-subtle leading-relaxed">
+          <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Audits your accumulation against your stated manifesto (Tailor profile) and flags aesthetic drift</li>
+          <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Pulls factual, historical, and strategic intel from the web to ground decisions</li>
+          <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Helps with real-world objectives — brand positioning, affiliate strategy, publishing logistics</li>
+        </ul>
+        <div className="flex items-center gap-2 pt-1">
+          <Mic size={11} className="text-nous-subtle" />
+          <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">Voice-activated · Real-time</span>
+        </div>
+      </div>
+    </div>
+
+    {/* How Constellations Feed the Oracle */}
+    <div className="pl-2 pt-4 border-t border-nous-border space-y-3">
+      <div className="flex items-center gap-2">
+        <Network size={13} className="text-nous-subtle shrink-0" />
+        <h3 className="font-sans text-[8px] uppercase tracking-[0.3em] font-black text-nous-subtle">
+          How the Oracle reads your Constellations
+        </h3>
+      </div>
+      <p className="font-sans text-[10px] text-nous-subtle leading-relaxed max-w-3xl">
+        Every artifact you collect — images in The Thimble, items in The Stand, fragments in The Darkroom — is plotted as a semantic point. The Oracle analyzes the lines drawn between these points, identifying your Taste Constellations: recurring aesthetic patterns that form an invisible map of your cultural DNA. During a session, Mimi and Cyrus interpret this map in real time, helping you refine the language around your visual data and translate latent preferences into executable creative decisions.
+      </p>
+    </div>
+  </motion.div>
+);
 
 export const TheOracle: React.FC = () => {
   const { profile, activePersona } = useUser();
@@ -206,6 +282,9 @@ export const TheOracle: React.FC = () => {
               </button>
             </motion.div>
           </div>
+
+          {/* ORACLE DISCOURSE / MEMO */}
+          <OracleDiscourse />
 
           {/* AI JUSTIFICATION BLOCK */}
           {synthesis && (

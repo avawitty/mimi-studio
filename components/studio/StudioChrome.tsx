@@ -1,5 +1,5 @@
 import React from "react";
-import { GripVertical, Menu, Moon, Sun, User } from "lucide-react";
+import { GripVertical, Menu, Moon, Sparkles, Sun, User } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 
@@ -218,6 +218,21 @@ export const StudioChrome: React.FC<{
             {timeString}
           </span>
         )}
+
+        {/* Oracle quick-access: opens Mimi vocal session from anywhere */}
+        <button
+          type="button"
+          title="Commune with the Oracle"
+          disabled={isGenerating}
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("mimi:open_scribe", { detail: "mimi" }))
+          }
+          className={`w-9 h-9 border studio-border flex items-center justify-center studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 transition-all hover:scale-105 duration-300 ${
+            isGenerating ? "opacity-60 cursor-not-allowed" : ""
+          }`}
+        >
+          <Sparkles size={14} strokeWidth={1.5} />
+        </button>
 
         {/* Theme Switcher Button */}
         <button

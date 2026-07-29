@@ -248,11 +248,19 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
       {/* Top/Left: Communion Area */}
       <div className="flex-1 relative">
         {/* Entity Toggle */}
-        <div className="absolute top-8 right-8 z-20 flex bg-black/10 dark:bg-white/10 p-1 rounded-full backdrop-blur-md">
+        {/* Toggle text adapts to the active entity's background:
+            Mimi = white bg → dark inactive text; Cyrus/Synthesis = dark bg → light inactive text */}
+        <div className={`absolute top-8 right-8 z-20 flex p-1 rounded-full backdrop-blur-md ${
+          activeEntity === 'mimi' ? 'bg-black/10' : 'bg-white/10'
+        }`}>
           <button
             onClick={() => setActiveEntity('mimi')}
             className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-              activeEntity === 'mimi' ? 'bg-white text-black shadow-sm' : 'text-white/60 hover:text-white'
+              activeEntity === 'mimi'
+                ? 'bg-white text-black shadow-sm'
+                : activeEntity === 'cyrus' || activeEntity === 'synthesis'
+                  ? 'text-white/60 hover:text-white'
+                  : 'text-black/60 hover:text-black'
             }`}
           >
             <Sparkles size={12} />
@@ -261,7 +269,11 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
           <button
             onClick={() => setActiveEntity('cyrus')}
             className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-              activeEntity === 'cyrus' ? 'bg-black text-white shadow-sm' : 'text-white/60 hover:text-white'
+              activeEntity === 'cyrus'
+                ? 'bg-black text-white shadow-sm'
+                : activeEntity === 'mimi'
+                  ? 'text-black/60 hover:text-black'
+                  : 'text-white/60 hover:text-white'
             }`}
           >
             <Briefcase size={12} />
@@ -270,7 +282,11 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
           <button
             onClick={() => setActiveEntity('engine')}
             className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-              activeEntity === 'engine' ? 'bg-stone-800 text-white shadow-sm' : 'text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white'
+              activeEntity === 'engine'
+                ? 'bg-stone-800 text-white shadow-sm'
+                : activeEntity === 'mimi'
+                  ? 'text-black/60 hover:text-black'
+                  : 'text-white/60 hover:text-white'
             }`}
           >
             <PenTool size={12} />
@@ -279,7 +295,11 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
           <button
             onClick={() => setActiveEntity('synthesis')}
             className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-              activeEntity === 'synthesis' ? 'bg-indigo-600 text-white shadow-sm' : 'text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white'
+              activeEntity === 'synthesis'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : activeEntity === 'mimi'
+                  ? 'text-black/60 hover:text-black'
+                  : 'text-white/60 hover:text-white'
             }`}
           >
             <Zap size={12} />
