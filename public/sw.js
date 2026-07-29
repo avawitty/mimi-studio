@@ -71,9 +71,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Do not cache API responses. Many endpoints are authenticated and return
-  // user-specific data; browser Cache Storage matches primarily by URL, so caching
-  // /api/ GET responses can replay one session's data after logout/account switch.
+  // NOTE: Do NOT cache '/api/' requests. Many API endpoints are authenticated and
+  // return user-specific data. A stale-while-revalidate cache keyed only by URL (no
+  // token/Vary awareness) would replay a previously-cached authenticated response to a
+  // different session after logout or account switch on a shared browser, bypassing the
+  // server's authorization check. API GETs must always pass through to the network.
   const isAestheticAsset = requestUrl.pathname.includes('/components/chambers/') || 
                            requestUrl.pathname.includes('/services/') ||
                            requestUrl.pathname.includes('/lib/productCanon');
