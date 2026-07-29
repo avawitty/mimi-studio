@@ -22,11 +22,13 @@ jobs:
       - name: Install dependencies
         run: |
           for attempt in 1 2 3; do
-            if npm ci; then
+            npm ci
+            status=$?
+            if [ "$status" -eq 0 ]; then
               break
             fi
             if [ "$attempt" -eq 3 ]; then
-              exit 1
+              exit "$status"
             fi
             echo "npm ci failed on attempt $attempt; retrying..."
             sleep 15
