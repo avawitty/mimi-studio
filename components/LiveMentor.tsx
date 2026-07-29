@@ -31,6 +31,8 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
   }, [transcript, onTranscriptUpdate]);
 
   // Visualizer loop — re-runs whenever `analyser` changes (it's now reactive state)
+  // or when `isConnected` flips (the canvas is only mounted once connected, so the
+  // effect must re-run at that point to attach to the freshly-mounted canvas).
   useEffect(() => {
     if (!analyser) {
       if (animationRef.current) {
@@ -92,7 +94,7 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
         animationRef.current = 0;
       }
     };
-  }, [analyser, isMimi, strokeColor]);
+  }, [analyser, isConnected, isMimi, strokeColor]);
 
   // Auto-connect on mount; disconnect cleanly on unmount
   useEffect(() => {
