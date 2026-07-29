@@ -1333,7 +1333,7 @@ export const AnalysisDisplay: React.FC<{
  <div className="w-full space-y-16 px-6 md:px-24">
  <SectionHeader label="Semiotics & Visual Directives"icon={Radar} style={{ color: accentColor }} />
  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
- {metadata.content.semiotic_signals?.map((t, i) => {
+ {metadata.content.semiotic_signals?.filter(Boolean).map((t, i) => {
  const Icon = t.type === 'acquisition' ? Briefcase : t.type === 'lexical' ? BookOpen : Sparkles;
  const isCommerce = t.type === 'acquisition';
  const isFlipped = flippedSignalIndex === i;
