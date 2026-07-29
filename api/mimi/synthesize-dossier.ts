@@ -112,7 +112,7 @@ export default async function handler(req: any, res: any) {
       return sendError(res, 502, "Invalid response from AI Gateway.", "BAD_GATEWAY_RESPONSE");
     }
 
-    const rawContent = parsed.choices?.[0]?.message?.content;
+    const rawContent = (parsed as any).choices?.[0]?.message?.content;
     let dossierRaw: unknown = rawContent;
     if (typeof rawContent === "string") {
       try {

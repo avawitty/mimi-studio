@@ -224,7 +224,7 @@ export const TasteConstellation: React.FC<{ readOnly?: boolean }> = ({ readOnly 
  if (!confirm("Are you sure you want to clear all artifacts from this constellation?")) return;
  setConstellations(prev => prev.map(c => {
  if (c.id === id) {
- const updated = { ...c, artifactIds: [], updatedAt: Date.now() };
+ const updated = { ...c, artifactIds: [] as string[], updatedAt: Date.now() };
  saveConstellation(updated).catch(e => console.error("MIMI // Failed to save constellation:", e));
  return updated;
  }
@@ -403,7 +403,7 @@ export const TasteConstellation: React.FC<{ readOnly?: boolean }> = ({ readOnly 
                       Linked Artifact Stars ({hoveredNode.artifactIds.length})
                     </span>
                     <div className="flex flex-col gap-1 max-h-24 overflow-y-auto no-scrollbar">
-                      {hoveredNode.artifactIds.map(artId => {
+                      {hoveredNode.artifactIds.map((artId: string) => {
                         const art = artifacts.find(a => a.id === artId);
                         return (
                           <div key={artId} className="flex items-center gap-1.5 truncate">

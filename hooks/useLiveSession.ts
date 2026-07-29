@@ -188,7 +188,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                   }
                   const base64 = btoa(binary);
   
-                  sessionPromise.then(session => {
+                  sessionPromise.then((session: any) => {
                     if ((connect as any).currentAttempt !== currentAttempt) return;
                     return session.sendRealtimeInput({
                       audio: {
@@ -196,7 +196,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                         data: base64
                       }
                     });
-                  }).catch(e => {
+                  }).catch((e: any) => {
                     console.error("MIMI // Failed to send realtime input", e);
                   });
                 };
@@ -236,7 +236,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                       if (onToolCall) {
                         try {
                           const response = await onToolCall(call.name, call.args);
-                          sessionPromise.then(session => {
+                          sessionPromise.then((session: any) => {
                             if ((connect as any).currentAttempt !== currentAttempt) return;
                             session.sendToolResponse({
                               functionResponses: [{
@@ -248,7 +248,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                           });
                         } catch (e) {
                           console.error("MIMI // Tool call failed:", e);
-                          sessionPromise.then(session => {
+                          sessionPromise.then((session: any) => {
                             if ((connect as any).currentAttempt !== currentAttempt) return;
                             session.sendToolResponse({
                               functionResponses: [{

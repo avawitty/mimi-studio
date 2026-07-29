@@ -221,7 +221,7 @@ export const generateGeminiContentViaGateway = async (
         },
         finishReason: String(choice.finish_reason || "stop").toUpperCase(),
         groundingMetadata: {
-          groundingChunks: [],
+          groundingChunks: [] as any[],
         },
       },
     ],

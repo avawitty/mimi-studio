@@ -9,6 +9,8 @@
       "DOM",
       "DOM.Iterable"
     ],
+    "strict": true,
+    "strictNullChecks": false,
     "skipLibCheck": true,
     "types": [
       "node"

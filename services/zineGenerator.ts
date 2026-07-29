@@ -411,7 +411,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             if (!content.title) content.title = "Untitled Manifest";
             
             // Ensure title is the first headline
-            content.headlines = [content.title, ...((content.headlines || []).filter(h => h !== content.title))];
+            content.headlines = [content.title, ...((content.headlines || []).filter((h: string) => h !== content.title))];
             
             if (!content.headlines || content.headlines.length === 0) {
                 content.headlines = [content.title, "A New Frequency", "Aesthetic Resonance"];
