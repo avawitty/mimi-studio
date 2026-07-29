@@ -862,7 +862,9 @@ const useAppRouter = () => {
       try {
         localStorage.setItem(ROUTE_PERSIST_KEY, path);
       } catch {
-        // Storage may be restricted; silently skip.
+        // Expected in Private Browsing mode (SecurityError) or when storage
+        // quota is exceeded (QuotaExceededError). Neither case is actionable
+        // at runtime, so silently skip persistence.
       }
     }
   }, [path]);
@@ -877,7 +879,8 @@ const useAppRouter = () => {
           restoredPath = saved;
         }
       } catch {
-        // Storage restricted; fall back to default.
+        // Expected in Private Browsing mode (SecurityError) or on quota
+        // exceeded (QuotaExceededError). Fall back to the default destination.
       }
       navigate(restoredPath, { replace: true });
     }

@@ -280,8 +280,10 @@ test.describe("Route restoration", () => {
     await page.goto("/archival");
     await page.waitForLoadState("domcontentloaded");
 
-    // Allow the useEffect that writes localStorage to run.
-    await page.waitForTimeout(200);
+    // Poll until the useEffect that writes localStorage has run.
+    await page.waitForFunction(
+      () => localStorage.getItem("mimi_last_route") === "/archival",
+    );
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),
@@ -332,7 +334,11 @@ test.describe("Route restoration", () => {
     // Visit a public share URL.
     await page.goto("/s/some-share-id");
     await page.waitForLoadState("domcontentloaded");
-    await page.waitForTimeout(200);
+    // Poll: if the route were incorrectly saved, the value would change within
+    // a render cycle. A short poll ensures we catch any such race.
+    await page.waitForFunction(
+      () => localStorage.getItem("mimi_last_route") !== "/s/some-share-id",
+    );
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),
@@ -352,7 +358,10 @@ test.describe("Route restoration", () => {
 
     await page.goto("/auth/action?mode=signIn&oobCode=abc");
     await page.waitForLoadState("domcontentloaded");
-    await page.waitForTimeout(200);
+    // Poll: verify the auth route was not written as the saved destination.
+    await page.waitForFunction(
+      () => !localStorage.getItem("mimi_last_route")?.startsWith("/auth/"),
+    );
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),
