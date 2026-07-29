@@ -809,6 +809,9 @@ import { CreditMeter } from "./components/CreditMeter";
 
 const ROUTE_PERSIST_KEY = "mimi_last_route";
 
+// These are actual in-app pathname segments. A few legacy routes intentionally
+// remain snake_case because other app surfaces navigate to /geo_engine and
+// /qc_engine directly.
 const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "action-board",
   "archival",
@@ -933,6 +936,12 @@ const getRestorableRoute = (candidate: string): string | null => {
     : null;
 };
 
+/**
+ * Keeps the in-app URL state in sync with browser history and delays the cold-
+ * launch "/" restoration until authentication and redirect/callback handling
+ * have settled. That prevents restoring a stale route before auth-driven
+ * startup redirects have finished.
+ */
 const useAppRouter = (authReady: boolean) => {
   const [path, setPath] = useState(window.location.pathname);
 

@@ -403,6 +403,9 @@ test.describe("Route restoration", () => {
       "/success",
       "//evil.example/path",
       "javascript:alert(1)",
+      "data:text/html,<h1>x</h1>",
+      "vbscript:msgbox(1)",
+      "file:///tmp/mimi-route",
     ];
 
     for (const savedRoute of invalidSavedRoutes) {
