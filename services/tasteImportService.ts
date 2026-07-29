@@ -179,13 +179,32 @@ export async function importLetterboxdUsernameOrUrl(raw: string): Promise<TasteI
   return result;
 }
 
-export async function importFromLink(rawUrl: string): Promise<TasteImportResult> {
+export async function importFromLink(
+  rawUrl: string,
+  opts?: { preferProvider?: TasteProvider },
+): Promise<TasteImportResult> {
   const url = (rawUrl || '').trim();
   if (!url) throw new Error('Paste a link first.');
-  // Bare username convenience for Letterboxd field
-  if (/^[a-z0-9][a-z0-9_-]{0,29}$/i.test(url) && !url.includes('.') && !url.includes('/')) {
+
+  // Bare Letterboxd usernames are only accepted when the Letterboxd module
+  // explicitly opts in. Otherwise a Pinterest board name / partial input
+  // without a URL would incorrectly hit Letterboxd RSS.
+  const bareToken =
+    /^[a-z0-9][a-z0-9_-]{0,29}$/i.test(url) && !url.includes('.') && !url.includes('/');
+  if (bareToken && opts?.preferProvider === 'letterboxd') {
     return importLetterboxdUsernameOrUrl(url);
   }
+  if (bareToken && opts?.preferProvider === 'pinterest') {
+    throw new Error(
+      'Paste a full Pinterest board URL (pinterest.com/…/board-name). Board names alone cannot be resolved.',
+    );
+  }
+  if (bareToken) {
+    throw new Error(
+      'Paste a full link (or use the Letterboxd field with a username).',
+    );
+  }
+
   const provider = detectProvider(url);
   if (provider === 'instagram') {
     throw new Error(

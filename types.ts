@@ -1433,6 +1433,7 @@ export interface TasteGraphNode {
   type: 'concept' | 'motif' | 'era' | 'web_reference';
   weight: number;
   explanation?: string;
+  tags?: string[];
   sourceUrl?: string;
   domain?: string;
   evidenceNodeIds?: string[];

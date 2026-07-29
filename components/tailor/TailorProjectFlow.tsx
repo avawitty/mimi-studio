@@ -150,16 +150,11 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
     setStep('analyzing');
     setLoading(true);
     try {
-      // Persist direct context + session curiosity into the project blurb
-      // without stuffing the full schema into the UI. Curiosity stays session-
-      // scoped unless the handoff marked it persistent.
+      // Always use live chip / custom curiosity at analyze time. A prior
+      // intakeHandoff snapshot can be stale if the user changed chips after commit.
       const curiosityLines = [
-        ...(intakeHandoff?.intendedHelp?.length
-          ? intakeHandoff.intendedHelp
-          : [
-              ...CURIOSITY_PROMPTS.filter((p) => curiosityIds.includes(p.id)).map((p) => p.label),
-              ...(customCuriosity.trim() ? [customCuriosity.trim()] : []),
-            ]),
+        ...CURIOSITY_PROMPTS.filter((p) => curiosityIds.includes(p.id)).map((p) => p.label),
+        ...(customCuriosity.trim() ? [customCuriosity.trim()] : []),
       ];
       const enrichedBlurb = [
         blurb.trim(),

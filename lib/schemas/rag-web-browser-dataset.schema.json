@@ -1,0 +1,129 @@
+{
+  "actorSpecification": 1,
+  "title": "Mimi Web Intel — RAG Web Browser dataset (consumer schema)",
+  "description": "Expected dataset fields from apify/rag-web-browser when used by /api/you-search. This is a consumer-side schema for mapping into YouSearchMappedResult — not an Actor package.",
+  "fields": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "additionalProperties": true,
+    "required": [],
+    "properties": {
+      "text": {
+        "type": ["string", "null"],
+        "nullable": true,
+        "title": "Plain text",
+        "description": "Extracted page text when outputFormats includes text."
+      },
+      "html": {
+        "type": ["string", "null"],
+        "nullable": true,
+        "title": "HTML",
+        "description": "Raw HTML extract when requested."
+      },
+      "markdown": {
+        "type": ["string", "null"],
+        "nullable": true,
+        "title": "Markdown",
+        "description": "Preferred body for research lead summaries."
+      },
+      "query": {
+        "type": ["string", "null"],
+        "nullable": true,
+        "title": "Query",
+        "description": "Search query that produced this item."
+      },
+      "crawl": {
+        "type": ["object", "null"],
+        "nullable": true,
+        "title": "Crawl meta",
+        "additionalProperties": true,
+        "properties": {
+          "createdAt": { "type": ["string", "null"], "nullable": true },
+          "httpStatusCode": { "type": ["number", "null"], "nullable": true },
+          "httpStatusMessage": { "type": ["string", "null"], "nullable": true },
+          "loadedAt": { "type": ["string", "null"], "nullable": true },
+          "requestStatus": { "type": ["string", "null"], "nullable": true },
+          "uniqueKey": { "type": ["string", "null"], "nullable": true }
+        }
+      },
+      "searchResult": {
+        "type": ["object", "null"],
+        "nullable": true,
+        "title": "SERP result",
+        "additionalProperties": true,
+        "properties": {
+          "title": { "type": ["string", "null"], "nullable": true },
+          "description": { "type": ["string", "null"], "nullable": true },
+          "url": { "type": ["string", "null"], "nullable": true },
+          "rank": { "type": ["number", "null"], "nullable": true },
+          "resultType": { "type": ["string", "null"], "nullable": true }
+        }
+      },
+      "metadata": {
+        "type": ["object", "null"],
+        "nullable": true,
+        "title": "Page metadata",
+        "additionalProperties": true,
+        "properties": {
+          "title": { "type": ["string", "null"], "nullable": true },
+          "url": { "type": ["string", "null"], "nullable": true },
+          "redirectedUrl": { "type": ["string", "null"], "nullable": true },
+          "description": { "type": ["string", "null"], "nullable": true },
+          "author": { "type": ["string", "null"], "nullable": true },
+          "languageCode": { "type": ["string", "null"], "nullable": true }
+        }
+      }
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "description": "Fields Mimi maps into Web Intelligence research leads",
+      "transformation": {
+        "fields": [
+          "metadata.url",
+          "metadata.title",
+          "searchResult.title",
+          "searchResult.url",
+          "markdown",
+          "text",
+          "metadata.description",
+          "query"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "metadata.url": { "label": "URL", "format": "text" },
+          "metadata.title": { "label": "Title", "format": "text" },
+          "searchResult.title": { "label": "SERP title", "format": "text" },
+          "searchResult.url": { "label": "SERP URL", "format": "text" },
+          "markdown": { "label": "Markdown", "format": "text" },
+          "text": { "label": "Text", "format": "text" },
+          "metadata.description": { "label": "Description", "format": "text" },
+          "query": { "label": "Query", "format": "text" }
+        }
+      }
+    }
+  },
+  "mappedApiOutput": {
+    "description": "Canonical /api/you-search result item after mapping",
+    "type": "object",
+    "properties": {
+      "sourceUrl": { "type": "string" },
+      "title": { "type": "string" },
+      "summary": { "type": "string" },
+      "domain": { "type": "string" },
+      "graphType": { "const": "web_reference" },
+      "confidence": { "type": "number" },
+      "aestheticSignals": {
+        "type": "object",
+        "properties": {
+          "keywords": { "type": "array", "items": { "type": "string" } },
+          "references": { "type": "array", "items": { "type": "string" } },
+          "tone": { "type": "string" }
+        }
+      }
+    }
+  }
+}

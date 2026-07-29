@@ -22,7 +22,8 @@ import {
 } from '../services/tailorEvidenceIntake';
 import type { EvidenceNode } from '../types';
 import { resolveLetterboxdFeedUrl } from '../lib/letterboxdFeed';
-import { normalizeLetterboxdInput } from '../services/tasteImportService';
+import { normalizeLetterboxdInput, importFromLink } from '../services/tasteImportService';
+import { consumeApifyQuota } from '../lib/youSearch';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -72,6 +73,37 @@ assert(
   resolveLetterboxdFeedUrl('https://letterboxd.com/criterion/').pathname.includes('/criterion/rss'),
   'profile URL should map to RSS',
 );
+
+// Bare tokens must not auto-route to Letterboxd from the shared importer
+// (Pinterest field uses the same helper).
+await (async () => {
+  let pinterestBareFailed = false;
+  try {
+    await importFromLink('my-moodboard', { preferProvider: 'pinterest' });
+  } catch (e: any) {
+    pinterestBareFailed = /Pinterest board URL/i.test(String(e?.message || e));
+  }
+  assert(pinterestBareFailed, 'bare Pinterest token must not hit Letterboxd');
+
+  let unscopedBareFailed = false;
+  try {
+    await importFromLink('someuser');
+  } catch (e: any) {
+    unscopedBareFailed = /full link|Letterboxd field/i.test(String(e?.message || e));
+  }
+  assert(unscopedBareFailed, 'unscoped bare token must not auto-Letterboxd');
+})();
+
+// Apify quota helper: first N calls ok, then blocked within the window
+{
+  const uid = `quota-test-${Date.now()}`;
+  const now = Date.now();
+  for (let i = 0; i < 10; i++) {
+    assert(consumeApifyQuota(uid, now) === true, `apify quota allow #${i + 1}`);
+  }
+  assert(consumeApifyQuota(uid, now) === false, 'apify quota blocks after window max');
+  assert(consumeApifyQuota(uid, now + 60 * 60 * 1000 + 1) === true, 'apify quota resets after window');
+}
 
 // --- Scope mapping ---
 assert(storageScopeToUiLabel('session') === 'This reading only', 'session label');

@@ -195,22 +195,24 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
   }, []);
 
   const runImport = useCallback(
-    async (raw: string) => {
-      if (!raw.trim()) return;
+    async (raw: string, preferProvider?: 'letterboxd' | 'pinterest') => {
+      if (!raw.trim()) return false;
       setImporting(true);
       setImportError(null);
       setImportWarning(null);
       try {
-        const result = await importFromLink(raw);
+        const result = await importFromLink(raw, preferProvider ? { preferProvider } : undefined);
         if (!result.items.length) {
           setImportError('No public taste signals found. Try another source or upload a screenshot.');
-        } else {
-          addStagedItems(result.items);
-          if (result.warning) setImportWarning(result.warning);
+          return false;
         }
+        addStagedItems(result.items);
+        if (result.warning) setImportWarning(result.warning);
+        return true;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Could not read that source.';
         setImportError(message);
+        return false;
       } finally {
         setImporting(false);
       }
@@ -293,16 +295,27 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
   const updateRow = useCallback((id: string, patch: Partial<TailorEvidenceItem>) => {
     setStaged((prev) => {
       const row = groupIntoCollections(prev.filter((s) => !s.isCollection)).rows.find((r) => r.id === id);
-      if (row?.isCollection && row.sourceCollectionId && (patch.scope || patch.selected !== undefined)) {
+      if (row?.isCollection && row.sourceCollectionId) {
         return prev.map((s) => {
-          if (s.sourceCollectionId === row.sourceCollectionId && !s.isCollection) {
-            return {
-              ...s,
-              ...(patch.scope ? { scope: patch.scope } : {}),
-              ...(patch.selected !== undefined ? { selected: patch.selected } : {}),
+          if (s.sourceCollectionId !== row.sourceCollectionId || s.isCollection) return s;
+          const next: TailorEvidenceItem = { ...s };
+          if (patch.scope) next.scope = patch.scope;
+          if (patch.selected !== undefined) next.selected = patch.selected;
+          if (patch.interpretation !== undefined) next.interpretation = patch.interpretation;
+          if (patch.interpretationCorrected !== undefined) {
+            next.interpretationCorrected = patch.interpretationCorrected;
+          }
+          if (patch.description !== undefined) next.description = patch.description;
+          if (patch.title !== undefined) {
+            // Collection renames update board label metadata so regrouping +
+            // commit payloads see the new name without clobbering pin titles.
+            next.rawMetadata = {
+              ...next.rawMetadata,
+              boardTitle: patch.title,
+              sourceLabel: patch.title,
             };
           }
-          return s;
+          return next;
         });
       }
       return prev.map((s) => (s.id === id ? { ...s, ...patch } : s));
@@ -434,10 +447,14 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
         onLetterboxdChange={setLetterboxdValue}
         onPinterestChange={setPinterestValue}
         onImportLetterboxd={() => {
-          void runImport(letterboxdValue).then(() => setLetterboxdValue(''));
+          void runImport(letterboxdValue, 'letterboxd').then((ok) => {
+            if (ok) setLetterboxdValue('');
+          });
         }}
         onImportPinterest={() => {
-          void runImport(pinterestValue).then(() => setPinterestValue(''));
+          void runImport(pinterestValue, 'pinterest').then((ok) => {
+            if (ok) setPinterestValue('');
+          });
         }}
         onInstagramFiles={handleInstagramFiles}
         onMoreoverFiles={handleMoreoverFiles}
