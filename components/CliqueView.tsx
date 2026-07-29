@@ -17,24 +17,33 @@ const MemberItem: React.FC<{
   onRemove?: () => void;
 }> = ({ userId, isOwner, isSelf, onRemove }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getUserProfile(userId).then(setProfile).catch(() => {});
+    let active = true;
+    setLoading(true);
+    getUserProfile(userId)
+      .then(p => { if (active) setProfile(p); })
+      .catch(() => {})
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [userId]);
 
-  if (!profile) return <div className="h-12 animate-pulse bg-nous-base/50 rounded-none" />;
+  if (loading) return <div className="h-12 animate-pulse bg-nous-base/50 rounded-none" />;
+
+  const displayName = profile?.handle || userId.slice(0, 8);
 
   return (
     <div className="flex items-center justify-between py-3 px-4 border-b border-nous-border last:border-0">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-none overflow-hidden border border-nous-border bg-nous-base shrink-0">
           <img
-            src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.handle || 'U'}&background=1c1917&color=fff`}
+            src={profile?.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=1c1917&color=fff`}
             className="w-full h-full object-cover grayscale"
             alt=""
           />
         </div>
-        <span className="font-serif italic text-sm text-nous-text">@{profile.handle}</span>
+        <span className="font-serif italic text-sm text-nous-text">@{displayName}</span>
         {isOwner && (
           <span className="font-sans text-[7px] uppercase tracking-widest text-nous-subtle font-black border border-nous-border px-1.5 py-0.5">Owner</span>
         )}
@@ -177,20 +186,29 @@ const CliqueDetail: React.FC<{
 
 const FriendAddItem: React.FC<{ userId: string; loading: boolean; onAdd: () => void }> = ({ userId, loading, onAdd }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
-    getUserProfile(userId).then(setProfile).catch(() => {});
+    let active = true;
+    setProfileLoading(true);
+    getUserProfile(userId)
+      .then(p => { if (active) setProfile(p); })
+      .catch(() => {})
+      .finally(() => { if (active) setProfileLoading(false); });
+    return () => { active = false; };
   }, [userId]);
 
-  if (!profile) return <div className="h-10 animate-pulse bg-nous-base/50 rounded-none" />;
+  if (profileLoading) return <div className="h-10 animate-pulse bg-nous-base/50 rounded-none" />;
+
+  const displayName = profile?.handle || userId.slice(0, 8);
 
   return (
     <div className="flex items-center justify-between py-2">
       <div className="flex items-center gap-3">
         <div className="w-7 h-7 rounded-none overflow-hidden border border-nous-border bg-nous-base shrink-0">
-          <img src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.handle || 'U'}&background=1c1917&color=fff`} className="w-full h-full object-cover grayscale" alt="" />
+          <img src={profile?.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=1c1917&color=fff`} className="w-full h-full object-cover grayscale" alt="" />
         </div>
-        <span className="font-serif italic text-sm text-nous-text">@{profile.handle}</span>
+        <span className="font-serif italic text-sm text-nous-text">@{displayName}</span>
       </div>
       <button
         onClick={onAdd}
