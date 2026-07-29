@@ -999,7 +999,7 @@ export class IntelligenceGateService {
     return getActiveProviderId();
   }
 
-  public setProvider(provider: "gemini" | "openai" | "anthropic") {
+  public setProvider(provider: "gemini" | "openai" | "anthropic" | "gateway") {
     setGlobalAIProvider(provider);
     localStorage.setItem("mimi_active_llm", provider);
   }

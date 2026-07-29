@@ -192,18 +192,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [pocket, setPocket] = useState<any[]>([]);
   
   const [apiKeys, setApiKeysState] = useState<Record<string, string>>({});
-  const [activeLlmProvider, setActiveLlmProviderState] = useState<'gemini' | 'openai' | 'anthropic'>(() => {
+  const [activeLlmProvider, setActiveLlmProviderState] = useState<'gemini' | 'openai' | 'anthropic' | 'gateway'>(() => {
     const stored = localStorage.getItem('mimi_active_llm');
-    return stored === 'gemini' || stored === 'anthropic' || stored === 'openai'
+    return stored === 'gemini' || stored === 'anthropic' || stored === 'openai' || stored === 'gateway'
       ? stored
-      : 'openai';
+      : 'gateway';
   });
 
   useEffect(() => {
     import('../services/aiProvider').then(m => m.setGlobalAIProvider(activeLlmProvider));
   }, [activeLlmProvider]);
 
-  const setActiveLlmProvider = (provider: 'gemini' | 'openai' | 'anthropic') => {
+  const setActiveLlmProvider = (provider: 'gemini' | 'openai' | 'anthropic' | 'gateway') => {
       setActiveLlmProviderState(provider);
       localStorage.setItem('mimi_active_llm', provider);
       import('../services/aiProvider').then(m => m.setGlobalAIProvider(provider));
@@ -217,19 +217,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (cancelled || !payload?.ai) return;
         setSystemStatus((previous) => ({ ...previous, ai: payload.ai }));
         const storedProvider = localStorage.getItem('mimi_active_llm');
-        const staleGeminiPreference =
-          storedProvider === 'gemini' &&
-          !payload.ai.gemini &&
-          payload.ai.openai;
-        if (!storedProvider || staleGeminiPreference) {
-          const availableProvider =
-            payload.ai.openai
-              ? 'openai'
-              : payload.ai.gemini
-                ? 'gemini'
-                : payload.ai.anthropic
-                  ? 'anthropic'
-                  : null;
+        const shouldSwitchToGateway =
+          storedProvider !== 'gateway' &&
+          (payload.ai.gateway || payload.ai.aiGateway);
+        if (!storedProvider || shouldSwitchToGateway) {
+          const availableProvider: 'gateway' | 'openai' | 'gemini' | 'anthropic' | null =
+            (payload.ai.gateway || payload.ai.aiGateway)
+              ? 'gateway'
+              : payload.ai.openai
+                ? 'openai'
+                : payload.ai.gemini
+                  ? 'gemini'
+                  : payload.ai.anthropic
+                    ? 'anthropic'
+                    : null;
           if (availableProvider) {
             setActiveLlmProviderState(availableProvider);
             localStorage.setItem('mimi_active_llm', availableProvider);

@@ -5,7 +5,7 @@ export interface AIProvider {
   generateText?: (prompt: string, systemInstruction?: string) => Promise<string>;
 }
 
-export type LLMProviderId = 'gemini' | 'openai' | 'anthropic';
+export type LLMProviderId = 'gemini' | 'openai' | 'anthropic' | 'gateway';
 
 const getLocalKeys = (): Record<string, string> => {
   try {
@@ -223,6 +223,71 @@ class AnthropicProvider implements AIProvider {
 
   async generateText(prompt: string, systemInstruction?: string) {
       return (await this.generateContent({ contents: prompt, config: { systemInstruction } })).text;
+  }
+}
+
+class GatewayProvider implements AIProvider {
+  async generateContent(params: any) {
+    const token = await getFirebaseToken();
+
+    const messages: any[] = [];
+
+    if (params.config?.systemInstruction) {
+      const si = params.config.systemInstruction;
+      const systemText = typeof si === 'string' ? si : (si.parts?.[0]?.text || si.text || '');
+      if (systemText) messages.push({ role: 'system', content: systemText });
+    }
+
+    if (typeof params.contents === 'string') {
+      messages.push({ role: 'user', content: params.contents });
+    } else if (Array.isArray(params.contents)) {
+      for (const item of params.contents) {
+        if (typeof item === 'string') {
+          messages.push({ role: 'user', content: item });
+        } else if (item?.role && Array.isArray(item.parts)) {
+          const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : 'user';
+          const text = item.parts.map((p: any) => p?.text || '').join('');
+          if (text) messages.push({ role, content: text });
+        }
+      }
+    } else if (params.contents?.parts) {
+      const text = (params.contents.parts as any[]).map((p: any) => p?.text || '').join('');
+      if (text) messages.push({ role: 'user', content: text });
+    }
+
+    if (messages.length === 0) {
+      throw new Error('[GatewayProvider] No message content could be derived from the provided params.');
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['x-user-token'] = 'Bearer ' + token;
+
+    const res = await fetch('/api/proxy/ai-gateway', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        messages,
+        temperature: params.config?.temperature ?? 0.7,
+      }),
+    });
+
+    if (!res.ok) {
+      let errMessage = res.statusText;
+      try {
+        const errData = await res.json();
+        errMessage = errData.error?.message || errMessage;
+      } catch (_e) {}
+      console.warn(`Gateway Error: ${errMessage}. Bubbling up for failover.`);
+      throw new Error(`[Gateway] ${errMessage} (Status: ${res.status})`);
+    }
+
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    return { text, _raw: data };
+  }
+
+  async generateText(prompt: string, systemInstruction?: string) {
+    return (await this.generateContent({ contents: prompt, config: { systemInstruction } })).text;
   }
 }
 
@@ -899,5 +964,9 @@ export const setGlobalAIProvider = (provider: LLMProviderId) => {
 export const getActiveProviderId = (): LLMProviderId => currentProvider;
 
 export const getAIProvider = (override?: LLMProviderId): AIProvider => {
+  const id = override ?? currentProvider;
+  if (id === 'openai') return new OpenAIProvider();
+  if (id === 'anthropic') return new AnthropicProvider();
+  if (id === 'gateway') return new GatewayProvider();
   return new GeminiProvider();
 };
