@@ -234,6 +234,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         keywords: ["intel", "hub", "campaign", "strategy", "intel hub"],
       },
       {
+        mode: "brand-intake",
+        label: "Intelligence Report",
+        note: "brand intelligence report with format selection",
+        keywords: ["brand", "intake", "report", "intelligence", "mla", "apa", "chicago", "citation", "brand report", "mimi report", "aesthetic report", "strategy report"],
+      },
+      {
         mode: "codex",
         label: "System",
         note: "codex, architecture, diagnostics",
