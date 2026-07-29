@@ -11,7 +11,6 @@ import type {
   UserWeight,
   CreativeDossier,
   Doll,
-  EvidenceSourceType,
 } from '../../types';
 import {
   createTailorProject,
@@ -34,7 +33,7 @@ import {
 import { generateArtHistoryMatchesForProject } from '../../services/artHistoryService';
 import { saveArtworkMatches } from '../../services/tailorService';
 import { TailorStartScreen } from './TailorStartScreen';
-import { EvidenceUploadScreen, type EvidenceUploadItem } from './EvidenceUploadScreen';
+import { EvidenceUploadScreen, type EvidenceUploadItem, type EvidenceIntakeHandoffPayload } from './EvidenceUploadScreen';
 import { AnalysisProgressScreen } from './AnalysisProgressScreen';
 import { PatternGraphScreen } from './PatternGraphScreen';
 import { CreativeLawsScreen } from './CreativeLawsScreen';
@@ -42,6 +41,8 @@ import { CreativeDossierScreen } from './CreativeDossierScreen';
 import { OutputSelectionScreen, type TailorOutputChoice } from './OutputSelectionScreen';
 import { DollProfileScreen } from './DollProfileScreen';
 import { ArtHistoryMirrorScreen } from './ArtHistoryMirrorScreen';
+import type { CuriosityPromptId } from '../../services/tailorEvidenceIntake';
+import { buildDirectStatementEvidence, CURIOSITY_PROMPTS } from '../../services/tailorEvidenceIntake';
 
 type FlowStep =
   | 'start'
@@ -85,6 +86,9 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [artQueries, setArtQueries] = useState<string[]>([]);
+  const [curiosityIds, setCuriosityIds] = useState<CuriosityPromptId[]>([]);
+  const [customCuriosity, setCustomCuriosity] = useState('');
+  const [intakeHandoff, setIntakeHandoff] = useState<EvidenceIntakeHandoffPayload | null>(null);
   const bootstrappedRef = useRef(Boolean(initialProject));
 
   const refreshProjectData = useCallback(async (projectId: string) => {
@@ -146,8 +150,47 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
     setStep('analyzing');
     setLoading(true);
     try {
-      await updateTailorProject(uid, project.id, { blurb });
-      const result = await runTailorAnalysis(uid, project.id, blurb);
+      // Persist direct context + session curiosity into the project blurb
+      // without stuffing the full schema into the UI. Curiosity stays session-
+      // scoped unless the handoff marked it persistent.
+      const curiosityLines = [
+        ...(intakeHandoff?.intendedHelp?.length
+          ? intakeHandoff.intendedHelp
+          : [
+              ...CURIOSITY_PROMPTS.filter((p) => curiosityIds.includes(p.id)).map((p) => p.label),
+              ...(customCuriosity.trim() ? [customCuriosity.trim()] : []),
+            ]),
+      ];
+      const enrichedBlurb = [
+        blurb.trim(),
+        curiosityLines.length
+          ? `\n\n[Curiosity — this reading]\n${curiosityLines.map((l) => `• ${l}`).join('\n')}`
+          : '',
+      ]
+        .join('')
+        .trim();
+
+      // Direct statements outrank inference — store as a note evidence node
+      // when the user wrote open context that has not yet been committed.
+      if (blurb.trim() && !evidence.some((e) => e.extractedMetadata?.kind === 'direct_statement')) {
+        const statement = buildDirectStatementEvidence(blurb.trim(), 'session');
+        if (statement) {
+          await addEvidenceNode(uid, project.id, {
+            sourceType: statement.evidenceSourceType,
+            title: statement.title,
+            description: statement.description,
+            extractedMetadata: {
+              ...statement.rawMetadata,
+              intakeScope: statement.scope,
+              intakeId: statement.id,
+              intendedHelp: curiosityLines,
+            },
+          });
+        }
+      }
+
+      await updateTailorProject(uid, project.id, { blurb: enrichedBlurb || blurb });
+      const result = await runTailorAnalysis(uid, project.id, enrichedBlurb || blurb);
       setArtQueries(result.artHistorySearchQueries);
       await refreshProjectData(project.id);
       setStep('patterns');
@@ -307,6 +350,12 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
           blurb={blurb}
           onBlurbChange={setBlurb}
           uploading={uploading}
+          analysisAvailable={observations.length > 0 || clusters.length > 0}
+          curiosityIds={curiosityIds}
+          onCuriosityChange={setCuriosityIds}
+          customCuriosity={customCuriosity}
+          onCustomCuriosityChange={setCustomCuriosity}
+          onHandoffReady={setIntakeHandoff}
         />
       )}
       {step === 'analyzing' && (

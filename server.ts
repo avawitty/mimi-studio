@@ -1531,7 +1531,7 @@ async function startServer() {
     try {
       const url = req.query.url as string;
       if (!url) {
-        return res.status(400).json({ error: "Letterboxd URL required" });
+        return res.status(400).json({ error: "Letterboxd username or URL required" });
       }
       res.json(await fetchLetterboxdFeed(url));
     } catch (error: any) {
