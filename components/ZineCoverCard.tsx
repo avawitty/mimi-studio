@@ -1,13 +1,15 @@
 import React from 'react';
 import { ZineMetadata } from '../types';
 import { useUser } from '../contexts/UserContext';
+import { MessageSquare } from 'lucide-react';
 
 interface ZineCoverCardProps {
  zine: ZineMetadata;
  onClick: () => void;
+ onComment?: (e: React.MouseEvent) => void;
 }
 
-export const ZineCoverCard: React.FC<ZineCoverCardProps> = ({ zine, onClick }) => {
+export const ZineCoverCard: React.FC<ZineCoverCardProps> = ({ zine, onClick, onComment }) => {
  const { profile } = useUser();
  
  // Extract tailor data
@@ -59,6 +61,14 @@ export const ZineCoverCard: React.FC<ZineCoverCardProps> = ({ zine, onClick }) =
  </span>
  ))}
  </div>
+ {onComment && (
+ <button
+ onClick={onComment}
+ className="mt-3 flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-mono text-white/70 hover:text-white transition-colors"
+ >
+ <MessageSquare size={12} /> Leave a memo
+ </button>
+ )}
  </div>
  </div>
  
