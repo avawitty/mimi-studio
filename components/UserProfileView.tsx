@@ -226,17 +226,32 @@ export const UserProfileView: React.FC = () => {
     profile?.subscriptionStatus,
   ]);
 
-  // Match CreditMeter: paid patrons have finite monthly membershipCredits, not unlimited.
+  // Match CreditMeter's isPaid gate so banner and meter never diverge on stale planStatus.
+  const PAID_PLAN_STATUSES = new Set([
+    "core",
+    "pro",
+    "lab",
+    "initiation",
+    "optioning",
+    "atelier",
+    "sovereign",
+  ]);
+  const creditMeterIsPaid =
+    PAID_PLAN_STATUSES.has(String(profile?.planStatus || "ghost").toLowerCase()) ||
+    Boolean(profile?.isPatron);
   const membershipCredits = profile?.membershipCredits;
-  const patronCreditsRemaining = Number(
-    membershipCredits?.remaining ?? profile?.trial?.remainingCredits ?? 0,
-  );
-  const patronCreditsAllowance = Number(
-    membershipCredits?.allowance ??
-      membershipCredits?.remaining ??
-      profile?.trial?.grantedCredits ??
-      0,
-  );
+  const trialCreditsRemaining = profile?.trial?.remainingCredits ?? 0;
+  const patronCreditsRemaining = creditMeterIsPaid
+    ? Number(membershipCredits?.remaining ?? trialCreditsRemaining)
+    : trialCreditsRemaining;
+  const patronCreditsAllowance = creditMeterIsPaid
+    ? Number(
+        membershipCredits?.allowance ??
+          membershipCredits?.remaining ??
+          profile?.trial?.grantedCredits ??
+          0,
+      )
+    : Number(profile?.trial?.grantedCredits || 12);
   const patronAiCreditsLabel =
     patronCreditsAllowance > 0
       ? `${patronCreditsRemaining.toLocaleString()} / ${patronCreditsAllowance.toLocaleString()}`
