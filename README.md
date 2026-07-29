@@ -1,25 +1,3 @@
-<<<<<<< HEAD
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
-
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/bc411418-b9e2-4494-ae58-cfb322c095fd
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
-=======
 # Mimi Studio
 
 **A private AI editorial studio for taste, identity, research, and image-making.**
@@ -182,4 +160,3 @@ Mimi Studio is an active, evolving product system. Product names and interfaces 
 ## Private repository
 
 This repository is currently private and under active development. All rights reserved unless otherwise stated in the repository.
->>>>>>> origin/main

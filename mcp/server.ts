@@ -17,10 +17,7 @@ import {
   tailorWidgetProjectionSchema,
 } from "../services/tailorProfileContract.js";
 import { searchShopifyGlobalCatalog } from "../lib/shopifyCatalog.js";
-<<<<<<< HEAD
-=======
 import { mimiRouter } from "../src/mimi.js";
->>>>>>> origin/main
 
 loadEnv({ path: ".env.local", override: false, quiet: true });
 loadEnv({ path: ".env", override: false, quiet: true });
@@ -494,14 +491,11 @@ export async function handleMimiMcpRequest(req: any, res: any) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const app = express();
   app.use(express.json({ limit: "4mb" }));
-<<<<<<< HEAD
-=======
 
   // Add Mimi REST API routes BEFORE MCP
   app.use("/api/mimi", mimiRouter);
 
   // Keep existing MCP routes
->>>>>>> origin/main
   app.all("/mcp", (req, res) => void handleMimiMcpRequest(req, res));
   app.get("/widget-preview", (_req, res) =>
     res.type("html").send(renderMimiWidgetHtml()),

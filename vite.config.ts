@@ -43,8 +43,6 @@ export default defineConfig(({ mode }) => {
         minify: 'esbuild',
         target: 'esnext',
         reportCompressedSize: false,
-<<<<<<< HEAD
-=======
         rollupOptions: {
           output: {
             manualChunks: {
@@ -53,7 +51,6 @@ export default defineConfig(({ mode }) => {
             },
           },
         },
->>>>>>> origin/main
       }
     };
 });

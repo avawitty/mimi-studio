@@ -158,15 +158,10 @@ export function parseLetterboxdFeed(xml: string, feedUrl: string): LetterboxdEnt
 export async function fetchLetterboxdFeed(rawUrl: string): Promise<LetterboxdFeedResult> {
   const feed = resolveLetterboxdFeedUrl(rawUrl);
   const username = feed.pathname.split('/').filter(Boolean)[0] || 'letterboxd';
-<<<<<<< HEAD
-
-  const response = await fetch(feed.toString(), {
-=======
   // Reconstruct URL from validated components only to prevent SSRF via tainted input
   const safeUrl = `https://letterboxd.com/${encodeURIComponent(username)}/rss/`;
 
   const response = await fetch(safeUrl, {
->>>>>>> origin/main
     redirect: 'follow',
     headers: {
       'User-Agent':

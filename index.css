@@ -590,14 +590,6 @@
 }
 
 /* SAFE AREA UTILITIES */
-<<<<<<< HEAD
-.pt-safe { padding-top: env(safe-area-inset-top) !important; }
-.pb-safe { padding-bottom: env(safe-area-inset-bottom) !important; }
-.pl-safe { padding-left: env(safe-area-inset-left) !important; }
-.pr-safe { padding-right: env(safe-area-inset-right) !important; }
-.mt-safe { margin-top: env(safe-area-inset-top) !important; }
-.mb-safe { margin-bottom: env(safe-area-inset-bottom) !important; }
-=======
 .pt-safe { padding-top: env(safe-area-inset-top, 0px) !important; }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px) !important; }
 .pl-safe { padding-left: env(safe-area-inset-left, 0px) !important; }
@@ -609,7 +601,6 @@
   padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
   padding-bottom: 0.75rem;
 }
->>>>>>> origin/main
 
 #root {
   height: 100dvh;
