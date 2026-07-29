@@ -6,7 +6,7 @@ export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "GET")) return;
   try {
     const rawUrl = String(req.query?.url || "");
-    if (!rawUrl) return sendError(res, 400, "Letterboxd URL required");
+    if (!rawUrl) return sendError(res, 400, "Letterboxd username or URL required");
     sendJson(res, 200, await fetchLetterboxdFeed(rawUrl));
   } catch (error: any) {
     const message = error?.message || String(error);

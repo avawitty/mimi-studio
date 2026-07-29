@@ -1760,7 +1760,7 @@ Do not claim that you browsed the live web and do not invent URLs.`,
     try {
       const url = req.query.url as string;
       if (!url) {
-        return res.status(400).json({ error: "Letterboxd URL required" });
+        return res.status(400).json({ error: "Letterboxd username or URL required" });
       }
       res.json(await fetchLetterboxdFeed(url));
     } catch (error: any) {
