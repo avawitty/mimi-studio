@@ -989,20 +989,19 @@ export const AnalysisDisplay: React.FC<{
  >
   {/* Quick Preview Draft Banner */}
   {metadata.isQuickPreview && (
-    <div className="bg-purple-950/90 border-b border-purple-800/80 text-purple-100 px-6 py-3.5 flex items-center justify-between font-mono text-[10px] tracking-wider z-[11000] relative backdrop-blur-md shrink-0 shadow-xl">
-      <div className="flex items-center gap-2.5">
-        <Eye size={14} className="text-purple-400 animate-pulse" />
-        <span className="font-bold">QUICK PREVIEW DRAFT // Layout & Typography Verified</span>
-        <span className="hidden md:inline text-purple-300/70 text-[9px]">(Low-fidelity draft without heavy image generation)</span>
+    <div className="bg-stone-900/95 border-b border-stone-700/70 text-stone-100 px-6 py-3.5 flex items-center justify-between gap-4 font-mono text-[10px] tracking-wider z-[11000] relative backdrop-blur-md shrink-0 shadow-xl">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <Eye size={14} className="text-amber-400 shrink-0" />
+        <span className="font-bold truncate">QUICK PREVIEW DRAFT // Layout & Typography Verified</span>
+        <span className="hidden md:inline text-stone-400 text-[9px]">(Low-fidelity draft without heavy image generation)</span>
       </div>
       <button
         onClick={() => {
           onReset();
           window.dispatchEvent(new CustomEvent('mimi:develop_highfi', { detail: { originalInput: metadata.originalInput } }));
         }}
-        className="px-4 py-1.5 bg-purple-400 hover:bg-purple-300 text-stone-950 font-extrabold rounded-xs transition-colors tracking-widest uppercase flex items-center gap-1.5 cursor-pointer shadow-md"
+        className="px-4 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-extrabold rounded-xs transition-colors tracking-widest uppercase shrink-0 cursor-pointer shadow-md"
       >
-        <Sparkles size={12} />
         Generate Full High-Fi Zine
       </button>
     </div>
@@ -1010,52 +1009,18 @@ export const AnalysisDisplay: React.FC<{
 
   <div className="fixed top-8 right-8 z-[10000] flex items-center gap-2">
     <button
-      onClick={handleReadToMe}
-      disabled={isSynthesizingTTS}
-      className={`font-mono text-[10px] uppercase tracking-[0.2em] font-black transition-all bg-white/95 dark:bg-stone-900/95 backdrop-blur-md px-4 py-3 border hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer ${
-        isReadingAloud
-          ? 'text-amber-400 bg-amber-950/80 border-amber-400 animate-pulse'
-          : 'text-purple-600 dark:text-purple-300 border-purple-500/40 hover:border-purple-400'
-      }`}
-      title={`Read full Zine aloud in ${ttsVoice} Voice`}
-    >
-      {isSynthesizingTTS ? (
-        <>
-          <Loader2 size={13} className="animate-spin text-purple-400" />
-          [ SYNTHESIZING VOICE... ]
-        </>
-      ) : isReadingAloud ? (
-        <>
-          <Square size={13} className="text-amber-400 fill-amber-400" />
-          [ STOP VOICE ({ttsVoice}) ]
-        </>
-      ) : (
-        <>
-          <Volume2 size={13} className="text-purple-400" />
-          [ READ TO ME ({ttsVoice}) ]
-        </>
-      )}
-    </button>
-    <button
-      onClick={() => setTtsVoice(prev => prev === 'Kore' ? 'Koral' : 'Kore')}
-      className="font-mono text-[9px] uppercase tracking-widest text-stone-300 bg-stone-900/90 hover:bg-stone-800 backdrop-blur-md px-2.5 py-3 border border-stone-700/60 transition-colors cursor-pointer"
-      title="Toggle between Kore and Koral voice models"
-    >
-      VOICE: {ttsVoice}
-    </button>
-    <button
       onClick={() => setIsDedicatedReadingMode(true)}
-      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-purple-600 dark:text-purple-400 hover:text-purple-500 transition-all bg-white/90 dark:bg-stone-900/90 backdrop-blur-md px-5 py-3 border border-purple-500/30 hover:border-purple-500/60 hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer"
+      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/90 dark:bg-stone-900/90 backdrop-blur-md px-4 md:px-5 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer"
       title="Enter dedicated Reading Mode with expanded line height, increased margins, and zero distraction chrome"
     >
       <BookOpen size={13} />
-      [ READING MODE ]
+      <span className="hidden sm:inline">[ READING MODE ]</span>
     </button>
     <button 
       onClick={onReset} 
-      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/80 dark:bg-stone-900/80 backdrop-blur-md px-6 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/80 dark:bg-stone-900/80 backdrop-blur-md px-4 md:px-6 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
     >
-      [ X CLOSE ]
+      [ X ]
     </button>
   </div>
  <style>{`
@@ -1259,7 +1224,7 @@ export const AnalysisDisplay: React.FC<{
  
  {/* 1. HEADLINES (TITLE/TONE) */}
  <motion.section initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease: [0.16,1,0.3,1] }} className="min-h-[100dvh] flex flex-col justify-center snap-start border-b border-nous-border print:min-h-0 print:py-12 bg-nous-base">
- <div className="w-full space-y-16 px-6 md:px-24">
+ <div className="w-full space-y-10 md:space-y-16 px-6 md:px-24">
  <div className="flex items-center gap-4">
  <span className="font-mono text-[9px] uppercase tracking-[0.5em] text-nous-subtle">Issue_0{Math.floor(Math.random() * 10)}</span>
  {metadata.isDeepThinking && <div className="flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-none text-amber-500 font-sans text-[7px] font-black uppercase tracking-widest"><Radar size={10} className="animate-pulse"/> Deep Refraction</div>}
@@ -1270,7 +1235,7 @@ export const AnalysisDisplay: React.FC<{
  <h1 className={`${fontStyle} text-5xl sm:text-7xl md:text-8xl lg:text-[9rem] tracking-tight leading-[0.92] text-nous-text uppercase italic max-w-5xl`}>
  {metadata.content?.headlines?.[0] || metadata.title}
  </h1>
- <div className="flex flex-col md:flex-row md:items-center gap-12 pt-12 border-t border-nous-border">
+ <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-12 pt-8 md:pt-12 border-t border-nous-border">
  <div className="flex flex-col gap-1">
  <span className="font-sans text-[8px] uppercase tracking-[0.3em] font-black text-nous-subtle">Tone</span>
  <span className="font-serif italic text-3xl"style={{ color: accentColor }}>{metadata.tone}</span>
@@ -1497,14 +1462,14 @@ export const AnalysisDisplay: React.FC<{
  </motion.section>
 
  {/* 7. CELESTIAL CALIBRATION */}
- <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg text-white print:min-h-0 print:py-12">
+ <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg-stone-950 text-white print:min-h-0 print:py-12">
  <div className="w-full space-y-12 px-6 md:px-24">
  <SectionHeader label="Celestial Calibration"icon={Moon} color="text-white"/>
  <div className="flex flex-col items-center text-center space-y-12">
  <div className="p-8 rounded-none border border-white/10 bg-white/5 animate-pulse-slow">
  <CelestialIcon size={48} style={{ color: accentColor }} />
  </div>
- <p className="font-mono text-xl md:text-3xl text-nous-text uppercase tracking-widest leading-relaxed max-w-2xl border-l-2 pl-8 text-left"style={{ borderColor: accentColor }}>
+ <p className="font-mono text-xl md:text-3xl text-stone-100 uppercase tracking-widest leading-relaxed max-w-2xl border-l-2 pl-6 md:pl-8 text-left"style={{ borderColor: accentColor }}>
  {metadata.content.celestial_calibration}
  </p>
  </div>
@@ -1521,10 +1486,10 @@ export const AnalysisDisplay: React.FC<{
  const isEven = i % 2 === 0;
  return (
  <motion.section key={i} initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start w-full">
- <div className={`flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-stretch h-[100dvh]`}>
+ <div className={`flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-stretch md:h-[100dvh]`}>
  
  {/* VISUAL COMPONENT */}
- <div className="w-full md:w-1/2 relative group h-[50dvh] md:h-full flex items-center justify-center p-8 md:p-24">
+ <div className="w-full md:w-1/2 relative group h-[42dvh] md:h-full flex items-center justify-center p-6 md:p-24">
  <div className="relative w-full h-full max-h-[80vh] border border-nous-border bg-nous-base overflow-hidden">
  <Visualizer 
  prompt={page.imagePrompt} 
@@ -1551,7 +1516,7 @@ export const AnalysisDisplay: React.FC<{
  </div>
 
  {/* TEXT COMPONENT */}
- <div className="w-full md:w-1/2 flex flex-col justify-center p-12 md:p-24 space-y-8 md:space-y-12">
+ <div className="w-full md:w-1/2 flex flex-col justify-center px-6 py-10 sm:px-8 md:p-24 space-y-6 md:space-y-12">
  <div className="flex items-center gap-4 text-nous-subtle">
  <span className="font-serif italic text-4xl text-nous-text">{i+1}.</span>
  <div className="h-px flex-1 bg-nous-base"/>

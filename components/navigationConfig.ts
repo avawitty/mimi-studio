@@ -41,6 +41,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
     section: "Collect",
     items: [
       {
+        mode: "scry",
+        label: "Scry",
+        note: "search tags, embeddings, and the web",
+        keywords: ["scry", "search", "find", "specimen", "lookup", "query", "web", "grounding", "embedding", "vector", "semantic", "tags", "shadow memory", "trend", "discover"],
+      },
+      {
         mode: "scribe",
         label: "Scribe",
         note: "project context and atoms",
@@ -232,6 +238,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "System",
         note: "codex, architecture, diagnostics",
         keywords: ["rules", "instructions", "system", "codex", "code", "architecture", "diagnostics"],
+      },
+      {
+        mode: "brand-voice",
+        label: "The Voice",
+        note: "brand voice dossier",
+        keywords: ["voice", "brand voice", "tone", "editorial", "copy", "language", "persona", "style guide", "principles"],
       },
       {
         mode: "chamber-map",

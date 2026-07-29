@@ -12,9 +12,10 @@ const PRECACHE_ASSETS = [
   '/index.css',
   '/favicon.svg',
   '/logo.svg',
-  '/public/mimi-header.png',
-  '/public/mimi-logo-dark.png',
-  '/public/mimi-logo-light.png',
+  '/mimi-header.png',
+  '/mimi-app-icon.png',
+  '/mimi-logo-dark.png',
+  '/mimi-logo-light.png',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap'
 ];
 
@@ -70,8 +71,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Check if it is a local request or third-party asset (fonts, APIs)
-  const isLocalApi = requestUrl.pathname.startsWith('/api/');
+  // Do not cache API responses. Many endpoints are authenticated and return
+  // user-specific data; browser Cache Storage matches primarily by URL, so caching
+  // /api/ GET responses can replay one session's data after logout/account switch.
   const isAestheticAsset = requestUrl.pathname.includes('/components/chambers/') || 
                            requestUrl.pathname.includes('/services/') ||
                            requestUrl.pathname.includes('/lib/productCanon');
@@ -88,7 +90,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Handle with Stale-While-Revalidate caching strategy
-  if (isLocalApi || isAestheticAsset || isFontAsset || isStaticDoc) {
+  if (isAestheticAsset || isFontAsset || isStaticDoc) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {

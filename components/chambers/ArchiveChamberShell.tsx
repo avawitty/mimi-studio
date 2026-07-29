@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronRight, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronRight, PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import { getCanonModule } from "./ChamberShell";
 import { ChamberHandoff } from "../ChamberHandoff";
 
@@ -161,7 +161,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {spine ? (
-          <aside className="archive-spine shrink-0 w-14 md:w-16 border-r archive-border flex flex-col items-center py-4 gap-2 overflow-y-auto">
+          <aside className="archive-spine shrink-0 w-14 md:w-16 border-r archive-border hidden md:flex flex-col items-center py-4 gap-2 overflow-y-auto">
             {spine}
           </aside>
         ) : null}
@@ -180,12 +180,39 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
         </main>
 
         {contextDrawer && drawerOpen ? (
-          <aside
-            className="archive-drawer shrink-0 w-72 md:w-80 border-l archive-border overflow-hidden flex flex-col"
-            aria-label={contextDrawerTitle}
-          >
-            {contextDrawer}
-          </aside>
+          <>
+            {/* Mobile: dim backdrop, tap to dismiss */}
+            <button
+              type="button"
+              aria-label="Close context drawer"
+              onClick={toggleDrawer}
+              className="md:hidden fixed inset-0 z-[80] bg-black/40"
+            />
+            <aside
+              className="archive-drawer overflow-hidden flex flex-col archive-border
+                fixed inset-x-0 bottom-0 top-14 z-[90] border-t shadow-2xl
+                md:static md:inset-auto md:top-auto md:z-auto md:shadow-none md:shrink-0 md:w-80 md:border-t-0 md:border-l"
+              aria-label={contextDrawerTitle}
+            >
+              {/* Mobile-only close affordance */}
+              <div className="md:hidden flex items-center justify-between px-4 py-3 border-b archive-border shrink-0">
+                <span className="font-mono text-[9px] uppercase tracking-[0.2em] archive-text-muted font-black">
+                  {contextDrawerTitle}
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleDrawer}
+                  aria-label="Close"
+                  className="archive-icon-btn w-8 h-8 border archive-border flex items-center justify-center"
+                >
+                  <X size={14} strokeWidth={1.5} />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+                {contextDrawer}
+              </div>
+            </aside>
+          </>
         ) : null}
       </div>
     </div>

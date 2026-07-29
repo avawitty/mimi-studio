@@ -26,6 +26,7 @@ import {
   openAiMessagesViaGateway,
 } from "./lib/aiGatewayCompat";
 import { fetchPinterestBoardPreview } from "./lib/pinterestBoardPreview";
+import { fetchLetterboxdFeed } from "./lib/letterboxdFeed";
 import { getShopifyConnectionStatus, publishShopifyDraft } from "./lib/shopifyAdmin";
 import { searchShopifyGlobalCatalog } from "./lib/shopifyCatalog";
 import { verifyMimiSession } from "./lib/serverFirebaseAdmin";
@@ -93,7 +94,7 @@ try {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || process.env.DEV_PORT) || 3000;
   let viteInstance: any = null;
 
   // Lazy initialize Stripe to prevent crashing if key is missing
@@ -1750,6 +1751,24 @@ Do not claim that you browsed the live web and do not invent URLs.`,
           message,
         );
       console.error("MIMI // Pinterest public preview error:", message);
+      res.status(clientError ? 400 : 502).json({ error: message });
+    }
+  });
+
+  app.get("/api/letterboxd", async (req, res) => {
+    try {
+      const url = req.query.url as string;
+      if (!url) {
+        return res.status(400).json({ error: "Letterboxd URL required" });
+      }
+      res.json(await fetchLetterboxdFeed(url));
+    } catch (error: any) {
+      const message = error?.message || String(error);
+      const clientError =
+        /Letterboxd URL|valid Letterboxd|Only letterboxd|public feed|username|readable diary|profile or RSS|HTTP or HTTPS/i.test(
+          message,
+        );
+      console.error("MIMI // Letterboxd feed error:", message);
       res.status(clientError ? 400 : 502).json({ error: message });
     }
   });

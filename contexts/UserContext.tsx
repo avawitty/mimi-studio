@@ -95,7 +95,7 @@ interface UserContextType {
   canGenerate: boolean;
   generationsRemaining: number;
   activatePatron: (key: string) => Promise<void>;
-  upgradePlan: (plan: 'core' | 'pro' | 'lab', interval?: 'month' | 'year') => Promise<void>;
+  upgradePlan: (plan: 'core' | 'optioning' | 'pro' | 'lab', interval?: 'month' | 'year') => Promise<void>;
   incrementGeneration: (cost?: number) => Promise<void>;
   recordSession: () => Promise<void>;
   forceBypassAuth: () => void;
@@ -1267,7 +1267,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const upgradePlan = async (plan: 'core' | 'pro' | 'lab', interval?: 'month' | 'year') => {
+  const upgradePlan = async (plan: 'core' | 'optioning' | 'pro' | 'lab', interval?: 'month' | 'year') => {
     if (!profile) return;
     try {
       await updateProfile({ ...profile, planStatus: plan, plan, subscriptionInterval: interval || 'month', subscriptionStatus: 'active' });

@@ -1,4 +1,5 @@
-import { readJsonBody, requireMethod, sendJson } from "../lib/apiUtils.js";
+import { z } from "zod";
+import { readJsonBody, requireMethod, sendError, sendJson, validateBody } from "../lib/apiUtils.js";
 import {
   getServerFirebaseAdmin,
   verifyMimiSession,
@@ -7,29 +8,38 @@ import { getStripeClient } from "../lib/stripeMembership.js";
 import {
   getMimiPlanForCheckout,
   getStripePriceForPlan,
+  parseBillingInterval,
   parseCheckoutPlan,
 } from "../lib/stripePlans.js";
+
+const checkoutSchema = z.object({
+  plan: z.enum(["core", "optioning", "pro", "lab"]),
+  interval: z.enum(["month", "year"]).optional(),
+});
 
 export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
 
   try {
     const body = await readJsonBody(req);
-    const plan = parseCheckoutPlan(body.plan);
+    const parsed = validateBody(res, checkoutSchema, body);
+    if (!parsed) return;
+    const plan = parseCheckoutPlan(parsed.plan);
     if (!plan) {
-      sendJson(res, 400, { error: "Choose a valid Mimi plan." });
+      sendError(res, 400, "Choose a valid Mimi plan.", "INVALID_PLAN");
       return;
     }
+    const interval = parseBillingInterval(parsed.interval);
 
     const decoded = await verifyMimiSession(req.headers || {});
     if (decoded.firebase?.sign_in_provider === "anonymous") {
-      sendJson(res, 403, { error: "Link a Google or email account before subscribing." });
+      sendError(res, 403, "Link a Google or email account before subscribing.", "ANONYMOUS_USER");
       return;
     }
 
     const { db } = getServerFirebaseAdmin();
     if (!db) {
-      sendJson(res, 503, { error: "Mimi billing is temporarily unavailable." });
+      sendError(res, 503, "Mimi billing is temporarily unavailable.", "BILLING_UNAVAILABLE");
       return;
     }
 
@@ -37,7 +47,7 @@ export default async function handler(req: any, res: any) {
     const existingCustomerId = String(userSnapshot.data()?.stripeCustomerId || "");
     const stripe = getStripeClient();
     const mimiPlan = getMimiPlanForCheckout(plan);
-    const priceId = getStripePriceForPlan(plan);
+    const priceId = getStripePriceForPlan(plan, interval);
 
     const configuredBase = String(process.env.MIMI_PUBLIC_BASE_URL || "")
       .trim()
@@ -71,15 +81,13 @@ export default async function handler(req: any, res: any) {
           quantity: 1,
         },
       ],
-      success_url: `${baseUrl}/?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/?checkout=success&plan=${plan}&interval=${interval}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/?checkout=canceled`,
     });
 
     sendJson(res, 200, { url: session.url });
   } catch (error: any) {
     console.error("MIMI // Stripe checkout error:", error);
-    sendJson(res, error?.status || 500, {
-      error: error.message || "Failed to create checkout session",
-    });
+    sendError(res, error?.status || 500, error?.message || "Failed to create checkout session");
   }
 }

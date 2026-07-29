@@ -1,4 +1,4 @@
-import { requireMethod, sendJson } from "../lib/apiUtils.js";
+import { requireMethod, sendError, sendJson } from "../lib/apiUtils.js";
 import {
   getServerFirebaseAdmin,
   verifyMimiSession,
@@ -11,20 +11,20 @@ export default async function handler(req: any, res: any) {
   try {
     const decoded = await verifyMimiSession(req.headers || {});
     if (decoded.firebase?.sign_in_provider === "anonymous") {
-      sendJson(res, 403, { error: "Link a Google or email account to manage billing." });
+      sendError(res, 403, "Link a Google or email account to manage billing.", "ANONYMOUS_USER");
       return;
     }
 
     const { db } = getServerFirebaseAdmin();
     if (!db) {
-      sendJson(res, 503, { error: "Mimi billing is temporarily unavailable." });
+      sendError(res, 503, "Mimi billing is temporarily unavailable.", "BILLING_UNAVAILABLE");
       return;
     }
 
     const userSnapshot = await db.collection("users").doc(decoded.uid).get();
     const customerId = String(userSnapshot.data()?.stripeCustomerId || "");
     if (!customerId.startsWith("cus_")) {
-      sendJson(res, 404, { error: "No Stripe subscription is connected to this account." });
+      sendError(res, 404, "No Stripe subscription is connected to this account.", "NO_SUBSCRIPTION");
       return;
     }
 
@@ -45,8 +45,6 @@ export default async function handler(req: any, res: any) {
     sendJson(res, 200, { url: session.url });
   } catch (error: any) {
     console.error("MIMI // Stripe billing portal error:", error);
-    sendJson(res, error?.status || 500, {
-      error: error.message || "Failed to open billing portal",
-    });
+    sendError(res, error?.status || 500, error?.message || "Failed to open billing portal");
   }
 }
