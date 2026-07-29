@@ -1340,7 +1340,12 @@ export const App: React.FC = () => {
     const types = e.dataTransfer?.types;
     if (!types) return false;
     const list = Array.from(types);
-    return list.includes("Files") || list.includes("text/uri-list") || list.includes("text/plain");
+    // Internal HTML5 drags (page reorder, pocket insert, etc.) often set text/plain
+    // and/or application/mimi-* — never treat those as "open the stash" signals.
+    if (list.some((t) => t.startsWith("application/mimi-"))) return false;
+    // File drops and external URL drags are the intended open triggers.
+    // Bare text/plain alone is too common for in-app reorder/edit drags.
+    return list.includes("Files") || list.includes("text/uri-list");
   };
 
   useEffect(() => {
@@ -1359,8 +1364,11 @@ export const App: React.FC = () => {
       if (!isExternalPocketDrag(e)) return;
       pocketDragDepth.current = Math.max(0, pocketDragDepth.current - 1);
     };
-    const onDrop = () => {
+    const onDrop = (e: DragEvent) => {
+      // Always reset depth; only intercept browser navigation for external drops.
       pocketDragDepth.current = 0;
+      if (!isExternalPocketDrag(e)) return;
+      e.preventDefault();
     };
     window.addEventListener("dragenter", onDragEnter);
     window.addEventListener("dragover", onDragOver);
