@@ -831,12 +831,22 @@ const useAppRouter = () => {
 
   useEffect(() => {
     if (path === "/" || path === "") {
-      // Do not redirect while callback query params are still present on the
-      // root URL.  Checkout (?checkout=…), Firebase email-link (?mode=…/
-      // ?oobCode=…), and patron-mint (?view=…) handlers all read
-      // window.location.search; navigating away first would wipe those params
-      // before the handlers can inspect them.
-      if (window.location.search) return;
+      // Do not redirect while known callback query params are present on the
+      // root URL.  Each handler reads window.location.search (or .href);
+      // navigating away first would wipe those params before the handler runs:
+      //   • checkout=… / plan=… / tier=…  — Stripe checkout return URL
+      //   • mode=… / oobCode=… / apiKey=… — Firebase email-link sign-in
+      //   • view=patron_mint              — patron-mint overlay
+      const params = new URLSearchParams(window.location.search);
+      const hasCallbackParam =
+        params.has("checkout") ||
+        params.has("plan") ||
+        params.has("tier") ||
+        params.has("mode") ||
+        params.has("oobCode") ||
+        params.has("apiKey") ||
+        params.has("view");
+      if (hasCallbackParam) return;
       navigate("/studio", { replace: true });
     }
   }, [navigate, path]);
