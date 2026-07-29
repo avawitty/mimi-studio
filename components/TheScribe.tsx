@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { X, Sparkles, Briefcase, Eraser, Save, Type, Zap, Database } from 'lucide-react';
+import { X, Sparkles, Briefcase, Eraser, Save, PenTool, Type, Zap, Database } from 'lucide-react';
 import { LiveMentor } from './LiveMentor';
 import { useUser } from '../contexts/UserContext';
 import { archiveManager } from '../services/archiveManager';
