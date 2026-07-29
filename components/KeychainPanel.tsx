@@ -92,7 +92,7 @@ export const KeychainPanel: React.FC = () => {
   };
 
   return (
-    <div className="w-full bg-white dark:bg-stone-900 border border-nous-border p-8 mb-8">
+    <div className="w-full bg-nous-base border border-nous-border p-8 mb-8">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h2 className="font-serif text-2xl italic flex items-center gap-2">
@@ -168,7 +168,7 @@ export const KeychainPanel: React.FC = () => {
                 value={geminiKey} 
                 onChange={(e) => setGeminiKey(e.target.value)} 
                 placeholder="AIzaSy..." 
-                className="w-full bg-white dark:bg-stone-900 border border-nous-border p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
+                className="w-full bg-nous-base border border-nous-border p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
               />
               <button 
                 type="button"
@@ -182,7 +182,7 @@ export const KeychainPanel: React.FC = () => {
               <button 
                 onClick={() => handleSave('gemini', geminiKey, setGeminiKey)}
                 disabled={validationStatuses.gemini.status === 'validating'}
-                className="px-5 py-3 bg-nous-text hover:bg-stone-800 text-white dark:text-black font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2 min-w-[80px]"
+                className="px-5 py-3 bg-nous-text hover:opacity-80 text-nous-base font-mono text-[10px] uppercase tracking-widest transition-opacity flex items-center justify-center gap-2 min-w-[80px]"
               >
                 {saved['gemini'] ? 'Saved' : 'Anchor'}
               </button>
@@ -287,7 +287,7 @@ export const KeychainPanel: React.FC = () => {
                 value={openaiKey} 
                 onChange={(e) => setOpenaiKey(e.target.value)} 
                 placeholder="sk-proj-..." 
-                className="w-full bg-white dark:bg-stone-900 border border-nous-border p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
+                className="w-full bg-nous-base border border-nous-border p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
               />
               <button 
                 type="button"
@@ -301,7 +301,7 @@ export const KeychainPanel: React.FC = () => {
               <button 
                 onClick={() => handleSave('openai', openaiKey, setOpenaiKey)}
                 disabled={validationStatuses.openai.status === 'validating'}
-                className="px-5 py-3 bg-nous-text hover:bg-stone-800 text-white dark:text-black font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2 min-w-[80px]"
+                className="px-5 py-3 bg-nous-text hover:opacity-80 text-nous-base font-mono text-[10px] uppercase tracking-widest transition-opacity flex items-center justify-center gap-2 min-w-[80px]"
               >
                 {saved['openai'] ? 'Saved' : 'Anchor'}
               </button>
@@ -395,7 +395,7 @@ export const KeychainPanel: React.FC = () => {
                 value={anthropicKey} 
                 onChange={(e) => setAnthropicKey(e.target.value)} 
                 placeholder="sk-ant-..." 
-                className="w-full bg-white dark:bg-stone-900 border border-nous-border p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
+                className="w-full bg-nous-base border border-nous-border p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
               />
               <button 
                 type="button"
@@ -409,7 +409,7 @@ export const KeychainPanel: React.FC = () => {
               <button 
                 onClick={() => handleSave('anthropic', anthropicKey, setAnthropicKey)}
                 disabled={validationStatuses.anthropic.status === 'validating'}
-                className="px-5 py-3 bg-nous-text hover:bg-stone-800 text-white dark:text-black font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2 min-w-[80px]"
+                className="px-5 py-3 bg-nous-text hover:opacity-80 text-nous-base font-mono text-[10px] uppercase tracking-widest transition-opacity flex items-center justify-center gap-2 min-w-[80px]"
               >
                 {saved['anthropic'] ? 'Saved' : 'Anchor'}
               </button>

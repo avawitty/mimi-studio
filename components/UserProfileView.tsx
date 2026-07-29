@@ -1137,7 +1137,7 @@ export const UserProfileView: React.FC = () => {
                     }),
                   )
                 }
-                className="px-8 py-4 bg-nous-base dark:bg-stone-200 text-nous-base text-[10px] uppercase tracking-[0.2em] hover:bg-stone-700 dark:hover:bg-white transition-colors rounded-none"
+                className="px-8 py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-[0.2em] hover:opacity-80 transition-opacity rounded-none"
               >
                 Extract Graph
               </button>
@@ -1398,7 +1398,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1417,19 +1417,19 @@ export const UserProfileView: React.FC = () => {
               <div className="flex flex-wrap gap-2 mb-6">
                 <button
                   onClick={() => setArchetype("editorial-serif")}
-                  className={`text-[10px] font-mono border px-4 py-2 rounded-none ${archetype === "editorial-serif" ? "bg-nous-text text-nous-base border-nous-text" : "bg-white border-nous-border "}`}
+                  className={`text-[10px] font-mono border px-4 py-2 rounded-none ${archetype === "editorial-serif" ? "bg-nous-text text-nous-base border-nous-text" : "bg-nous-base border-nous-border"}`}
                 >
                   Editorial
                 </button>
                 <button
                   onClick={() => setArchetype("minimalist-sans")}
-                  className={`text-[10px] font-mono border px-4 py-2 rounded-none ${archetype === "minimalist-sans" ? "bg-nous-text text-nous-base border-nous-text" : "bg-white border-nous-border "}`}
+                  className={`text-[10px] font-mono border px-4 py-2 rounded-none ${archetype === "minimalist-sans" ? "bg-nous-text text-nous-base border-nous-text" : "bg-nous-base border-nous-border"}`}
                 >
                   Minimalist
                 </button>
                 <button
                   onClick={() => setArchetype("brutalist-mono")}
-                  className={`text-[10px] font-mono border px-4 py-2 rounded-none ${archetype === "brutalist-mono" ? "bg-nous-text text-nous-base border-nous-text" : "bg-white border-nous-border "}`}
+                  className={`text-[10px] font-mono border px-4 py-2 rounded-none ${archetype === "brutalist-mono" ? "bg-nous-text text-nous-base border-nous-text" : "bg-nous-base border-nous-border"}`}
                 >
                   Brutalist
                 </button>
@@ -1443,7 +1443,7 @@ export const UserProfileView: React.FC = () => {
                     </label>
                     <button
                       onClick={() => setCuratorEnabled(!curatorEnabled)}
-                      className={`text-[10px] font-mono px-2 py-1 rounded-none border ${curatorEnabled ? "text-nous-text border-nous-border bg-nous-base " : "text-nous-subtle border-nous-border "}`}
+                      className={`text-[10px] font-mono px-2 py-1 rounded-none border ${curatorEnabled ? "text-nous-text border-nous-border bg-nous-base" : "text-nous-subtle border-nous-border bg-transparent"}`}
                     >
                       {curatorEnabled ? "ENABLED" : "DISABLED"}
                     </button>
@@ -1468,7 +1468,7 @@ export const UserProfileView: React.FC = () => {
                     </label>
                     <button
                       onClick={() => setSentinelEnabled(!sentinelEnabled)}
-                      className={`text-[10px] font-mono px-2 py-1 rounded-none border ${sentinelEnabled ? "text-nous-text border-nous-border bg-nous-base " : "text-nous-subtle border-nous-border "}`}
+                      className={`text-[10px] font-mono px-2 py-1 rounded-none border ${sentinelEnabled ? "text-nous-text border-nous-border bg-nous-base" : "text-nous-subtle border-nous-border bg-transparent"}`}
                     >
                       {sentinelEnabled ? "ENABLED" : "DISABLED"}
                     </button>
@@ -1508,7 +1508,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1650,7 +1650,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
         >
           {/* Patron Status Bar */}
           <div className="mb-8 pb-8 border-b border-nous-border">
@@ -1769,8 +1769,8 @@ export const UserProfileView: React.FC = () => {
             </h3>
             <div className="flex-grow overflow-y-auto no-scrollbar min-h-[150px]">
               <ConnectionsManager />
-              <div className="p-4 mb-4 border border-amber-500/50 bg-amber-950/10 text-amber-700 text-xs font-mono">
-                ✨ System keys active. Sovereign gating disabled.
+              <div className="p-4 mb-4 border border-nous-border bg-nous-base/50 text-nous-subtle text-[9px] font-mono uppercase tracking-widest">
+                System keys active — sovereign gating disabled.
               </div>
               <ApiKeyRing />
             </div>
@@ -1782,7 +1782,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
         >
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex flex-col gap-4 w-full md:w-auto">
@@ -1812,7 +1812,7 @@ export const UserProfileView: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="px-8 py-4 bg-nous-base dark:bg-stone-200 text-nous-base text-[10px] uppercase tracking-widest hover:bg-stone-700 dark:hover:bg-white transition-colors rounded-none font-medium"
+                className="px-8 py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity rounded-none font-medium"
               >
                 {isSaving ? "Committing..." : "Commit Global Handshake"}
               </button>

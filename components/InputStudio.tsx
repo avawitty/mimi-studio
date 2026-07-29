@@ -1102,7 +1102,7 @@ export const InputStudio: React.FC<{
     onUrlAppend: (url) => setInput((prev) => (prev ? `${prev}\n${url}` : url)),
   });
 
-  const triggerAccession = useCallback((isQuickPreview = false) => {
+  const triggerAccession = useCallback((isQuickPreview = false, isPublic = false) => {
     let finalInput = input;
     if (activeThread && activeThread.narrative) {
       finalInput = `${input}\n\n[THREAD CONTEXT: ${activeThread.narrative}]`;
@@ -1165,7 +1165,7 @@ ${finalInput}`;
 
     onRefine(finalInput, mediaFiles, selectedTone || "CONTENT", {
       deepThinking,
-      isPublic: false,
+      isPublic,
       isLite: isQuickPreview ? true : liteMode,
       isQuickPreview,
       bypassTailor: !useTailorProfile,
@@ -3406,7 +3406,26 @@ ${finalInput}`;
                   )}
                 </div>
 
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-between">
+                  {/* Submit to Zine button */}
+                  <button
+                    type="button"
+                    disabled={isThinking || !input.trim()}
+                    onClick={() => {
+                      triggerAccession(false, true);
+                      playClick();
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-950 dark:bg-stone-100 text-stone-50 dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-white font-mono text-[7.5px] uppercase tracking-widest font-extrabold transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    title="Develop and publish this issue to the Zine"
+                  >
+                    {isThinking ? (
+                      <Loader2 size={10} className="animate-spin" />
+                    ) : (
+                      <BookOpen size={10} strokeWidth={2} aria-hidden="true" />
+                    )}
+                    {isThinking ? "Developing..." : "Submit to Zine"}
+                  </button>
+
                   {/* Overlay toggle — stickers, logos, text layers */}
                   <button
                     type="button"
@@ -3436,7 +3455,7 @@ ${finalInput}`;
                     </span>
                     <span className="sr-only">{coverOverlay ? "On" : "Off"}</span>
                   </button>
-                  </div>
+                </div>
 
                 {coverOverlay && (
                   <StudioCoverOverlayPanel
