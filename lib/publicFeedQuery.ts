@@ -116,13 +116,12 @@ export async function fetchPublicFeedZines(
   // timestamp exists on all zines and keeps the limit window deterministic.
   // publishedAt (set on make-public) is preferred for recency when present —
   // merge both ordered queries so legacy public docs without publishedAt still appear.
-  let byTimestamp: QuerySnapshot;
-  try {
-    byTimestamp = await base.orderBy("timestamp", "desc").limit(take).get();
-  } catch (error) {
-    console.warn("MIMI // public feed timestamp orderBy failed:", error);
-    return [];
-  }
+  // The timestamp-ordered query is the primary window and has no fallback, so a
+  // failure here (e.g. missing/still-building composite index or a transient
+  // Firestore error) must propagate. Swallowing it to [] would make a broken
+  // feed look identical to a creator with no public issues; re-throwing lets the
+  // route return a visible 500 (surfacing Firestore's index-creation link).
+  const byTimestamp: QuerySnapshot = await base.orderBy("timestamp", "desc").limit(take).get();
 
   let byPublished: QueryDocumentSnapshot[] = [];
   try {
