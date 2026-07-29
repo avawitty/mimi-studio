@@ -226,6 +226,24 @@ export const UserProfileView: React.FC = () => {
     profile?.subscriptionStatus,
   ]);
 
+  // Match CreditMeter: paid patrons have finite monthly membershipCredits, not unlimited.
+  const membershipCredits = profile?.membershipCredits;
+  const patronCreditsRemaining = Number(
+    membershipCredits?.remaining ?? profile?.trial?.remainingCredits ?? 0,
+  );
+  const patronCreditsAllowance = Number(
+    membershipCredits?.allowance ??
+      membershipCredits?.remaining ??
+      profile?.trial?.grantedCredits ??
+      0,
+  );
+  const patronAiCreditsLabel =
+    patronCreditsAllowance > 0
+      ? `${patronCreditsRemaining.toLocaleString()} / ${patronCreditsAllowance.toLocaleString()}`
+      : patronCreditsRemaining > 0
+        ? patronCreditsRemaining.toLocaleString()
+        : "—";
+
   const handleOpenBillingPortal = async () => {
     setIsBillingPortalLoading(true);
     try {
@@ -1525,7 +1543,7 @@ export const UserProfileView: React.FC = () => {
               {isPatronActive && (
                 <div className="flex gap-6 shrink-0">
                   {[
-                    { label: "AI Credits", value: "Unlimited" },
+                    { label: "AI Credits", value: patronAiCreditsLabel },
                     { label: "Modules", value: "All Access" },
                     { label: "Storage", value: "Extended" },
                   ].map(({ label, value }) => (
