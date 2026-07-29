@@ -8,7 +8,7 @@ import { Sparkles, Loader2, Fingerprint, Activity, BookOpen, Orbit, Waves, Compa
 import { ExecutionBlock } from './ExecutionBlock';
 import { ExecutionLayer } from '../types';
 
-const OracleDiscourse: React.FC = () => (
+const OracleDiscourse: React.FC = React.memo(() => (
   <motion.div
     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
     className="border border-nous-border bg-nous-base0/20 p-6 md:p-8 space-y-6 relative overflow-hidden"
@@ -82,7 +82,7 @@ const OracleDiscourse: React.FC = () => (
       </p>
     </div>
   </motion.div>
-);
+));
 
 export const TheOracle: React.FC = () => {
   const { profile, activePersona } = useUser();

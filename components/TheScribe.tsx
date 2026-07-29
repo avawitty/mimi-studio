@@ -52,8 +52,24 @@ interface TheScribeProps {
   initialIntent?: string;
 }
 
+type EntityId = 'mimi' | 'cyrus' | 'engine' | 'synthesis';
+
+// Static entity config — kept outside the component to avoid recreation on every render.
+// Icons are rendered lazily inside the map to stay within JSX render context.
+const ENTITY_CONFIG: ReadonlyArray<{
+  id: EntityId;
+  label: string;
+  icon: React.ReactElement;
+  activeClass: string;
+}> = [
+  { id: 'mimi',      label: 'Mimi',      icon: <Sparkles size={12} />,  activeClass: 'bg-white text-black shadow-sm' },
+  { id: 'cyrus',     label: 'Cyrus',     icon: <Briefcase size={12} />, activeClass: 'bg-black text-white shadow-sm' },
+  { id: 'engine',    label: 'Engine',    icon: <PenTool size={12} />,   activeClass: 'bg-stone-800 text-white shadow-sm' },
+  { id: 'synthesis', label: 'Synthesis', icon: <Zap size={12} />,       activeClass: 'bg-indigo-600 text-white shadow-sm' },
+] as const;
+
 export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mimi', initialIntent = '' }) => {
-  const [activeEntity, setActiveEntity] = useState<'mimi' | 'cyrus' | 'engine' | 'synthesis'>(initialTab);
+  const [activeEntity, setActiveEntity] = useState<EntityId>(initialTab);
   const [userNotes, setUserNotes] = useState('');
   const [aiTranscript, setAiTranscript] = useState('');
   const [activeCaptureTab, setActiveCaptureTab] = useState<'notes' | 'sketch' | 'context'>('notes');
@@ -255,14 +271,7 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
         <div className={`absolute top-8 right-8 z-20 flex p-1 rounded-full backdrop-blur-md ${
           activeEntity === 'mimi' ? 'bg-black/10' : 'bg-white/10'
         }`}>
-          {(
-            [
-              { id: 'mimi' as const,      label: 'Mimi',      icon: <Sparkles size={12} />,  active: 'bg-white text-black shadow-sm' },
-              { id: 'cyrus' as const,     label: 'Cyrus',     icon: <Briefcase size={12} />, active: 'bg-black text-white shadow-sm' },
-              { id: 'engine' as const,    label: 'Engine',    icon: <PenTool size={12} />,   active: 'bg-stone-800 text-white shadow-sm' },
-              { id: 'synthesis' as const, label: 'Synthesis', icon: <Zap size={12} />,       active: 'bg-indigo-600 text-white shadow-sm' },
-            ] as const
-          ).map(({ id, label, icon, active }) => {
+          {ENTITY_CONFIG.map(({ id, label, icon, activeClass }) => {
             const inactiveClass = activeEntity === 'mimi'
               ? 'text-black/60 hover:text-black'
               : 'text-white/60 hover:text-white';
@@ -271,7 +280,7 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
                 key={id}
                 onClick={() => setActiveEntity(id)}
                 className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-                  activeEntity === id ? active : inactiveClass
+                  activeEntity === id ? activeClass : inactiveClass
                 }`}
               >
                 {icon}
