@@ -2,10 +2,17 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, Sparkles, ArrowRight, Lock, Image as ImageIcon, Briefcase, FileText, CheckCircle, Activity, Globe, Download, X, Fingerprint, Loader2 } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
-import { generateRawImage, generateBrandIntakeReport } from '../services/geminiService';
+import { generateRawImage, generateBrandIntakeReport, type ReportCitationFormat } from '../services/geminiService';
 import { startTailorFromIntake } from '../services/tailorBridge';
 
 type ParsingStep = 'upload' | 'analyzing' | 'report';
+
+const REPORT_FORMAT_OPTIONS: { value: ReportCitationFormat; label: string; note: string }[] = [
+  { value: 'editorial', label: 'Editorial', note: 'Mimi signature — evocative, sensory, high-concept' },
+  { value: 'mla', label: 'MLA', note: 'Modern Language Association — cultural humanities framing' },
+  { value: 'apa', label: 'APA', note: 'American Psychological Association — behavioral research framing' },
+  { value: 'chicago', label: 'Chicago', note: 'Chicago/Turabian — archival, historically contextualised' },
+];
 
 export const BrandIntakeView: React.FC = () => {
   const { user, profile } = useUser();
@@ -17,6 +24,7 @@ export const BrandIntakeView: React.FC = () => {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
+  const [reportFormat, setReportFormat] = useState<ReportCitationFormat>('editorial');
 
   // Brand Kit Customization State
   const [chromaticScale, setChromaticScale] = useState(['#b1a99f', '#e3e1db', '#2a2a2a']);
@@ -79,7 +87,7 @@ export const BrandIntakeView: React.FC = () => {
     setStep('analyzing');
     setIsProcessing(true);
     try {
-      const data = await generateBrandIntakeReport(brandName, vibeDescription, profile);
+      const data = await generateBrandIntakeReport(brandName, vibeDescription, profile, reportFormat);
       if (data) {
         setReportData(data);
         if (data.chromaticScale && Array.isArray(data.chromaticScale) && data.chromaticScale.length >= 3) {
@@ -154,6 +162,24 @@ export const BrandIntakeView: React.FC = () => {
                 </div>
 
                 <div>
+                  <label className="block font-mono text-[9px] uppercase tracking-widest text-[#777] mb-3">Report Format / Citation Style</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {REPORT_FORMAT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setReportFormat(opt.value)}
+                        aria-pressed={reportFormat === opt.value}
+                        className={`p-3 text-left border transition-colors ${reportFormat === opt.value ? 'bg-black text-white border-black' : 'bg-white border-[#e5e5e5] hover:border-black'}`}
+                      >
+                        <span className="block font-mono text-[9px] uppercase tracking-widest font-bold mb-1">{opt.label}</span>
+                        <span className={`block font-sans text-[9px] leading-tight ${reportFormat === opt.value ? 'text-white/70' : 'text-[#888]'}`}>{opt.note}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
                   <label className="block font-mono text-[9px] uppercase tracking-widest text-[#777] mb-4">Upload Fragments & References</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                      <label className="p-8 border border-dashed border-[#d5d5d5] hover:bg-[#f5f5f5] transition-colors cursor-pointer group flex flex-col items-center justify-center gap-3 text-center bg-white cursor-pointer relative">
@@ -218,9 +244,12 @@ export const BrandIntakeView: React.FC = () => {
             >
               <div className="flex justify-between items-end border-b border-black/10 pb-6">
                 <div>
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-[#777] mb-2 flex items-center gap-2">
+                  <div className="font-mono text-[9px] uppercase tracking-widest text-[#777] mb-2 flex items-center gap-3">
                     <CheckCircle size={12} className="text-[#a8b79f]" />
                     Intelligence Report
+                    <span className="px-2 py-0.5 bg-black text-white text-[8px] tracking-widest uppercase font-bold">
+                      {REPORT_FORMAT_OPTIONS.find(o => o.value === reportFormat)!.label}
+                    </span>
                   </div>
                   <h2 className="font-serif italic text-4xl text-black">{brandName}: TasteOS Blueprint</h2>
                 </div>

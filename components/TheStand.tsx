@@ -7,6 +7,7 @@ import { ZineMetadata } from '../types';
 import { useUser } from '../contexts/UserContext';
 import { Search, Globe, Radio, Zap, ArrowUpRight, Loader2, RefreshCw, Hash, Eye, LayoutGrid, Layers, Ghost } from 'lucide-react';
 import { ZineCoverCard } from './ZineCoverCard';
+import { ZineComments } from './ZineComments';
 
 const TICKER_ITEMS = [
 "SIGNAL_DENSITY: HIGH",
@@ -22,6 +23,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
  const [loading, setLoading] = useState(true);
  const [filter, setFilter] = useState<'FRESH' | 'TRENDING' | 'DEEP'>('FRESH');
  const [searchQuery, setSearchQuery] = useState('');
+ const [commentZineId, setCommentZineId] = useState<string | null>(null);
 
  useEffect(() => {
  const load = async () => {
@@ -62,6 +64,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
  }, [zines, filter, searchQuery]);
 
  return (
+ <>
  <div className="flex-1 w-full h-full flex flex-col bg-nous-base dark:bg-nous-base transition-colors duration-1000 relative overflow-hidden">
  
  {/* GLOBAL TICKER */}
@@ -152,6 +155,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
  <ZineCoverCard 
  zine={zine} 
  onClick={() => onSelectZine(zine)} 
+ onComment={(e) => { e.stopPropagation(); setCommentZineId(zine.id); }}
  />
  </div>
  ))}
@@ -164,5 +168,23 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
  </footer>
  </div>
  </div>
+
+ {/* Voice memo comment modal */}
+ <AnimatePresence>
+ {commentZineId && (
+ <motion.div
+ initial={{ opacity: 0 }}
+ animate={{ opacity: 1 }}
+ exit={{ opacity: 0 }}
+ className="fixed inset-0 z-[11000] flex items-center justify-center p-6 bg-nous-base/80 backdrop-blur-xl"
+ onClick={() => setCommentZineId(null)}
+ >
+ <div onClick={(e) => e.stopPropagation()}>
+ <ZineComments zineId={commentZineId} onClose={() => setCommentZineId(null)} />
+ </div>
+ </motion.div>
+ )}
+ </AnimatePresence>
+ </>
  );
 };

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Send, User, Clock, Loader2, X, Flag, Trash2 } from 'lucide-react';
+import { MessageSquare, Send, User, Clock, Loader2, X, Flag, Trash2, Mic, Type, Play, Pause } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { useUser } from '../contexts/UserContext';
 import { db } from '../services/firebaseInit';
-import { collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, logFirestoreError, OperationType } from '../services/firebaseUtils';
+import { archiveManager } from '../services/archiveManager';
+import { VoiceCommentSection } from './VoiceCommentSection';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 
 interface Comment {
  id: string;
@@ -15,7 +18,29 @@ interface Comment {
  userHandle: string;
  text: string;
  timestamp: number;
+ commentType?: 'text' | 'voice';
+ audioUrl?: string;
+ /** Duration of the voice memo in seconds */
+ audioDuration?: number;
 }
+
+const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+
+const VoiceCommentPlayer: React.FC<{ audioUrl: string; duration: number }> = ({ audioUrl, duration }) => {
+ const { isPlaying, progress, toggle } = useAudioPlayer(audioUrl);
+ return (
+   <div className="flex items-center gap-3 py-1">
+     <button onClick={toggle} className="p-1.5 border border-nous-border text-nous-subtle hover:text-nous-text transition-colors">
+       {isPlaying ? <Pause size={12} /> : <Play size={12} />}
+     </button>
+     <div className="flex-1 h-px bg-nous-border relative">
+       <div className="absolute inset-y-0 left-0 bg-nous-text transition-all" style={{ width: `${progress * 100}%` }} />
+     </div>
+     {/* duration stored as seconds */}
+     <span className="font-mono text-[8px] text-nous-subtle tabular-nums">{fmt(duration)}</span>
+   </div>
+ );
+};
 
 export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = ({ zineId, onClose }) => {
  const { user, profile } = useUser();
@@ -25,10 +50,11 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  const [isLoading, setIsLoading] = useState(true);
  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
  const [confirmReportId, setConfirmReportId] = useState<string | null>(null);
+ const [inputMode, setInputMode] = useState<'text' | 'voice'>('text');
 
  useEffect(() => {
  if (!zineId) return;
- 
+  
  const q = query(
  collection(db, 'zine_comments'),
  where('zineId', '==', zineId)
@@ -63,11 +89,50 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  userId: user.uid,
  userHandle: profile?.handle || 'Anonymous',
  text: newComment.trim(),
+ commentType: 'text',
  timestamp: Date.now()
  });
  setNewComment('');
  } catch (error) {
  handleFirestoreError(error, OperationType.CREATE, 'zine_comments');
+ } finally {
+ setIsSubmitting(false);
+ }
+ };
+
+ /**
+  * Uploads a voice memo blob to storage and saves a voice comment to Firestore.
+  * @param blob   The recorded audio blob
+  * @param duration  Recording duration in seconds
+  */
+ const handleVoiceSubmit = async (blob: Blob, duration: number) => {
+ if (!user) return;
+ setIsSubmitting(true);
+ try {
+ let audioUrl: string;
+ try {
+ audioUrl = await archiveManager.uploadMedia(user.uid, blob, 'voice_comments');
+ } catch (uploadError) {
+ console.error("MIMI // Voice upload failed:", uploadError);
+ window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+ detail: { message: "Voice memo upload failed. Check your connection and try again.", type: 'error' }
+ }));
+ // Re-throw so the outer finally still runs setIsSubmitting(false)
+ throw uploadError;
+ }
+ await addDoc(collection(db, 'zine_comments'), {
+ zineId,
+ userId: user.uid,
+ userHandle: profile?.handle || 'Anonymous',
+ text: '',
+ commentType: 'voice',
+ audioUrl,
+ /** audioDuration stored as seconds */
+ audioDuration: Math.round(duration),
+ timestamp: Date.now()
+ });
+ } catch (error) {
+ // Upload errors have already been surfaced; swallow to avoid double-toast
  } finally {
  setIsSubmitting(false);
  }
@@ -134,7 +199,7 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  className="flex gap-4 group"
  >
  <div className="w-8 h-8 rounded-none bg-stone-200 flex items-center justify-center flex-shrink-0">
- <User size={14} className="text-nous-subtle"/>
+ {comment.commentType === 'voice' ? <Mic size={14} className="text-nous-subtle"/> : <User size={14} className="text-nous-subtle"/>}
  </div>
  <div className="flex-1 space-y-1">
  <div className="flex items-baseline gap-2">
@@ -145,10 +210,19 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  <Clock size={8} />
  {new Date(comment.timestamp).toLocaleDateString()}
  </span>
+ {comment.commentType === 'voice' && (
+ <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle flex items-center gap-1">
+ <Mic size={8} /> voice memo
+ </span>
+ )}
  </div>
+ {comment.commentType === 'voice' && comment.audioUrl ? (
+ <VoiceCommentPlayer audioUrl={comment.audioUrl} duration={comment.audioDuration || 0} />
+ ) : (
  <p className="font-serif text-sm md:text-base text-nous-subtle leading-relaxed">
  {comment.text}
  </p>
+ )}
  <div className="flex items-center gap-4 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
  {user && user.uid === comment.userId ? (
  confirmDeleteId === comment.id ? (
@@ -186,6 +260,23 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  {/* Input Area */}
  <div className="p-4 border-t border-nous-border bg-nous-base">
  {user ? (
+ <div className="flex flex-col gap-3">
+ {/* Mode toggle */}
+ <div className="flex gap-1">
+ <button
+ onClick={() => setInputMode('text')}
+ className={`flex items-center gap-1.5 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors ${inputMode === 'text' ? 'bg-nous-text text-nous-base' : 'text-nous-subtle hover:text-nous-text border border-nous-border'}`}
+ >
+ <Type size={10} /> Text
+ </button>
+ <button
+ onClick={() => setInputMode('voice')}
+ className={`flex items-center gap-1.5 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors ${inputMode === 'voice' ? 'bg-nous-text text-nous-base' : 'text-nous-subtle hover:text-nous-text border border-nous-border'}`}
+ >
+ <Mic size={10} /> Voice memo
+ </button>
+ </div>
+ {inputMode === 'text' ? (
  <form onSubmit={handleSubmit} className="relative">
  <textarea
  value={newComment}
@@ -207,6 +298,13 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  {isSubmitting ? <Loader2 size={14} className="animate-spin"/> : <Send size={14} />}
  </button>
  </form>
+ ) : (
+ <VoiceCommentSection
+ onSubmit={handleVoiceSubmit}
+ isSubmitting={isSubmitting}
+ />
+ )}
+ </div>
  ) : (
  <div className="text-center py-4 bg-nous-base dark:bg border border-nous-border rounded-none">
  <p className="font-sans text-[10px] uppercase tracking-widest text-nous-subtle">

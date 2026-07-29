@@ -186,6 +186,18 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         keywords: ["theatre", "curtain", "social", "public", "connections", "proscenium", "feed"],
       },
       {
+        mode: "connections",
+        label: "Connections",
+        note: "friends, followers, and add people",
+        keywords: ["connections", "friends", "follow", "add friends", "social", "network", "people", "resonators"],
+      },
+      {
+        mode: "cliques",
+        label: "Cliques",
+        note: "manage inner circles and groups",
+        keywords: ["cliques", "groups", "circles", "inner circle", "social", "squad"],
+      },
+      {
         mode: "private-studio",
         label: "Private Studio",
         note: "services and portfolio proof",
@@ -232,6 +244,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "Intel Hub",
         note: "strategy hub",
         keywords: ["intel", "hub", "campaign", "strategy", "intel hub"],
+      },
+      {
+        mode: "brand-intake",
+        label: "Intelligence Report",
+        note: "brand intelligence report with format selection",
+        keywords: ["brand", "intake", "report", "intelligence", "mla", "apa", "chicago", "citation", "brand report", "mimi report", "aesthetic report", "strategy report"],
       },
       {
         mode: "codex",

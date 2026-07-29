@@ -5,7 +5,7 @@ export interface AIProvider {
   generateText?: (prompt: string, systemInstruction?: string) => Promise<string>;
 }
 
-export type LLMProviderId = 'gemini' | 'openai' | 'anthropic';
+export type LLMProviderId = 'gemini' | 'openai' | 'anthropic' | 'gateway';
 
 const getLocalKeys = (): Record<string, string> => {
   try {
@@ -226,6 +226,78 @@ class AnthropicProvider implements AIProvider {
   }
 }
 
+class GatewayProvider implements AIProvider {
+  async generateContent(params: any) {
+    const token = await getFirebaseToken();
+
+    const messages: any[] = [];
+
+    if (params.config?.systemInstruction) {
+      const si = params.config.systemInstruction;
+      let systemText = typeof si === 'string' ? si : (si.parts?.[0]?.text || si.text || '');
+      if (params.config?.responseMimeType === 'application/json' && !systemText.toLowerCase().includes('json')) {
+        systemText += '\nRespond strictly in valid JSON format.';
+      }
+      if (systemText) messages.push({ role: 'system', content: systemText });
+    } else if (params.config?.responseMimeType === 'application/json') {
+      messages.push({ role: 'system', content: 'Respond strictly in valid JSON format.' });
+    }
+
+    if (typeof params.contents === 'string') {
+      messages.push({ role: 'user', content: params.contents });
+    } else if (Array.isArray(params.contents)) {
+      for (const item of params.contents) {
+        if (typeof item === 'string') {
+          messages.push({ role: 'user', content: item });
+        } else if (item?.role && Array.isArray(item.parts)) {
+          const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : 'user';
+          const text = item.parts.map((p: any) => p?.text || '').join('');
+          if (text) messages.push({ role, content: text });
+        }
+      }
+    } else if (params.contents?.parts) {
+      const text = (params.contents.parts as any[]).map((p: any) => p?.text || '').join('');
+      if (text) messages.push({ role: 'user', content: text });
+    }
+
+    if (messages.length === 0) {
+      throw new Error('[GatewayProvider] No message content could be derived from the provided params.');
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['x-user-token'] = 'Bearer ' + token;
+
+    const res = await fetch('/api/proxy/ai-gateway', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash',
+        messages,
+        temperature: params.config?.temperature ?? 0.7,
+        ...(params.config?.responseMimeType === 'application/json' && { response_format: { type: 'json_object' } }),
+      }),
+    });
+
+    if (!res.ok) {
+      let errMessage = res.statusText;
+      try {
+        const errData = await res.json();
+        errMessage = errData.error?.message || errMessage;
+      } catch (_e) {}
+      console.warn(`Gateway Error: ${errMessage}. Bubbling up for failover.`);
+      throw new Error(`[Gateway] ${errMessage} (Status: ${res.status})`);
+    }
+
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    return { text, _raw: data };
+  }
+
+  async generateText(prompt: string, systemInstruction?: string) {
+    return (await this.generateContent({ contents: prompt, config: { systemInstruction } })).text;
+  }
+}
+
 export interface SystemEvent {
   id: string;
   timestamp: number;
@@ -283,12 +355,14 @@ class IntelligenceGateProvider implements AIProvider {
     gemini: 5,
     openai: 3,
     anthropic: 2,
+    gateway: 0,
   };
 
   private static currentWeights: Record<LLMProviderId, number> = {
     gemini: 0,
     openai: 0,
     anthropic: 0,
+    gateway: 0,
   };
 
   // Circuit Breaker state structure for active error & rate-limit tracking
@@ -306,6 +380,7 @@ class IntelligenceGateProvider implements AIProvider {
     gemini: { state: 'CLOSED', failureCount: 0, lastFailureTime: 0, nextTrialTime: 0, cooldownDuration: 10000, predictedLatencySpike: false },
     openai: { state: 'CLOSED', failureCount: 0, lastFailureTime: 0, nextTrialTime: 0, cooldownDuration: 10000, predictedLatencySpike: false },
     anthropic: { state: 'CLOSED', failureCount: 0, lastFailureTime: 0, nextTrialTime: 0, cooldownDuration: 10000, predictedLatencySpike: false },
+    gateway: { state: 'CLOSED', failureCount: 0, lastFailureTime: 0, nextTrialTime: 0, cooldownDuration: 10000, predictedLatencySpike: false },
   };
 
   // Queue to serialize execution per provider to keep UI responsive
@@ -313,6 +388,7 @@ class IntelligenceGateProvider implements AIProvider {
     gemini: Promise.resolve(),
     openai: Promise.resolve(),
     anthropic: Promise.resolve(),
+    gateway: Promise.resolve(),
   };
 
   public static getBreakers() {
@@ -323,6 +399,7 @@ class IntelligenceGateProvider implements AIProvider {
     if (id === 'gemini') return this.gemini;
     if (id === 'openai') return this.openai;
     if (id === 'anthropic') return this.anthropic;
+    if (id === 'gateway') return new GatewayProvider();
     return this.gemini;
   }
 
@@ -722,7 +799,7 @@ export async function getResponseSchema(key: string): Promise<any | null> {
 // WebSocket Heartbeat Monitor & Predictive Latency Engine
 // ==========================================
 export class MimiHeartbeatMonitor {
-  private static latencyHistory: Record<LLMProviderId, number[]> = { gemini: [], openai: [], anthropic: [] };
+  private static latencyHistory: Record<LLMProviderId, number[]> = { gemini: [], openai: [], anthropic: [], gateway: [] };
   private static ws: WebSocket | null = null;
   private static reconnectTimer: any = null;
   private static pollInterval: any = null;
@@ -817,7 +894,7 @@ export class MimiHeartbeatMonitor {
       } catch (e) {}
 
       // Fallback simulation metrics
-      const metrics: Record<LLMProviderId, number> = { gemini: 0, openai: 0, anthropic: 0 };
+      const metrics: Record<LLMProviderId, number> = { gemini: 0, openai: 0, anthropic: 0, gateway: 0 };
       for (const id of ['gemini', 'openai', 'anthropic'] as LLMProviderId[]) {
         let baseLatency = id === 'gemini' ? 120 : id === 'openai' ? 240 : 180;
         const isSpike = Math.random() < 0.15;
@@ -899,5 +976,9 @@ export const setGlobalAIProvider = (provider: LLMProviderId) => {
 export const getActiveProviderId = (): LLMProviderId => currentProvider;
 
 export const getAIProvider = (override?: LLMProviderId): AIProvider => {
+  const id = override ?? currentProvider;
+  if (id === 'openai') return new OpenAIProvider();
+  if (id === 'anthropic') return new AnthropicProvider();
+  if (id === 'gateway') return new GatewayProvider();
   return new GeminiProvider();
 };

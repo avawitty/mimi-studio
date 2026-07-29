@@ -283,6 +283,16 @@ const CommunityManifesto = lazy(() =>
     default: m.CommunityManifesto,
   })),
 );
+const ConnectionsManager = lazy(() =>
+  import("./components/ConnectionsManager").then((m) => ({
+    default: m.ConnectionsManager,
+  })),
+);
+const CliqueView = lazy(() =>
+  import("./components/CliqueView").then((m) => ({
+    default: m.CliqueView,
+  })),
+);
 const RegistryAlert = lazy(() =>
   import("./components/RegistryAlert").then((m) => ({
     default: m.RegistryAlert,
@@ -797,20 +807,35 @@ const KeyBlockedBanner: React.FC = () => {
 
 import { CreditMeter } from "./components/CreditMeter";
 
-const LAST_ROUTE_STORAGE_KEY = "mimi_last_route";
+const ROUTE_PERSIST_KEY = "mimi_last_route";
 
-// Public / unauthenticated routes must never be persisted as the "last private
-// route" to restore on cold launch. These mirror the early-return public route
-// handlers in the App component (share links, auth actions, public profiles…).
-const isPublicRoute = (candidate: string): boolean =>
-  candidate.startsWith("/s/") ||
-  candidate.startsWith("/auth") ||
-  candidate.startsWith("/@") ||
-  candidate.startsWith("/u/") ||
-  candidate.startsWith("/stacks/") ||
-  candidate === "/showcase" ||
-  candidate === "/privacy" ||
-  candidate === "/terms";
+/**
+ * Returns true for private app routes that should be persisted for cold-launch
+ * restoration. Public share, auth, legal, and the bare root are excluded so
+ * a user who opens a shared link never "inherits" it as their next cold-launch
+ * destination.
+ */
+const isRestorableRoute = (p: string): boolean => {
+  if (!p || p === "/" || p === "") return false;
+  // Reject anything that isn't a plain app-relative path (e.g. "javascript:…"
+  // or any value that doesn't start with "/").
+  if (!p.startsWith("/")) return false;
+  // Reject protocol-relative URLs (e.g. "//example.com").
+  if (p.startsWith("//")) return false;
+  if (
+    p.startsWith("/s/") ||
+    p.startsWith("/@") ||
+    p.startsWith("/u/") ||
+    p.startsWith("/stacks/") ||
+    p.startsWith("/auth/") ||
+    p === "/privacy" ||
+    p === "/terms" ||
+    p === "/showcase"
+  ) {
+    return false;
+  }
+  return true;
+};
 
 const useAppRouter = () => {
   const [path, setPath] = useState(window.location.pathname);
@@ -844,29 +869,51 @@ const useAppRouter = () => {
     return () => window.removeEventListener("mimi:route-request", onRouteRequest);
   }, [navigate]);
 
-  // Persist the current private route so it can be restored on a cold launch
-  // (e.g. when the installed PWA is relaunched at the bare "/" start_url).
+  // Persist the current route for cold-launch restoration (iOS installed PWA
+  // always launches from start_url "/", so we restore the user's last private
+  // route via localStorage).
   useEffect(() => {
-    if (path && path !== "/" && !isPublicRoute(path)) {
+    if (isRestorableRoute(path)) {
       try {
-        localStorage.setItem(LAST_ROUTE_STORAGE_KEY, path);
+        localStorage.setItem(ROUTE_PERSIST_KEY, path);
       } catch {
-        // Ignore storage failures (private mode, quota, etc.).
+        // Expected in Private Browsing mode (SecurityError) or when storage
+        // quota is exceeded (QuotaExceededError). Neither case is actionable
+        // at runtime, so silently skip persistence.
       }
     }
   }, [path]);
 
   useEffect(() => {
     if (path === "/" || path === "") {
-      let saved: string | null = null;
+      // Do not redirect while known callback query params are present on the
+      // root URL.  Each handler reads window.location.search (or .href);
+      // navigating away first would wipe those params before the handler runs:
+      //   • checkout=… / plan=… / tier=…  — Stripe checkout return URL
+      //   • mode=… / oobCode=… / apiKey=… — Firebase email-link sign-in
+      //   • view=patron_mint              — patron-mint overlay
+      const params = new URLSearchParams(window.location.search);
+      const hasCallbackParam =
+        params.has("checkout") ||
+        params.has("plan") ||
+        params.has("tier") ||
+        params.has("mode") ||
+        params.has("oobCode") ||
+        params.has("apiKey") ||
+        params.has("view");
+      if (hasCallbackParam) return;
+      // Attempt to restore the last private route on cold launch.
+      let restoredPath = "/studio";
       try {
-        saved = localStorage.getItem(LAST_ROUTE_STORAGE_KEY);
+        const saved = localStorage.getItem(ROUTE_PERSIST_KEY);
+        if (saved && isRestorableRoute(saved)) {
+          restoredPath = saved;
+        }
       } catch {
-        saved = null;
+        // Expected in Private Browsing mode (SecurityError) or on quota
+        // exceeded (QuotaExceededError). Fall back to the default destination.
       }
-      const target =
-        saved && saved !== "/" && !isPublicRoute(saved) ? saved : "/studio";
-      navigate(target, { replace: true });
+      navigate(restoredPath, { replace: true });
     }
   }, [navigate, path]);
 
@@ -962,7 +1009,7 @@ export class IntelligenceGateService {
     return getActiveProviderId();
   }
 
-  public setProvider(provider: "gemini" | "openai" | "anthropic") {
+  public setProvider(provider: "gemini" | "openai" | "anthropic" | "gateway") {
     setGlobalAIProvider(provider);
     localStorage.setItem("mimi_active_llm", provider);
   }
@@ -2383,6 +2430,8 @@ export const App: React.FC = () => {
                           </div>
                         )}
                         {viewMode === "manifesto" && <CommunityManifesto />}
+                        {viewMode === "connections" && <ConnectionsManager />}
+                        {viewMode === "cliques" && <CliqueView />}
                         {viewMode === "checkout-success" && checkoutPlan && (
                           <CheckoutSuccessView
                             plan={checkoutPlan}
