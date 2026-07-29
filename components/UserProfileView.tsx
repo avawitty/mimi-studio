@@ -465,7 +465,7 @@ export const UserProfileView: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto no-scrollbar bg-nous-base text-nous-text p-4 md:p-8 mimi-page-pad">
+    <div className="w-full h-full overflow-y-auto no-scrollbar bg-nous-base text-nous-text p-4 md:p-8">
       <AnimatePresence>
         {message && (
           <motion.div
@@ -573,6 +573,15 @@ export const UserProfileView: React.FC = () => {
                     className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
                   >
                     Signature
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'tailor/evidence' }))
+                    }
+                    className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
+                  >
+                    Add evidence
                   </button>
                 </div>
               </div>

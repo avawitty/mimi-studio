@@ -907,7 +907,11 @@ export const fetchUserZines = async (uid: string, forceRefresh = false) => {
     }
 };
 
-export const subscribeToUserZines = (uid: string, callback: (data: ZineMetadata[]) => void) => {
+export const subscribeToUserZines = (
+  uid: string,
+  callback: (data: ZineMetadata[]) => void,
+  onError?: (error: unknown) => void,
+) => {
   if (!uid || uid === 'ghost' || !isFullyAuthenticated()) {
     callback([]);
     return () => {};
@@ -926,9 +930,11 @@ export const subscribeToUserZines = (uid: string, callback: (data: ZineMetadata[
   }, (error: any) => {
     if (error.code === 'permission-denied' && auth.currentUser?.uid !== uid) {
       console.warn(`MIMI // Ignored permission-denied for zines/${uid} due to auth state change.`);
+      onError?.(error);
       return;
     }
     logFirestoreError(error, OperationType.LIST, "zines");
+    onError?.(error);
   });
 };
 

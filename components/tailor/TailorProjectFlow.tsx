@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
 import type {
@@ -85,6 +85,7 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [artQueries, setArtQueries] = useState<string[]>([]);
+  const bootstrappedRef = useRef(Boolean(initialProject));
 
   const refreshProjectData = useCallback(async (projectId: string) => {
     if (!uid) return;
@@ -99,6 +100,16 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
     setClusters(cl);
     setLaws(lw);
   }, [uid]);
+
+  // Evidence Intake is step 0: land on upload immediately with a default project.
+  useEffect(() => {
+    if (!uid || bootstrappedRef.current || initialProject) return;
+    bootstrappedRef.current = true;
+    void createTailorProject(uid, 'creative_practice').then((p) => {
+      setProject(p);
+      setStep('upload');
+    });
+  }, [uid, initialProject]);
 
   const handleIntentSelect = async (intent: TailoringIntent) => {
     if (!uid) return;
@@ -280,7 +291,14 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
         )}
       </div>
 
-      {step === 'start' && <TailorStartScreen onSelect={handleIntentSelect} onBack={onExit} />}
+      {step === 'start' && (
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-nous-subtle">
+            Opening Evidence Intake…
+          </p>
+          <TailorStartScreen onSelect={handleIntentSelect} onBack={onExit} />
+        </div>
+      )}
       {step === 'upload' && project && (
         <EvidenceUploadScreen
           evidence={evidence}

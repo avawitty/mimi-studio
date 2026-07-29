@@ -332,7 +332,7 @@ export const ScryView: React.FC = () => {
   };
 
   return (
-    <div className="bg-white text-[#1a1a1a] min-h-full h-full relative overflow-x-hidden font-sans selection:bg-black selection:text-white pb-32 mimi-page-pad">
+    <div className="bg-white text-[#1a1a1a] min-h-full h-full relative overflow-x-hidden font-sans selection:bg-black selection:text-white pb-32">
       <div className="absolute inset-0 pointer-events-none opacity-[0.18] bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] z-0"></div>
       <div
         className="absolute inset-0 w-full h-full mx-auto z-0 pointer-events-none"
