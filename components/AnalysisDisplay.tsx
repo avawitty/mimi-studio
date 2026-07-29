@@ -1667,6 +1667,7 @@ export const AnalysisDisplay: React.FC<{
  <div className="p-2 border border-stone-300 bg-white"><RoadmapIcon size={16} style={{ color: accentColor }} /></div>
  <div>
  <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-stone-500">Keep what belongs to you</p>
+  <p className="font-serif italic text-[14px] md:text-[16px] text-stone-600 mt-2">From thesis to repeatable action</p>
  <h2 className="font-serif text-3xl md:text-5xl italic">Signature Takeaways</h2>
  </div>
  </div>
