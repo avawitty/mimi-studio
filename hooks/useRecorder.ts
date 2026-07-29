@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 interface UseRecorderReturn {
   isRecording: boolean;
   audioBlob: Blob | null;
-  duration: number;
+  duration: number; // seconds
   permissionError: string | null;
   startRecording: () => Promise<void>;
   stopRecording: () => void;
