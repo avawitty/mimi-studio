@@ -186,6 +186,28 @@ export const ScribeChamber: React.FC<{ initialTab?: ScribeTab }> = ({ initialTab
       }
       canvas={
         <div className="flex flex-col h-full min-h-0">
+          {/* Mobile-only tab strip — spine is hidden on small screens */}
+          <nav
+            aria-label="Scribe tabs"
+            className="md:hidden shrink-0 flex items-center gap-1 overflow-x-auto px-3 py-2 border-b archive-border scrollbar-none"
+          >
+            {SCRIBE_TABS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 border font-mono text-[8px] uppercase tracking-[0.15em] transition-colors ${
+                  tab === item.id
+                    ? "archive-workflow-active border-archive-ink"
+                    : "archive-workflow-idle border-transparent"
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
           {tab === "ask" && <ScribeAskPanel />}
 
           {tab === "capture" && (
