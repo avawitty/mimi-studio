@@ -2,6 +2,11 @@ import {
   getServerAiGatewayKey,
   openAiMessagesViaGateway,
 } from "./aiGatewayCompat.js";
+import { ApifyClient } from "apify-client";
+import {
+  RAG_WEB_BROWSER_ACTOR_ID,
+  type RagWebBrowserItem,
+} from "./ragWebBrowserTypes.js";
 
 export type YouSearchMappedResult = {
   sourceUrl: string;
@@ -24,6 +29,15 @@ export type YouSearchResponse = {
   sourceMode?: "you.com" | "apify" | "gateway-synthesis" | "local-demo";
   notice?: string;
 };
+
+let apifyClientCache: { token: string; client: ApifyClient } | null = null;
+
+function getApifyClient(token: string): ApifyClient {
+  if (apifyClientCache?.token === token) return apifyClientCache.client;
+  const client = new ApifyClient({ token });
+  apifyClientCache = { token, client };
+  return client;
+}
 
 export function extractLooseKeywords(text: string): string[] {
   return Array.from(
@@ -170,9 +184,52 @@ export async function fetchYouSearchForMimiGraph(params: {
   });
 }
 
+export function mapRagWebBrowserItem(
+  item: RagWebBrowserItem,
+  index = 0,
+): YouSearchMappedResult {
+  const sourceUrl = String(
+    item.metadata?.url || item.searchResult?.url || "",
+  ).trim();
+  let domain = "apify";
+  try {
+    if (sourceUrl) domain = new URL(sourceUrl).hostname.replace(/^www\./, "");
+  } catch {
+    domain = "apify";
+  }
+  const title =
+    String(item.metadata?.title || item.searchResult?.title || "").trim() ||
+    `Apify research lead ${index + 1}`;
+  const summary = String(
+    item.markdown ||
+      item.text ||
+      item.searchResult?.description ||
+      item.metadata?.description ||
+      "",
+  )
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 420);
+  const text = `${title} ${summary}`;
+  return {
+    sourceUrl,
+    title,
+    summary: summary || "Apify extracted page content for this research lead.",
+    domain,
+    graphType: "web_reference" as const,
+    confidence: 0.78,
+    aestheticSignals: {
+      keywords: extractLooseKeywords(text),
+      references: extractCulturalReferences(text),
+      tone: inferTone(text),
+    },
+  };
+}
+
 /**
- * Optional Apify path: use RAG Web Browser for allowlisted domain discovery.
+ * Optional Apify path via apify-client + Actor `apify/rag-web-browser`.
  * Requires APIFY_TOKEN. Prefer low maxResults for serverless latency.
+ * Dataset field map: see lib/schemas/rag-web-browser-dataset.schema.json
  */
 export async function fetchApifyResearchLeads(params: {
   token: string;
@@ -181,68 +238,46 @@ export async function fetchApifyResearchLeads(params: {
   count?: number;
 }): Promise<YouSearchMappedResult[]> {
   const { token, query, includeDomains = [], count = 5 } = params;
+  const maxResults = Math.min(Math.max(count, 1), 8);
   const domainClause =
     includeDomains.length > 0
       ? includeDomains.map((d) => `site:${d.replace(/^www\./, "")}`).join(" OR ")
       : "";
   const fullQuery = domainClause ? `${query} ${domainClause}` : query;
+  const actorId =
+    String(process.env.APIFY_ACTOR_ID || "").trim() || RAG_WEB_BROWSER_ACTOR_ID;
 
-  const actorId = encodeURIComponent("apify/rag-web-browser");
-  const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=55`;
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  const client = getApifyClient(token);
+  const run = await client.actor(actorId).call(
+    {
       query: fullQuery,
-      maxResults: Math.min(Math.max(count, 1), 8),
+      maxResults,
       outputFormats: ["markdown"],
-    }),
-    signal: AbortSignal.timeout(58000),
-  });
+      requestTimeoutSecs: 45,
+      // Editorial fashion sites are often static; switch via env if scrapes come back empty.
+      scrapingTool: String(process.env.APIFY_SCRAPING_TOOL || "raw-http").trim() || "raw-http",
+      dynamicContentWaitSecs: 8,
+      removeCookieWarnings: false,
+    },
+    { waitSecs: 55 },
+  );
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Apify research failed: ${res.status} ${body.slice(0, 200)}`);
+  if (run.status !== "SUCCEEDED") {
+    throw new Error(`Apify research failed: ${run.status || "UNKNOWN"}`);
+  }
+  if (!run.defaultDatasetId) {
+    throw new Error("Apify research failed: missing dataset id.");
   }
 
-  const items = (await res.json()) as any[];
-  if (!Array.isArray(items) || items.length === 0) {
+  const { items } = await client.dataset(run.defaultDatasetId).listItems({
+    limit: maxResults,
+  });
+  const typed = (items || []) as RagWebBrowserItem[];
+  if (!typed.length) {
     throw new Error("Apify returned no research items.");
   }
 
-  return items.slice(0, count).map((item, index) => {
-    const sourceUrl = String(item.url || item.crawl?.loadedUrl || "");
-    let domain = "apify";
-    try {
-      if (sourceUrl) domain = new URL(sourceUrl).hostname.replace(/^www\./, "");
-    } catch {
-      domain = "apify";
-    }
-    const title =
-      String(item.metadata?.title || item.title || "").trim() ||
-      `Apify research lead ${index + 1}`;
-    const summary = String(
-      item.text || item.markdown || item.description || item.metadata?.description || "",
-    )
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 420);
-    const text = `${title} ${summary}`;
-    return {
-      sourceUrl,
-      title,
-      summary: summary || "Apify extracted page content for this research lead.",
-      domain,
-      graphType: "web_reference" as const,
-      confidence: 0.78,
-      aestheticSignals: {
-        keywords: extractLooseKeywords(text),
-        references: extractCulturalReferences(text),
-        tone: inferTone(text),
-      },
-    };
-  });
+  return typed.slice(0, count).map((item, index) => mapRagWebBrowserItem(item, index));
 }
 
 async function synthesizeViaGateway(
