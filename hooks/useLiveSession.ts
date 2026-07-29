@@ -29,6 +29,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
   const [volume, setVolume] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string>('');
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   
   // Refs for cleanup
   const sessionRef = useRef<any>(null);
@@ -77,6 +78,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
       setIsConnected(false);
       setIsConnecting(false);
       setIsSpeaking(false);
+      setAnalyser(null);
     } catch (e) {
       console.error("MIMI // Error during cleanup:", e);
     }
@@ -153,6 +155,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
               if ((connect as any).currentAttempt !== currentAttempt) return;
               setIsConnected(true);
               setIsConnecting(false);
+              setAnalyser(analyserRef.current);
               
               // Start Mic Stream
               try {
@@ -382,5 +385,5 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
     };
   }, [cleanup, connect]);
 
-  return { connect, disconnect, isConnected, isConnecting, isSpeaking, volume, error, sendVideoFrame, analyser: analyserRef.current, transcript };
+  return { connect, disconnect, isConnected, isConnecting, isSpeaking, volume, error, sendVideoFrame, analyser, transcript };
 };

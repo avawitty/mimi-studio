@@ -84,7 +84,7 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [analyser, isMimi, strokeColor]);
+  }, [analyser, isConnected, isMimi, strokeColor]);
 
   // Auto-connect and disconnect on unmount
   useEffect(() => {
