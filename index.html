@@ -7,12 +7,27 @@
     <meta name="description" content="Mimi Zine is an AI-powered editorial architect and aesthetic board. Curate, analyze, and synthesize your personal style with a superintelligent design partner." />
     <meta name="keywords" content="mimi zine, ai editorial, aesthetic board, style curation, fashion AI, design intelligence, moodboard creator, aesthetic architect" />
 
-    <!-- Google tag (gtag.js) -->
+    <!-- Google tag (gtag.js) — analytics is opt-in only (see lib/cookieConsent.ts). -->
+    <!-- Consent Mode defaults to "denied" so no analytics cookies (_ga, _ga_*) are set -->
+    <!-- until the user explicitly accepts via the cookie banner. setCookieConsent() then -->
+    <!-- issues a gtag('consent','update', ...) to grant analytics_storage. -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-4J9L2C79ZX"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
+      gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied',
+        'analytics_storage': 'denied'
+      });
+      // Restore a previously granted opt-in (persisted by lib/cookieConsent.ts) on reload.
+      try {
+        if (window.localStorage && localStorage.getItem('mimi_cookie_consent') === 'all') {
+          gtag('consent', 'update', { 'analytics_storage': 'granted' });
+        }
+      } catch (e) { /* localStorage unavailable — remain denied */ }
       gtag('config', 'G-4J9L2C79ZX');
     </script>
 

@@ -17,6 +17,15 @@ export function hasCookieConsentChoice(): boolean {
 export function setCookieConsent(level: CookieConsentLevel): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, level);
+  // Sync Google Consent Mode (gtag.js is loaded in index.html with analytics_storage
+  // defaulted to "denied") with the user's choice. Analytics cookies are only set once
+  // the user opts in ("all"), and revoked immediately when they choose "essential".
+  const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
+  if (typeof gtag === "function") {
+    gtag("consent", "update", {
+      analytics_storage: level === "all" ? "granted" : "denied",
+    });
+  }
   window.dispatchEvent(
     new CustomEvent(COOKIE_CONSENT_CHANGED, { detail: { level } }),
   );
