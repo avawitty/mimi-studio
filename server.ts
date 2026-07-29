@@ -1839,11 +1839,30 @@ Do not claim that you browsed the live web and do not invent URLs.`,
       if (fs.existsSync(firebaseConfigPath)) {
         const config = JSON.parse(fs.readFileSync(firebaseConfigPath, 'utf8'));
         const projectId = config.projectId;
-        const databaseId = config.firestoreDatabaseId || '(default)';
-        
-        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/zines/${zineId}`;
-        const response = await axios.get(url, { timeout: 4000 });
-        if (response.status === 200 && response.data?.fields) {
+        const configuredDatabaseId = config.firestoreDatabaseId || '(default)';
+        const databaseIdsToTry = configuredDatabaseId === '(default)'
+          ? ['(default)']
+          : [configuredDatabaseId, '(default)'];
+
+        let response: any = null;
+        for (const databaseId of databaseIdsToTry) {
+          const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/zines/${zineId}`;
+          try {
+            response = await axios.get(url, { timeout: 4000 });
+            if (response?.status === 200) break;
+          } catch (restError: any) {
+            const msg = String(restError?.message || '');
+            const isMissingDatabase =
+              msg.includes('does not exist in project') ||
+              msg.includes('Database') && msg.includes('not found');
+            if (isMissingDatabase && databaseId !== '(default)') {
+              continue;
+            }
+            throw restError;
+          }
+        }
+
+        if (response?.status === 200 && response.data?.fields) {
           const fields = response.data.fields;
           
           const getStringValue = (field: any) => {
