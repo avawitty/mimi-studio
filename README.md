@@ -119,6 +119,8 @@ GEMINI_API_KEY=
 AI_GATEWAY_API_KEY=
 ```
 
+See `.env.example` for gateway model overrides. Gateway model IDs live in `lib/models.ts`; runtime resolution is in `services/modelConfig.ts`. New AI SDK + gateway helpers are in `lib/ai/generate.ts`.
+
 Firebase, Stripe, Shopify, and other integrations require their own credentials. Keep service-account files and secrets outside the repository.
 
 Start the development server:
