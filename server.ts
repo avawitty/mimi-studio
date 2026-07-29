@@ -1810,10 +1810,15 @@ Do not claim that you browsed the live web and do not invent URLs.`,
 
   // Dynamic Server-Side SEO Caching and Retrieval for Shared Zines
   async function fetchZineMetadataServerSide(zineId: string): Promise<{ title?: string; concept?: string; coverImageUrl?: string; userHandle?: string } | null> {
+    const safeZineId = String(zineId || "");
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(safeZineId)) {
+      return null;
+    }
+
     // 1. Try Firebase Admin SDK if db is initialized
     if (db) {
       try {
-        const docRef = db.collection("zines").doc(zineId);
+        const docRef = db.collection("zines").doc(safeZineId);
         const snap = await docRef.get();
         if (snap.exists) {
           const data = snap.data();
@@ -1852,7 +1857,7 @@ Do not claim that you browsed the live web and do not invent URLs.`,
 
         let response: any = null;
         for (const databaseId of databaseIdsToTry) {
-          const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/zines/${zineId}`;
+          const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/zines/${encodeURIComponent(safeZineId)}`;
           try {
             response = await axios.get(url, { timeout: 4000 });
             if (response?.status === 200) break;
@@ -1860,7 +1865,7 @@ Do not claim that you browsed the live web and do not invent URLs.`,
             const msg = String(restError?.message || '');
             const isMissingDatabase =
               msg.includes('does not exist in project') ||
-              msg.includes('Database') && msg.includes('not found');
+              (msg.includes('Database') && msg.includes('not found'));
             if (isMissingDatabase && databaseId !== '(default)') {
               continue;
             }
