@@ -3131,35 +3131,50 @@ export const generateResonanceMapping = async (shards: string[], draft: any) => 
   });
 };
 export const analyzeTailorDraft = async (draft: any) => {
-  return await withResilience(async (ai) => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.1-pro-preview',
-      contents: `Draft Data: ${JSON.stringify(draft)}`,
-      config: {
-        responseMimeType: "application/json",
-        systemInstruction: ORACLE_PERSONA + `\n\nTASK: Auditing a user's Tailor Profile draft. Generate a poetic and insightful audit report of their aesthetic and strategic identity.
+  try {
+    return await withResilience(async (ai) => {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-pro-preview',
+        contents: `Draft Data: ${JSON.stringify(draft)}`,
+        config: {
+          responseMimeType: "application/json",
+          systemInstruction: ORACLE_PERSONA + `\n\nTASK: Auditing a user's Tailor Profile draft. Generate a poetic and insightful audit report of their aesthetic and strategic identity.
           
 ANALYSIS FRAMEWORK:
 1. Positioning Core: Analyze their 'anchors' and 'aestheticCore' (silhouettes, materiality, eraBias).
 2. Expression Engine: Analyze their 'chromaticRegistry' and 'narrativeVoice'.
-3. Strategic Vectors: Analyze their 'desireVectors' (moreOf, lessOf, experiment).`,
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["profileManifesto", "strategicOpportunity", "aestheticDirectives", "suggestedTouchpoints"],
-          properties: {
-            profileManifesto: { type: Type.STRING, description: "A short, powerful manifesto summarizing their vibe (2-3 sentences)." },
-            strategicOpportunity: { type: Type.STRING, description: "A strategic insight on how they can leverage their aesthetic for authority." },
-            aestheticDirectives: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of 3-5 specific visual or conceptual rules they should follow." },
-            suggestedTouchpoints: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of 3-5 cultural references or motifs that align with their profile but expand it." }
+3. Strategic Vectors: Analyze their 'desireVectors' (moreOf, lessOf, experiment).
+4. Readings & touchpoints: Suggest concrete cultural references, essays, makers, or archives that expand their axis — not generic moodboards.
+5. Prefer decision-level directives over genre labels.`,
+          responseSchema: {
+            type: Type.OBJECT,
+            required: ["profileManifesto", "strategicOpportunity", "aestheticDirectives", "suggestedTouchpoints"],
+            properties: {
+              profileManifesto: { type: Type.STRING, description: "A short, powerful manifesto summarizing their vibe (2-3 sentences)." },
+              strategicOpportunity: { type: Type.STRING, description: "A strategic insight on how they can leverage their aesthetic for authority." },
+              aestheticDirectives: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of 3-5 specific visual or conceptual rules they should follow." },
+              suggestedTouchpoints: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of 3-5 cultural references, readings, or motifs that align with their profile but expand it." }
+            }
           }
         }
-      }
+      });
+      const audit = cleanAndParse(response.text);
+      const { generateAestheticOutput } = await import("./aestheticGenerator");
+      const aesthetic = await generateAestheticOutput(JSON.stringify(draft), audit.suggestedTouchpoints);
+      return { ...audit, aesthetic };
     });
-    const audit = cleanAndParse(response.text);
-    const { generateAestheticOutput } = await import("./aestheticGenerator");
-    const aesthetic = await generateAestheticOutput(JSON.stringify(draft), audit.suggestedTouchpoints);
-    return { ...audit, aesthetic };
-  });
+  } catch (err) {
+    console.warn("MIMI // Scry Directives LLM unavailable; using local manifesto audit.", err);
+    const { synthesizeLocalTailorAudit } = await import("./localDossierSynthesis");
+    const audit = synthesizeLocalTailorAudit(draft);
+    try {
+      const { generateAestheticOutput } = await import("./aestheticGenerator");
+      const aesthetic = await generateAestheticOutput(JSON.stringify(draft), audit.suggestedTouchpoints);
+      return { ...audit, aesthetic };
+    } catch {
+      return audit;
+    }
+  }
 };
 export const generateRawImage = async (prompt: string, ar: string, profile?: any) => {
   try {

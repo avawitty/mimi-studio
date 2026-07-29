@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import * as htmlToImage from "html-to-image";
 import { getClient } from "../services/geminiClient";
+import { ArtStyleMintVisual } from "./ArtStyleMintVisual";
 
 interface RefItem {
   id: string;
@@ -111,7 +112,6 @@ export const ArtStyleChamber: React.FC = () => {
   const [orderQuantity, setOrderQuantity] = useState(1);
   const [orderSuccess, setOrderSuccess] = useState(false);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -144,86 +144,6 @@ export const ArtStyleChamber: React.FC = () => {
     
     return () => clearInterval(interval);
   }, [scryStep]);
-
-  // Procedural abstract artwork background generator (100% resilient fallback & cool styling)
-  useEffect(() => {
-    if (scryStep !== "finished" || !scryResult || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Draw procedural canvas artwork using selected colors and motifs
-    const width = canvas.width;
-    const height = canvas.height;
-    ctx.fillStyle = selectedPalette[0] || "#0F0F11";
-    ctx.fillRect(0, 0, width, height);
-
-    // Draw grain overlay
-    const imgData = ctx.getImageData(0, 0, width, height);
-    const data = imgData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const grain = (Math.random() - 0.5) * 15;
-      data[i] = Math.max(0, Math.min(255, data[i] + grain));
-      data[i+1] = Math.max(0, Math.min(255, data[i+1] + grain));
-      data[i+2] = Math.max(0, Math.min(255, data[i+2] + grain));
-    }
-    ctx.putImageData(imgData, 0, 0);
-
-    // Draw abstract geometric shapes representing motifs/style
-    ctx.strokeStyle = (selectedPalette[3] || "#FFFFFF") + "44";
-    ctx.lineWidth = 1;
-    
-    // Grid Lines
-    for (let i = 40; i < width; i += 80) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, height);
-      ctx.stroke();
-    }
-    for (let j = 40; j < height; j += 80) {
-      ctx.beginPath();
-      ctx.moveTo(0, j);
-      ctx.lineTo(width, j);
-      ctx.stroke();
-    }
-
-    // Concentric circles
-    ctx.strokeStyle = selectedPalette[2] || "#FF3B30";
-    ctx.beginPath();
-    ctx.arc(width/2, height/2, 120, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = (selectedPalette[3] || "#FFFFFF") + "99";
-    ctx.beginPath();
-    ctx.arc(width/2, height/2, 70, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Chaotic diagonal lines (entropy representation)
-    ctx.strokeStyle = (selectedPalette[1] || "#787C85") + "66";
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath();
-      ctx.moveTo(Math.random() * width, 0);
-      ctx.lineTo(Math.random() * width, height);
-      ctx.stroke();
-    }
-
-    // Motifs labels drawn abstractly
-    ctx.fillStyle = (selectedPalette[3] || "#FFFFFF") + "BB";
-    ctx.font = "bold 14px monospace";
-    selectedMotifs.forEach((motif, idx) => {
-      ctx.fillText(motif.toUpperCase(), 30, 60 + idx * 25);
-    });
-
-    // Barcode rendering
-    ctx.fillStyle = selectedPalette[3] || "#FFFFFF";
-    for (let i = 0; i < 30; i++) {
-      const barWidth = Math.random() > 0.5 ? 4 : 1;
-      const barGap = Math.random() * 5 + 2;
-      ctx.fillRect(width - 150 + i * 4, height - 50, barWidth, 30);
-    }
-    ctx.font = "8px monospace";
-    ctx.fillText(`MIMI-VECTOR-ARTSCRY-ID-${cardId}`, width - 150, height - 12);
-  }, [scryStep, scryResult, selectedPalette, selectedMotifs, cardId]);
 
   // Drag and drop handlers
   const handleDragOver = (e: React.DragEvent) => {
@@ -290,11 +210,11 @@ export const ArtStyleChamber: React.FC = () => {
     setRefs(prev => prev.filter(r => r.id !== id));
   };
 
-  // Run the patterns scrying engine (Gemini call or seamless fallback)
+  // Run the patterns scrying engine (Gemini call or evidence-aware local fallback)
   const executeActualScry = async () => {
     let fallbackSelected = FALLBACK_AESTHETICS[Math.floor(Math.random() * FALLBACK_AESTHETICS.length)];
     
-    // Customize fallback slightly based on names of uploaded files/notes if present
+    // Customize fallback from filenames / notes / prior signature
     if (refs.length > 0) {
       const combinedNames = refs.map(r => r.name).join(" ").toLowerCase();
       if (combinedNames.includes("pink") || combinedNames.includes("soft") || combinedNames.includes("silk") || combinedNames.includes("cloud")) {
@@ -306,19 +226,68 @@ export const ArtStyleChamber: React.FC = () => {
       }
     }
 
+    const priorSig = profile?.tasteProfile?.aestheticSignature;
+    if (priorSig?.primaryAxis) {
+      fallbackSelected = {
+        ...fallbackSelected,
+        primaryAxis: priorSig.primaryAxis,
+        secondaryAxis: priorSig.secondaryAxis || fallbackSelected.secondaryAxis,
+        coreTrait: priorSig.coreTrait || fallbackSelected.coreTrait,
+        motifs: priorSig.motifs?.length ? priorSig.motifs : fallbackSelected.motifs,
+        moodCluster: priorSig.moodCluster || fallbackSelected.moodCluster,
+        paletteExtraction: priorSig.paletteExtraction?.length
+          ? priorSig.paletteExtraction
+          : fallbackSelected.paletteExtraction,
+        tactileBias: priorSig.tactileBias || fallbackSelected.tactileBias,
+        typographicPairing: priorSig.typographicPairing || fallbackSelected.typographicPairing,
+        promptMatrix: priorSig.promptMatrix?.length
+          ? priorSig.promptMatrix
+          : fallbackSelected.promptMatrix,
+      };
+    }
+
+    try {
+      // Prefer local visual signals (palette / contrast) so mint + directives stay evidence-linked even offline.
+      const imageRefs = refs.filter((r) => r.type === "image");
+      if (imageRefs.length > 0) {
+        const { extractVisualSignalsFromDataUrl } = await import("../services/localDossierSynthesis");
+        const signals = await Promise.all(
+          imageRefs.slice(0, 6).map((r, i) =>
+            extractVisualSignalsFromDataUrl(r.previewUrl || r.data, i),
+          ),
+        );
+        const palette = [...new Set(signals.flatMap((s) => s.palette))].slice(0, 5);
+        if (palette.length >= 3) {
+          fallbackSelected = {
+            ...fallbackSelected,
+            paletteExtraction: palette,
+            coreTrait:
+              priorSig?.coreTrait ||
+              `Observed ${signals[0]?.contrastHint || "medium"}-contrast chromatic field across ${signals.length} evidence frames.`,
+          };
+        }
+      }
+    } catch {
+      // non-fatal — keep template fallback
+    }
+
     try {
       const clientObj = await getClient();
       if (!clientObj || !clientObj.ai) {
         throw new Error("Local offline mode");
       }
 
-      // Build context of references
+      // Build context of references + prior memory
       const referenceSummary = refs.map((r, idx) => `Item ${idx+1} (${r.type}): name="${r.name}" content/description="${r.type === 'text' ? r.data.substring(0, 400) : 'image upload reference'}"`).join("\n");
+      const priorBlock = priorSig
+        ? `\nPrior Style Lab signature to evolve (do not ignore):\nPrimary: ${priorSig.primaryAxis}\nSecondary: ${priorSig.secondaryAxis}\nThesis: ${priorSig.coreTrait || ""}\nMotifs: ${(priorSig.motifs || []).join(", ")}`
+        : "";
       
       const prompt = `You are Mimi, an elite aesthetic savant. I have uploaded a bunch of references to discover my unique art style.
       Please analyze these visual/text elements and discover the secret patterns. 
       References uploaded:
       ${referenceSummary}
+      ${priorBlock}
       
       Return a JSON output mapping this unique art style genome. It MUST follow this EXACT structure:
       {
@@ -1100,34 +1069,25 @@ export const ArtStyleChamber: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Printable Style Card Frame */}
+                  {/* Printable Style Card Frame */}
                 <div 
                   ref={cardContainerRef}
                   className="bg-stone-950 border border-stone-800 p-8 shadow-2xl relative overflow-hidden flex flex-col md:flex-row gap-8 max-w-2xl mx-auto"
                 >
-                  {/* Procedural Canvas Artwork / Generated image */}
+                  {/* Contact sheet / scroll / cryptographic data-art mint */}
                   <div className="w-full md:w-[280px] shrink-0">
-                    <div className="aspect-square border border-stone-800 bg-stone-900 relative overflow-hidden">
-                      {mintedImageUrl ? (
-                        <img src={mintedImageUrl} alt="Art style sample artwork" className="w-full h-full object-cover transition-transform duration-300 hover:scale-105" />
-                      ) : (
-                        <canvas 
-                          ref={canvasRef} 
-                          width={400} 
-                          height={400} 
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                      
-                      {/* Grid overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 to-transparent pointer-events-none" />
-                      
-                      {/* Tech coordinates overlay */}
-                      <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end font-mono text-[8px] text-stone-400 uppercase tracking-widest z-10">
-                        <span>SYS // 909-VEC</span>
-                        <span>LAT_COORDS // B-882</span>
-                      </div>
-                    </div>
+                    <ArtStyleMintVisual
+                      primaryAxis={primaryAxis}
+                      secondaryAxis={secondaryAxis}
+                      coreTrait={coreTrait}
+                      motifs={selectedMotifs}
+                      palette={selectedPalette}
+                      tactile={selectedTactile}
+                      fonts={selectedFonts}
+                      cardId={cardId}
+                      refs={refs}
+                      mintedImageUrl={mintedImageUrl}
+                    />
                   </div>
 
                   {/* Metadata Spec list */}

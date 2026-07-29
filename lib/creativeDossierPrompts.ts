@@ -38,6 +38,7 @@ export function buildCreativeDossierUserPrompt(
   imageCount: number,
   userBlurb?: string,
   blueprintDigest?: string,
+  priorMemoryDigest?: string,
 ): string {
   const refList = imageCount > 0
     ? Array.from({ length: imageCount }, (_, i) => {
@@ -59,6 +60,15 @@ ${digest}
 `
     : '';
 
+  const prior = priorMemoryDigest?.trim();
+  const priorBlock = prior
+    ? `\nPRIOR MIMI MEMORY — Style Lab signatures, Scry Directives, and saved evidence already compiled about this creator (build on; do not discard):
+"""
+${prior}
+"""
+`
+    : '';
+
   const evidenceGuidance = digest && imageCount > 0
     ? `- Cross-reference the declared Tailor Blueprint against the uploaded images. Where they agree, raise confidence; where they diverge, surface the tension in userIntent and note which signals are declared vs. visually evidenced.
 - Treat blueprint fields (positioning, exclusions, palette, voice, strategic vectors) as ref_bp when citing.`
@@ -70,12 +80,14 @@ ${digest}
 
 User blurb (optional):
 ${blurbBlock}
-${blueprintBlock}
+${blueprintBlock}${priorBlock}
 Uploaded references (in order):
 ${refList}
 
 Context for Mimi:
 ${evidenceGuidance}
+- If PRIOR MIMI MEMORY is present, evolve it: keep confirmed laws, raise confidence on repeats, and put genuine novelty into outliers / nextExperiments.
+- In nextExperiments, include concrete readings / references / recs (books, makers, exhibitions, essays, archives) grounded in their axes — not generic "look at Pinterest" advice.
 - Optimize for TRANSFERABLE principles across illustration, brand, UI, writing, and product.
 ${imageCount > 0 ? `- Assign each image ref_id in order: ref_01 through ref_${String(imageCount).padStart(2, '0')}.` : ''}
 
