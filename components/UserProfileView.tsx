@@ -22,6 +22,7 @@ import {
   ChevronRight,
   UserCircle2,
   RotateCcw,
+  Smartphone,
 } from "lucide-react";
 import { useTheme, PALETTES } from "../contexts/ThemeContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -619,6 +620,7 @@ export const UserProfileView: React.FC = () => {
           </div>
 
           <div className="mt-auto space-y-2">
+            <AddToHomeScreenBanner />
             {user?.isAnonymous ? (
               <>
                 <button
@@ -651,7 +653,7 @@ export const UserProfileView: React.FC = () => {
               </h3>
               <div className="p-4 border border-nous-border bg-nous-base/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-mono text-xs">
                 <div className="flex items-center gap-3">
-                  <div className="relative flex items-center justify-center w-8 h-8 bg-white border border-nous-border">
+                  <div className="relative flex items-center justify-center w-8 h-8 bg-nous-base border border-nous-border">
                     <Key size={14} className="text-nous-subtle" />
                   </div>
                   <div>
