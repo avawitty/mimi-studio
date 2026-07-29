@@ -67,6 +67,7 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [newVibeNote, setNewVibeNote] = useState("");
   const [isSubmittingVibe, setIsSubmittingVibe] = useState(false);
+  const [transmittedId, setTransmittedId] = useState<string | null>(null);
 
   // Local simulation state for the gallery
   const [localTransmissions, setLocalTransmissions] = useState<Transmission[]>([
@@ -580,8 +581,23 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
                   >
                     <Eye size={14} /> Resonate ({selectedArtifact.likes})
                   </button>
-                  <button className="w-full py-4 bg-white/5 text-white/50 font-sans text-[10px] uppercase tracking-[0.3em] font-black hover:bg-white/10 transition-all flex items-center justify-center gap-3">
-                    <Share2 size={14} /> Transmit
+                  <button
+                    onClick={() => {
+                      if (!selectedArtifact) return;
+                      const shareUrl = selectedArtifact.zineData?.id
+                        ? `${window.location.origin}/?zine=${selectedArtifact.zineData.id}`
+                        : window.location.href;
+                      navigator.clipboard.writeText(shareUrl).catch(() => {});
+                      setTransmittedId(selectedArtifact.id);
+                      setTimeout(() => setTransmittedId(null), 3000);
+                    }}
+                    className="w-full py-4 bg-white/5 text-white/50 font-sans text-[10px] uppercase tracking-[0.3em] font-black hover:bg-white/10 transition-all flex items-center justify-center gap-3"
+                  >
+                    {transmittedId === selectedArtifact.id ? (
+                      <><Maximize2 size={14} /> Link Transmitted</>
+                    ) : (
+                      <><Share2 size={14} /> Transmit</>
+                    )}
                   </button>
                 </div>
 

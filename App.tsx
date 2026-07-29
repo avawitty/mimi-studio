@@ -283,6 +283,16 @@ const CommunityManifesto = lazy(() =>
     default: m.CommunityManifesto,
   })),
 );
+const ConnectionsManager = lazy(() =>
+  import("./components/ConnectionsManager").then((m) => ({
+    default: m.ConnectionsManager,
+  })),
+);
+const CliqueView = lazy(() =>
+  import("./components/CliqueView").then((m) => ({
+    default: m.CliqueView,
+  })),
+);
 const RegistryAlert = lazy(() =>
   import("./components/RegistryAlert").then((m) => ({
     default: m.RegistryAlert,
@@ -2420,6 +2430,8 @@ export const App: React.FC = () => {
                           </div>
                         )}
                         {viewMode === "manifesto" && <CommunityManifesto />}
+                        {viewMode === "connections" && <ConnectionsManager />}
+                        {viewMode === "cliques" && <CliqueView />}
                         {viewMode === "checkout-success" && checkoutPlan && (
                           <CheckoutSuccessView
                             plan={checkoutPlan}
