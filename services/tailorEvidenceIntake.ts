@@ -241,7 +241,7 @@ export function groupIntoCollections(items: TailorEvidenceItem[]): {
       (first.rawMetadata?.sourceLabel as string) ||
       'Pinterest collection';
     rows.push({
-      id: createIntakeId('col'),
+      id: `col_${collectionId}`,
       sourceType: 'pinterest',
       sourceCollectionId: collectionId,
       sourceUrl: first.sourceUrl,
