@@ -2445,14 +2445,12 @@ export const App: React.FC = () => {
               </Suspense>
             </motion.div>
           </AnimatePresence>
-          {viewMode !== "studio" && (
-            <MobileNavigation
-              currentView={viewMode}
-              setViewMode={setViewMode}
-              profile={profile}
-              isGenerating={appState === AppState.THINKING}
-            />
-          )}
+          <MobileNavigation
+            currentView={viewMode}
+            setViewMode={setViewMode}
+            profile={profile}
+            isGenerating={appState === AppState.THINKING}
+          />
           <SelectionMemoryCapture />
           <CookieConsentBanner />
         </main>

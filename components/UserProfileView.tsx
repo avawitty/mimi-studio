@@ -863,6 +863,163 @@ export const UserProfileView: React.FC = () => {
           </div>
         </motion.div>
 
+        {/* Bottom Navigation Customization */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+        >
+          <h2 className="font-serif italic text-2xl text-nous-text mb-2">
+            Navigation
+          </h2>
+          <p className="font-sans text-[10px] uppercase tracking-widest text-nous-subtle mb-6">
+            Persistent Bottom Bar — pick up to 5 tabs
+          </p>
+          {(() => {
+            const MENU_ITEMS_FLAT = (() => {
+              // inline flatten of MENU_STRUCTURE to avoid a top-level import here
+              const all: { mode: string; label: string }[] = [];
+              const sections = [
+                { section: "Collect", items: [
+                  { mode: "scry", label: "Scry" },
+                  { mode: "scribe", label: "Scribe" },
+                  { mode: "darkroom", label: "Darkroom" },
+                ]},
+                { section: "Organize", items: [
+                  { mode: "pocket", label: "Pocket" },
+                  { mode: "wardrobe", label: "Wardrobe" },
+                ]},
+                { section: "Edit", items: [
+                  { mode: "the-edit", label: "The Edit" },
+                ]},
+                { section: "Create", items: [
+                  { mode: "studio", label: "Worktable" },
+                  { mode: "moodboard", label: "Mood Board" },
+                  { mode: "tailor", label: "Tailor" },
+                  { mode: "quiet-studio", label: "Quiet Studio" },
+                ]},
+                { section: "Publish", items: [
+                  { mode: "the-press", label: "The Press" },
+                  { mode: "editorial-home", label: "Front Page" },
+                ]},
+                { section: "You", items: [
+                  { mode: "profile", label: "Profile" },
+                  { mode: "signature", label: "Signature" },
+                  { mode: "taste-graph", label: "Taste Graph" },
+                  { mode: "connections", label: "Connections" },
+                  { mode: "proscenium", label: "Proscenium" },
+                  { mode: "oracle", label: "Oracle" },
+                  { mode: "memberships", label: "Memberships" },
+                ]},
+              ];
+              sections.forEach((s) => s.items.forEach((i) => all.push(i)));
+              return all;
+            })();
+
+            const DEFAULT_KEYS = ["studio", "pocket", "scribe", "tailor", "darkroom"];
+            const pinned: string[] =
+              profile?.pinnedNavItems && profile.pinnedNavItems.length > 0
+                ? profile.pinnedNavItems.slice(0, 5)
+                : [...DEFAULT_KEYS];
+
+            const toggle = (mode: string) => {
+              const current = profile?.pinnedNavItems && profile.pinnedNavItems.length > 0
+                ? [...profile.pinnedNavItems]
+                : [...DEFAULT_KEYS];
+              if (current.includes(mode)) {
+                if (current.length <= 1) return; // keep at least 1
+                updateProfile({ ...profile, pinnedNavItems: current.filter((k) => k !== mode) });
+              } else {
+                if (current.length >= 5) return; // max 5
+                updateProfile({ ...profile, pinnedNavItems: [...current, mode] });
+              }
+            };
+
+            return (
+              <div className="space-y-5">
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle mb-3">
+                    Current order ({pinned.length}/5)
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-1 min-h-[32px]">
+                    {pinned.map((key, i) => {
+                      const item = MENU_ITEMS_FLAT.find((m) => m.mode === key);
+                      return (
+                        <span
+                          key={key}
+                          className="inline-flex items-center gap-1.5 bg-nous-text text-nous-base text-[9px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full"
+                        >
+                          <span className="opacity-50">{i + 1}</span>
+                          {item?.label ?? key}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${item?.label ?? key} from nav`}
+                            onClick={() => toggle(key)}
+                            className="opacity-60 hover:opacity-100 transition-opacity leading-none"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                    {pinned.length === 0 && (
+                      <span className="text-[10px] text-nous-subtle italic">No tabs selected</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle mb-3">
+                    All views — tap to add / remove
+                  </p>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    {MENU_ITEMS_FLAT.map(({ mode, label }) => {
+                      const isActive = pinned.includes(mode);
+                      const isMaxed = pinned.length >= 5 && !isActive;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          disabled={isMaxed}
+                          onClick={() => toggle(mode)}
+                          className={
+                            "border px-3 py-2 text-left transition-colors " +
+                            (isActive
+                              ? "border-nous-text bg-nous-text/10 text-nous-text"
+                              : isMaxed
+                              ? "border-nous-border text-nous-subtle/30 cursor-not-allowed"
+                              : "border-nous-border text-nous-subtle hover:border-nous-text/50")
+                          }
+                        >
+                          <span className="font-mono text-[9px] uppercase tracking-widest block">
+                            {label}
+                          </span>
+                          {isActive && (
+                            <span className="font-mono text-[7px] text-nous-subtle block mt-0.5">
+                              pos {pinned.indexOf(mode) + 1}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateProfile({ ...profile, pinnedNavItems: [...DEFAULT_KEYS] })
+                  }
+                  className="text-[9px] font-mono uppercase tracking-widest text-nous-subtle border-b border-nous-border/50 pb-0.5 hover:text-nous-text transition-colors"
+                >
+                  Reset to defaults
+                </button>
+              </div>
+            );
+          })()}
+        </motion.div>
+
         {/* Clean Aesthetic Text-Summary Card (Replacing the Orb) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
