@@ -7,7 +7,7 @@ import {
   anchorIdentity, linkIdentity, handleAuthRedirect, startGhostSession, 
   initializeAuthPersistence, getUserPreferences, saveUserPreferences, 
   subscribeToUserProfile, subscribeToUserPreferences, migrateLocalToCloud, db, auth,
-  isCaptiveInWebview
+  isCaptiveInWebview, subscribeToPocketItems
 } from '../services/firebase';
 import { recordSession as recordSessionService } from '../services/retentionService';
 import { syncSessionCookie, clearSessionCookie } from '../services/authSession';
@@ -262,6 +262,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Listeners Ref
   const unsubscribeProfile = useRef<(() => void) | null>(null);
   const unsubscribePrefs = useRef<(() => void) | null>(null);
+  const unsubscribePocket = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -502,6 +503,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSystemStatus(prev => ({ ...prev, auth: 'offline' }));
       if (unsubscribeProfile.current) unsubscribeProfile.current();
       if (unsubscribePrefs.current) unsubscribePrefs.current();
+      if (unsubscribePocket.current) unsubscribePocket.current();
+      setPocket([]);
       reconciliationInProgress.current = null;
       return;
     }
@@ -517,6 +520,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Clear existing listeners to prevent duplication
     if (unsubscribeProfile.current) unsubscribeProfile.current();
     if (unsubscribePrefs.current) unsubscribePrefs.current();
+    if (unsubscribePocket.current) unsubscribePocket.current();
+    setPocket([]);
 
     try {
       const currentLocal = await getLocalProfile();
@@ -612,6 +617,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
          } catch (e) {
              console.error("MIMI // Error in prefs subscription callback:", e);
          }
+      });
+
+      unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
+        setPocket(items);
       });
       
       // Construct initial state from one-time fetch to unblock UI immediately
@@ -1237,6 +1246,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Unsubscribe listeners
     if (unsubscribeProfile.current) unsubscribeProfile.current();
     if (unsubscribePrefs.current) unsubscribePrefs.current();
+    if (unsubscribePocket.current) unsubscribePocket.current();
+    setPocket([]);
     
     try {
       clearLegacyUsedContextState();

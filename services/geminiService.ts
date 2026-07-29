@@ -689,13 +689,47 @@ export const generateExecutionLayer = async (analysisContext: string): Promise<E
     return null;
   });
 };
-export const extractTasteGraphNodes = async (artifacts: PocketItem[]): Promise<{ nodes: TasteGraphNode[], edges: TasteGraphEdge[] }> => {
-  // Generate tags for artifacts if they don't have them
+type TasteGraphArtifactInput = PocketItem & {
+  content_preview?: string;
+  embedding_field?: number[];
+  originalId?: string;
+};
+
+const normalizeTasteArtifact = (artifact: TasteGraphArtifactInput) => {
+  const title =
+    String(artifact.title || artifact.content_preview || artifact.type || "Untitled artifact")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80) || "Untitled artifact";
+  const notes = String(
+    artifact.notes ||
+      artifact.content_preview ||
+      (typeof artifact.content === "string" ? artifact.content : "") ||
+      "",
+  )
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 400);
+  const tags = Array.isArray(artifact.tags)
+    ? artifact.tags.map((t) => String(t)).filter(Boolean)
+    : [];
+  return {
+    id: String(artifact.id || artifact.originalId || title),
+    title,
+    notes,
+    tags,
+    hasEmbedding: Array.isArray(artifact.embedding_field) && artifact.embedding_field.length > 0,
+  };
+};
+
+export const extractTasteGraphNodes = async (artifacts: TasteGraphArtifactInput[]): Promise<{ nodes: TasteGraphNode[], edges: TasteGraphEdge[] }> => {
+  // Normalize pocket + shadow-memory shapes, then retrieve/generate tags
+  const normalized = (artifacts || []).map(normalizeTasteArtifact);
   const artifactsWithTags = [];
-  for (const a of artifacts) {
+  for (const a of normalized) {
     let tags = a.tags;
     if (!tags || tags.length === 0) {
-      tags = await generateTagsFromMedia(a.title + ": " + (a.notes || ""), []);
+      tags = await generateTagsFromMedia(`${a.title}: ${a.notes}`, []);
     }
     artifactsWithTags.push({ ...a, tags });
   }
@@ -703,13 +737,13 @@ export const extractTasteGraphNodes = async (artifacts: PocketItem[]): Promise<{
   const prompt = `You are Mimi, an aesthetic intelligence system. Analyze the following artifacts to extract a semantic taste graph.
   
   Artifacts:
-  ${artifactsWithTags.map(a => `- ${a.title}: ${a.notes || ''} Tags: ${a.tags?.join(', ') || 'None'}`).join('\n')}
+  ${artifactsWithTags.map(a => `- ${a.title}: ${a.notes || ''} Tags: ${a.tags?.join(', ') || 'None'}${a.hasEmbedding ? ' [embedding present]' : ''}`).join('\n')}
   
   Return a JSON object with:
-  - nodes: Array of { id, label, type: 'concept' | 'motif' | 'era', weight, explanation }
+  - nodes: Array of { id, label, type: 'concept' | 'motif' | 'era', weight, explanation, tags?: string[] }
   - edges: Array of { source, target, strength, type: 'relates_to' | 'evolves_from' | 'contrasts_with' }
   
-  Ensure the graph is coherent and captures the underlying aesthetic relationships.`;
+  Prefer synthesizing durable pattern labels from the retrieved tags. Ensure the graph is coherent and captures the underlying aesthetic relationships.`;
 
   try {
     const response = await withResilience(async (ai) => {
@@ -727,7 +761,20 @@ export const extractTasteGraphNodes = async (artifacts: PocketItem[]): Promise<{
       if (text.startsWith('```json')) {
         text = text.replace(/```json\n?/, '').replace(/```$/, '');
       }
-      return JSON.parse(text);
+      const parsed = JSON.parse(text);
+      // Attach retrieved tags onto concept nodes when the model omits them
+      if (parsed?.nodes && Array.isArray(parsed.nodes)) {
+        const tagPool = Array.from(
+          new Set(artifactsWithTags.flatMap((a) => a.tags || [])),
+        ).slice(0, 24);
+        parsed.nodes = parsed.nodes.map((node: any, idx: number) => ({
+          ...node,
+          tags: Array.isArray(node.tags) && node.tags.length > 0
+            ? node.tags
+            : tagPool.slice(idx % Math.max(tagPool.length, 1), (idx % Math.max(tagPool.length, 1)) + 3),
+        }));
+      }
+      return parsed;
     }
   } catch (e) {
     console.warn("MIMI // Taste Graph Extraction Error. Constructing local synthetic fallback.", e);
@@ -740,16 +787,17 @@ export const extractTasteGraphNodes = async (artifacts: PocketItem[]): Promise<{
       { label: "Aesthetic Sovereignty", explanation: "Direct control over semantic traces and personal data curation in the age of generative machine learning retrieval." }
     ];
 
-    if (artifacts && artifacts.length > 0) {
-      artifacts.forEach((art, idx) => {
+    if (normalized.length > 0) {
+      normalized.forEach((art, idx) => {
         const id = `fallback-artifact-${idx}`;
         nodes.push({
           id,
           label: art.title.slice(0, 24),
           type: idx % 2 === 0 ? 'motif' : 'concept',
           weight: 0.85 - (idx * 0.05),
-          explanation: art.notes || `Aesthetic anchor point representing: ${art.title}. Ingested from Sovereignty Pocket.`
-        });
+          explanation: art.notes || `Aesthetic anchor point representing: ${art.title}. Ingested from Sovereignty Pocket.`,
+          tags: art.tags,
+        } as TasteGraphNode);
       });
     }
 

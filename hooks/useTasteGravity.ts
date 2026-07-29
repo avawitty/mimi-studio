@@ -19,7 +19,10 @@ export interface TasteGravityState {
   clusters: ThemeNode[];
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<{
+    points: TasteEmbeddingPoint[];
+    clusters: ThemeNode[];
+  }>;
 }
 
 function meanVector(vectors: number[][]): number[] | null {
@@ -69,7 +72,7 @@ export function useTasteGravity(userId?: string | null): TasteGravityState {
       setClusters([]);
       setLoading(false);
       setError(null);
-      return;
+      return { points: [] as TasteEmbeddingPoint[], clusters: [] as ThemeNode[] };
     }
 
     setLoading(true);
@@ -108,9 +111,11 @@ export function useTasteGravity(userId?: string | null): TasteGravityState {
 
       const themeNodes = await getClusterAnchors();
       setClusters(themeNodes);
+      return { points: scoredPoints, clusters: themeNodes };
     } catch (e) {
       console.error("MIMI // useTasteGravity failed:", e);
       setError(e instanceof Error ? e.message : "Failed to load taste vectors");
+      return { points: [] as TasteEmbeddingPoint[], clusters: [] as ThemeNode[] };
     } finally {
       setLoading(false);
     }
