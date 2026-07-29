@@ -7,6 +7,7 @@ import { useUser } from '../contexts/UserContext';
 import { v4 as uuidv4 } from 'uuid';
 import { archiveManager } from '../services/archiveManager';
 import { ScribeContextWorkbench } from './ScribeContextWorkbench';
+import { sanitizeHtml } from '../lib/htmlSanitizer';
 
 const MIMI_SYSTEM_INSTRUCTION = `
 CORE IDENTITY
@@ -420,7 +421,13 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
             {aiTranscript ? (
               <div 
                 dangerouslySetInnerHTML={{
-                  __html: aiTranscript.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-[#a8b79f] underline decoration-dashed hover:text-[#4a5c41] transition-colors">$1</a>')
+                  __html: sanitizeHtml(
+                    aiTranscript.replace(
+                      /\[(.*?)\]\((.*?)\)/g,
+                      '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-[#a8b79f] underline decoration-dashed hover:text-[#4a5c41] transition-colors">$1</a>',
+                    ),
+                    "html",
+                  ),
                 }}
               />
             ) : "Awaiting transmission..."}

@@ -53,6 +53,7 @@ const PRESET_TEMPLATES = [
 
 export const MoodBoardChamber: React.FC = () => {
   const [items, setItems] = useState<MoodBoardItem[]>([]);
+  const itemsRef = useRef<MoodBoardItem[]>(items);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   
@@ -83,6 +84,11 @@ export const MoodBoardChamber: React.FC = () => {
     }
   }, []);
 
+  // Keep an always-fresh reference to the latest items array for event handlers.
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
   // Save to local storage
   const saveBoard = (newItems: MoodBoardItem[]) => {
     setItems(newItems);
@@ -103,7 +109,7 @@ export const MoodBoardChamber: React.FC = () => {
       title: "Design Note",
       colorTheme: ['stone', 'slate', 'amber', 'rose'][Math.floor(Math.random() * 4)]
     };
-    saveBoard([...items, newItem]);
+    saveBoard([...itemsRef.current, newItem]);
     setSelectedItemId(id);
   };
 
@@ -120,7 +126,7 @@ export const MoodBoardChamber: React.FC = () => {
       content: hexColors[Math.floor(Math.random() * hexColors.length)],
       title: "Palette Accent"
     };
-    saveBoard([...items, newItem]);
+    saveBoard([...itemsRef.current, newItem]);
     setSelectedItemId(id);
   };
 
@@ -136,7 +142,7 @@ export const MoodBoardChamber: React.FC = () => {
       content: url,
       title: "Visual Reference"
     };
-    saveBoard([...items, newItem]);
+    saveBoard([...itemsRef.current, newItem]);
     setSelectedItemId(id);
   };
 
@@ -218,12 +224,17 @@ export const MoodBoardChamber: React.FC = () => {
       const newX = Math.max(0, Math.min(95, info.startLeft + dxPercent));
       const newY = Math.max(0, Math.min(95, info.startTop + dyPercent));
       
-      setItems(prev => prev.map(item => {
-        if (item.id === info.itemId) {
-          return { ...item, x: newX, y: newY };
-        }
-        return item;
-      }));
+      setItems((prev) => {
+        const updated = prev.map((item) => {
+          if (item.id === info.itemId) {
+            return { ...item, x: newX, y: newY };
+          }
+          return item;
+        });
+        // Keep ref in sync without waiting for the next render.
+        itemsRef.current = updated;
+        return updated;
+      });
     };
 
     const handleGlobalMouseUp = () => {
@@ -231,12 +242,15 @@ export const MoodBoardChamber: React.FC = () => {
         setIsDragging(false);
         dragInfo.current = null;
         // Save current positions to local storage
-        localStorage.setItem('mimi_moodboard_items', JSON.stringify(items));
+        localStorage.setItem(
+          'mimi_moodboard_items',
+          JSON.stringify(itemsRef.current),
+        );
       }
     };
 
     if (isDragging) {
-      window.addEventListener('mousemove', handleGlobalMouseMove);
+      window.addEventListener('mousemove', handleGlobalMouseMove, { passive: true });
       window.addEventListener('mouseup', handleGlobalMouseUp);
     }
 
@@ -244,7 +258,7 @@ export const MoodBoardChamber: React.FC = () => {
       window.removeEventListener('mousemove', handleGlobalMouseMove);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [isDragging, items]);
+  }, [isDragging]);
 
   const deleteItem = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
