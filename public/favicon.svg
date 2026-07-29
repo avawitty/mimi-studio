@@ -2,16 +2,20 @@
   <defs>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400&amp;display=swap');
+      .mimi-text { fill: #1A1A1A; }
+      @media (prefers-color-scheme: dark) {
+        .mimi-text { fill: #FFFFFF; }
+      }
     </style>
   </defs>
   <text
     x="100"
     y="128"
+    class="mimi-text"
     font-family="'Cormorant Garamond', 'Cormorant', Georgia, serif"
     font-style="italic"
     font-size="80"
     font-weight="400"
     text-anchor="middle"
-    fill="#FFFFFF"
   >Mimi</text>
 </svg>
