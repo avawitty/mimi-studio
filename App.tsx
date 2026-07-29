@@ -66,7 +66,6 @@ import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useTactileAudio } from "./hooks/useTactileAudio";
 
 // Lazy load views to reduce initial request count and prevent 429 errors
-import { MobileNavigation } from "./components/MobileNavigation";
 import { MobileProfileModal } from "./components/MobileProfileModal";
 const ArchiveCloudNebula = lazy(
   () => import("./components/ArchiveCloudNebula"),
@@ -2554,14 +2553,6 @@ export const App: React.FC = () => {
               </Suspense>
             </motion.div>
           </AnimatePresence>
-          {viewMode !== "studio" && (
-            <MobileNavigation
-              currentView={viewMode}
-              setViewMode={setViewMode}
-              profile={profile}
-              isGenerating={appState === AppState.THINKING}
-            />
-          )}
           <SelectionMemoryCapture />
           <CookieConsentBanner />
         </main>

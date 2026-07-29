@@ -2418,7 +2418,8 @@ Do not use quotes around the output. Just return the raw text.`,
 
 export const shapeBrief = async (
   input: string,
-  apiKey?: string
+  apiKey?: string,
+  presetContext?: string
 ): Promise<{
   preservedLanguage: string;
   proposedDirection: string;
@@ -2430,11 +2431,11 @@ export const shapeBrief = async (
       model: 'gemini-3.5-flash',
       contents: `
         You are Mimi's editorial advisor. Your job is to structure a creator's unfinished fragment into a coherent creative direction.
-        
+        ${presetContext ? `\n        ACTIVE BRIEF PRESET — shape the direction so it serves this use-case:\n        ${presetContext}\n` : ""}
         CRITICAL RULES:
         - Do not overwrite or flatten the user's voice, unique style, or unusual words.
         - In "preservedLanguage", extract 1-3 of the most evocative phrases directly from the user's input.
-        - In "proposedDirection", provide a concise (1-2 sentences) synthesis of the theme or conceptual focus.
+        - In "proposedDirection", provide a concise (1-2 sentences) synthesis of the theme or conceptual focus${presetContext ? ", aligned with the active brief preset above" : ""}.
         - In "inferredAnchors", list 2-3 specific aesthetic, cultural, or physical materials/references that naturally complement their theme. Label them explicitly as [INFERRED]. Do NOT invent personal facts.
         - In "openQuestions", list 2 evocative, open questions to nudge their imagination further.
         
