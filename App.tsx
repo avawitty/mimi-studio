@@ -809,35 +809,131 @@ import { CreditMeter } from "./components/CreditMeter";
 
 const ROUTE_PERSIST_KEY = "mimi_last_route";
 
+const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
+  "action-board",
+  "archival",
+  "architecture",
+  "aesthetic-tokens",
+  "brand-intake",
+  "brand-voice",
+  "briefs",
+  "chamber-map",
+  "cliques",
+  "codex",
+  "connections",
+  "darkroom",
+  "editorial-home",
+  "forecast",
+  "geo_engine",
+  "intel-hub",
+  "latent-constellation",
+  "loom",
+  "manifesto",
+  "memberships",
+  "mimi-dolls",
+  "mimi-drop",
+  "moodboard",
+  "nebula",
+  "notifications",
+  "obsidian-mirror",
+  "oracle",
+  "pocket",
+  "private-studio",
+  "profile",
+  "proscenium",
+  "qc_engine",
+  "quiet-studio",
+  "sanctuary",
+  "scribe",
+  "scry",
+  "signals",
+  "signature",
+  "studio",
+  "syllabus",
+  "tailor",
+  "taste-discovery",
+  "taste-graph",
+  "taste-identity",
+  "the-edit",
+  "the-lens",
+  "the-press",
+  "thimble",
+  "threads",
+  "ui-audit",
+  "ward",
+  "wardrobe",
+]);
+
+const RESTORABLE_TAILOR_PANELS = new Set([
+  "diagnostics",
+  "dossier",
+  "evidence",
+  "style-lab",
+]);
+
 /**
- * Returns true for private app routes that should be persisted for cold-launch
- * restoration. Public share, auth, legal, and the bare root are excluded so
- * a user who opens a shared link never "inherits" it as their next cold-launch
- * destination.
+ * Returns the private app route that is safe to persist for cold-launch
+ * restoration. Public share, auth, checkout callbacks, legal, malformed, and
+ * unknown routes are rejected so a cold launch only resumes supported in-app
+ * destinations.
  */
-const isRestorableRoute = (p: string): boolean => {
-  if (!p || p === "/" || p === "") return false;
-  // Reject anything that isn't a plain app-relative path (e.g. "javascript:…"
-  // or any value that doesn't start with "/").
-  if (!p.startsWith("/")) return false;
-  // Reject protocol-relative URLs (e.g. "//example.com").
-  if (p.startsWith("//")) return false;
-  if (
-    p.startsWith("/s/") ||
-    p.startsWith("/@") ||
-    p.startsWith("/u/") ||
-    p.startsWith("/stacks/") ||
-    p.startsWith("/auth/") ||
-    p === "/privacy" ||
-    p === "/terms" ||
-    p === "/showcase"
-  ) {
-    return false;
+const getRestorableRoute = (candidate: string): string | null => {
+  if (!candidate || typeof candidate !== "string") return null;
+  if (!candidate.startsWith("/") || candidate.startsWith("//")) return null;
+
+  let url: URL;
+  try {
+    url = new URL(candidate, "https://mimi.local");
+  } catch {
+    return null;
   }
-  return true;
+
+  if (url.origin !== "https://mimi.local") return null;
+
+  const pathname = url.pathname;
+  if (!pathname || pathname === "/") return null;
+
+  if (
+    pathname.startsWith("/s/") ||
+    pathname.startsWith("/@") ||
+    pathname.startsWith("/u/") ||
+    pathname.startsWith("/stacks/") ||
+    pathname.startsWith("/auth/") ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname === "/showcase" ||
+    pathname === "/success" ||
+    pathname === "/canceled"
+  ) {
+    return null;
+  }
+
+  const segments = pathname.split("/").filter(Boolean);
+  const [firstSegment, secondSegment] = segments;
+
+  if (!firstSegment) return null;
+
+  if (firstSegment === "zine") {
+    return segments.length === 2 && secondSegment ? pathname : null;
+  }
+
+  if (firstSegment === "tailor") {
+    if (segments.length === 1) return pathname;
+    return segments.length === 2 &&
+      secondSegment &&
+      RESTORABLE_TAILOR_PANELS.has(secondSegment)
+      ? pathname
+      : null;
+  }
+
+  if (segments.length !== 1) return null;
+
+  return RESTORABLE_TOP_LEVEL_ROUTES.has(canonicalizeMimiRoute(firstSegment))
+    ? pathname
+    : null;
 };
 
-const useAppRouter = () => {
+const useAppRouter = (authReady: boolean) => {
   const [path, setPath] = useState(window.location.pathname);
 
   useEffect(() => {
@@ -873,9 +969,10 @@ const useAppRouter = () => {
   // always launches from start_url "/", so we restore the user's last private
   // route via localStorage).
   useEffect(() => {
-    if (isRestorableRoute(path)) {
+    const restorableRoute = getRestorableRoute(path);
+    if (restorableRoute) {
       try {
-        localStorage.setItem(ROUTE_PERSIST_KEY, path);
+        localStorage.setItem(ROUTE_PERSIST_KEY, restorableRoute);
       } catch {
         // Expected in Private Browsing mode (SecurityError) or when storage
         // quota is exceeded (QuotaExceededError). Neither case is actionable
@@ -885,6 +982,7 @@ const useAppRouter = () => {
   }, [path]);
 
   useEffect(() => {
+    if (!authReady) return;
     if (path === "/" || path === "") {
       // Do not redirect while known callback query params are present on the
       // root URL.  Each handler reads window.location.search (or .href);
@@ -906,16 +1004,19 @@ const useAppRouter = () => {
       let restoredPath = "/studio";
       try {
         const saved = localStorage.getItem(ROUTE_PERSIST_KEY);
-        if (saved && isRestorableRoute(saved)) {
-          restoredPath = saved;
+        const restorableRoute = saved ? getRestorableRoute(saved) : null;
+        if (restorableRoute) {
+          restoredPath = restorableRoute;
         }
       } catch {
         // Expected in Private Browsing mode (SecurityError) or on quota
         // exceeded (QuotaExceededError). Fall back to the default destination.
       }
-      navigate(restoredPath, { replace: true });
+      if (restoredPath !== path) {
+        navigate(restoredPath, { replace: true });
+      }
     }
-  }, [navigate, path]);
+  }, [authReady, navigate, path]);
 
   return { path, navigate };
 };
@@ -1140,7 +1241,7 @@ export const App: React.FC = () => {
   const [commandDrawerOpen, setCommandDrawerOpen] = useState(false);
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [loadingMessage, setLoadingMessage] = useState("Initializing...");
-  const { path, navigate } = useAppRouter();
+  const { path, navigate } = useAppRouter(!authLoading);
   const pathParts = path.split("/").filter(Boolean);
   const isZineRoute = pathParts[0] === "zine" && pathParts[1];
   const urlZineId = isZineRoute ? pathParts[1] : null;
