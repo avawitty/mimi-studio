@@ -2039,8 +2039,6 @@ export const App: React.FC = () => {
     return () => window.removeEventListener("mimi:develop_highfi", handleDevelopHighFi);
   }, [handleRefine]);
 
-  if (isDatabaseMissing) return <DatabaseVoid />;
-
   if (window.location.pathname.startsWith("/auth/action")) {
     return <AuthAction />;
   }
