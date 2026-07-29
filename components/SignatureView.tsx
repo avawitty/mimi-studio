@@ -175,7 +175,7 @@ export const SignatureView: React.FC = () => {
 
  return (
  <div className="flex-1 overflow-y-auto bg dark:bg text-nous-text font-serif selection:bg-nous-base0/20 pb-32 custom-scrollbar">
- <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-16">
+ <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-16 mimi-page-pad">
  
  {/* Header */}
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-nous-border pb-8">

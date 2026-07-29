@@ -1153,7 +1153,86 @@ export const generateAudio = async (text: string, apiKey?: string): Promise<Uint
     }, apiKey);
 };
 
+const classifyImageGenFailure = (errMsg: string): { userMessage: string; isBillingOrQuota: boolean } => {
+    const lower = errMsg.toLowerCase();
+    if (
+        lower.includes('resource_exhausted') ||
+        lower.includes('quota') ||
+        lower.includes('billing') ||
+        lower.includes('rate limit') ||
+        lower.includes('prepayment') ||
+        lower.includes('credits depleted')
+    ) {
+        return {
+            userMessage: "Image provider quota or billing limit hit. Showing a simulated plate — add AI Gateway credits or a BYOK key to resume live generation.",
+            isBillingOrQuota: true,
+        };
+    }
+    if (lower.includes('missing_image_key') || lower.includes('requires a server') || lower.includes('no api key') || lower.includes('api key')) {
+        return {
+            userMessage: "No image provider key available. Showing a simulated plate — configure AI_GATEWAY_API_KEY or a Gemini/OpenAI key.",
+            isBillingOrQuota: false,
+        };
+    }
+    if (lower.includes('safety') || lower.includes('blocked') || lower.includes('finishreason')) {
+        return {
+            userMessage: "Image request was blocked or returned empty. Showing a simulated plate — try softening the prompt.",
+            isBillingOrQuota: false,
+        };
+    }
+    return {
+        userMessage: `Image generation unavailable (${errMsg.slice(0, 120)}). Showing a simulated plate.`,
+        isBillingOrQuota: false,
+    };
+};
+
+/** Prefer the server AI Gateway route before client SDK; only simulate as last resort. */
+const tryServerMimiImage = async (prompt: string, ar: AspectRatio, apiKey?: string): Promise<string | null> => {
+    if (typeof fetch === 'undefined') return null;
+    try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['x-gemini-api-key'] = apiKey;
+        const res = await fetch('/api/mimi-image', {
+            method: 'POST',
+            headers,
+            credentials: 'include',
+            body: JSON.stringify({
+                prompt,
+                userPrompt: prompt,
+                aspectRatio: ar,
+                // Omit provider so the route prefers AI Gateway when configured
+            }),
+        });
+        const data = await res.json().catch((): null => null);
+        if (!res.ok) {
+            const code = data?.error?.code || '';
+            const message = data?.error?.message || res.statusText;
+            throw new Error(`${code ? code + ': ' : ''}${message}`);
+        }
+        if (data?.provider === 'simulated' || data?.metadata?.noKeyPreview) {
+            throw new Error(data?.warnings?.[0] || 'Server returned simulated image');
+        }
+        const url = data?.imageUrl || data?.url || data?.dataUrl;
+        if (typeof url === 'string' && url.length > 32) return url;
+        if (data?.base64) return `data:image/png;base64,${data.base64}`;
+        return null;
+    } catch (e) {
+        console.warn('MIMI // Server image route unavailable, trying client path:', e);
+        throw e;
+    }
+};
+
 export const generateZineImage = async (prompt: string, ar: AspectRatio, size: ImageSize, profile: any, isLite: boolean, apiKey?: string, artifacts?: MediaFile[], treatmentId?: string, referenceCardBase64?: string): Promise<string> => {
+    let lastError: string = '';
+
+    // 1) Prefer server gateway-backed generation (resolves the Tailor "simulated billing" false path when keys exist server-side)
+    try {
+        const serverImage = await tryServerMimiImage(prompt, ar, apiKey);
+        if (serverImage) return serverImage;
+    } catch (e: any) {
+        lastError = e instanceof Error ? e.message : String(e);
+    }
+
     try {
         return await withResilience(async (ai) => {
             let treatmentDirectives = "";
@@ -1253,12 +1332,14 @@ export const generateZineImage = async (prompt: string, ar: AspectRatio, size: I
         }, apiKey);
     } catch (e: any) {
         const errMsg = e instanceof Error ? e.message : String(e);
-        console.error("MIMI // Image Generation Error (using simulated mode fallback):", errMsg);
+        lastError = lastError || errMsg;
+        console.error("MIMI // Image Generation Error (using simulated mode fallback):", lastError);
+        const classified = classifyImageGenFailure(lastError);
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
                 detail: { 
-                    message: "Automatic Fallback to Simulated Mode active due to billing/limit.", 
-                    type: 'info' 
+                    message: classified.userMessage, 
+                    type: classified.isBillingOrQuota ? 'warning' : 'info' 
                 } 
             }));
         }

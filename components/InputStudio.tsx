@@ -65,6 +65,8 @@ import {
   MoreHorizontal,
   PenLine,
   LayoutGrid,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import {
   transcribeAudio,
@@ -337,8 +339,25 @@ export const InputStudio: React.FC<{
   const { playClick, startDeepDrone, stopDeepDrone } = useTactileAudio();
   const studioDoll = useStudioDollSelection(currentUser?.uid);
 
+  // Brown-noise / deep drone must be explicitly opted-in — never auto-start on thinking alone.
+  const [ambientDroneOn, setAmbientDroneOn] = useState(() => {
+    try {
+      return localStorage.getItem("mimi_ambient_drone") === "on";
+    } catch {
+      return false;
+    }
+  });
+
   useEffect(() => {
-    if (isThinking) {
+    try {
+      localStorage.setItem("mimi_ambient_drone", ambientDroneOn ? "on" : "off");
+    } catch {
+      /* ignore */
+    }
+  }, [ambientDroneOn]);
+
+  useEffect(() => {
+    if (isThinking && ambientDroneOn) {
       startDeepDrone();
     } else {
       stopDeepDrone();
@@ -346,7 +365,7 @@ export const InputStudio: React.FC<{
     return () => {
       stopDeepDrone();
     };
-  }, [isThinking]);
+  }, [isThinking, ambientDroneOn]);
 
   useEffect(() => {
     const handleButtonClick = (e: MouseEvent) => {
@@ -2359,6 +2378,23 @@ ${finalInput}`;
 
               {/* Progressive Editorial Brief Form Container */}
               <div className={`w-full max-w-2xl flex flex-col gap-5 relative z-15 ${isMobile ? "min-h-[160px]" : "min-h-[220px]"}`}>
+                {/* Ambient brown-noise toggle — opt-in only; never auto-plays */}
+                <div className="absolute -top-8 right-0 z-20">
+                  <button
+                    type="button"
+                    onClick={() => setAmbientDroneOn((v) => !v)}
+                    aria-pressed={ambientDroneOn}
+                    title={ambientDroneOn ? "Brown noise on during generation" : "Brown noise off (default)"}
+                    className={`flex items-center gap-1.5 px-2 py-1 border font-mono text-[7px] uppercase tracking-widest transition-colors ${
+                      ambientDroneOn
+                        ? "border-amber-600/50 text-amber-700 bg-amber-500/10"
+                        : "border-stone-300 dark:border-stone-700 text-stone-400 hover:text-stone-600"
+                    }`}
+                  >
+                    {ambientDroneOn ? <Volume2 size={10} /> : <VolumeX size={10} />}
+                    {ambientDroneOn ? "Noise On" : "Noise Off"}
+                  </button>
+                </div>
                 {/* Thinking Pulse Overlay */}
                 {isThinking && (
                   <div className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center bg-transparent">

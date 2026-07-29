@@ -2,6 +2,7 @@ import { cors, providerKey, readJsonBody, requireMethod, sendJson } from "./apiU
 import { MimiProvider } from "./mimiProvider.js";
 import { MimiImageProvider } from "./mimiImageTypes.js";
 import { generateMimiImageServer } from "./serverMimiImage.js";
+import { getServerAiGatewayKey } from "./aiGatewayCompat.js";
 
 export const handleMimiGenerateImageRoute = async (req: any, res: any) => {
   if (cors(req, res)) return;
@@ -12,7 +13,16 @@ export const handleMimiGenerateImageRoute = async (req: any, res: any) => {
 
   try {
     body = await readJsonBody(req);
-    provider = (body.provider || "gemini") as MimiImageProvider;
+    const requestedProvider = (body.provider || "gateway") as MimiImageProvider;
+    // Prefer AI Gateway when a server gateway key exists (aligned with /api/mimi-image)
+    provider =
+      requestedProvider === "simulated" || requestedProvider === "local"
+        ? requestedProvider
+        : getServerAiGatewayKey()
+          ? "gateway"
+          : requestedProvider === "gateway"
+            ? "gemini"
+            : requestedProvider;
 
     if (provider === "simulated" || provider === "local") {
       const result = await MimiProvider.generateImage({
