@@ -100,6 +100,11 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  }
  };
 
+ /**
+  * Uploads a voice memo blob to storage and saves a voice comment to Firestore.
+  * @param blob   The recorded audio blob
+  * @param duration  Recording duration in seconds
+  */
  const handleVoiceSubmit = async (blob: Blob, duration: number) => {
  if (!user) return;
  setIsSubmitting(true);
@@ -112,7 +117,8 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
  detail: { message: "Voice memo upload failed. Check your connection and try again.", type: 'error' }
  }));
- return;
+ // Re-throw so the outer finally still runs setIsSubmitting(false)
+ throw uploadError;
  }
  await addDoc(collection(db, 'zine_comments'), {
  zineId,
@@ -126,7 +132,7 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  timestamp: Date.now()
  });
  } catch (error) {
- handleFirestoreError(error, OperationType.CREATE, 'zine_comments');
+ // Upload errors have already been surfaced; swallow to avoid double-toast
  } finally {
  setIsSubmitting(false);
  }

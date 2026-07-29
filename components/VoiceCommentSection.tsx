@@ -24,13 +24,19 @@ export const VoiceCommentSection: React.FC<VoiceCommentSectionProps> = ({
   // Build object URL when blob arrives and revoke the previous one
   useEffect(() => {
     if (audioBlob) {
-      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
       const url = URL.createObjectURL(audioBlob);
       audioUrlRef.current = url;
       setAudioUrl(url);
     }
     return () => {
-      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
     };
   }, [audioBlob]);
 
