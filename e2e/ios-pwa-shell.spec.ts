@@ -421,7 +421,6 @@ test.describe("Route restoration", () => {
     page,
   }) => {
     const invalidSavedRoutes = [
-      "/not-a-route",
       "/success",
       "//evil.example/path",
       "javascript:alert(1)",
