@@ -490,7 +490,7 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
         )}
 
         {/* ARCHIVE BUTTON OVERLAY */}
-        <div className="absolute top-3 right-3 z-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
+        <div className="absolute top-3 right-3 z-40 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
           {user && user.uid === zine.userId && (
             <>
               <button

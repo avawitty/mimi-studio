@@ -50,15 +50,41 @@ Recommend emerging, niche, or archival designers that perfectly execute the user
 Long-term vision: Keep a relevant understanding of what the user needs for their capsule, acting as a structural seam guide for their wardrobe expansion.`;
 
 export const STRIPE_PRICES = {
-  core: "price_1TwwYS8wdWcoxOPehfAp8HnJ",
-  pro: "price_1TwwYZ8wdWcoxOPeUxr0fReB",
-  lab: "price_1TwwYh8wdWcoxOPeK7j6HSm0",
+  core: "price_1TyH1dPelakqdIL6lWwNf7Hw",
+  optioning: "price_1TyH1dPelakqdIL6qnkLnvan",
+  pro: "price_1TyH1ePelakqdIL6cL56uAzp",
+  lab: "price_1TyH1ePelakqdIL6VpQHXEKG",
 } as const;
 
-export type PlanTier = 'free' | 'core' | 'pro' | 'lab';
+export const STRIPE_PRICES_ANNUAL = {
+  core: "price_1TyHpcPelakqdIL6zNy9Pr9n",
+  optioning: "price_1TyHpcPelakqdIL6XOTs86AM",
+  pro: "price_1TyHpcPelakqdIL6TADmS9HW",
+  lab: "price_1TyHpdPelakqdIL6L5g4CKKw",
+} as const;
+
+/** Monthly price in USD per checkout plan, used for display and annual savings math. */
+export const PLAN_MONTHLY_USD = {
+  core: 12,
+  optioning: 25,
+  pro: 40,
+  lab: 99,
+} as const;
+
+/** Annual price in USD per checkout plan (~2 months free vs monthly). */
+export const PLAN_ANNUAL_USD = {
+  core: 120,
+  optioning: 250,
+  pro: 400,
+  lab: 990,
+} as const;
+
+export type BillingInterval = 'month' | 'year';
+
+export type PlanTier = 'free' | 'core' | 'optioning' | 'pro' | 'lab';
 
 export function hasAccess(userPlan: PlanTier | string | undefined | null, requiredPlan: PlanTier): boolean {
-  const order = ["free", "core", "pro", "lab"];
+  const order = ["free", "core", "optioning", "pro", "lab"];
   const userIndex = order.indexOf(userPlan || "free");
   const requiredIndex = order.indexOf(requiredPlan);
   return userIndex >= requiredIndex;

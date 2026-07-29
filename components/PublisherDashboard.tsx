@@ -176,8 +176,8 @@ export const PublisherDashboard: React.FC = () => {
             </div>
 
             {/* Custom Interactive Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left font-mono text-[9px] uppercase tracking-wider">
+            <div className="overflow-x-auto no-scrollbar scroll-fade-x">
+              <table className="w-full min-w-[560px] text-left font-mono text-[9px] uppercase tracking-wider">
                 <thead>
                   <tr className="border-b border-stone-850 text-stone-500">
                     <th className="p-3">Partner Code</th>
