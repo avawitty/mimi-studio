@@ -1,4 +1,4 @@
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, QueryDocumentSnapshot, QuerySnapshot } from "firebase-admin/firestore";
 import {
   getCreatorFeedUrl,
   getCreatorProfileUrl,
@@ -66,6 +66,40 @@ export async function resolvePublicFeedProfile(
   };
 }
 
+const mapPublicFeedZine = (docSnap: QueryDocumentSnapshot): PublicFeedZine => {
+  const data = docSnap.data() || {};
+  return {
+    id: String(data.id || docSnap.id),
+    title: data.title,
+    concept: data.concept,
+    summary: data.summary,
+    userHandle: data.userHandle,
+    coverImageUrl: data.coverImageUrl ?? null,
+    publishedAt: typeof data.publishedAt === "number" ? data.publishedAt : undefined,
+    timestamp: typeof data.timestamp === "number" ? data.timestamp : undefined,
+    createdAt: typeof data.createdAt === "number" ? data.createdAt : undefined,
+    isPublic: data.isPublic === true,
+  };
+};
+
+const feedRecencyMs = (zine: PublicFeedZine): number =>
+  zine.publishedAt || zine.timestamp || zine.createdAt || 0;
+
+const dedupeNewest = (zines: PublicFeedZine[], take: number): PublicFeedZine[] => {
+  const merged = new Map<string, PublicFeedZine>();
+  for (const zine of zines) {
+    if (zine.isPublic === false) continue;
+    merged.set(zine.id, zine);
+  }
+  return [...merged.values()]
+    .sort((a, b) => feedRecencyMs(b) - feedRecencyMs(a))
+    .slice(0, take);
+};
+
+/**
+ * Newest public issues first. Firestore must order before limit — otherwise a
+ * creator with >60 public zines can drop recent items from the RSS window.
+ */
 export async function fetchPublicFeedZines(
   db: Firestore,
   uid: string,
@@ -73,36 +107,35 @@ export async function fetchPublicFeedZines(
 ): Promise<PublicFeedZine[]> {
   if (!uid) return [];
 
-  const snap = await db
+  const take = Math.max(1, Math.min(limit, 100));
+  const base = db
     .collection("zines")
     .where("userId", "==", uid)
-    .where("isPublic", "==", true)
-    .limit(Math.min(Math.max(limit * 2, limit), 60))
-    .get();
+    .where("isPublic", "==", true);
 
-  return snap.docs
-    .map((docSnap) => {
-      const data = docSnap.data() || {};
-      return {
-        id: String(data.id || docSnap.id),
-        title: data.title,
-        concept: data.concept,
-        summary: data.summary,
-        userHandle: data.userHandle,
-        coverImageUrl: data.coverImageUrl ?? null,
-        publishedAt: typeof data.publishedAt === "number" ? data.publishedAt : undefined,
-        timestamp: typeof data.timestamp === "number" ? data.timestamp : undefined,
-        createdAt: typeof data.createdAt === "number" ? data.createdAt : undefined,
-        isPublic: data.isPublic === true,
-      } satisfies PublicFeedZine;
-    })
-    .filter((zine) => zine.isPublic !== false)
-    .sort(
-      (a, b) =>
-        (b.publishedAt || b.timestamp || b.createdAt || 0) -
-        (a.publishedAt || a.timestamp || a.createdAt || 0),
-    )
-    .slice(0, limit);
+  // timestamp exists on all zines and keeps the limit window deterministic.
+  // publishedAt (set on make-public) is preferred for recency when present —
+  // merge both ordered queries so legacy public docs without publishedAt still appear.
+  let byTimestamp: QuerySnapshot;
+  try {
+    byTimestamp = await base.orderBy("timestamp", "desc").limit(take).get();
+  } catch (error) {
+    console.warn("MIMI // public feed timestamp orderBy failed:", error);
+    return [];
+  }
+
+  let byPublished: QueryDocumentSnapshot[] = [];
+  try {
+    const publishedSnap = await base.orderBy("publishedAt", "desc").limit(take).get();
+    byPublished = publishedSnap.docs;
+  } catch {
+    // Composite index may be missing; timestamp-ordered window is still correct.
+  }
+
+  return dedupeNewest(
+    [...byPublished, ...byTimestamp.docs].map((docSnap) => mapPublicFeedZine(docSnap)),
+    take,
+  );
 }
 
 export async function buildCreatorRssFeed(
