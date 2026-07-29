@@ -43,6 +43,17 @@ export default defineConfig(({ mode }) => {
         minify: 'esbuild',
         target: 'esnext',
         reportCompressedSize: false,
+<<<<<<< HEAD
+=======
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'three-core': ['three'],
+              'three-fiber': ['@react-three/fiber', '@react-three/drei'],
+            },
+          },
+        },
+>>>>>>> origin/main
       }
     };
 });

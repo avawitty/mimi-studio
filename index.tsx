@@ -114,6 +114,7 @@ if (rootElement) {
 }
 
 if ('serviceWorker' in navigator) {
+<<<<<<< HEAD
   // Unconditionally unregister any service worker during development/preview
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (const registration of registrations) {
@@ -121,5 +122,20 @@ if ('serviceWorker' in navigator) {
       console.log('[Mimi Service Worker] Unregistered SW to prevent cache-induced white screens');
     }
   }).catch((err) => console.error('[Mimi Service Worker] Unregister failed:', err));
+=======
+  if (import.meta.env.PROD) {
+    navigator.serviceWorker.register('/sw.js').catch((err) =>
+      console.error('[Mimi Service Worker] Registration failed:', err)
+    );
+  } else {
+    // Unregister service workers in development to prevent stale-cache white screens
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+        console.log('[Mimi Service Worker] Unregistered SW in dev mode');
+      }
+    }).catch((err) => console.error('[Mimi Service Worker] Unregister failed:', err));
+  }
+>>>>>>> origin/main
 }
 
