@@ -240,6 +240,11 @@ const TasteDiscoveryView = lazy(() =>
     default: m.TasteDiscoveryView,
   })),
 );
+const TheGEOEngine = lazy(() =>
+  import("./components/TheGEOEngine").then((m) => ({
+    default: m.TheGEOEngine,
+  })),
+);
 const NousReadingList = lazy(() =>
   import("./components/NousReadingList").then((m) => ({
     default: m.NousReadingList,
@@ -1983,6 +1988,7 @@ export const App: React.FC = () => {
     thimble: "Thimble",
     oracle: "Oracle",
     scribe: "Scribe",
+    geo_engine: "GEO Engine",
     signature: "The Signature",
     "art-style": "Art Style Scryer",
     archival: "Archive",
@@ -2017,6 +2023,7 @@ export const App: React.FC = () => {
     if (
       [
         "oracle",
+        "geo_engine",
         "thimble",
         "archival",
         "threads",
@@ -2210,6 +2217,35 @@ export const App: React.FC = () => {
               : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0"
           }`}
         >
+          {profile?.geoProfile?.driftAlert && !isDriftDismissed && (
+            <div className="w-full bg-[#1A1A1A] text-[#F5F5F0] border-b border-[#333333] px-6 py-3 flex items-center justify-between z-40 relative">
+              <div className="flex items-center gap-3">
+                <Sparkles
+                  size={16}
+                  className="text-nous-subtle animate-pulse"
+                />
+                <p className="font-mono text-[10px] uppercase tracking-widest font-black">
+                  Your taste signal may have evolved. Regenerate your GEO Pack
+                  to stay current.
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleRegenerateGeoPack}
+                  disabled={isRegeneratingDrift}
+                  className="font-mono text-[9px] uppercase tracking-widest font-bold border border-nous-subtle px-3 py-1 hover:bg-nous-text hover:text-nous-base transition-colors disabled:opacity-50"
+                >
+                  {isRegeneratingDrift ? "Neutralizing..." : "Regenerate"}
+                </button>
+                <button
+                  onClick={() => setIsDriftDismissed(true)}
+                  className="text-nous-subtle hover:text-nous-border"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
           <CommandDrawer
             isOpen={commandDrawerOpen}
             onClose={() => setCommandDrawerOpen(false)}
@@ -2390,6 +2426,11 @@ export const App: React.FC = () => {
                         )}
                         {viewMode === "chamber-map" && (
                           <ChamberMapView onNavigate={setViewMode} />
+                        )}
+                        {viewMode === "geo_engine" && (
+                          <div className="h-full w-full overflow-y-auto">
+                            <TheGEOEngine />
+                          </div>
                         )}
                         {viewMode === "manifesto" && <CommunityManifesto />}
                         {viewMode === "connections" && <ConnectionsManager />}

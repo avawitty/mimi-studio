@@ -234,6 +234,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         keywords: ["threads", "semantic", "ideas", "intelligence", "narrative", "mapping"],
       },
       {
+        mode: "geo_engine",
+        label: "GEO Engine",
+        note: "search/signal profile",
+        keywords: ["geo", "engine", "signals", "optimization", "ai", "search", "signal profile"],
+      },
+      {
         mode: "intel-hub",
         label: "Intel Hub",
         note: "strategy hub",
