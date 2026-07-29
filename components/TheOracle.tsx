@@ -83,6 +83,7 @@ const OracleDiscourse: React.FC = React.memo(() => (
     </div>
   </motion.div>
 ));
+OracleDiscourse.displayName = 'OracleDiscourse';
 
 export const TheOracle: React.FC = () => {
   const { profile, activePersona } = useUser();
