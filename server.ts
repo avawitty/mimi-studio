@@ -32,6 +32,7 @@ import { searchShopifyGlobalCatalog } from "./lib/shopifyCatalog";
 import { verifyMimiSession } from "./lib/serverFirebaseAdmin";
 import { handleCreatorFeedRequest } from "./api/feed";
 import youSearchHandler from "./api/you-search";
+import liveTokenHandler from "./api/live/token";
 
 loadEnv({ path: ".env.local", override: false, quiet: true });
 loadEnv({ path: ".env.firebase.local", override: false, quiet: true });
@@ -1359,6 +1360,17 @@ async function startServer() {
 
   app.post("/api/you-search", async (req, res) => {
     await youSearchHandler(req, res);
+  });
+
+  app.post("/api/live/token", async (req, res) => {
+    try {
+      await liveTokenHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/live/token:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
   });
 
   app.post("/api/create-checkout-session", async (req, res) => {

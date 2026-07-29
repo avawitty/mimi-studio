@@ -107,9 +107,12 @@ export const getClient = (apiKeyOverride?: string, excludeKeys: string[] = []) =
       }
     }
     
-    // Fallback real SDK client for non-models endpoints like chats/live that run directly over WebSocket.
-    // Text/image generation without a BYOK key is routed through Mimi's funded Gateway proxy below.
-    const realGenAi = new GoogleGenAI({ apiKey: key || 'unused' });
+    // Live / chats need a real key for direct WebSocket use. Prefer BYOK;
+    // otherwise callers should mint an ephemeral token via /api/live/token
+    // (see services/liveAuth.ts) rather than connecting with a placeholder.
+    const realGenAi = key
+      ? new GoogleGenAI({ apiKey: key })
+      : null;
  
     const client = {
       models: {
@@ -174,8 +177,14 @@ export const getClient = (apiKeyOverride?: string, excludeKeys: string[] = []) =
           return await safeJsonResponse(res);
         }
       },
-      live: realGenAi.live,
-      chats: realGenAi.chats
+      live: realGenAi?.live ?? {
+        connect: async () => {
+          throw new Error(
+            "MIMI // Live requires a Gemini key or an ephemeral token from /api/live/token.",
+          );
+        },
+      },
+      chats: realGenAi?.chats
     };
  
     return { ai: client as any, keyUsed: key || 'Proxy', source: 'Secure Server Proxy' };

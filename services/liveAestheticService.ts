@@ -1,6 +1,6 @@
-import { GoogleGenAI, LiveServerMessage } from "@google/genai";
+import { LiveServerMessage, Modality } from "@google/genai";
 import { reportSystemAnomaly } from "../utils/errorReporter";
-import { getClient } from "./geminiService";
+import { resolveLiveAiCredentials } from "./liveAuth";
 
 export interface AestheticAnalysis {
   scribeReading: string;
@@ -10,20 +10,18 @@ export interface AestheticAnalysis {
 }
 
 export class LiveAestheticService {
-  private ai: any;
   private session: any;
   private onAnalysis: (analysis: AestheticAnalysis) => void;
 
   constructor(onAnalysis: (analysis: AestheticAnalysis) => void) {
     this.onAnalysis = onAnalysis;
-    const { ai } = getClient();
-    this.ai = ai;
   }
 
   async connect() {
     try {
-      this.session = await this.ai.live.connect({
-        model: "gemini-3.1-flash-live-preview",
+      const { ai, model } = await resolveLiveAiCredentials();
+      this.session = await ai.live.connect({
+        model,
         callbacks: {
           onopen: () => {
             console.log("Live Aesthetic Session Opened");
@@ -66,7 +64,7 @@ export class LiveAestheticService {
         }
       },
       config: {
-        responseModalities: ["AUDIO"],
+        responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } },
         },

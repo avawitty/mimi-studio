@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Briefcase, Eraser, Save, PenTool, Zap, Disc3, Orbit } from 'lucide-react';
 import { LiveMentor } from './LiveMentor';
@@ -197,7 +197,7 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
     }
   };
 
-  const handleToolCall = async (name: string, args: any) => {
+  const handleToolCall = useCallback(async (name: string, args: any) => {
     if (name === 'saveToKnowledgeQueue') {
       const currentUser = user?.uid || 'ghost';
       await archiveManager.saveToPocket(currentUser, 'text', {
@@ -208,7 +208,7 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
       return { status: 'success', message: 'Saved to Oracle Chamber.' };
     }
     return { status: 'error', message: 'Unknown tool.' };
-  };
+  }, [user?.uid, activeEntity]);
 
   return (
     <motion.div
