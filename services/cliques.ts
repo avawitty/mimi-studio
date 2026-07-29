@@ -72,6 +72,7 @@ export const fetchCliques = async (userId: string): Promise<Clique[]> => {
 export const subscribeToCliques = (
   userId: string,
   callback: (cliques: Clique[]) => void,
+  onError?: (error: any) => void,
 ) => {
   const q = query(
     collection(db, cliqueCollection),
@@ -83,6 +84,7 @@ export const subscribeToCliques = (
     (error: any) => {
       if (error.code === "permission-denied" && !auth.currentUser) return;
       console.error("MIMI // Cliques subscription error", error);
+      onError?.(error);
     },
   );
 };

@@ -211,6 +211,7 @@ export const CliqueView: React.FC = () => {
   const [cliques, setCliques] = useState<Clique[]>([]);
   const [friends, setFriends] = useState<(Friendship & { friendId: string })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedClique, setSelectedClique] = useState<Clique | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -220,10 +221,19 @@ export const CliqueView: React.FC = () => {
   // Subscribe to cliques in real-time
   useEffect(() => {
     if (!user?.uid || user.isAnonymous) { setLoading(false); return; }
-    const unsub = subscribeToCliques(user.uid, (data) => {
-      setCliques(data.sort((a, b) => b.createdAt - a.createdAt));
-      setLoading(false);
-    });
+    setLoadError(false);
+    const unsub = subscribeToCliques(
+      user.uid,
+      (data) => {
+        setCliques(data.sort((a, b) => b.createdAt - a.createdAt));
+        setLoadError(false);
+        setLoading(false);
+      },
+      () => {
+        setLoadError(true);
+        setLoading(false);
+      },
+    );
     return () => unsub();
   }, [user?.uid, user?.isAnonymous]);
 
@@ -282,6 +292,15 @@ export const CliqueView: React.FC = () => {
       <div className="w-full h-full flex flex-col items-center justify-center gap-6 bg-nous-base">
         <Loader2 size={32} className="animate-spin text-nous-subtle" />
         <span className="font-sans text-[8px] uppercase tracking-[0.6em] text-nous-subtle font-black">Loading Cliques...</span>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center gap-6 bg-nous-base text-center px-6">
+        <span className="font-serif text-2xl italic tracking-tighter text-nous-text">Unable to load cliques.</span>
+        <span className="font-sans text-[8px] uppercase tracking-[0.6em] text-nous-subtle font-black">Please try again later.</span>
       </div>
     );
   }
