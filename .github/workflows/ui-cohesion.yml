@@ -1,0 +1,38 @@
+name: UI Cohesion
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-ui-cohesion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build:vercel
+
+      - name: Run e2e suite
+        run: npm run test:e2e
+
+      - name: Dependency audit triage (non-blocking)
+        run: npm audit --audit-level=high || true

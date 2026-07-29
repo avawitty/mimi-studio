@@ -1,6 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 test.describe('Mimi Zine E2E Experience', () => {
+  const waitForStableUI = async (page: Page) => {
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('div.fixed.inset-0.z-\\[20000\\].cursor-wait')).toHaveCount(0, { timeout: 15000 });
+  };
+
   test('should load the home page and verify core branding', async ({ page }) => {
     await page.goto('/');
     
@@ -39,14 +45,51 @@ test.describe('Mimi Zine E2E Experience', () => {
 
   test('should navigate between view modes gracefully', async ({ page }) => {
     await page.goto('/');
+    await waitForStableUI(page);
 
-    // Check header navigation drawer or menu button
-    const menuButton = page.locator('button[aria-label="Toggle Menu"], button[aria-label="Open Navigation"]').first();
-    if (await menuButton.isVisible()) {
-      await menuButton.click();
-    }
-    
-    // Verify app remains responsive without unhandled errors
-    await expect(page.locator('body')).toBeVisible();
+    const navigateToMode = async (mode: string) => {
+      await page.evaluate((nextMode) => {
+        window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: nextMode }));
+      }, mode);
+      await waitForStableUI(page);
+      await expect(page.locator('body')).toBeVisible();
+      await expect(page.getByText('Registry Void.', { exact: false })).toHaveCount(0);
+    };
+
+    await navigateToMode('studio');
+    await navigateToMode('tailor');
+    await navigateToMode('darkroom');
+    await navigateToMode('threads');
+  });
+
+  test('should capture visual baselines for top-level chambers', async ({ page }) => {
+    await page.goto('/');
+    await waitForStableUI(page);
+
+    await expect(page).toHaveScreenshot('worktable-shell.png', {
+      fullPage: true,
+      animations: 'disabled',
+      maxDiffPixelRatio: 0.03,
+    });
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'tailor' }));
+    });
+    await waitForStableUI(page);
+    await expect(page).toHaveScreenshot('tailor-shell.png', {
+      fullPage: true,
+      animations: 'disabled',
+      maxDiffPixelRatio: 0.03,
+    });
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'darkroom' }));
+    });
+    await waitForStableUI(page);
+    await expect(page).toHaveScreenshot('darkroom-shell.png', {
+      fullPage: true,
+      animations: 'disabled',
+      maxDiffPixelRatio: 0.03,
+    });
   });
 });
