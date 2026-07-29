@@ -2502,19 +2502,30 @@ ${finalInput}`;
                   )}
 
                   {/* Active Uploaded Media references */}
-                  {mediaFiles.map((media, idx) => (
-                    <span key={`med-${idx}`} className="inline-flex items-center gap-1.5 font-mono text-[7px] uppercase bg-stone-500/10 border border-stone-800 text-stone-300 px-2 py-0.5 rounded-sm shadow-sm transition-all hover:bg-stone-500/15">
-                      <span className="truncate max-w-[90px]">✥ REF: {media.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setMediaFiles((prev) => prev.filter((_, i) => i !== idx))}
-                        className="hover:text-red-400 transition-colors ml-0.5 text-[8.5px] font-black cursor-pointer"
-                        title="Remove Reference file"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
+                  {mediaFiles.map((media, idx) => {
+                    const thumbSrc = media.type === "image" ? (media.url || media.data) : undefined;
+                    return (
+                      <span key={`med-${idx}`} className="inline-flex items-center gap-1.5 font-mono text-[7px] uppercase bg-stone-500/10 border border-stone-800 text-stone-300 pl-1 pr-2 py-0.5 rounded-sm shadow-sm transition-all hover:bg-stone-500/15">
+                        {thumbSrc ? (
+                          <img
+                            src={thumbSrc || "/placeholder.svg"}
+                            alt={`Reference thumbnail: ${media.name}`}
+                            className="w-5 h-5 object-cover rounded-[2px] border border-stone-700 shrink-0"
+                          />
+                        ) : null}
+                        <span className="truncate max-w-[90px]">✥ REF: {media.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setMediaFiles((prev) => prev.filter((_, i) => i !== idx))}
+                          className="hover:text-red-400 transition-colors ml-0.5 text-[8.5px] font-black cursor-pointer"
+                          title="Remove Reference file"
+                          aria-label={`Remove reference file: ${media.name}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
 
                   {/* Active Tags */}
                   {activeTags.map((tag, idx) => (
