@@ -9,16 +9,23 @@ import {
 } from '../lib/provenance';
 
 export const archiveManager = {
-  async uploadMedia(userId: string, fileOrBase64: File | Blob | string, pathPrefix: string): Promise<string> {
+  async uploadMedia(
+    userId: string,
+    fileOrBase64: File | Blob | string,
+    pathPrefix: string,
+    options?: { allowStorageFallback?: boolean },
+  ): Promise<string> {
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 9);
     const path = `users/${userId}/${pathPrefix}/${timestamp}_${randomId}`;
+    const allowStorageFallback = options?.allowStorageFallback ?? true;
     
     if (typeof fileOrBase64 === 'string') {
       if (fileOrBase64.startsWith('data:')) {
         try {
             return await uploadBase64Image(fileOrBase64, path);
         } catch (e) {
+            if (!allowStorageFallback) throw e;
             console.warn("Storage upload failed, falling back to raw data URI", e);
             return fileOrBase64;
         }
@@ -28,6 +35,7 @@ export const archiveManager = {
       try {
         return await uploadBlob(fileOrBase64, path);
       } catch (e) {
+          if (!allowStorageFallback) throw e;
           console.warn("Storage blob upload failed, falling back to object URL", e);
           return URL.createObjectURL(fileOrBase64);
       }
