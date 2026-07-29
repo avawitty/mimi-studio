@@ -137,7 +137,7 @@ async function importGeneric(url: string): Promise<TasteImportResult> {
     const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
     hostnameLabel = new URL(normalized).hostname;
   } catch {
-    hostnameLabel = url;
+    hostnameLabel = url.split(/[?#]/)[0] || 'Unknown Source';
   }
   const label = data.title || hostnameLabel;
   const item: TasteImportItem = {
