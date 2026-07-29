@@ -2092,7 +2092,7 @@ export const App: React.FC = () => {
         {scribeTab && (
           <TheScribe
             key={scribeTab}
-            initialTab={scribeTab as "mimi" | "cyrus" | "synthesis"}
+            initialTab={scribeTab}
             initialIntent={scribeContext?.intent}
             onClose={() => {
               setScribeTab(null);

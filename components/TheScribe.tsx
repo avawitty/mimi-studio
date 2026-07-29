@@ -35,7 +35,7 @@ MANDATE: You have access to Google Search. Use it to synthesize disparate cultur
 
 interface TheScribeProps {
   onClose: () => void;
-  initialTab?: 'mimi' | 'cyrus' | 'synthesis';
+  initialTab?: 'mimi' | 'cyrus' | 'synthesis' | 'engine';
   initialIntent?: string;
 }
 
