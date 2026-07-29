@@ -1073,7 +1073,10 @@ export const InputStudio: React.FC<{
       if (avoidExclude) combinedInput += `AVOID:\n${avoidExclude}\n\n`;
       if (outputWanted) combinedInput += `OUTPUT WANTED:\n${outputWanted}\n\n`;
 
-      const result = await shapeBrief(combinedInput.trim(), apiKeys?.gemini || undefined);
+      const presetContext = activeCognitivePersona
+        ? `${activeCognitivePersona.title}: ${activeCognitivePersona.briefInstruction} (required output: ${activeCognitivePersona.outputContract.join(", ")})`
+        : undefined;
+      const result = await shapeBrief(combinedInput.trim(), apiKeys?.gemini || undefined, presetContext);
       setShapedBriefResult({
         preservedLanguage: coerceToString(result.preservedLanguage),
         proposedDirection: coerceToString(result.proposedDirection),
@@ -1106,6 +1109,18 @@ export const InputStudio: React.FC<{
     let finalInput = input;
     if (activeThread && activeThread.narrative) {
       finalInput = `${input}\n\n[THREAD CONTEXT: ${activeThread.narrative}]`;
+    }
+
+    // Fold the structured brief fields into the prompt so they actually steer the issue.
+    const briefSegments: string[] = [];
+    if (editorialIntention) briefSegments.push(`EDITORIAL INTENTION: ${editorialIntention}`);
+    if (centralTension) briefSegments.push(`CENTRAL TENSION: ${centralTension}`);
+    if (anchorsReferences) briefSegments.push(`ANCHORS & REFERENCES: ${anchorsReferences}`);
+    if (desiredFeeling) briefSegments.push(`DESIRED FEELING: ${desiredFeeling}`);
+    if (avoidExclude) briefSegments.push(`AVOID: ${avoidExclude}`);
+    if (outputWanted) briefSegments.push(`OUTPUT WANTED: ${outputWanted}`);
+    if (briefSegments.length > 0) {
+      finalInput = `[STRUCTURED BRIEF — directives for this issue]\n${briefSegments.join("\n")}\n\n[SOURCE MATERIAL]\n${finalInput}`;
     }
 
     const linkedZines = recentZines.filter((zine) => linkedZineIds.includes(zine.id));
@@ -2708,45 +2723,6 @@ ${finalInput}`;
                         active: !useTailorProfile,
                         onClick: () => { setUseTailorProfile(!useTailorProfile); playClick(); },
                       },
-                      {
-                        key: "optics",
-                        label: "Optics",
-                        icon: <Eye size={14} strokeWidth={1.6} />,
-                        active: activePanel === "telemetry",
-                        onClick: () => { togglePanel("telemetry"); playClick(); },
-                      },
-                      {
-                        key: "treatments",
-                        label: "Treatments",
-                        icon: <Paintbrush size={14} strokeWidth={1.6} />,
-                        active: activePanel === "treatments",
-                        onClick: () => { togglePanel("treatments"); playClick(); },
-                      },
-                      {
-                        key: "colophon",
-                        label: "Colophon",
-                        icon: <FileText size={14} strokeWidth={1.6} />,
-                        active: false,
-                        onClick: () => { setShowColophon(true); playClick(); },
-                      },
-                      {
-                        key: "reset",
-                        label: "Reset",
-                        icon: <RotateCcw size={14} strokeWidth={1.6} />,
-                        active: false,
-                        onClick: () => { setActiveThread(null); setInput(""); playClick(); },
-                      },
-                      {
-                        key: "doll",
-                        label: studioDoll.enabled ? "Doll: On" : "Doll",
-                        icon: studioDoll.loading ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Users size={14} strokeWidth={1.6} />
-                        ),
-                        active: studioDoll.enabled,
-                        onClick: () => { studioDoll.toggleDollInjection(!studioDoll.enabled); playClick(); },
-                      },
                     ] as { key: string; label: string; icon: React.ReactNode; active: boolean; onClick: () => void }[]).map((tool) => (
                       <button
                         key={tool.key}
@@ -2819,14 +2795,19 @@ ${finalInput}`;
                   onEdit={() => setIsEditingReview(true)}
                   onViewReview={() => setIsEditingReview(false)}
                   onApply={(r) => {
-                    if (r.proposedDirection) setInput(r.proposedDirection);
-                    if (r.preservedLanguage) setEditorialIntention(r.preservedLanguage);
+                    // Shaped results are supplemental: they fill the structured brief fields
+                    // (only when empty) and never overwrite the creator's raw input.
+                    if (r.proposedDirection) setEditorialIntention((prev) => prev || r.proposedDirection);
+                    if (r.openQuestions) setCentralTension((prev) => prev || r.openQuestions);
+                    if (r.preservedLanguage) setDesiredFeeling((prev) => prev || r.preservedLanguage);
                     const parsedAnchors = splitInferredAnchors(r.inferredAnchors)
                       .map((a) => a.replace(/^\[INFERRED\]\s*/i, "").trim())
                       .filter(Boolean);
                     if (parsedAnchors.length > 0) {
+                      setAnchorsReferences((prev) => prev || parsedAnchors.join(", "));
                       setActiveTags((prev) => Array.from(new Set([...prev, ...parsedAnchors])));
                     }
+                    setIsBriefExpanded(true);
                     setShowShapeReview(false);
                     setIsEditingReview(false);
                     window.dispatchEvent(new CustomEvent("mimi:sound", { detail: { type: "shimmer" } }));
@@ -2853,6 +2834,69 @@ ${finalInput}`;
         {(!isMobile || mobileStudioView === "cover") && (
           <div className={`w-full studio-bg-panel border-l studio-border flex flex-col p-6 md:pr-10 shrink-0 relative overflow-y-auto no-scrollbar ${isMobile ? "justify-start pb-44" : "justify-between"}`}
             style={isMobile ? undefined : { width: coverPanelWidth }}>
+            {/* Cover-context toolbar: aesthetic + issue-metadata tools, separate from the writing tools */}
+            {isMobile && (
+              <div className="studio-mobile-actions fixed left-0 right-0 studio-bg-panel border-t studio-border z-[45] flex items-center justify-around gap-0 px-2 py-2">
+                {([
+                  {
+                    key: "optics",
+                    label: "Optics",
+                    icon: <Eye size={14} strokeWidth={1.6} />,
+                    active: activePanel === "telemetry",
+                    onClick: () => { togglePanel("telemetry"); playClick(); },
+                  },
+                  {
+                    key: "treatments",
+                    label: "Treatments",
+                    icon: <Paintbrush size={14} strokeWidth={1.6} />,
+                    active: activePanel === "treatments",
+                    onClick: () => { togglePanel("treatments"); playClick(); },
+                  },
+                  {
+                    key: "colophon",
+                    label: "Colophon",
+                    icon: <FileText size={14} strokeWidth={1.6} />,
+                    active: false,
+                    onClick: () => { setShowColophon(true); playClick(); },
+                  },
+                  {
+                    key: "doll",
+                    label: studioDoll.enabled ? "Doll: On" : "Doll",
+                    icon: studioDoll.loading ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Users size={14} strokeWidth={1.6} />
+                    ),
+                    active: studioDoll.enabled,
+                    onClick: () => { studioDoll.toggleDollInjection(!studioDoll.enabled); playClick(); },
+                  },
+                  {
+                    key: "reset",
+                    label: "Reset",
+                    icon: <RotateCcw size={14} strokeWidth={1.6} />,
+                    active: false,
+                    onClick: () => { setActiveThread(null); setInput(""); playClick(); },
+                  },
+                ] as { key: string; label: string; icon: React.ReactNode; active: boolean; onClick: () => void }[]).map((tool) => (
+                  <button
+                    key={tool.key}
+                    type="button"
+                    onClick={tool.onClick}
+                    aria-label={tool.label}
+                    className={`shrink-0 flex flex-col items-center justify-center gap-0.5 min-h-[44px] w-[56px] py-1.5 rounded-sm active:scale-95 transition-all ${
+                      tool.active
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "studio-text-muted"
+                    }`}
+                  >
+                    {tool.icon}
+                    <span className="font-mono text-[6px] uppercase tracking-[0.1em] font-bold leading-none truncate w-full text-center">
+                      {tool.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="space-y-6">
               {renderStudioPager()}
               {/* Zine Title Input Header */}
