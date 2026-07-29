@@ -35,9 +35,21 @@ function isLetterboxdHost(hostname: string): boolean {
   return host === 'letterboxd.com' || host.endsWith('.letterboxd.com');
 }
 
+/** Bare Letterboxd username (letters, numbers, underscore, hyphen). */
+const LETTERBOXD_USERNAME_RE = /^[a-z0-9][a-z0-9_-]{0,29}$/i;
+
+/**
+ * Accept a Letterboxd profile URL, RSS URL, or bare username.
+ * Never claims access to private diary data — only the public RSS feed.
+ */
 export function resolveLetterboxdFeedUrl(rawUrl: string): URL {
   const candidate = (rawUrl || '').trim();
-  if (!candidate) throw new Error('Paste your Letterboxd profile or RSS link first.');
+  if (!candidate) throw new Error('Paste your Letterboxd username, profile, or RSS link first.');
+
+  // Bare username → public RSS
+  if (LETTERBOXD_USERNAME_RE.test(candidate) && !candidate.includes('.') && !candidate.includes('/')) {
+    return new URL(`https://letterboxd.com/${candidate.toLowerCase()}/rss/`);
+  }
 
   let parsed: URL;
   try {
@@ -45,7 +57,7 @@ export function resolveLetterboxdFeedUrl(rawUrl: string): URL {
       /^[a-z][a-z0-9+.-]*:\/\//i.test(candidate) ? candidate : `https://${candidate}`,
     );
   } catch {
-    throw new Error('That does not look like a valid Letterboxd URL.');
+    throw new Error('That does not look like a valid Letterboxd username or URL.');
   }
 
   if (!['http:', 'https:'].includes(parsed.protocol)) {
