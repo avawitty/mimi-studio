@@ -110,7 +110,6 @@ import { UseCaseSelector, getBriefPreset } from "./UseCaseSelector";
 import type { BriefPreset } from "./UseCaseSelector";
 import { AestheticCustomizer } from "./AestheticCustomizer";
 import { StudioChrome, StudioColumnSplitHandle } from "./studio/StudioChrome";
-import { MENU_STRUCTURE } from "./navigationConfig";
 import { useStudioTheme } from "../hooks/useStudioTheme";
 import { useTheme } from "../contexts/ThemeContext";
 import { useStudioDollSelection } from "../hooks/useStudioDollSelection";
@@ -611,7 +610,6 @@ export const InputStudio: React.FC<{
   const ignoreNextClickRef = useRef(false);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const [isResizingPanels, setIsResizingPanels] = useState(false);
-  const [studioMenuOpen, setStudioMenuOpen] = useState(false);
   const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [recentZines, setRecentZines] = useState<ZineMetadata[]>([]);
@@ -1967,7 +1965,7 @@ ${finalInput}`;
       <StudioChrome
         theme={studioTheme}
         onToggleTheme={handleToggleStudioTheme}
-        onOpenMenu={() => setStudioMenuOpen(true)}
+        onOpenMenu={() => window.dispatchEvent(new CustomEvent("mimi:open_menu"))}
         mobileStudioView={mobileStudioView}
         onMobileStudioViewChange={setMobileStudioView}
         isMobile={isMobile}
@@ -4019,80 +4017,6 @@ ${finalInput}`;
           )}
         </AnimatePresence>
       )}
-
-      <AnimatePresence>
-        {studioMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.45 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black z-[60]"
-              onClick={() => setStudioMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, x: 32 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 32 }}
-              transition={{ type: "spring", stiffness: 320, damping: 34 }}
-              className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-sm border-l studio-border studio-bg-panel shadow-2xl flex flex-col"
-            >
-              <div className="flex items-start justify-between px-6 py-5 border-b studio-border shrink-0 studio-bg-surface">
-                <div className="flex flex-col">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.28em] studio-text-muted font-bold leading-none">
-                    Full Menu
-                  </span>
-                  <span className="font-serif italic text-2xl studio-text-ink leading-tight mt-1.5">
-                    All chambers
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setStudioMenuOpen(false)}
-                  aria-label="Close menu"
-                  className="w-10 h-10 flex items-center justify-center border studio-border studio-text-muted hover:studio-text-ink hover:studio-bg-surface transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <nav className="flex-1 overflow-y-auto no-scrollbar px-6 py-6 space-y-6">
-                {MENU_STRUCTURE.map((section) => (
-                  <div key={section.section} className="space-y-1">
-                    <div className="flex items-center gap-3 px-1 mb-2">
-                      <span className="font-mono text-[9px] uppercase tracking-[0.3em] font-bold text-neutral-400 dark:text-neutral-500 shrink-0">
-                        {section.section}
-                      </span>
-                      <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" aria-hidden="true" />
-                    </div>
-                    <div className="flex flex-col">
-                      {section.items.map((item) => (
-                        <button
-                          key={item.mode}
-                          type="button"
-                          onClick={() => {
-                            setStudioMenuOpen(false);
-                            window.dispatchEvent(
-                              new CustomEvent("mimi:change_view", { detail: item.mode }),
-                            );
-                          }}
-                          className="w-full text-left group flex flex-col gap-1 py-3.5 px-1 min-h-[44px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
-                        >
-                          <span className="font-mono text-[15px] uppercase tracking-[0.18em] font-bold studio-text-ink group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                            {item.label}
-                          </span>
-                          <span className="font-sans text-[13px] leading-snug text-stone-500 dark:text-stone-400">
-                            {item.note}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </nav>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
 
       {/* PANEL CONTENT OVERLAY DRAWERS */}
       <AnimatePresence>

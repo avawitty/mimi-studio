@@ -1575,6 +1575,7 @@ export const App: React.FC = () => {
     const handleShowQuota = () => setShowQuotaShield(true);
     const handleOpenPatronModal = () => setShowPatronModal(true);
     const handleOpenGateway = () => setShowGateway(true);
+    const handleOpenMenu = () => setIsNavOpen(true);
     const handleOpenScribe = (e: any) => {
       if (e.detail) {
         setScribeTab(e.detail);
@@ -1601,6 +1602,7 @@ export const App: React.FC = () => {
     window.addEventListener("mimi:open_patron_modal", handleOpenPatronModal);
     window.addEventListener("mimi:open_gateway", handleOpenGateway);
     window.addEventListener("mimi:open_scribe", handleOpenScribe);
+    window.addEventListener("mimi:open_menu", handleOpenMenu);
     return () => {
       window.removeEventListener("mimi:sound", handleMimiSound);
       window.removeEventListener("mimi:change_view", handleChangeView);
@@ -1612,6 +1614,7 @@ export const App: React.FC = () => {
       );
       window.removeEventListener("mimi:open_gateway", handleOpenGateway);
       window.removeEventListener("mimi:open_scribe", handleOpenScribe);
+      window.removeEventListener("mimi:open_menu", handleOpenMenu);
     };
   }, []);
 
