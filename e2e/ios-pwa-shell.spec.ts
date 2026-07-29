@@ -146,12 +146,7 @@ test.describe("Navigation", () => {
     page,
   }) => {
     await page.goto("/studio");
-<<<<<<< HEAD
-    await page.waitForLoadState("domcontentloaded");
-    await waitForAnimationFrames(page);
-=======
     await waitForRouterEffects(page);
->>>>>>> origin/main
 
     await page.evaluate(() => {
       window.dispatchEvent(
@@ -314,28 +309,11 @@ test.describe("Route restoration", () => {
   test("cold launch from / restores the last saved private route", async ({
     page,
   }) => {
-<<<<<<< HEAD
-    // Pre-seed localStorage with a saved route.
-    await page.goto("/studio");
-    await page.waitForLoadState("domcontentloaded");
-    await expect
-      .poll(async () =>
-        page.evaluate(() => localStorage.getItem("mimi_last_route")),
-      )
-      .toBe("/studio");
-    await page.evaluate(() => {
-=======
     // Seed storage before any app code runs so the current /studio page can't
     // overwrite the saved route during its own persistence effect.
     await page.addInitScript(() => {
->>>>>>> origin/main
       localStorage.setItem("mimi_last_route", "/oracle");
     });
-    await expect
-      .poll(async () =>
-        page.evaluate(() => localStorage.getItem("mimi_last_route")),
-      )
-      .toBe("/oracle");
 
     // Cold launch: navigate to bare "/".
     await page.goto("/");
@@ -395,7 +373,6 @@ test.describe("Route restoration", () => {
     });
 
     await page.goto("/auth/action?mode=signIn&oobCode=abc");
-<<<<<<< HEAD
     await page.waitForLoadState("domcontentloaded");
     await expect
       .poll(async () => {
@@ -427,9 +404,6 @@ test.describe("Route restoration", () => {
     await page.goto("/success?checkout=success&plan=core&interval=month");
     await page.waitForLoadState("domcontentloaded");
     await waitForAnimationFrames(page);
-=======
-    await page.waitForURL((url) => !url.pathname.startsWith("/auth/action"));
->>>>>>> origin/main
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),
