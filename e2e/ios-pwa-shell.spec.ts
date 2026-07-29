@@ -237,8 +237,7 @@ test.describe("Cold launch", () => {
     page,
   }) => {
     // These routes bypass the main shell entirely; the app must not crash.
-    await page.goto("/s/nonexistent-zine-id");
-    await page.waitForLoadState("domcontentloaded");
+    await page.goto("/s/nonexistent-zine-id", { waitUntil: "domcontentloaded" });
     // No JS crash → #root still rendered.
     const rootVisible = await page.locator("#root").isVisible();
     expect(rootVisible).toBe(true);
@@ -349,8 +348,7 @@ test.describe("Route restoration", () => {
     });
 
     // Visit a public share URL.
-    await page.goto("/s/some-share-id");
-    await page.waitForLoadState("domcontentloaded");
+    await page.goto("/s/some-share-id", { waitUntil: "domcontentloaded" });
     // Drain animation frames so the persistence effect has had a chance to run.
     // If the route were incorrectly saved the value would change here.
     await waitForAnimationFrames(page);
