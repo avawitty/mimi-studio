@@ -49,7 +49,7 @@ Received: "/studio"
           - paragraph [ref=f1e32]: "\"Visual over-saturation blunts discernment. Taste is established in the absolute negatives—what you exclude.\""
     - generic [ref=f1e34]:
       - generic [ref=f1e35]: SYSTEM ASCENSION
-      - generic [ref=f1e36]: 0%
+      - generic [ref=f1e36]: 1%
   - generic [ref=f1e39]:
     - generic [ref=f1e42]:
       - button [ref=f1e43]
@@ -86,14 +86,14 @@ Received: "/studio"
               - tablist "Studio pages" [ref=f1e103]:
                 - tab "Input page" [selected] [ref=f1e104]
                 - tab "Cover page" [ref=f1e106]
-              - generic [ref=f1e108]: 7/29/2026 ○ 5:36AM
+              - generic [ref=f1e108]: 7/29/2026 ○ 5:41AM
               - generic [ref=f1e109]: PROMPT CYCLE 1
               - generic [ref=f1e111]: From fragment to finished issue
               - heading "Turn source material into an editorial issue." [level=1] [ref=f1e112]
               - paragraph [ref=f1e113]: Begin with a fragment, reference, tension, or question. Mimi helps shape it without flattening your voice.
             - generic [ref=f1e115]:
               - generic [ref=f1e116]: 01 / Source material
-              - textbox "Paste a fragment, reference, question, or unfinished idea..." [ref=f1e119]: Right now, the material anchoring me is...
+              - textbox "Paste a fragment, reference, question, or unfinished idea..." [ref=f1e119]: If I had to select three objects of absolute significance, they would be...
             - generic [ref=f1e120]:
               - generic [ref=f1e121]: Context Mimi will use
               - button "Configure detailed brief" [ref=f1e124]
@@ -330,17 +330,17 @@ Received: "/studio"
   403 |       "/success",
   404 |       "//evil.example/path",
   405 |       "javascript:alert(1)",
-  406 |     ];
-  407 | 
-  408 |     for (const savedRoute of invalidSavedRoutes) {
-  409 |       await page.goto("/studio");
-  410 |       await page.waitForLoadState("domcontentloaded");
-  411 |       await page.evaluate((value) => {
-  412 |         localStorage.setItem("mimi_last_route", value);
-  413 |       }, savedRoute);
-  414 | 
-  415 |       await page.goto("/");
-  416 |       await page.waitForURL((url) => url.pathname !== "/");
+  406 |       "data:text/html,<h1>x</h1>",
+  407 |       "vbscript:msgbox(1)",
+  408 |       "file:///tmp/mimi-route",
+  409 |     ];
+  410 | 
+  411 |     for (const savedRoute of invalidSavedRoutes) {
+  412 |       await page.goto("/studio");
+  413 |       await page.waitForLoadState("domcontentloaded");
+  414 |       await page.evaluate((value) => {
+  415 |         localStorage.setItem("mimi_last_route", value);
+  416 |       }, savedRoute);
   417 | 
-  418 |       expect(new URL(page.url()).pathname).toBe("/studio");
+  418 |       await page.goto("/");
 ```

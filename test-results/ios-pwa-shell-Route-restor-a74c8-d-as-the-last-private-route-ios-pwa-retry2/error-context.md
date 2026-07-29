@@ -12,19 +12,7 @@
 # Error details
 
 ```
-Test timeout of 30000ms exceeded.
-```
-
-```
-Error: page.evaluate: Test timeout of 30000ms exceeded.
-```
-
-# Page snapshot
-
-```yaml
-- generic [ref=f1e4]:
-  - heading "Authentication" [level=1] [ref=f1e5]
-  - generic [ref=f1e6]: Completing sign in...
+Error: page.evaluate: Execution context was destroyed, most likely because of a navigation
 ```
 
 # Test source
@@ -60,7 +48,7 @@ Error: page.evaluate: Test timeout of 30000ms exceeded.
   28  | async function waitForAnimationFrames(page: Page, count = 2): Promise<void> {
   29  |   for (let i = 0; i < count; i++) {
 > 30  |     await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
-      |                ^ Error: page.evaluate: Test timeout of 30000ms exceeded.
+      |                ^ Error: page.evaluate: Execution context was destroyed, most likely because of a navigation
   31  |   }
   32  | }
   33  | 

@@ -139,15 +139,14 @@ test.describe("Navigation", () => {
   }) => {
     await page.goto("/studio");
     await page.waitForLoadState("domcontentloaded");
+    await waitForAnimationFrames(page);
 
     await page.evaluate(() => {
       window.dispatchEvent(
         new CustomEvent("mimi:route-request", { detail: { path: "/oracle" } }),
       );
     });
-    await page.waitForFunction(
-      () => window.location.pathname === "/oracle",
-    );
+    await page.waitForURL((url) => url.pathname === "/oracle");
     expect(new URL(page.url()).pathname).toBe("/oracle");
   });
 });
@@ -313,7 +312,7 @@ test.describe("Route restoration", () => {
 
     // Cold launch: navigate to bare "/".
     await page.goto("/");
-    await page.waitForURL((url) => url.pathname !== "/");
+    await page.waitForURL((url) => url.pathname === "/oracle");
 
     expect(new URL(page.url()).pathname).toBe("/oracle");
   });
@@ -366,9 +365,17 @@ test.describe("Route restoration", () => {
 
     await page.goto("/auth/action?mode=signIn&oobCode=abc");
     await page.waitForLoadState("domcontentloaded");
-    // Drain animation frames so the persistence effect has had a chance to run.
-    // If the auth route were incorrectly saved the value would change here.
-    await waitForAnimationFrames(page);
+    await expect
+      .poll(async () => {
+        try {
+          return await page.evaluate(() =>
+            localStorage.getItem("mimi_last_route"),
+          );
+        } catch {
+          return null;
+        }
+      })
+      .toBe("/studio");
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),

@@ -58,14 +58,14 @@ Error: page.waitForFunction: Test timeout of 30000ms exceeded.
             - tablist "Studio pages" [ref=e68]:
               - tab "Input page" [selected] [ref=e69]
               - tab "Cover page" [ref=e71]
-            - generic [ref=e73]: 7/29/2026 ○ 5:36AM
+            - generic [ref=e73]: 7/29/2026 ○ 5:41AM
             - generic [ref=e74]: PROMPT CYCLE 1
             - generic [ref=e76]: From fragment to finished issue
             - heading "Turn source material into an editorial issue." [level=1] [ref=e77]
             - paragraph [ref=e78]: Begin with a fragment, reference, tension, or question. Mimi helps shape it without flattening your voice.
           - generic [ref=e80]:
             - generic [ref=e81]: 01 / Source material
-            - textbox "Paste a fragment, reference, question, or unfinished idea..." [ref=e84]: If I had to select three objects of absolute significance, they would be...
+            - textbox "Paste a fragment, reference, question, or unfinished idea..." [ref=e84]: Right now, the material anchoring me is...
           - generic [ref=e85]:
             - generic [ref=e86]: Context Mimi will use
             - button "Configure detailed brief" [ref=e89]
