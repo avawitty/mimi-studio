@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Video, Image as ImageIcon, Loader2, Play, Sparkles, Upload, X, Terminal, Eye, Sliders, Zap, Check } from 'lucide-react';
 import { getClient } from '../services/geminiClient';
 import { GoogleGenAI } from '@google/genai';
+import { modelFor } from '../services/modelConfig';
 
 interface CatalystData {
  url: string;
@@ -88,7 +89,7 @@ export const DarkroomGeneration: React.FC = () => {
  addLog("ANALYZING CONTRAST RATIOS...");
 
  const response = await ai.models.generateContent({
- model: 'gemini-3.5-flash',
+ model: modelFor('textFast', 'gemini'),
  contents: {
  parts: [
  { inlineData: { data: base64, mimeType } },
@@ -167,7 +168,7 @@ export const DarkroomGeneration: React.FC = () => {
  addLog("ALLOCATING VEO-3.1-FAST COMPUTE...");
  
  const videoParams: any = {
- model: 'veo-3.1-fast-generate-preview',
+ model: modelFor('video', 'gemini'),
  prompt: prompt,
  config: {
  numberOfVideos: 1,
@@ -211,8 +212,8 @@ export const DarkroomGeneration: React.FC = () => {
  }
  } else {
  // Image or Anime
- addLog("ALLOCATING GEMINI-3.1-FLASH-IMAGE COMPUTE...");
- const model = 'gemini-3.5-flash';
+ addLog("ALLOCATING GEMINI IMAGE COMPUTE...");
+ const model = modelFor('image', 'gemini');
  const finalPrompt = generationType === 'anime' ? `Anime style, high quality, masterpiece: ${prompt}` : prompt;
  
  let contents: any = {
@@ -231,8 +232,8 @@ export const DarkroomGeneration: React.FC = () => {
  };
  }
 
- const response = await ai.models.generateContent({
- model: 'gemini-3.1-flash-lite-image',
+         const response = await ai.models.generateContent({
+ model,
  contents,
  config: {
  imageConfig: {
