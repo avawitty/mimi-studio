@@ -1970,16 +1970,16 @@ export const AnalysisDisplay: React.FC<{
        </div>
        <div className="space-y-2">
          <h4 className="font-serif italic text-2xl text-nous-text">Forge Signature</h4>
-         <p className="font-mono text-[10px] text-nous-subtle uppercase tracking-widest">TRANSLATE INTO GEO SIGNAL</p>
+         <p className="font-mono text-[10px] text-nous-subtle uppercase tracking-widest">COMMUNE WITH THE ORACLE</p>
        </div>
        <p className="font-serif italic text-sm text-stone-500 leading-relaxed">
-         Inject this editorial drift into your GEO Engine to align all future generations with this specific aesthetic frequency.
+         Commune with the Oracle to align all future generations with this specific aesthetic frequency.
        </p>
        <button 
-         onClick={() => window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'geo_engine' }))}
+         onClick={() => window.dispatchEvent(new CustomEvent('mimi:open_scribe', { detail: 'mimi' }))}
          className="px-6 py-3 border border-stone-300 font-sans text-[9px] uppercase tracking-widest font-black hover:bg-stone-900 hover:text-white transition-all"
        >
-         Access Engine
+         Open Oracle
        </button>
      </div>
 

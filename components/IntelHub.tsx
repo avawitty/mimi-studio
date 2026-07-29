@@ -434,26 +434,6 @@ export const IntelHub: React.FC = () => {
                   </button>
                 </div>
 
-                {/* GEO Engine */}
-                <div className="border border-nous-border p-5 bg-white flex flex-col justify-between group hover:border-nous-text transition-all">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-[10px] text-nous-subtle uppercase tracking-widest">AI Search Optimization</span>
-                      <Search size={14} className="text-amber-600 animate-pulse" />
-                    </div>
-                    <h3 className="font-serif italic text-xl text-nous-text">The GEO Engine</h3>
-                    <p className="font-sans text-xs text-nous-subtle leading-relaxed pb-4">
-                      Audit and optimize your digital properties for LLM search engines. Generate semantic signals, structuring metadata and item listings so ChatGPT, Perplexity, and Gemini identify and recommend your brand.
-                    </p>
-                  </div>
-                  <button 
-                    onClick={() => navTo('geo_engine')}
-                    className="w-full py-2.5 border border-nous-border text-[9px] uppercase tracking-widest font-bold group-hover:bg-nous-text group-hover:text-nous-base transition-colors flex items-center justify-center gap-2"
-                  >
-                    Launch GEO Optimizer <ChevronRight size={10} />
-                  </button>
-                </div>
-
                 {/* Color QC Engine */}
                 <div className="border border-nous-border p-5 bg-white flex flex-col justify-between group hover:border-nous-text transition-all">
                   <div className="space-y-2">

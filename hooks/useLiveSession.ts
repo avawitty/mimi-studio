@@ -29,7 +29,8 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
   const [volume, setVolume] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string>('');
-  
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+
   // Refs for cleanup
   const sessionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -68,6 +69,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
       if (analyserRef.current) {
         try { analyserRef.current.disconnect(); } catch(e) {}
         analyserRef.current = null;
+        setAnalyser(null);
       }
       
       if (sessionRef.current && typeof sessionRef.current.close === 'function') {
@@ -110,6 +112,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
         analyserRef.current = audioContextRef.current.createAnalyser();
         analyserRef.current.fftSize = 256;
         analyserRef.current.connect(audioContextRef.current.destination);
+        setAnalyser(analyserRef.current);
         
         // 4. Connect Live Session
         const sessionPromise = ai.live.connect({
@@ -382,5 +385,5 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
     };
   }, [cleanup, connect]);
 
-  return { connect, disconnect, isConnected, isConnecting, isSpeaking, volume, error, sendVideoFrame, analyser: analyserRef.current, transcript };
+  return { connect, disconnect, isConnected, isConnecting, isSpeaking, volume, error, sendVideoFrame, analyser, transcript };
 };

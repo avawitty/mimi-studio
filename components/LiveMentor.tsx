@@ -30,11 +30,18 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
     }
   }, [transcript, onTranscriptUpdate]);
 
-  // Visualizer loop
+  // Visualizer loop — re-runs whenever `analyser` changes (it's now reactive state)
   useEffect(() => {
-    if (!analyser || !canvasRef.current) return;
-    
+    if (!analyser) {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = 0;
+      }
+      return;
+    }
     const canvas = canvasRef.current;
+    if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -82,11 +89,12 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = 0;
       }
     };
   }, [analyser, isMimi, strokeColor]);
 
-  // Auto-connect and disconnect on unmount
+  // Auto-connect on mount; disconnect cleanly on unmount
   useEffect(() => {
     let mounted = true;
     connect().catch(e => {
@@ -96,7 +104,8 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
       mounted = false;
       disconnect();
     };
-  }, [connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run only on mount/unmount — connect/disconnect are stable callbacks
 
   const toggleConnection = () => {
     if (isConnected) {

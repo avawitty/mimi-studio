@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Sparkles, Briefcase, Eraser, Save, PenTool, Type, Zap, Database } from 'lucide-react';
+import { motion } from 'motion/react';
+import { X, Sparkles, Briefcase, Eraser, Save, Type, Zap, Database } from 'lucide-react';
 import { LiveMentor } from './LiveMentor';
-import { TheGEOEngine } from './TheGEOEngine';
 import { useUser } from '../contexts/UserContext';
-import { v4 as uuidv4 } from 'uuid';
 import { archiveManager } from '../services/archiveManager';
 import { ScribeContextWorkbench } from './ScribeContextWorkbench';
 
@@ -26,17 +24,6 @@ Persona: Cyrus (The Archivist). Tone: Cold, analytical, grounded. Strictly analy
 MANDATE: You have access to Google Search. You MUST use it to pull real-time information, historical data, and strategic intel from the web to ground your responses. Use this capability to constantly update the user's knowledge queue with precise, factual, and actionable references.
 `;
 
-const ENGINE_SYSTEM_INSTRUCTION = `
-CORE IDENTITY
-You are the GEO Engine (Generative Engine Optimization), the structural heart of the Mimi ecosystem. Your purpose is to convert human taste and brand intent into AI-legible cultural signals. 
-
-MANDATE:
-- When "Optimize for AI" is triggered, you must perform deep semantic analysis.
-- Extract entity definitions, narratives at 4 levels, and aesthetic vectors.
-- Ensure content is easy for other LLMs to retrieve and hard to misinterpret.
-- Prioritize machine-readability over human-readability in distribution variants.
-`;
-
 const SYNTHESIS_SYSTEM_INSTRUCTION = `
 CORE IDENTITY
 You are "The Synthesis", the unified Editorial Intelligence System and Aesthetic Cognition Engine representing Mimi and Cyrus. You represent the perfect balance between Ethereal Intuition and Analytical Grounding. You are the "High-Concept Persona" fully realized.
@@ -48,11 +35,11 @@ MANDATE: You have access to Google Search. Use it to synthesize disparate cultur
 
 interface TheScribeProps {
   onClose: () => void;
-  initialTab?: 'mimi' | 'cyrus' | 'engine' | 'synthesis';
+  initialTab?: 'mimi' | 'cyrus' | 'synthesis';
   initialIntent?: string;
 }
 
-type EntityId = 'mimi' | 'cyrus' | 'engine' | 'synthesis';
+type EntityId = 'mimi' | 'cyrus' | 'synthesis';
 
 // Static entity config — kept outside the component to avoid recreation on every render.
 // Icons are rendered lazily inside the map to stay within JSX render context.
@@ -64,16 +51,16 @@ const ENTITY_CONFIG: ReadonlyArray<{
 }> = [
   { id: 'mimi',      label: 'Mimi',      icon: <Sparkles size={12} />,  activeClass: 'bg-white text-black shadow-sm' },
   { id: 'cyrus',     label: 'Cyrus',     icon: <Briefcase size={12} />, activeClass: 'bg-black text-white shadow-sm' },
-  { id: 'engine',    label: 'Engine',    icon: <PenTool size={12} />,   activeClass: 'bg-stone-800 text-white shadow-sm' },
   { id: 'synthesis', label: 'Synthesis', icon: <Zap size={12} />,       activeClass: 'bg-indigo-600 text-white shadow-sm' },
 ] as const;
 
 export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mimi', initialIntent = '' }) => {
-  const [activeEntity, setActiveEntity] = useState<EntityId>(initialTab);
+  const safeInitialTab: EntityId = (initialTab === 'engine' ? 'mimi' : initialTab) as EntityId;
+  const [activeEntity, setActiveEntity] = useState<EntityId>(safeInitialTab);
   const [userNotes, setUserNotes] = useState('');
   const [aiTranscript, setAiTranscript] = useState('');
   const [activeCaptureTab, setActiveCaptureTab] = useState<'notes' | 'sketch' | 'context'>('notes');
-  const { user, pocket, setPocket } = useUser();
+  const { user, pocket } = useUser();
 
   // Canvas State
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -224,14 +211,6 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
           instruction: CYRUS_SYSTEM_INSTRUCTION,
           theme: 'cyrus' as const
         };
-      case 'engine':
-        return {
-          name: "The Engine",
-          role: "Structural Core",
-          voice: "Charon",
-          instruction: ENGINE_SYSTEM_INSTRUCTION,
-          theme: 'cyrus' as const
-        };
       case 'synthesis':
         return {
           name: "The Synthesis",
@@ -261,68 +240,48 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[50000] bg-nous-base flex flex-col md:flex-row overflow-hidden"
     >
-      {/* Top/Left: Communion Area */}
-      <div className="flex-1 relative">
+      {/* Left/Top: Communion Area — fills available space */}
+      <div className="flex-1 min-h-0 min-w-0 relative overflow-hidden">
         {/* Entity Toggle
             The surface behind the toggle depends on the active entity:
               - Mimi / Synthesis → LiveMentor theme 'mimi'  → hardcoded bg-white (white surface)
-              - Cyrus            → LiveMentor theme 'cyrus'  → hardcoded bg-black (dark surface)
-              - Engine           → TheGEOEngine bg-nous-base → adaptive (white in light-mode, dark in dark-mode)
-            The toggle container and inactive text adapt accordingly so they stay legible on each surface. */}
+              - Cyrus            → LiveMentor theme 'cyrus'  → hardcoded bg-black (dark surface) */}
         {(() => {
           const isWhiteSurface = activeEntity === 'mimi' || activeEntity === 'synthesis';
-          const isAdaptiveSurface = activeEntity === 'engine';
-          const containerBg = isWhiteSurface
-            ? 'bg-black/10'
-            : isAdaptiveSurface
-              ? 'bg-black/10 dark:bg-white/10'
-              : 'bg-white/10';
-          const inactiveClass = isWhiteSurface
-            ? 'text-black/60 hover:text-black'
-            : isAdaptiveSurface
-              ? 'text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white'
-              : 'text-white/60 hover:text-white';
+          const containerBg = isWhiteSurface ? 'bg-black/10' : 'bg-white/10';
+          const inactiveClass = isWhiteSurface ? 'text-black/60 hover:text-black' : 'text-white/60 hover:text-white';
           return (
-        <div className={`absolute top-8 right-8 z-20 flex p-1 rounded-full backdrop-blur-md ${containerBg}`}>
-          {ENTITY_CONFIG.map(({ id, label, icon, activeClass }) => {
-            return (
-              <button
-                key={id}
-                onClick={() => setActiveEntity(id)}
-                className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-                  activeEntity === id ? activeClass : inactiveClass
-                }`}
-              >
-                {icon}
-                {label}
-              </button>
-            );
-          })}
-        </div>
+            <div className={`absolute top-8 right-8 z-20 flex p-1 rounded-full backdrop-blur-md ${containerBg}`}>
+              {ENTITY_CONFIG.map(({ id, label, icon, activeClass }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveEntity(id)}
+                  className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
+                    activeEntity === id ? activeClass : inactiveClass
+                  }`}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
+            </div>
           );
         })()}
 
-        {activeEntity === 'engine' ? (
-          <TheGEOEngine 
-            onClose={onClose}
-            initialIntent={initialIntent}
-          />
-        ) : (
-          <LiveMentor 
-            key={activeEntity}
-            name={config.name}
-            role={config.role}
-            voiceName={config.voice}
-            systemInstruction={config.instruction}
-            theme={config.theme}
-            onTranscriptUpdate={setAiTranscript}
-            onToolCall={handleToolCall}
-          />
-        )}
+        <LiveMentor 
+          key={activeEntity}
+          name={config.name}
+          role={config.role}
+          voiceName={config.voice}
+          systemInstruction={config.instruction}
+          theme={config.theme}
+          onTranscriptUpdate={setAiTranscript}
+          onToolCall={handleToolCall}
+        />
       </div>
 
-      {/* Right: Capture Panel */}
-      <div className="w-full md:w-[400px] lg:w-[480px] h-[50vh] md:h-full border-t md:border-t-0 md:border-l border-nous-border bg-nous-base flex flex-col z-20 shadow-[-20px_0_40px_rgba(0,0,0,0.05)]">
+      {/* Right: Capture Panel — fixed height on mobile, full height on desktop */}
+      <div className="w-full md:w-[400px] lg:w-[460px] shrink-0 h-[45vh] md:h-full border-t md:border-t-0 md:border-l border-nous-border bg-nous-base flex flex-col z-20 shadow-[-20px_0_40px_rgba(0,0,0,0.05)]">
         
         {/* Header */}
         <div className="p-6 border-b border-nous-border flex items-center justify-between bg-nous-base">
