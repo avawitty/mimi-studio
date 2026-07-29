@@ -109,10 +109,11 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
         inputContextRef.current = new AudioContextClass({ sampleRate: 16000 });
         
         // 3. Setup Analyser for Visualizer
+        // Keep the node on a ref only until onopen — exposing it via setAnalyser
+        // here races the LiveMentor canvas, which mounts only after isConnected.
         analyserRef.current = audioContextRef.current.createAnalyser();
         analyserRef.current.fftSize = 256;
         analyserRef.current.connect(audioContextRef.current.destination);
-        setAnalyser(analyserRef.current);
         
         // 4. Connect Live Session
         const sessionPromise = ai.live.connect({

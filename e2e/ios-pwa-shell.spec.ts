@@ -27,7 +27,17 @@ import { test, expect, Page } from "@playwright/test";
  */
 async function waitForAnimationFrames(page: Page, count = 2): Promise<void> {
   for (let i = 0; i < count; i++) {
-    await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => r())));
+    try {
+      await page.evaluate(
+        () => new Promise<void>((r) => requestAnimationFrame(() => r())),
+      );
+    } catch {
+      // If navigation happens between scheduling and executing the RAF,
+      // Playwright will throw "Execution context was destroyed".
+      // In that case we can't reliably drain frames for the previous page,
+      // so we stop draining and let the caller continue assertions.
+      return;
+    }
   }
 }
 

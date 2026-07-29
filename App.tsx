@@ -2,6 +2,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   Suspense,
   lazy,
@@ -858,7 +859,7 @@ const useAppRouter = () => {
     [],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const onRouteRequest = (event: Event) => {
       const detail = (event as CustomEvent<{ path?: string }>).detail;
       if (detail?.path) {
