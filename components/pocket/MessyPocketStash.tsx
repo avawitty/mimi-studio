@@ -48,7 +48,12 @@ const labelForItem = (item: PocketItem) => {
 const thumbForItem = (item: PocketItem) => {
   const c = item.content || {};
   const media = Array.isArray(c.mediaUrls) ? c.mediaUrls[0] : null;
-  return (c.thumbnailUrl || c.imageUrl || c.image || media || c.url || null) as string | null;
+  const candidate = (c.thumbnailUrl || c.imageUrl || c.image || media || null) as string | null;
+  if (candidate) return candidate;
+  // Only treat url as an image src when the item is actually an image —
+  // link destinations are HTML pages and break <img> previews.
+  if (item.type === "image" && typeof c.url === "string") return c.url;
+  return null;
 };
 
 export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
@@ -72,6 +77,8 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
       list.forEach((item, index) => {
         if (!next[item.id]) next[item.id] = scatterLayout(item.id, index);
       });
+      const maxZ = Object.values(next).reduce((m, layout) => Math.max(m, layout.z || 0), 0);
+      setTopZ((z) => Math.max(z, maxZ + 1));
       saveMessyLayouts(next);
       return next;
     });
