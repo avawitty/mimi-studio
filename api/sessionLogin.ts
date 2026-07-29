@@ -21,7 +21,13 @@ export default async function handler(req: any, res: any) {
       if (proxied.setCookie) {
         res.setHeader("Set-Cookie", proxied.setCookie);
       }
-      sendJson(res, proxied.status, proxied.payload);
+      // Sanitize upstream payload to avoid forwarding internal error details or stack traces
+      const payload = proxied.status < 400
+        ? proxied.payload
+        : { error: typeof (proxied.payload as any)?.error === 'string'
+            ? (proxied.payload as any).error
+            : (proxied.payload as any)?.error?.message || "Authentication failed." };
+      sendJson(res, proxied.status, payload);
     } catch (error) {
       console.error("MIMI // sessionLogin proxy failed:", error);
       sendJson(res, 503, { error: "Session login unavailable." });

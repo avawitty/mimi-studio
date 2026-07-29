@@ -132,7 +132,14 @@ async function importPinterest(url: string): Promise<TasteImportResult> {
 
 async function importGeneric(url: string): Promise<TasteImportResult> {
   const data = await readJson(await fetch(`/api/metadata?url=${encodeURIComponent(url)}`));
-  const label = data.title || new URL(url).hostname;
+  let hostnameLabel: string;
+  try {
+    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    hostnameLabel = new URL(normalized).hostname;
+  } catch {
+    hostnameLabel = url.split(/[?#]/)[0] || 'Unknown Source';
+  }
+  const label = data.title || hostnameLabel;
   const item: TasteImportItem = {
     title: label,
     sourceType: 'website',
