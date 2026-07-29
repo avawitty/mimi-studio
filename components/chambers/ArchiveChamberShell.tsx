@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import { getCanonModule } from "./ChamberShell";
 import { ChamberHandoff } from "../ChamberHandoff";
+import { ProjectRefTab } from "../pocket/ProjectRefTab";
+import { POCKET_STASH_OPEN_EVENT } from "../pocket/MessyPocketStash";
 
 export type ArchiveWorkflowStep = "collect" | "read" | "approve" | "apply" | "save";
 
@@ -87,7 +89,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   const activeIndex = workflowSteps.indexOf(activeWorkflowStep);
 
   return (
-    <div className="archive-chamber binder-portfolio flex flex-col h-full min-h-0">
+    <div className="archive-chamber binder-portfolio relative flex flex-col h-full min-h-0">
       <header className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${compactHeader ? "py-2" : "py-3 md:py-4"}`}>
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-2 md:gap-4">
           <div className="min-w-0">
@@ -211,6 +213,14 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
           </>
         ) : null}
       </div>
+
+      <ProjectRefTab
+        active={drawerOpen}
+        onClick={() => {
+          if (contextDrawer) toggleDrawer();
+          else window.dispatchEvent(new CustomEvent(POCKET_STASH_OPEN_EVENT));
+        }}
+      />
     </div>
   );
 };

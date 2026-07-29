@@ -87,7 +87,7 @@
 
   /* Studio / Worktable editorial shell (light + dark) */
   .studio-worktable {
-    --studio-chrome: #f5f5f0;
+    --studio-chrome: #f3f1ea;
     --studio-canvas: #ffffff;
     --studio-panel: #fafaf8;
     --studio-surface: #ffffff;
@@ -100,32 +100,33 @@
     --studio-divider: #d4d4ce;
     --studio-polaroid: #faf9f6;
     --studio-polaroid-slot: #121212;
-    --studio-tab-bg: #f5f5f0;
+    --studio-tab-bg: #f3f1ea;
     --studio-tab-active: #0a0a0a;
-    --studio-ref-tab: #faf9f6;
-    --studio-ref-tab-ink: #44403c;
+    --studio-ref-tab: #f3f1ea;
+    --studio-ref-tab-ink: #0a0a0a;
     --studio-icon-hover: rgba(0, 0, 0, 0.04);
   }
 
-  /* Studio dark mode is scoped to the worktable — not the global app shell */
-  .studio-worktable[data-studio-theme="dark"] {
-    --studio-chrome: #0d0d0d;
-    --studio-canvas: #0d0b09;
-    --studio-panel: #141311;
-    --studio-surface: #111111;
-    --studio-workspace: #0d0b09;
-    --studio-rail: #111111;
-    --studio-rail-track: rgba(255, 255, 255, 0.08);
+  /* Binder Portfolio dark field: cream header chrome on black gallery */
+  .studio-worktable[data-studio-theme="dark"],
+  .studio-worktable.binder-portfolio[data-studio-theme="dark"] {
+    --studio-chrome: #f3f1ea;
+    --studio-canvas: #050505;
+    --studio-panel: #101010;
+    --studio-surface: #0c0c0c;
+    --studio-workspace: #050505;
+    --studio-rail: #0a0a0a;
+    --studio-rail-track: rgba(255, 255, 255, 0.1);
     --studio-ink: #faf9f6;
     --studio-muted: #a3a3a3;
-    --studio-border: #242220;
-    --studio-divider: #1c1c1b;
+    --studio-border: #262626;
+    --studio-divider: #1f1f1f;
     --studio-polaroid: #faf9f6;
     --studio-polaroid-slot: #121212;
-    --studio-tab-bg: #0b0b0a;
+    --studio-tab-bg: #0a0a0a;
     --studio-tab-active: #faf9f6;
-    --studio-ref-tab: #faf9f6;
-    --studio-ref-tab-ink: #44403c;
+    --studio-ref-tab: #f3f1ea;
+    --studio-ref-tab-ink: #0a0a0a;
     --studio-icon-hover: rgba(255, 255, 255, 0.06);
   }
 
@@ -136,6 +137,23 @@
 
   .studio-chrome {
     background-color: var(--studio-chrome);
+  }
+
+  /* Cream binder chrome keeps dark ink even when workspace is black */
+  .studio-worktable[data-studio-theme="dark"] .studio-chrome {
+    color: #0a0a0a;
+    border-bottom-color: #0a0a0a;
+    --studio-ink: #0a0a0a;
+    --studio-muted: #57534e;
+    --studio-border: rgba(10, 10, 10, 0.16);
+  }
+
+  .studio-worktable[data-studio-theme="dark"] .studio-chrome .studio-text-ink {
+    color: #0a0a0a;
+  }
+
+  .studio-worktable[data-studio-theme="dark"] .studio-chrome .studio-text-muted {
+    color: #57534e;
   }
 
   .studio-bg-panel { background-color: var(--studio-panel); }

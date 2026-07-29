@@ -166,7 +166,7 @@ export const StudioChrome: React.FC<{
                 }
               }}
             >
-              <span className="block font-serif text-[27px] leading-none tracking-[0.01em] studio-text-ink">
+              <span className="block font-serif italic text-[27px] leading-none tracking-[0.01em] studio-text-ink">
                 Mimi
               </span>
             </button>

@@ -62,6 +62,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
   const [layouts, setLayouts] = useState<Record<string, MessyClipLayout>>(() => loadMessyLayouts());
   const [loading, setLoading] = useState(false);
   const [dropping, setDropping] = useState(false);
+  const [justDropped, setJustDropped] = useState(false);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [topZ, setTopZ] = useState(10);
 
@@ -118,7 +119,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
       const dy = ((e.clientY - drag.startY) / drag.deskH) * 100;
       setLayouts((prev) => {
         const current = prev[drag.id] || scatterLayout(drag.id, 0);
-        const next = {
+        return {
           ...prev,
           [drag.id]: {
             ...current,
@@ -127,14 +128,26 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
             z: topZ,
           },
         };
-        return next;
       });
     };
 
     const onUp = () => {
       setLayouts((prev) => {
-        saveMessyLayouts(prev);
-        return prev;
+        const current = prev[drag.id];
+        if (!current) {
+          saveMessyLayouts(prev);
+          return prev;
+        }
+        // Slight settle rotation so the desk stays "messy"
+        const settled = {
+          ...prev,
+          [drag.id]: {
+            ...current,
+            rotate: current.rotate + (Math.random() * 4 - 2),
+          },
+        };
+        saveMessyLayouts(settled);
+        return settled;
       });
       setDrag(null);
     };
@@ -170,18 +183,31 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
     });
   };
 
+  const flashDropped = () => {
+    setJustDropped(true);
+    window.setTimeout(() => setJustDropped(false), 900);
+  };
+
   const ingestFiles = async (files: FileList | File[]) => {
     const list = Array.from(files).filter(
-      (f) => f.type.startsWith("image/") || f.type.startsWith("text/") || f.type === "application/json",
+      (f) =>
+        f.type.startsWith("image/") ||
+        f.type.startsWith("text/") ||
+        f.type === "application/json",
     );
     if (!list.length) return;
     const uid = user?.uid || "local-guest";
     for (const file of list) {
       if (file.type.startsWith("image/")) {
-        await archiveManager.saveToPocket(uid, "image", {
-          title: file.name.replace(/\.[^.]+$/, "") || "Dropped image",
-          origin: "messy-pocket-stash",
-        }, [file]);
+        await archiveManager.saveToPocket(
+          uid,
+          "image",
+          {
+            title: file.name.replace(/\.[^.]+$/, "") || "Dropped image",
+            origin: "messy-pocket-stash",
+          },
+          [file],
+        );
       } else {
         const text = await file.text();
         await archiveManager.saveToPocket(uid, "text", {
@@ -191,6 +217,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
         });
       }
     }
+    flashDropped();
     await loadItems();
   };
 
@@ -213,139 +240,160 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
       await ingestFiles(e.dataTransfer.files);
       return;
     }
-    const text = e.dataTransfer.getData("text/plain");
-    if (text?.trim()) {
-      const uid = user?.uid || "local-guest";
-      await archiveManager.saveToPocket(uid, "text", {
-        title: "Clipping",
-        text: text.trim().slice(0, 4000),
+    const uri =
+      e.dataTransfer.getData("text/uri-list") ||
+      e.dataTransfer.getData("text/plain");
+    if (!uri?.trim()) return;
+    const uid = user?.uid || "local-guest";
+    if (uri.startsWith("http") || uri.startsWith("www")) {
+      await archiveManager.saveToPocket(uid, "link", {
+        title: "Dropped link",
+        url: uri.trim(),
+        text: uri.trim(),
         origin: "messy-pocket-stash",
       });
-      await loadItems();
+    } else {
+      await archiveManager.saveToPocket(uid, "text", {
+        title: "Clipping",
+        text: uri.trim().slice(0, 4000),
+        origin: "messy-pocket-stash",
+      });
     }
+    flashDropped();
+    await loadItems();
   };
 
   if (!open) return null;
 
   return (
-    <div
-      className="messy-pocket-root fixed inset-x-0 top-0 z-[120] flex justify-center pointer-events-none"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Pocket stash"
-    >
-      <div
-        className="messy-pocket-drawer pointer-events-auto w-[min(1100px,calc(100%-3.5rem))] mt-14 md:mt-[56px] ml-0 md:ml-16 border border-black border-t-0 rounded-b-[18px] overflow-hidden flex flex-col"
-        style={{
-          height: "min(62vh, 560px)",
-          background: "#f3f1ea",
-          color: "#0a0a0a",
-          boxShadow: "0 28px 70px rgba(0,0,0,0.55)",
-          animation: "messyPocketDown 320ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-        }}
-      >
-        <div className="shrink-0 flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-black/10 bg-[#f3f1ea]/95">
-          <div className="min-w-0">
-            <p className="font-serif italic text-xl md:text-2xl leading-none">Pocket</p>
-            <p className="font-mono text-[7px] uppercase tracking-[0.2em] text-stone-500 mt-1">
-              Messy stash · drag to rearrange · organized registry elsewhere
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                onOpenRegistry?.();
-                onClose();
-              }}
-              className="hidden sm:inline-flex items-center gap-1 font-mono text-[7px] uppercase tracking-[0.16em] text-stone-600 underline underline-offset-4"
-            >
-              Open registry <ExternalLink size={10} />
-            </button>
-            <button
-              type="button"
-              aria-label="Close pocket stash"
-              onClick={onClose}
-              className="w-8 h-8 rounded-full border border-black flex items-center justify-center hover:bg-black hover:text-[#f3f1ea] transition-colors"
-            >
-              <X size={14} strokeWidth={1.5} />
-            </button>
-          </div>
-        </div>
-
+    <div className="messy-pocket-root fixed inset-0 z-[120]" role="dialog" aria-modal="true" aria-label="Pocket stash">
+      <button
+        type="button"
+        aria-label="Dismiss pocket stash"
+        className="absolute inset-0 bg-black/45 border-0 cursor-default"
+        onClick={onClose}
+      />
+      <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
         <div
-          ref={deskRef}
-          className={`relative flex-1 min-h-0 overflow-hidden ${dropping ? "ring-2 ring-inset ring-black/40" : ""}`}
+          className="messy-pocket-drawer pointer-events-auto w-[min(1100px,calc(100%-3.5rem))] mt-14 md:mt-[56px] md:ml-16 border border-black border-t-0 rounded-b-[18px] overflow-hidden flex flex-col"
           style={{
-            background:
-              "repeating-linear-gradient(90deg,transparent,transparent 47px,rgba(10,10,10,0.03) 47px,rgba(10,10,10,0.03) 48px),repeating-linear-gradient(0deg,transparent,transparent 47px,rgba(10,10,10,0.03) 47px,rgba(10,10,10,0.03) 48px),linear-gradient(180deg,#f7f4ec,#efebe1)",
+            height: "min(62vh, 560px)",
+            background: "#f3f1ea",
+            color: "#0a0a0a",
+            boxShadow: "0 28px 70px rgba(0,0,0,0.55)",
+            animation: "messyPocketDown 320ms cubic-bezier(0.2, 0.8, 0.2, 1)",
           }}
-          onDragOver={onDeskDragOver}
-          onDragLeave={onDeskDragLeave}
-          onDrop={(e) => void onDeskDrop(e)}
+          onClick={(e) => e.stopPropagation()}
         >
-          {loading && items.length === 0 ? (
-            <p className="absolute inset-0 flex items-center justify-center font-serif italic text-stone-500">
-              Opening the drawer…
-            </p>
-          ) : null}
-
-          {!loading && items.length === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
-              <p className="font-serif italic text-lg text-stone-800">Empty desk drawer</p>
-              <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-stone-500 max-w-sm">
-                Drop an image or clipping here — or drag one onto the app and this drawer slides open.
+          <div className="shrink-0 flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-black/10 bg-[#f3f1ea]/95">
+            <div className="min-w-0">
+              <p className="font-serif italic text-xl md:text-2xl leading-none">Pocket</p>
+              <p className="font-mono text-[7px] uppercase tracking-[0.2em] text-stone-500 mt-1">
+                Messy desk drawer · drag to look through · registry stays organized
               </p>
             </div>
-          ) : null}
-
-          {items.map((item) => {
-            const layout = layouts[item.id] || scatterLayout(item.id, 0);
-            const thumb = thumbForItem(item);
-            const label = labelForItem(item);
-            return (
+            <div className="flex items-center gap-2 shrink-0">
               <button
-                key={item.id}
                 type="button"
-                onPointerDown={(e) => beginClipDrag(item.id, e)}
-                className="absolute bg-white border border-black text-left p-2 cursor-grab active:cursor-grabbing touch-none select-none"
-                style={{
-                  left: `${layout.x}%`,
-                  top: `${layout.y}%`,
-                  width: thumb ? 138 : 128,
-                  transform: `rotate(${layout.rotate}deg)`,
-                  zIndex: layout.z,
-                  boxShadow: "3px 3px 0 rgba(10,10,10,0.14)",
+                onClick={() => {
+                  onOpenRegistry?.();
+                  onClose();
                 }}
-                aria-label={`Move clipping: ${label}`}
+                className="hidden sm:inline-flex items-center gap-1 font-mono text-[7px] uppercase tracking-[0.16em] text-stone-600 underline underline-offset-4"
               >
-                {thumb ? (
-                  <img
-                    src={thumb}
-                    alt=""
-                    draggable={false}
-                    className="w-full h-[72px] object-cover bg-stone-900 pointer-events-none"
-                  />
-                ) : (
-                  <div className="w-full min-h-[56px] bg-stone-100 border border-dashed border-stone-300 p-2">
-                    <p className="font-serif italic text-[12px] leading-snug text-stone-800 line-clamp-4">
-                      {label}
-                    </p>
-                  </div>
-                )}
-                {thumb ? (
-                  <p className="font-serif italic text-[12px] mt-1.5 line-clamp-2 leading-snug">{label}</p>
-                ) : null}
-                <p className="font-mono text-[6px] uppercase tracking-[0.16em] text-stone-500 mt-1">
-                  {item.type}
-                </p>
+                Open registry <ExternalLink size={10} />
               </button>
-            );
-          })}
+              <button
+                type="button"
+                aria-label="Close pocket stash"
+                onClick={onClose}
+                className="w-8 h-8 rounded-full border border-black flex items-center justify-center hover:bg-black hover:text-[#f3f1ea] transition-colors"
+              >
+                <X size={14} strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
 
-          <p className="absolute bottom-3 left-1/2 -translate-x-1/2 font-mono text-[7px] uppercase tracking-[0.18em] text-stone-500 bg-[#f3f1ea]/90 border border-black/10 px-2.5 py-1 pointer-events-none">
-            {dropping ? "Drop to stash" : "Drag clippings freely"}
-          </p>
+          <div
+            ref={deskRef}
+            className={`relative flex-1 min-h-0 overflow-hidden transition-shadow ${
+              dropping ? "ring-2 ring-inset ring-black/50" : ""
+            } ${justDropped ? "ring-2 ring-inset ring-emerald-700/40" : ""}`}
+            style={{
+              background:
+                "repeating-linear-gradient(90deg,transparent,transparent 47px,rgba(10,10,10,0.03) 47px,rgba(10,10,10,0.03) 48px),repeating-linear-gradient(0deg,transparent,transparent 47px,rgba(10,10,10,0.03) 47px,rgba(10,10,10,0.03) 48px),linear-gradient(180deg,#f7f4ec,#efebe1)",
+            }}
+            onDragOver={onDeskDragOver}
+            onDragLeave={onDeskDragLeave}
+            onDrop={(e) => void onDeskDrop(e)}
+          >
+            {loading && items.length === 0 ? (
+              <p className="absolute inset-0 flex items-center justify-center font-serif italic text-stone-500">
+                Opening the drawer…
+              </p>
+            ) : null}
+
+            {!loading && items.length === 0 ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+                <p className="font-serif italic text-lg text-stone-800">Empty desk drawer</p>
+                <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-stone-500 max-w-sm leading-relaxed">
+                  Drop an image or clipping here — or drag one onto the app and this drawer slides open.
+                </p>
+              </div>
+            ) : null}
+
+            {items.map((item) => {
+              const layout = layouts[item.id] || scatterLayout(item.id, 0);
+              const thumb = thumbForItem(item);
+              const label = labelForItem(item);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onPointerDown={(e) => beginClipDrag(item.id, e)}
+                  className="absolute bg-white border border-black text-left p-2 cursor-grab active:cursor-grabbing touch-none select-none"
+                  style={{
+                    left: `${layout.x}%`,
+                    top: `${layout.y}%`,
+                    width: thumb ? 138 : 128,
+                    transform: `rotate(${layout.rotate}deg)`,
+                    zIndex: layout.z,
+                    boxShadow: "3px 3px 0 rgba(10,10,10,0.14)",
+                  }}
+                  aria-label={`Move clipping: ${label}`}
+                >
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt=""
+                      draggable={false}
+                      className="w-full h-[72px] object-cover bg-stone-900 pointer-events-none"
+                    />
+                  ) : (
+                    <div className="w-full min-h-[56px] bg-stone-100 border border-dashed border-stone-300 p-2">
+                      <p className="font-serif italic text-[12px] leading-snug text-stone-800 line-clamp-4">
+                        {label}
+                      </p>
+                    </div>
+                  )}
+                  {thumb ? (
+                    <p className="font-serif italic text-[12px] mt-1.5 line-clamp-2 leading-snug">{label}</p>
+                  ) : null}
+                  <p className="font-mono text-[6px] uppercase tracking-[0.16em] text-stone-500 mt-1">
+                    {item.type}
+                  </p>
+                </button>
+              );
+            })}
+
+            <p className="absolute bottom-3 left-1/2 -translate-x-1/2 font-mono text-[7px] uppercase tracking-[0.18em] text-stone-500 bg-[#f3f1ea]/90 border border-black/10 px-2.5 py-1 pointer-events-none">
+              {dropping
+                ? "Drop to stash"
+                : justDropped
+                  ? "Stashed"
+                  : "Drag clippings freely"}
+            </p>
+          </div>
         </div>
       </div>
     </div>
