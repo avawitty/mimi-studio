@@ -21,6 +21,9 @@ export interface ExportManifest {
   usedContextSnapshots: UsedContextSnapshot[];
   editorialCompileMarkdown?: string;
   editorialCompileCompiledAt?: number;
+  editorialCompileOwnerUid?: string;
+  editorialCompileOwnerHandle?: string;
+  editorialCompileLinkVersion?: number;
   studioCoverOverlays?: ReturnType<typeof readStudioCoverOverlays>;
   coverOverlayBaked?: boolean;
   exportedAt: number;
@@ -42,11 +45,32 @@ export function buildExportManifest(
     })),
   );
 
-  const pendingCompile = getEditorialCompileExport();
+  const metadataCompileMatchesOwner =
+    !!metadata.editorialCompileOwnerUid &&
+    metadata.editorialCompileOwnerUid === metadata.userId;
+  if (metadata.editorialCompileMarkdown && !metadataCompileMatchesOwner) {
+    console.warn("MIMI // Skipping metadata editorial compile due to owner mismatch or missing owner.", {
+      zineId: metadata.id,
+      zineOwner: metadata.userId,
+      compileOwner: metadata.editorialCompileOwnerUid,
+    });
+  }
+  const pendingCompile = getEditorialCompileExport(metadata.userId, true);
   const editorialCompileMarkdown =
-    metadata.editorialCompileMarkdown || pendingCompile?.markdown;
+    (metadataCompileMatchesOwner ? metadata.editorialCompileMarkdown : undefined) ||
+    pendingCompile?.markdown;
   const editorialCompileCompiledAt =
-    metadata.editorialCompileCompiledAt || pendingCompile?.compiledAt;
+    (metadataCompileMatchesOwner ? metadata.editorialCompileCompiledAt : undefined) ||
+    pendingCompile?.compiledAt;
+  const editorialCompileOwnerUid =
+    (metadataCompileMatchesOwner ? metadata.editorialCompileOwnerUid : undefined) ||
+    pendingCompile?.profileLink.ownerUid;
+  const editorialCompileOwnerHandle =
+    (metadataCompileMatchesOwner ? metadata.editorialCompileOwnerHandle : undefined) ||
+    pendingCompile?.profileLink.ownerHandle;
+  const editorialCompileLinkVersion =
+    (metadataCompileMatchesOwner ? metadata.editorialCompileLinkVersion : undefined) ||
+    pendingCompile?.profileLink.version;
   const studioCoverOverlays = readStudioCoverOverlays(metadata);
   const coverOverlayBaked = !!(
     metadata.coverImageUrl &&
@@ -129,6 +153,9 @@ export function buildExportManifest(
     usedContextSnapshots,
     editorialCompileMarkdown,
     editorialCompileCompiledAt,
+    editorialCompileOwnerUid,
+    editorialCompileOwnerHandle,
+    editorialCompileLinkVersion,
     studioCoverOverlays,
     coverOverlayBaked,
     exportedAt: Date.now(),

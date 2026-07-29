@@ -522,7 +522,7 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
 
   const zineWithoutThreadData: ZineContent = { ...zine, pages: [], pagesJson: JSON.stringify(pagesWithoutThreadData) };
 
-  const editorialCompile = getEditorialCompileExport();
+  const editorialCompile = getEditorialCompileExport(targetUid, true);
 
   const meta: ZineMetadata = {
     id: targetId, userId: uid, userHandle: handle, userAvatar: avatar || null,
@@ -533,6 +533,9 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
     usedContextSnapshots: usedContextSnapshots && usedContextSnapshots.length > 0 ? usedContextSnapshots : undefined,
     editorialCompileMarkdown: editorialCompile?.markdown,
     editorialCompileCompiledAt: editorialCompile?.compiledAt,
+    editorialCompileOwnerUid: editorialCompile?.profileLink?.ownerUid,
+    editorialCompileOwnerHandle: editorialCompile?.profileLink?.ownerHandle,
+    editorialCompileLinkVersion: editorialCompile?.profileLink?.version,
     originalInput: rawInput,
     transmissionsUsed: (transmissionsUsed || []).map(t => ({ 
       id: t.id || '', 

@@ -18,6 +18,8 @@ import { Star } from 'lucide-react';
 import { setGlobalKeyRing } from '../services/geminiClient';
 import { hasAccess } from '../constants';
 import { fetchUserSubscription } from '../services/membershipPipeline';
+import { clearLegacyUsedContextState } from '../services/usedContextService';
+import { clearLegacyEditCompileState } from '../lib/editCompileExport';
 
 interface SystemStatus {
   auth: 'syncing' | 'anchored' | 'offline';
@@ -860,10 +862,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             devLog.info("MIMI // onAuthStateChanged:", fbUser ? "(authenticated)" : "null", fbUser ? "isAnonymous: " + fbUser.isAnonymous : "");
             if (fbUser) {
+              clearLegacyUsedContextState();
+              clearLegacyEditCompileState();
               devLog.info("MIMI // Auth State Changed: Active");
               await syncSessionCookie();
               await reconcileProfile(fbUser);
             } else {
+               clearLegacyUsedContextState();
+               clearLegacyEditCompileState();
                console.info("MIMI // Auth State Changed: Null");
                
                // CRITICAL: Only fallback to ghost if we are NOT in a redirect flow
@@ -1234,6 +1240,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (unsubscribePrefs.current) unsubscribePrefs.current();
     
     try {
+      clearLegacyUsedContextState();
+      clearLegacyEditCompileState();
       const authInstance = await ensureAuth();
       await authInstance.signOut();
       await clearSessionCookie();

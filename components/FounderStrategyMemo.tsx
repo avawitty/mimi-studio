@@ -270,10 +270,10 @@ export const FounderStrategyMemo: React.FC = () => {
         },
       };
 
-      addToUsedContext(atom, 'studio');
-      setUsedContextApproved(atom.id, true, 'studio');
-      addToUsedContext(atom, 'the-edit');
-      setUsedContextApproved(atom.id, true, 'the-edit');
+      addToUsedContext(atom, 'studio', user?.uid);
+      setUsedContextApproved(atom.id, true, 'studio', user?.uid);
+      addToUsedContext(atom, 'the-edit', user?.uid);
+      setUsedContextApproved(atom.id, true, 'the-edit', user?.uid);
 
       const snapshot: UsedContextSnapshot = {
         atomId: atom.id,

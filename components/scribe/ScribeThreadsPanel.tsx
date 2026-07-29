@@ -32,7 +32,7 @@ export const ScribeThreadsPanel: React.FC = () => {
   }, [load]);
 
   const queueForStudio = (atom: MemoryAtom) => {
-    addToUsedContext(atom, "studio");
+    addToUsedContext(atom, "studio", user?.uid);
     setQueued(atom.id);
     window.dispatchEvent(
       new CustomEvent("mimi:toast", {
@@ -88,7 +88,7 @@ export const ScribeThreadsPanel: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  addToUsedContext(selected, "the-edit");
+                  addToUsedContext(selected, "the-edit", user?.uid);
                   window.dispatchEvent(
                     new CustomEvent("mimi:toast", {
                       detail: { message: "Atom queued in The Edit Used Context.", type: "success" },

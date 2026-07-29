@@ -631,6 +631,9 @@ export interface ZineMetadata {
   coverImageUrl?: string | null;
   editorialCompileMarkdown?: string;
   editorialCompileCompiledAt?: number;
+  editorialCompileOwnerUid?: string;
+  editorialCompileOwnerHandle?: string;
+  editorialCompileLinkVersion?: number;
   isDeepThinking?: boolean;
   isLite?: boolean;
   isQuickPreview?: boolean;
@@ -1601,6 +1604,10 @@ export interface UsedContextEntry {
   source?: string;
   tags?: string[];
   projectId?: string;
+  ownerUid?: string;
+  ownerHandle?: string;
+  workspaceId?: string;
+  linkVersion?: number;
   addedAt: number;
   approved: boolean;
   target: UsedContextTarget;

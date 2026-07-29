@@ -91,7 +91,7 @@ export const SelectionMemoryCapture: React.FC = () => {
 
   const handleQueueStudio = () => {
     if (!savedAtom) return;
-    addToUsedContext(savedAtom, 'studio');
+    addToUsedContext(savedAtom, 'studio', user?.uid);
     window.dispatchEvent(
       new CustomEvent('mimi:route-request', { detail: { path: '/studio' } }),
     );

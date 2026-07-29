@@ -13,25 +13,33 @@ import {
   writeCompileDraft,
   type CompileDraft,
 } from "../lib/editCompileExport";
+import { useUser } from "../contexts/UserContext";
 
 export const TheEditCompile: React.FC = () => {
-  const [draft, setDraft] = useState<CompileDraft>(readCompileDraft);
+  const { user, profile } = useUser();
+  const ownerUid = user?.uid || profile?.uid;
+  const ownerHandle = profile?.handle;
+  const [draft, setDraft] = useState<CompileDraft>(() => readCompileDraft(ownerUid, ownerHandle));
   const [approved, setApproved] = useState<UsedContextEntry[]>(() =>
-    getApprovedUsedContext("the-edit"),
+    getApprovedUsedContext("the-edit", ownerUid),
   );
   const [copied, setCopied] = useState(false);
   const [commerceOpen, setCommerceOpen] = useState(false);
   const [isExportingDocs, setIsExportingDocs] = useState(false);
 
   useEffect(() => {
-    const refresh = () => setApproved(getApprovedUsedContext("the-edit"));
+    const refresh = () => setApproved(getApprovedUsedContext("the-edit", ownerUid));
     refresh();
     return subscribeUsedContext(refresh);
-  }, []);
+  }, [ownerUid]);
 
   useEffect(() => {
-    writeCompileDraft(draft);
-  }, [draft]);
+    setDraft(readCompileDraft(ownerUid, ownerHandle));
+  }, [ownerUid, ownerHandle]);
+
+  useEffect(() => {
+    writeCompileDraft(draft, ownerUid, ownerHandle);
+  }, [draft, ownerUid, ownerHandle]);
 
   const activeEntries = useMemo(
     () => approved.filter((entry) => !draft.excludedAtomIds.includes(entry.atomId)),
@@ -79,14 +87,23 @@ export const TheEditCompile: React.FC = () => {
   }, [markdown, draft.thesis]);
 
   useEffect(() => {
+    if (!ownerUid) return;
     syncEditorialCompileExport({
       markdown,
       thesis: draft.thesis,
       lead: draft.lead,
       fragmentAtomIds: activeEntries.map((entry) => entry.atomId),
       compiledAt: Date.now(),
+      profileLink: {
+        version: 1,
+        ownerUid,
+        ownerHandle,
+        workspaceId: activeEntries[0]?.projectId,
+        sourceTarget: "the-edit",
+        linkedAt: Date.now(),
+      },
     });
-  }, [markdown, draft.thesis, draft.lead, activeEntries]);
+  }, [markdown, draft.thesis, draft.lead, activeEntries, ownerUid, ownerHandle]);
 
   const toggleFragment = useCallback((atomId: string) => {
     setDraft((prev) => {

@@ -9,6 +9,7 @@ import {
   setUsedContextApproved,
   subscribeUsedContext,
 } from "../services/usedContextService";
+import { useUser } from "../contexts/UserContext";
 
 interface UsedContextTrayProps {
   compact?: boolean;
@@ -23,14 +24,16 @@ export const UsedContextTray: React.FC<UsedContextTrayProps> = ({
   onOpenScribe,
   className = "",
 }) => {
+  const { user, profile } = useUser();
+  const ownerUid = user?.uid || profile?.uid;
   const [entries, setEntries] = useState<UsedContextEntry[]>([]);
   const destinationLabel = target === "studio" ? "issue" : "edit compile";
 
   useEffect(() => {
-    const refresh = () => setEntries(getUsedContext(target));
+    const refresh = () => setEntries(getUsedContext(target, ownerUid));
     refresh();
     return subscribeUsedContext(refresh);
-  }, [target]);
+  }, [target, ownerUid]);
 
   if (entries.length === 0) {
     return compact ? null : (
@@ -71,7 +74,7 @@ export const UsedContextTray: React.FC<UsedContextTrayProps> = ({
         {entries.some((e) => !e.approved) && (
           <button
             type="button"
-            onClick={() => approveAllUsedContext(target)}
+            onClick={() => approveAllUsedContext(target, ownerUid)}
             className="font-mono text-[8px] uppercase tracking-widest px-2 py-1 border border-stone-600 text-stone-400 hover:text-[#FAF9F6] hover:border-stone-400 transition-colors shrink-0"
           >
             Approve all
@@ -97,7 +100,7 @@ export const UsedContextTray: React.FC<UsedContextTrayProps> = ({
               <button
                 type="button"
                 onClick={() =>
-                  setUsedContextApproved(entry.atomId, !entry.approved, target)
+                  setUsedContextApproved(entry.atomId, !entry.approved, target, ownerUid)
                 }
                 className={`mt-0.5 w-5 h-5 border flex items-center justify-center shrink-0 transition-colors ${
                   entry.approved
@@ -116,7 +119,7 @@ export const UsedContextTray: React.FC<UsedContextTrayProps> = ({
                   </p>
                   <button
                     type="button"
-                    onClick={() => removeFromUsedContext(entry.atomId, target)}
+                    onClick={() => removeFromUsedContext(entry.atomId, target, ownerUid)}
                     className="p-1 text-stone-600 hover:text-red-400 transition-colors shrink-0"
                     title="Remove from queue"
                   >
