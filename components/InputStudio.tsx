@@ -71,8 +71,6 @@ import {
   generateTagsFromMedia,
   analyzeImageAesthetic,
   generateZineTitle,
-  analyzeAudio,
-  analyzeVideo,
   applyAestheticRefraction,
   generateAutoAwesomePrompt,
   analyzeAestheticDelta,
@@ -88,7 +86,8 @@ import { TagGenerator } from "./TagGenerator";
 import { StudioPocketDrawer } from "./studio/StudioPocketDrawer";
 import { StudioCoverOverlayCanvas, StudioCoverOverlayPanel } from "./studio/StudioCoverOverlay";
 import type { StudioCoverOverlayLayer } from "./studio/studioCoverTypes";
-import { createImageLayer } from "./studio/studioCoverTypes";
+import { ShapeBriefReview } from "./studio/ShapeBriefReview";
+import type { ShapedBriefResult } from "./studio/ShapeBriefReview";
 import {
   generateStudioCover,
   mediaFileToImageReference,
@@ -117,6 +116,9 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useStudioDollSelection } from "../hooks/useStudioDollSelection";
 import { StudioDollToggle } from "./StudioDollToggle";
 import { PearlButton } from "./ui/PearlButton";
+import { dispatchStudioAlert } from "../lib/studioAlert";
+import { useUrlIngest } from "../hooks/useUrlIngest";
+import { useMediaUpload } from "../hooks/useMediaUpload";
 
 const TOOLTIPS: Record<string, string> = {
   signal: "Signal Panel: Direct inputs and uploads",
@@ -498,12 +500,7 @@ export const InputStudio: React.FC<{
   const [isBriefExpanded, setIsBriefExpanded] = useState(false);
 
   const [isShapingBrief, setIsShapingBrief] = useState(false);
-  const [shapedBriefResult, setShapedBriefResult] = useState<{
-    preservedLanguage: string;
-    proposedDirection: string;
-    inferredAnchors: string;
-    openQuestions: string;
-  } | null>(null);
+  const [shapedBriefResult, setShapedBriefResult] = useState<ShapedBriefResult | null>(null);
   const [showShapeReview, setShowShapeReview] = useState(false);
   const [isEditingReview, setIsEditingReview] = useState(false);
   const [coverSubject, setCoverSubject] = useState("");
@@ -1023,15 +1020,9 @@ export const InputStudio: React.FC<{
         } catch (e) {
           console.error("Transcription failed", e);
           setTranscriptionStatus("error");
-          window.dispatchEvent(
-            new CustomEvent("mimi:registry_alert", {
-              detail: {
-                message: "Voice memo transcription failed. Try again.",
+          dispatchStudioAlert({message: "Voice memo transcription failed. Try again.",
                 type: "error",
-                icon: <AlertCircle size={14} />,
-              },
-            }),
-          );
+                icon: <AlertCircle size={14} />,});
           return;
         }
 
@@ -1056,15 +1047,9 @@ export const InputStudio: React.FC<{
       } catch (e) {
         console.error(e);
         setTranscriptionStatus("error");
-        window.dispatchEvent(
-          new CustomEvent("mimi:registry_alert", {
-            detail: {
-              message: "Voice memo could not be processed.",
+        dispatchStudioAlert({message: "Voice memo could not be processed.",
               type: "error",
-              icon: <AlertCircle size={14} />,
-            },
-          }),
-        );
+              icon: <AlertCircle size={14} />,});
       } finally {
         setIsTranscribing(false);
         resetRecording();
@@ -1098,63 +1083,23 @@ export const InputStudio: React.FC<{
       setShowShapeReview(true);
     } catch (err) {
       console.error("MIMI // Error shaping brief:", err);
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: "Brief shaping failed.",
+      dispatchStudioAlert({message: "Brief shaping failed.",
             type: "error",
-            icon: <AlertCircle size={14} />,
-          },
-        }),
-      );
+            icon: <AlertCircle size={14} />,});
     } finally {
       setIsShapingBrief(false);
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      try {
-        const files = Array.from(e.target.files);
-        const newMedia = await Promise.all(
-          files.map(async (f) => {
-            let data: string;
-            if (f.type.startsWith("image/")) {
-              const { compressImage } = await import("../services/imageUtils");
-              data = await compressImage(f, 800, 800, 0.7);
-            } else {
-              data = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(f);
-              });
-            }
-            return {
-              file: f,
-              type: (f.type.startsWith("image/")
-                ? "image"
-                : f.type.startsWith("audio/")
-                  ? "audio"
-                  : f.type.startsWith("video/")
-                    ? "video"
-                    : "file") as "image" | "audio" | "video" | "file",
-              url: URL.createObjectURL(f),
-              data,
-              mimeType: f.type.startsWith("image/") ? "image/jpeg" : f.type,
-              name: f.name,
-            };
-          }),
-        );
-        setMediaFiles((prev) => {
-          const cleanPrev = prev.filter((item) => item.name !== "composed-cover");
-          return [...newMedia, ...cleanPrev];
-        });
-      } catch (err) {
-        console.error("MIMI // Error reading files:", err);
-      }
-    }
-  };
+  const { handleFileChange, handleOverlayLogoUpload } = useMediaUpload({
+    setMediaFiles,
+    setCoverOverlayLayers,
+    setCoverOverlay,
+  });
+
+  const { handleUrlDrop } = useUrlIngest({
+    onUrlAppend: (url) => setInput((prev) => (prev ? `${prev}\n${url}` : url)),
+  });
 
   const triggerAccession = useCallback((isQuickPreview = false) => {
     let finalInput = input;
@@ -1371,17 +1316,6 @@ ${finalInput}`;
     coverAvoid,
   ]);
 
-  const handleOverlayLogoUpload = useCallback(async (file: File) => {
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-    setCoverOverlayLayers((prev) => [...prev, createImageLayer(dataUrl, file.name, 24)]);
-    setCoverOverlay(true);
-  }, []);
-
   const handleBatchDeleteTreatments = async () => {
     if (selectedTreatmentIds.length === 0) return;
     if (!profile) return;
@@ -1407,24 +1341,12 @@ ${finalInput}`;
       setIsTreatmentSelectMode(false);
       playClick();
       
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: "Aesthetic style(s) deleted successfully.",
-            type: "success",
-          },
-        })
-      );
+      dispatchStudioAlert({message: "Aesthetic style(s) deleted successfully.",
+            type: "success",});
     } catch (error) {
       console.error("MIMI // Failed to delete style treatments:", error);
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: "Failed to delete aesthetic style(s).",
-            type: "error",
-          },
-        })
-      );
+      dispatchStudioAlert({message: "Failed to delete aesthetic style(s).",
+            type: "error",});
     }
   };
 
@@ -1449,24 +1371,12 @@ ${finalInput}`;
       // 2. Copy formatted JSON to clipboard
       const jsonText = JSON.stringify(selectedTreatments, null, 2);
       navigator.clipboard.writeText(jsonText).then(() => {
-        window.dispatchEvent(
-          new CustomEvent("mimi:registry_alert", {
-            detail: {
-              message: `${selectedTreatmentIds.length} style(s) exported. JSON downloaded and copied to clipboard.`,
-              type: "success",
-            },
-          })
-        );
+        dispatchStudioAlert({message: `${selectedTreatmentIds.length} style(s) exported. JSON downloaded and copied to clipboard.`,
+              type: "success",});
       }).catch((err) => {
         console.warn("Failed to copy JSON to clipboard", err);
-        window.dispatchEvent(
-          new CustomEvent("mimi:registry_alert", {
-            detail: {
-              message: `${selectedTreatmentIds.length} style(s) exported. JSON downloaded.`,
-              type: "success",
-            },
-          })
-        );
+        dispatchStudioAlert({message: `${selectedTreatmentIds.length} style(s) exported. JSON downloaded.`,
+              type: "success",});
       });
 
       setSelectedTreatmentIds([]);
@@ -1474,14 +1384,8 @@ ${finalInput}`;
       playClick();
     } catch (error) {
       console.error("MIMI // Failed to export style treatments:", error);
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: "Failed to export aesthetic style(s).",
-            type: "error",
-          },
-        })
-      );
+      dispatchStudioAlert({message: "Failed to export aesthetic style(s).",
+            type: "error",});
     }
   };
 
@@ -1511,25 +1415,13 @@ ${finalInput}`;
       setIsTreatmentSelectMode(false);
       playClick();
 
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: `Combined ${selectedTreatments.length} covers into a single unified editorial document: "${mergedTreatment.treatmentName}"`,
-            type: "success",
-          },
-        })
-      );
+      dispatchStudioAlert({message: `Combined ${selectedTreatments.length} covers into a single unified editorial document: "${mergedTreatment.treatmentName}"`,
+            type: "success",});
     } catch (error: any) {
       console.error("MIMI // Failed to merge style treatments:", error);
       setMergeError(error?.message || "Failed to merge styles.");
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: "Failed to merge aesthetic style(s).",
-            type: "error",
-          },
-        })
-      );
+      dispatchStudioAlert({message: "Failed to merge aesthetic style(s).",
+            type: "error",});
     } finally {
       setIsMergingTreatments(false);
     }
@@ -1571,24 +1463,12 @@ ${finalInput}`;
       }
       window.URL.revokeObjectURL(url);
 
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: `Successfully compiled and downloaded PDF for ${selectedTreatments.length} style(s).`,
-            type: "success",
-          },
-        })
-      );
+      dispatchStudioAlert({message: `Successfully compiled and downloaded PDF for ${selectedTreatments.length} style(s).`,
+            type: "success",});
     } catch (error: any) {
       console.error("MIMI // Failed to compile PDF:", error);
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: "Failed to compile style compilation PDF.",
-            type: "error",
-          },
-        })
-      );
+      dispatchStudioAlert({message: "Failed to compile style compilation PDF.",
+            type: "error",});
     } finally {
       setIsCompilingPDF(false);
     }
@@ -1619,24 +1499,12 @@ ${finalInput}`;
       await updateProfile({ ...profile, savedTreatments: updatedTreatments });
       setBatchTagInput("");
 
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: `Successfully tagged ${selectedTreatmentIds.length} style(s) with: ${newTags.join(", ")}`,
-            type: "success",
-          },
-        })
-      );
+      dispatchStudioAlert({message: `Successfully tagged ${selectedTreatmentIds.length} style(s) with: ${newTags.join(", ")}`,
+            type: "success",});
     } catch (error: any) {
       console.error("MIMI // Failed to add batch tags:", error);
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: "Failed to apply tags to selected style(s).",
-            type: "error",
-          },
-        })
-      );
+      dispatchStudioAlert({message: "Failed to apply tags to selected style(s).",
+            type: "error",});
     }
   };
 
@@ -1655,24 +1523,12 @@ ${finalInput}`;
 
       await updateProfile({ ...profile, savedTreatments: updatedTreatments });
 
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: `Cleared all tags from ${selectedTreatmentIds.length} style(s).`,
-            type: "success",
-          },
-        })
-      );
+      dispatchStudioAlert({message: `Cleared all tags from ${selectedTreatmentIds.length} style(s).`,
+            type: "success",});
     } catch (error: any) {
       console.error("MIMI // Failed to clear batch tags:", error);
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: "Failed to clear tags.",
-            type: "error",
-          },
-        })
-      );
+      dispatchStudioAlert({message: "Failed to clear tags.",
+            type: "error",});
     }
   };
 
@@ -1864,14 +1720,8 @@ ${finalInput}`;
           `Collection ${new Date().toLocaleDateString()}`,
           itemIds,
         );
-        window.dispatchEvent(
-          new CustomEvent("mimi:registry_alert", {
-            detail: {
-              message: "Collection Saved to Pocket.",
-              icon: <FolderPlus size={14} />,
-            },
-          }),
-        );
+        dispatchStudioAlert({message: "Collection Saved to Pocket.",
+              icon: <FolderPlus size={14} />,});
       }
     } catch (e) {
       console.error(e);
@@ -1903,14 +1753,8 @@ ${finalInput}`;
   const handleDictationToggle = async () => {
     const SpeechRecognitionObj = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionObj) {
-      window.dispatchEvent(
-        new CustomEvent("mimi:registry_alert", {
-          detail: {
-            message: "Web Speech API is not supported in this browser. Try Chrome or Safari.",
-            type: "error",
-          },
-        })
-      );
+      dispatchStudioAlert({message: "Web Speech API is not supported in this browser. Try Chrome or Safari.",
+            type: "error",});
       return;
     }
 
@@ -1933,14 +1777,8 @@ ${finalInput}`;
           micStream.getTracks().forEach((track) => track.stop());
         } catch (micErr: any) {
           console.warn("Microphone permission check failed:", micErr);
-          window.dispatchEvent(
-            new CustomEvent("mimi:registry_alert", {
-              detail: {
-                message: "Microphone permission required. Please allow mic access or open app in a new tab.",
-                type: "warning",
-              },
-            })
-          );
+          dispatchStudioAlert({message: "Microphone permission required. Please allow mic access or open app in a new tab.",
+                type: "warning",});
           setIsDictating(false);
           return;
         }
@@ -1986,23 +1824,11 @@ ${finalInput}`;
 
           const errType = err.error || err.type;
           if (errType === "not-allowed" || errType === "service-not-allowed") {
-            window.dispatchEvent(
-              new CustomEvent("mimi:registry_alert", {
-                detail: {
-                  message: "Microphone access blocked. Please allow mic permissions in browser settings.",
-                  type: "warning",
-                },
-              })
-            );
+            dispatchStudioAlert({message: "Microphone access blocked. Please allow mic permissions in browser settings.",
+                  type: "warning",});
           } else if (errType !== "aborted" && errType !== "no-speech") {
-            window.dispatchEvent(
-              new CustomEvent("mimi:registry_alert", {
-                detail: {
-                  message: `Dictation notice: ${errType}`,
-                  type: "info",
-                },
-              })
-            );
+            dispatchStudioAlert({message: `Dictation notice: ${errType}`,
+                  type: "info",});
           }
         };
 
@@ -2130,7 +1956,7 @@ ${finalInput}`;
             e.dataTransfer.getData("text/uri-list") ||
             e.dataTransfer.getData("text/plain");
           if (url) {
-            setInput((prev) => (prev ? `${prev}\n${url}` : url));
+            handleUrlDrop(url);
           }
         }
       }}
@@ -2845,188 +2671,35 @@ ${finalInput}`;
               )}
 
               {/* Shape Brief Review Overlay Panel */}
-              <AnimatePresence>
-                {showShapeReview && shapedBriefResult && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.985 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.985 }}
-                    className="absolute inset-0 bg-stone-950/96 z-50 p-6 flex flex-col overflow-y-auto no-scrollbar border border-stone-900/50 m-2 rounded-sm shadow-2xl"
-                  >
-                    <div className="flex justify-between items-center mb-5 border-b border-stone-900 pb-3 shrink-0">
-                      <div>
-                        <span className="font-mono text-[7px] uppercase tracking-[0.25em] text-purple-400 font-extrabold">MIMI STUDY // SHAPE BRIEF REVIEW</span>
-                        <h3 className="font-serif italic text-lg text-[#F4F3EF] mt-0.5">
-                          {isEditingReview ? "Edit AI Suggestions" : "Review Editorial Direction"}
-                        </h3>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setShowShapeReview(false);
-                          playClick();
-                        }}
-                        className="text-stone-500 hover:text-white transition-colors p-1"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-
-                    {!isEditingReview ? (
-                      /* Read-Only Review Display */
-                      <div className="flex-1 space-y-5 text-stone-300">
-                        <p className="font-sans text-[10px] text-stone-450 leading-relaxed max-w-lg italic">
-                          Mimi has structured your unfinished thoughts. Review her proposals. None of your inputs have been changed yet.
-                        </p>
-
-                        {/* Preserved Language */}
-                        <div className="space-y-1 border-l border-amber-500/40 pl-3.5">
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-amber-500 font-extrabold block">Preserved Language (Your Voice)</span>
-                          <p className="font-serif italic text-sm text-[#FAF9F6] leading-relaxed">
-                            &ldquo;{shapedBriefResult.preservedLanguage}&rdquo;
-                          </p>
-                        </div>
-
-                        {/* Proposed direction */}
-                        <div className="space-y-1 border-l border-purple-500/40 pl-3.5">
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-purple-400 font-extrabold block">Proposed Editorial Direction</span>
-                          <p className="font-sans text-[10.5px] text-stone-200 leading-relaxed">
-                            {shapedBriefResult.proposedDirection}
-                          </p>
-                        </div>
-
-                        {/* Inferred anchors */}
-                        <div className="space-y-1 border-l border-blue-500/40 pl-3.5">
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-blue-400 font-extrabold block">Inferred Anchors</span>
-                          <div className="flex flex-wrap gap-1.5 pt-0.5">
-                            {splitInferredAnchors(shapedBriefResult.inferredAnchors).map((anchor, i) => (
-                              <span key={i} className="font-mono text-[7.5px] uppercase bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2 py-0.5">
-                                {anchor.replace(/^\[INFERRED\]\s*/i, "")}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Open questions */}
-                        <div className="space-y-1 border-l border-stone-800 pl-3.5">
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-stone-500 font-extrabold block">Poetic Open Questions</span>
-                          <p className="font-serif italic text-[10px] text-stone-450 leading-relaxed">
-                            {shapedBriefResult.openQuestions}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Editable Inputs */
-                      <div className="flex-1 space-y-4 text-stone-300">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-amber-500 font-bold">Preserved Language</span>
-                          <textarea
-                            value={shapedBriefResult.preservedLanguage}
-                            onChange={(e) => setShapedBriefResult({ ...shapedBriefResult, preservedLanguage: e.target.value })}
-                            rows={2}
-                            className="w-full bg-stone-900 border border-stone-850 p-2 text-xs font-sans rounded-xs focus:border-stone-700 outline-none text-white placeholder:text-stone-700"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-purple-400 font-bold">Proposed Editorial Direction</span>
-                          <textarea
-                            value={shapedBriefResult.proposedDirection}
-                            onChange={(e) => setShapedBriefResult({ ...shapedBriefResult, proposedDirection: e.target.value })}
-                            rows={3}
-                            className="w-full bg-stone-900 border border-stone-850 p-2 text-xs font-sans rounded-xs focus:border-stone-700 outline-none text-white placeholder:text-stone-700"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-blue-400 font-bold">Inferred Anchors (comma-separated)</span>
-                          <input
-                            type="text"
-                            value={shapedBriefResult.inferredAnchors}
-                            onChange={(e) => setShapedBriefResult({ ...shapedBriefResult, inferredAnchors: e.target.value })}
-                            className="w-full bg-stone-900 border border-stone-850 p-2 text-xs font-sans rounded-xs focus:border-stone-700 outline-none text-white placeholder:text-stone-700"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <span className="font-mono text-[7px] uppercase tracking-widest text-stone-500 font-bold">Open Questions</span>
-                          <textarea
-                            value={shapedBriefResult.openQuestions}
-                            onChange={(e) => setShapedBriefResult({ ...shapedBriefResult, openQuestions: e.target.value })}
-                            rows={2}
-                            className="w-full bg-stone-900 border border-stone-850 p-2 text-xs font-sans rounded-xs focus:border-stone-700 outline-none text-white placeholder:text-stone-700"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-3 mt-6 pt-3 border-t border-stone-900 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Apply values to brief
-                          if (shapedBriefResult.proposedDirection) {
-                            setInput(shapedBriefResult.proposedDirection);
-                          }
-                          if (shapedBriefResult.preservedLanguage) {
-                            setEditorialIntention(shapedBriefResult.preservedLanguage);
-                          }
-                          const parsedAnchors = splitInferredAnchors(shapedBriefResult.inferredAnchors)
-                            .map(a => a.replace(/^\[INFERRED\]\s*/i, "").trim())
-                            .filter(Boolean);
-                          if (parsedAnchors.length > 0) {
-                            setActiveTags(prev => {
-                              const combined = [...prev, ...parsedAnchors];
-                              return Array.from(new Set(combined));
-                            });
-                          }
-                          setShowShapeReview(false);
-                          setIsEditingReview(false);
-                          window.dispatchEvent(
-                            new CustomEvent("mimi:sound", { detail: { type: "shimmer" } })
-                          );
-                          playClick();
-                        }}
-                        className="flex-1 py-2.5 bg-[#FAF9F6] text-black text-[9px] font-mono uppercase tracking-widest font-extrabold hover:bg-stone-200 transition-colors rounded-xs"
-                      >
-                        Apply to Brief
-                      </button>
-
-                      {!isEditingReview ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsEditingReview(true);
-                            playClick();
-                          }}
-                          className="px-3.5 py-2.5 border border-stone-800 hover:border-stone-600 text-stone-300 text-[9px] font-mono uppercase tracking-widest transition-colors rounded-xs"
-                        >
-                          Edit first
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsEditingReview(false);
-                            playClick();
-                          }}
-                          className="px-3.5 py-2.5 border border-stone-800 hover:border-stone-600 text-stone-300 text-[9px] font-mono uppercase tracking-widest transition-colors rounded-xs"
-                        >
-                          View Review
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowShapeReview(false);
-                          setIsEditingReview(false);
-                          playClick();
-                        }}
-                        className="px-3.5 py-2.5 border border-stone-900 hover:border-stone-800 text-stone-500 text-[9px] font-mono uppercase tracking-widest transition-colors rounded-xs"
-                      >
-                        Keep original
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {shapedBriefResult && (
+                <ShapeBriefReview
+                  isOpen={showShapeReview}
+                  result={shapedBriefResult}
+                  isEditing={isEditingReview}
+                  onChange={setShapedBriefResult}
+                  onEdit={() => setIsEditingReview(true)}
+                  onViewReview={() => setIsEditingReview(false)}
+                  onApply={(r) => {
+                    if (r.proposedDirection) setInput(r.proposedDirection);
+                    if (r.preservedLanguage) setEditorialIntention(r.preservedLanguage);
+                    const parsedAnchors = splitInferredAnchors(r.inferredAnchors)
+                      .map((a) => a.replace(/^\[INFERRED\]\s*/i, "").trim())
+                      .filter(Boolean);
+                    if (parsedAnchors.length > 0) {
+                      setActiveTags((prev) => Array.from(new Set([...prev, ...parsedAnchors])));
+                    }
+                    setShowShapeReview(false);
+                    setIsEditingReview(false);
+                    window.dispatchEvent(new CustomEvent("mimi:sound", { detail: { type: "shimmer" } }));
+                    playClick();
+                  }}
+                  onClose={() => {
+                    setShowShapeReview(false);
+                    setIsEditingReview(false);
+                  }}
+                  playClick={playClick}
+                />
+              )}
 
             </div>
           </div>
@@ -4768,14 +4441,8 @@ ${finalInput}`;
                           disabled={linkedZineIds.length === 0}
                           onClick={() => {
                             setActivePanel(null);
-                            window.dispatchEvent(
-                              new CustomEvent("mimi:registry_alert", {
-                                detail: {
-                                  message: `${linkedZineIds.length} prior zine${linkedZineIds.length === 1 ? "" : "s"} linked to this issue`,
-                                  type: "success",
-                                },
-                              }),
-                            );
+                            dispatchStudioAlert({message: `${linkedZineIds.length} prior zine${linkedZineIds.length === 1 ? "" : "s"} linked to this issue`,
+                                  type: "success",});
                           }}
                           className="px-3 py-2 bg-[#FAF9F6] text-black disabled:opacity-30 font-mono text-[8px] uppercase tracking-widest font-bold"
                         >
