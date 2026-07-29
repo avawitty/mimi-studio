@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, X } from "lucide-react";
+import { ExternalLink, Link2, Upload, X } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import { fetchPocketItems } from "../../services/firebaseUtils";
 import { getLocalPocket } from "../../services/localArchive";
@@ -63,6 +63,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
 }) => {
   const { user } = useUser();
   const deskRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<PocketItem[]>([]);
   const [layouts, setLayouts] = useState<Record<string, MessyClipLayout>>(() => loadMessyLayouts());
   const [loading, setLoading] = useState(false);
@@ -195,6 +196,33 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
     window.setTimeout(() => setJustDropped(false), 900);
   };
 
+  const ingestLink = async (raw: string) => {
+    const uri = raw.trim();
+    if (!uri) return;
+    const uid = user?.uid || "local-guest";
+    if (uri.startsWith("http") || uri.startsWith("www")) {
+      await archiveManager.saveToPocket(uid, "link", {
+        title: "Dropped link",
+        url: uri.startsWith("www") ? `https://${uri}` : uri,
+        text: uri,
+        origin: "messy-pocket-stash",
+      });
+    } else {
+      await archiveManager.saveToPocket(uid, "text", {
+        title: "Clipping",
+        text: uri.slice(0, 4000),
+        origin: "messy-pocket-stash",
+      });
+    }
+    flashDropped();
+    await loadItems();
+  };
+
+  const promptLinkDrop = () => {
+    const uri = window.prompt("Paste a link to stash");
+    if (uri) void ingestLink(uri);
+  };
+
   const ingestFiles = async (files: FileList | File[]) => {
     const list = Array.from(files).filter(
       (f) =>
@@ -251,24 +279,11 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
       e.dataTransfer.getData("text/uri-list") ||
       e.dataTransfer.getData("text/plain");
     if (!uri?.trim()) return;
-    const uid = user?.uid || "local-guest";
-    if (uri.startsWith("http") || uri.startsWith("www")) {
-      await archiveManager.saveToPocket(uid, "link", {
-        title: "Dropped link",
-        url: uri.trim(),
-        text: uri.trim(),
-        origin: "messy-pocket-stash",
-      });
-    } else {
-      await archiveManager.saveToPocket(uid, "text", {
-        title: "Clipping",
-        text: uri.trim().slice(0, 4000),
-        origin: "messy-pocket-stash",
-      });
-    }
-    flashDropped();
-    await loadItems();
+    await ingestLink(uri);
   };
+
+  const actionIconClass =
+    "w-8 h-8 rounded-full border border-black/25 flex items-center justify-center text-stone-700 hover:bg-black hover:text-[#f3f1ea] hover:border-black transition-colors";
 
   if (!open) return null;
 
@@ -312,6 +327,24 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
               </button>
               <button
                 type="button"
+                aria-label="Paste a link"
+                title="Paste a link"
+                onClick={promptLinkDrop}
+                className={actionIconClass}
+              >
+                <Link2 size={13} strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
+                aria-label="Upload an item"
+                title="Upload an item"
+                onClick={() => fileInputRef.current?.click()}
+                className={actionIconClass}
+              >
+                <Upload size={13} strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
                 aria-label="Close pocket stash"
                 onClick={onClose}
                 className="w-8 h-8 rounded-full border border-black flex items-center justify-center hover:bg-black hover:text-[#f3f1ea] transition-colors"
@@ -320,6 +353,18 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
               </button>
             </div>
           </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,text/*,.json,.txt,.md"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) void ingestFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
 
           <div
             ref={deskRef}
@@ -341,11 +386,31 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
             ) : null}
 
             {!loading && items.length === 0 ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
                 <p className="font-serif italic text-lg text-stone-800">Empty desk drawer</p>
                 <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-stone-500 max-w-sm leading-relaxed">
                   Drop an image or clipping here — or drag one onto the app and this drawer slides open.
                 </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <button
+                    type="button"
+                    aria-label="Paste a link"
+                    title="Paste a link"
+                    onClick={promptLinkDrop}
+                    className={actionIconClass}
+                  >
+                    <Link2 size={13} strokeWidth={1.5} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Upload an item"
+                    title="Upload an item"
+                    onClick={() => fileInputRef.current?.click()}
+                    className={actionIconClass}
+                  >
+                    <Upload size={13} strokeWidth={1.5} />
+                  </button>
+                </div>
               </div>
             ) : null}
 
