@@ -99,16 +99,19 @@ export const generateClusterAnchors = async () => {
     if (!uid) return;
 
     const memories = await getAllShadowMemory();
-    if (memories.length < 5) {
-      console.log("MIMI // Not enough artifacts to form clusters.");
+    const embeddable = memories.filter(
+      (m: any) => Array.isArray(m.embedding_field) && m.embedding_field.length > 0,
+    );
+    if (embeddable.length < 5) {
+      console.log("MIMI // Not enough embedded artifacts to form clusters.");
       return;
     }
 
     // Determine K (number of clusters)
     // Rule of thumb: sqrt(n/2) or just a fixed number for now
-    const k = Math.max(2, Math.min(8, Math.floor(Math.sqrt(memories.length / 2))));
+    const k = Math.max(2, Math.min(8, Math.floor(Math.sqrt(embeddable.length / 2))));
 
-    const vectors = memories.map((m: any) => m.embedding_field);
+    const vectors = embeddable.map((m: any) => m.embedding_field);
     const { centroids, assignments } = kMeans(vectors, k);
 
     const { ai } = getClient();
@@ -118,7 +121,7 @@ export const generateClusterAnchors = async () => {
 
     // For each cluster, find the top items and ask Gemini for a label
     for (let c = 0; c < k; c++) {
-      const clusterMemories = memories.filter((_, i) => assignments[i] === c);
+      const clusterMemories = embeddable.filter((_, i) => assignments[i] === c);
       if (clusterMemories.length === 0) continue;
 
       // Sort by distance to centroid

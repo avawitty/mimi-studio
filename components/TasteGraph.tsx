@@ -23,7 +23,7 @@ type TabType = 'map' | 'radar' | 'clusters' | 'report';
 type RadarAxis = { axis: string; value: number; desc: string };
 
 export const TasteGraph: React.FC = () => {
-  const { user, apiKeys } = useUser();
+  const { user, apiKeys, pocket } = useUser();
   const tasteGravity = useTasteGravity(user?.uid);
   
   const [nodes, setNodes] = useState<TasteGraphNode[]>([]);
@@ -51,6 +51,13 @@ export const TasteGraph: React.FC = () => {
   // Custom diagnostic state
   const [calibrationProtocol, setCalibrationProtocol] = useState('Active');
   const [entropyMode, setEntropyMode] = useState('Unified');
+  const [extractNotice, setExtractNotice] = useState<string | null>(null);
+
+  const retrievedTags = Array.from(
+    new Set(
+      nodes.flatMap((n) => (Array.isArray(n.tags) ? n.tags : [])).map((t) => String(t).trim()).filter(Boolean),
+    ),
+  ).slice(0, 36);
 
   const handleYouSearch = async () => {
     if (!youQuery.trim()) return;
@@ -192,26 +199,71 @@ export const TasteGraph: React.FC = () => {
   }, []);
 
   const handleExtract = async () => {
-    if (!user?.uid) return;
     setExtracting(true);
+    setExtractNotice(null);
     try {
-      const artifacts = await getAllShadowMemory();
+      const shadow = await getAllShadowMemory();
+      const pocketArtifacts = Array.isArray(pocket)
+        ? pocket.map((item: any, idx: number) => ({
+            id: String(item.id || `pocket-${idx}`),
+            title: String(item.title || item.content?.title || item.type || `Pocket item ${idx + 1}`),
+            notes: String(
+              item.notes ||
+                item.content?.poetic_interpretation ||
+                item.content?.oracular_mirror ||
+                item.content?.prompt ||
+                "",
+            ),
+            tags: Array.isArray(item.tags) ? item.tags : [],
+            type: item.type,
+            content: item.content,
+          }))
+        : [];
+
+      const artifacts =
+        shadow.length > 0
+          ? shadow
+          : pocketArtifacts.length > 0
+            ? pocketArtifacts
+            : nodes.map((n) => ({
+                id: n.id,
+                title: n.label,
+                notes: n.explanation || "",
+                tags: n.tags || [],
+                type: n.type,
+              }));
+
       if (artifacts.length === 0) {
-        alert("No artifacts found. Please add some artifacts first.");
-        setExtracting(false);
+        setExtractNotice("No artifacts found. Save items to Pocket or Darkroom first, then re-scry.");
         return;
       }
-      
+
       const graph = await extractTasteGraphNodes(artifacts as any);
       if (graph.nodes.length > 0) {
-        await saveTasteGraph(user.uid, graph.nodes, graph.edges);
+        if (user?.uid && !user.isAnonymous) {
+          await saveTasteGraph(user.uid, graph.nodes, graph.edges);
+        }
         setNodes(graph.nodes);
         setEdges(graph.edges);
-        await generateClusterAnchors();
+        try {
+          await generateClusterAnchors();
+        } catch (clusterErr) {
+          console.warn("MIMI // Pattern synthesis clusters deferred:", clusterErr);
+        }
         await tasteGravity.refresh();
+        const tagCount = graph.nodes.reduce(
+          (acc, n) => acc + (Array.isArray(n.tags) ? n.tags.length : 0),
+          0,
+        );
+        setExtractNotice(
+          `Pattern synthesis complete · ${graph.nodes.length} nodes · ${tagCount} retrieved tags · ${tasteGravity.points.length || shadow.filter((m: any) => Array.isArray(m.embedding_field)).length} embeddings listed.`,
+        );
+      } else {
+        setExtractNotice("Extraction returned an empty graph. Try adding more varied artifacts.");
       }
     } catch (e) {
       console.error("Failed to extract graph:", e);
+      setExtractNotice(e instanceof Error ? e.message : "Taste graph extraction failed.");
     } finally {
       setExtracting(false);
     }
@@ -611,7 +663,7 @@ export const TasteGraph: React.FC = () => {
       actions={
         <div className="flex items-center gap-2">
           <span className="hidden lg:inline font-mono text-[9px] uppercase tracking-widest archive-text-muted">
-            {nodes.length} nodes
+            {nodes.length} nodes · {tasteGravity.points.length} embeddings
           </span>
           <button
             type="button"
@@ -625,16 +677,14 @@ export const TasteGraph: React.FC = () => {
           >
             Web Intel
           </button>
-          {user && !user.isAnonymous ? (
-            <button
-              type="button"
-              onClick={handleExtract}
-              disabled={extracting}
-              className="px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest disabled:opacity-50 transition-all hover:bg-stone-100 dark:hover:bg-stone-900"
-            >
-              {extracting ? 'Extracting…' : nodes.length > 0 ? 'Re-scry' : 'Extract'}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={handleExtract}
+            disabled={extracting}
+            className="px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest disabled:opacity-50 transition-all hover:bg-stone-100 dark:hover:bg-stone-900"
+          >
+            {extracting ? 'Extracting…' : nodes.length > 0 ? 'Re-scry' : 'Extract'}
+          </button>
         </div>
       }
       canvas={
@@ -736,14 +786,24 @@ export const TasteGraph: React.FC = () => {
                             <span className="font-mono font-bold">{nodes.length} Items</span>
                           </div>
                           <div className="flex justify-between border-b border-stone-200 dark:border-stone-800 pb-1.5">
-                            <span className="font-mono text-stone-400">Average Separation:</span>
-                            <span className="font-mono font-bold">0.312 Rad.</span>
+                            <span className="font-mono text-stone-400">Listed Embeddings:</span>
+                            <span className="font-mono font-bold">{tasteGravity.points.length}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-stone-200 dark:border-stone-800 pb-1.5">
+                            <span className="font-mono text-stone-400">Retrieved Tags:</span>
+                            <span className="font-mono font-bold">{retrievedTags.length}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="font-mono text-stone-400">Trace Coherence:</span>
-                            <span className="font-mono font-bold text-[#10b981]">94.2%</span>
+                            <span className="font-mono text-stone-400">Pattern Clusters:</span>
+                            <span className="font-mono font-bold text-[#10b981]">{tasteGravity.clusters.length || Math.max(1, Math.floor(nodes.length / 2))}</span>
                           </div>
                         </div>
+
+                        {extractNotice ? (
+                          <div className="p-3 border border-amber-500/30 bg-amber-500/5 font-mono text-[9px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                            {extractNotice}
+                          </div>
+                        ) : null}
 
                         {selectedNode ? (
                           <div className="border border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-4">
@@ -808,7 +868,79 @@ export const TasteGraph: React.FC = () => {
                       <div className="text-left pb-4 border-b border-stone-200 dark:border-stone-850">
                         <span className="font-mono text-[8px] uppercase tracking-[0.25em] text-stone-400 block mb-1">Aesthetic Archetype Mapping</span>
                         <h2 className="font-serif text-3xl font-medium">Mapped Clusters &amp; Semantic Anchors</h2>
+                        <p className="font-serif italic text-xs text-stone-500 mt-2">
+                          Pattern synthesis · tag retrieval · listed embeddings
+                        </p>
                       </div>
+
+                      {retrievedTags.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-bold">Retrieved Tags</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {retrievedTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="font-mono text-[8px] uppercase tracking-wider px-2 py-1 border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {tasteGravity.points.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-bold">
+                            Listed Embeddings ({tasteGravity.points.length}
+                            {tasteGravity.dimension ? ` · ${tasteGravity.dimension}D` : ""})
+                          </span>
+                          <div className="max-h-40 overflow-y-auto border border-stone-200 dark:border-stone-850 divide-y divide-stone-200 dark:divide-stone-850">
+                            {tasteGravity.points.slice(0, 24).map((point) => (
+                              <div key={point.id} className="px-3 py-2 flex items-start justify-between gap-3 text-left">
+                                <div className="min-w-0">
+                                  <p className="font-mono text-[9px] uppercase tracking-wide text-stone-800 dark:text-stone-200 truncate">
+                                    {point.preview}
+                                  </p>
+                                  <p className="font-mono text-[7px] text-stone-400 mt-0.5">
+                                    {point.type || "artifact"} · dist {point.distanceFromCenter.toFixed(3)}
+                                  </p>
+                                </div>
+                                <span className="font-mono text-[7px] text-amber-600 shrink-0">VEC</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {tasteGravity.clusters.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-bold">
+                            Pattern Synthesis ({tasteGravity.clusters.length} thematic anchors)
+                          </span>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {tasteGravity.clusters.map((cluster) => (
+                              <div
+                                key={cluster.id}
+                                className="p-4 border border-amber-500/30 bg-amber-500/5 text-left space-y-2"
+                              >
+                                <span className="font-mono text-[8px] uppercase tracking-widest text-amber-600 font-bold">
+                                  Pattern Cluster
+                                </span>
+                                <h3 className="font-serif italic text-lg text-stone-900 dark:text-stone-100">
+                                  {cluster.label}
+                                </h3>
+                                <p className="font-mono text-[8px] text-stone-500 uppercase tracking-wider">
+                                  {cluster.artifact_ids?.length || 0} artifacts · updated{" "}
+                                  {cluster.updated_at
+                                    ? new Date(cluster.updated_at).toLocaleDateString()
+                                    : "—"}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {nodes.map((n, i) => {
@@ -828,6 +960,15 @@ export const TasteGraph: React.FC = () => {
                                 </div>
                                 <h3 className="font-mono text-xs uppercase font-extrabold tracking-wide text-stone-900 dark:text-stone-100">{n.label}</h3>
                                 <p className="font-serif italic text-xs text-stone-500 leading-relaxed">{n.explanation}</p>
+                                {Array.isArray(n.tags) && n.tags.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {n.tags.slice(0, 4).map((tag) => (
+                                      <span key={tag} className="font-mono text-[7px] uppercase tracking-wider px-1.5 py-0.5 bg-stone-200/70 dark:bg-stone-800 text-stone-500">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : null}
                               </div>
 
                               <div className="space-y-1.5 pt-4 border-t border-stone-200/50 dark:border-stone-850/50 mt-4">
@@ -1073,6 +1214,15 @@ export const TasteGraph: React.FC = () => {
                               </button>
                             </div>
                             <p className="font-serif italic text-[10px] text-stone-500 leading-relaxed">{r.summary}</p>
+                            {Array.isArray(r.aestheticSignals?.keywords) && r.aestheticSignals.keywords.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {r.aestheticSignals.keywords.slice(0, 5).map((kw: string) => (
+                                  <span key={kw} className="font-mono text-[7px] uppercase tracking-wider px-1 py-0.5 bg-stone-200/60 dark:bg-stone-800 text-stone-500">
+                                    {kw}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
                             <div className="flex items-center gap-2 text-[8px] font-mono text-stone-400">
                               <span>Domain: {r.domain}</span>
                               <span>·</span>
