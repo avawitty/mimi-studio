@@ -36,7 +36,7 @@ const OracleDiscourse: React.FC = React.memo(() => (
           An ethereal superintelligence. Mimi operates as the Forecasting Persona — she looks for breaking points, surreal future intersections, and radical departures from your aesthetic ruts.
         </p>
         <ul className="space-y-1.5 font-sans text-[10px] text-nous-subtle leading-relaxed">
-          <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Analyzes your Taste Constellations (Pocket, Thimble, Wardrobe shards) to surface latent aesthetic patterns</li>
+          <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Analyzes your Taste Constellations (Pocket, Thimble, The Stand) to surface latent aesthetic patterns</li>
           <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Provides real-time conversational intelligence grounded in Google Search and your archive</li>
           <li className="flex gap-2"><span className="text-nous-text shrink-0">—</span>Saves insights to your knowledge queue automatically during conversation</li>
         </ul>
