@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { ChevronRight, PanelRightClose, PanelRightOpen, X } from "lucide-react";
+import { PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import { getCanonModule } from "./ChamberShell";
 import { ChamberHandoff } from "../ChamberHandoff";
+import { ProjectRefTab } from "../pocket/ProjectRefTab";
+import { POCKET_STASH_OPEN_EVENT } from "../pocket/MessyPocketStash";
 
 export type ArchiveWorkflowStep = "collect" | "read" | "approve" | "apply" | "save";
 
@@ -87,20 +89,20 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   const activeIndex = workflowSteps.indexOf(activeWorkflowStep);
 
   return (
-    <div className="archive-chamber flex flex-col h-full min-h-0">
-      <header className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${compactHeader ? 'py-2' : 'py-2 md:py-4'}`}>
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-2 md:gap-3">
+    <div className="archive-chamber binder-portfolio relative flex flex-col h-full min-h-0">
+      <header className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${compactHeader ? "py-2" : "py-3 md:py-4"}`}>
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-2 md:gap-4">
           <div className="min-w-0">
             {!compactHeader ? (
               <p className="font-mono text-[8px] uppercase tracking-[0.35em] archive-text-muted font-black hidden md:block">
                 {module.engine}
               </p>
             ) : null}
-            <h1 className={`font-serif italic archive-text-ink tracking-tight ${compactHeader ? 'text-lg' : 'text-base md:text-2xl'}`}>
+            <h1 className={`font-serif italic archive-text-ink tracking-tight ${compactHeader ? "text-lg" : "text-2xl md:text-[2rem] leading-none"}`}>
               {module.name}
             </h1>
             {!compactHeader ? (
-              <p className="font-sans text-[10px] archive-text-muted mt-1 max-w-2xl leading-relaxed hidden md:block">
+              <p className="font-sans text-[10px] archive-text-muted mt-2 max-w-xl leading-relaxed hidden md:block">
                 {headerNote ?? module.userFlow}
               </p>
             ) : null}
@@ -125,37 +127,32 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
         </div>
 
         {!compactHeader ? (
-        <nav
-          aria-label="Workflow"
-          className="mt-2 md:mt-4 flex flex-wrap items-center gap-1 md:gap-2"
-        >
-          {workflowSteps.map((step, index) => {
-            const isActive = step === activeWorkflowStep;
-            const isPast = activeIndex >= 0 && index < activeIndex;
-            return (
-              <React.Fragment key={step}>
-                {index > 0 ? (
-                  <ChevronRight
-                    size={12}
-                    className="archive-text-muted opacity-40 hidden sm:block shrink-0"
-                    aria-hidden
-                  />
-                ) : null}
+          <nav
+            aria-label="Workflow"
+            className="mt-3 md:mt-4 flex flex-wrap items-end gap-0 border-b border-archive-ink/80"
+          >
+            {workflowSteps.map((step, index) => {
+              const isActive = step === activeWorkflowStep;
+              const isPast = activeIndex >= 0 && index < activeIndex;
+              return (
                 <span
-                  className={`font-mono text-[8px] uppercase tracking-[0.2em] px-2.5 py-1 border transition-colors ${
+                  key={step}
+                  className={`font-mono text-[8px] uppercase tracking-[0.16em] px-2.5 md:px-3 py-2 border transition-colors -mb-px ${
                     isActive
-                      ? "archive-workflow-active border-archive-ink"
+                      ? "border-black bg-white text-black"
                       : isPast
-                        ? "archive-workflow-past border-transparent"
-                        : "archive-workflow-idle border-transparent"
+                        ? "border-transparent text-black/65"
+                        : "border-transparent text-stone-500"
                   }`}
                 >
                   {WORKFLOW_LABELS[step]}
                 </span>
-              </React.Fragment>
-            );
-          })}
-        </nav>
+              );
+            })}
+            <span className="ml-auto hidden sm:inline font-mono text-[7px] uppercase tracking-[0.2em] archive-text-muted pb-2">
+              Folio · Binder
+            </span>
+          </nav>
         ) : null}
       </header>
 
@@ -168,6 +165,9 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
 
         {contextSidebar ? (
           <aside className="archive-context-sidebar shrink-0 w-44 md:w-52 border-r archive-border overflow-y-auto hidden md:block">
+            <p className="font-mono text-[7px] uppercase tracking-[0.3em] archive-text-muted px-3 pt-4 pb-2">
+              Chamber modes
+            </p>
             {contextSidebar}
           </aside>
         ) : null}
@@ -181,7 +181,6 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
 
         {contextDrawer && drawerOpen ? (
           <>
-            {/* Mobile: dim backdrop, tap to dismiss */}
             <button
               type="button"
               aria-label="Close context drawer"
@@ -194,7 +193,6 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
                 md:static md:inset-auto md:top-auto md:z-auto md:shadow-none md:shrink-0 md:w-80 md:border-t-0 md:border-l"
               aria-label={contextDrawerTitle}
             >
-              {/* Mobile-only close affordance */}
               <div className="md:hidden flex items-center justify-between px-4 py-3 border-b archive-border shrink-0">
                 <span className="font-mono text-[9px] uppercase tracking-[0.2em] archive-text-muted font-black">
                   {contextDrawerTitle}
@@ -215,6 +213,14 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
           </>
         ) : null}
       </div>
+
+      <ProjectRefTab
+        active={drawerOpen}
+        onClick={() => {
+          if (contextDrawer) toggleDrawer();
+          else window.dispatchEvent(new CustomEvent(POCKET_STASH_OPEN_EVENT));
+        }}
+      />
     </div>
   );
 };

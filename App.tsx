@@ -49,6 +49,12 @@ import { ApiKeyShield } from "./components/ApiKeyShield";
 import { ZineGenerationOptions } from "./types";
 import { InputStudio } from "./components/InputStudio";
 import { StudioChrome } from "./components/studio/StudioChrome";
+import {
+  MessyPocketStash,
+  POCKET_STASH_CLOSE_EVENT,
+  POCKET_STASH_OPEN_EVENT,
+  POCKET_STASH_TOGGLE_EVENT,
+} from "./components/pocket/MessyPocketStash";
 import { injectJSONLD } from "./utils/seoHelper";
 
 import { archiveManager } from "./services/archiveManager";
@@ -1317,6 +1323,69 @@ export const App: React.FC = () => {
     },
     [navigate, profile?.handle, user?.uid],
   );
+  const [pocketStashOpen, setPocketStashOpen] = useState(false);
+  const pocketDragDepth = useRef(0);
+
+  useEffect(() => {
+    const onToggle = () => setPocketStashOpen((v) => !v);
+    const onOpen = () => setPocketStashOpen(true);
+    const onClose = () => setPocketStashOpen(false);
+    window.addEventListener(POCKET_STASH_TOGGLE_EVENT, onToggle);
+    window.addEventListener(POCKET_STASH_OPEN_EVENT, onOpen);
+    window.addEventListener(POCKET_STASH_CLOSE_EVENT, onClose);
+    return () => {
+      window.removeEventListener(POCKET_STASH_TOGGLE_EVENT, onToggle);
+      window.removeEventListener(POCKET_STASH_OPEN_EVENT, onOpen);
+      window.removeEventListener(POCKET_STASH_CLOSE_EVENT, onClose);
+    };
+  }, []);
+
+  const isExternalPocketDrag = (e: DragEvent) => {
+    const types = e.dataTransfer?.types;
+    if (!types) return false;
+    const list = Array.from(types);
+    // Internal HTML5 drags (page reorder, pocket insert, etc.) often set text/plain
+    // and/or application/mimi-* — never treat those as "open the stash" signals.
+    if (list.some((t) => t.startsWith("application/mimi-"))) return false;
+    // File drops and external URL drags are the intended open triggers.
+    // Bare text/plain alone is too common for in-app reorder/edit drags.
+    return list.includes("Files") || list.includes("text/uri-list");
+  };
+
+  useEffect(() => {
+    const onDragEnter = (e: DragEvent) => {
+      if (!isExternalPocketDrag(e)) return;
+      e.preventDefault();
+      pocketDragDepth.current += 1;
+      setPocketStashOpen(true);
+      window.dispatchEvent(new CustomEvent(POCKET_STASH_OPEN_EVENT));
+    };
+    const onDragOver = (e: DragEvent) => {
+      if (!isExternalPocketDrag(e)) return;
+      e.preventDefault();
+    };
+    const onDragLeave = (e: DragEvent) => {
+      if (!isExternalPocketDrag(e)) return;
+      pocketDragDepth.current = Math.max(0, pocketDragDepth.current - 1);
+    };
+    const onDrop = (e: DragEvent) => {
+      // Always reset depth; only intercept browser navigation for external drops.
+      pocketDragDepth.current = 0;
+      if (!isExternalPocketDrag(e)) return;
+      e.preventDefault();
+    };
+    window.addEventListener("dragenter", onDragEnter);
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("dragleave", onDragLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragenter", onDragEnter);
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("dragleave", onDragLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, []);
+
   const [showQuotaShield, setShowQuotaShield] = useState(false);
   const [zineMetadata, setZineMetadata] = useState<ZineMetadata | null>(null);
   const [zineOptions, setZineOptions] = useState<ZineGenerationOptions>({
@@ -1342,72 +1411,6 @@ export const App: React.FC = () => {
   const [hasSeenGateway, setHasSeenGateway] = useState(false);
   const [showProfileHover, setShowProfileHover] = useState(false);
 
-  const [isHeaderDragActive, setIsHeaderDragActive] = useState(false);
-
-  const handleHeaderDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsHeaderDragActive(true);
-  };
-
-  const handleHeaderDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsHeaderDragActive(false);
-  };
-
-  const handleHeaderDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsHeaderDragActive(false);
-
-    if (!user) return; // Needs login
-
-    const files = Array.from(e.dataTransfer.files);
-    const link =
-      e.dataTransfer.getData("text/uri-list") ||
-      e.dataTransfer.getData("text/plain");
-
-    try {
-      if (files.length > 0) {
-        // Just take the first image if multiple
-        const file = files[0];
-        if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = async (event) => {
-            const base64 = event.target?.result as string;
-            await archiveManager.saveToPocket(user.uid, "image", {
-              content: base64,
-              metadata: {
-                source: "Header Drag Drop",
-                filename: file.name,
-                date: new Date().toISOString(),
-              },
-            });
-            window.dispatchEvent(
-              new CustomEvent("mimi:registry_alert", {
-                detail: { message: `Image saved to pocket.`, type: "success" },
-              }),
-            );
-          };
-          reader.readAsDataURL(file);
-        }
-      } else if (link && (link.startsWith("http") || link.startsWith("www"))) {
-        await archiveManager.saveToPocket(user.uid, "link", {
-          content: link,
-          metadata: {
-            source: "Header Drag Drop",
-            url: link,
-            date: new Date().toISOString(),
-          },
-        });
-        window.dispatchEvent(
-          new CustomEvent("mimi:registry_alert", {
-            detail: { message: `Link saved to pocket.`, type: "success" },
-          }),
-        );
-      }
-    } catch (err) {
-      console.error("Drop error:", err);
-    }
-  };
   useEffect(() => {
     if (urlZineId) {
       if (!zineMetadata || zineMetadata.id !== urlZineId) {
@@ -2263,11 +2266,21 @@ export const App: React.FC = () => {
           viewMode={viewMode}
           isGenerating={appState === AppState.THINKING}
           isHighLatency={(systemStatus?.latency ?? 0) > 250 || systemStatus?.oracle === 'saturated'}
+          pocketStashOpen={pocketStashOpen}
         />
       )}
 
+      <MessyPocketStash
+        open={pocketStashOpen}
+        onClose={() => {
+          setPocketStashOpen(false);
+          window.dispatchEvent(new CustomEvent(POCKET_STASH_CLOSE_EVENT));
+        }}
+        onOpenRegistry={() => setViewMode("pocket")}
+      />
+
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Dark Spine Sidebar */}
+        {/* Binder spine sidebar */}
         {appState !== AppState.REVEALED && (
           <button
             type="button"
@@ -2275,45 +2288,35 @@ export const App: React.FC = () => {
             aria-expanded={isNavOpen}
             aria-label="Toggle Mimi Canon Menu"
             title="Toggle Mimi Canon Menu"
-            className="w-16 bg-nous-text flex flex-col items-center py-6 border-r border-nous-border relative z-20 hidden md:flex cursor-pointer hover:bg-nous-base transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/80 text-left"
+            className="w-16 bg-black flex flex-col items-center py-6 border-r border-stone-900 relative z-20 hidden md:flex cursor-pointer hover:bg-stone-950 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/80 text-left"
           >
-            {/* Elegant Vertical Sidebar Content */}
             <div className="flex flex-col items-center justify-between h-full select-none w-full relative z-10 text-stone-300 pointer-events-none">
-              {/* Top Menu Icon Button */}
               <div className="flex flex-col items-center gap-1.5 mt-2">
-                <div className="w-8 h-8 rounded-full border border-stone-850 flex items-center justify-center bg-[#1c1c1a]/50 text-amber-500 animate-pulse">
+                <div className="w-8 h-8 rounded-full border border-stone-700 flex items-center justify-center bg-[#1c1c1a]/50 text-[#f3f1ea]">
                   <LayoutGrid size={14} strokeWidth={1.5} />
                 </div>
                 <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-black">MENU</span>
               </div>
 
-              {/* Center vertical typography (Spaced label) */}
-              <div className="flex-1 flex items-center justify-center py-8">
-                <p 
-                  style={{ writingMode: "vertical-rl" }} 
-                  className="font-mono text-[8px] uppercase tracking-[0.55em] font-extrabold text-stone-500 hover:text-stone-300 transition-colors rotate-180 select-none whitespace-nowrap"
-                >
-                  ✥ MIMI CANON SYSTEM
-                </p>
-              </div>
-
-              {/* Bottom status indicator / coordinates */}
-              <div className="flex flex-col items-center gap-1 font-mono text-[7px] text-stone-500 mb-2">
-                <span>E: 0.88</span>
-                <span className="text-[9px] text-amber-500">✥</span>
-              </div>
-            </div>
-
-            {/* Tactile Punch Circles directly on the side component */}
-            <div className="absolute right-2 top-0 bottom-0 flex flex-col justify-around py-12 pointer-events-none z-20">
-              {[...Array(12)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-2.5 h-2.5 rounded-full bg-stone-950 dark:bg-black border border-stone-800 dark:border-stone-900 shadow-inner flex items-center justify-center"
-                >
-                  <div className="w-1 h-1 rounded-full bg-stone-900 dark:bg-stone-950" />
+              <div className="flex-1 flex items-center justify-center py-8 relative w-full">
+                <div className="binder-spine-rod absolute left-1/2 -translate-x-1/2" aria-hidden>
+                  <span className="binder-spine-stud" style={{ top: "18%" }} />
+                  <span className="binder-spine-stud" style={{ bottom: "18%" }} />
                 </div>
-              ))}
+                <div
+                  className="absolute left-2 top-[18%] bottom-[18%] w-0.5 opacity-50"
+                  style={{
+                    background:
+                      "repeating-linear-gradient(to bottom, #fff 0 2px, transparent 2px 12px)",
+                  }}
+                  aria-hidden
+                />
+              </div>
+
+              <div className="flex flex-col items-center gap-1 font-mono text-[7px] text-stone-500 mb-2">
+                <span>FOLIO</span>
+                <span className="text-[9px] text-[#f3f1ea]">◎</span>
+              </div>
             </div>
           </button>
         )}

@@ -1997,7 +1997,7 @@ ${finalInput}`;
       }}
       style={{ height: isMobile ? viewportHeight : "100%" }}
       data-studio-theme={studioTheme}
-      className="studio-worktable w-full h-full min-h-0 flex flex-col overflow-hidden relative"
+      className="studio-worktable binder-portfolio w-full h-full min-h-0 flex flex-col overflow-hidden relative"
     >
       <StudioChrome
         theme={studioTheme}
@@ -3602,19 +3602,25 @@ ${finalInput}`;
           </div>
         )}
 
-        {/* COLUMN 4: RIGHT PANEL TAB - PROJECT REF */}
-        <div 
+        {/* COLUMN 4: RIGHT PANEL TAB - PROJECT REF (organized insert drawer) */}
+        <div
           onClick={() => togglePanel("procurement")}
-          className="hidden md:flex absolute right-0 top-1/3 z-40 w-6 h-32 studio-ref-tab border-l border-y studio-border rounded-l-md flex-col items-center justify-center cursor-pointer shadow-lg hover:translate-x-[-2px] transition-transform select-none group"
+          className={`hidden md:flex absolute right-0 top-1/3 z-40 w-6 h-32 border-l border-y border-black rounded-l-md flex-col items-center justify-center cursor-pointer shadow-lg hover:translate-x-[-2px] transition-transform select-none group ${
+            activePanel === "procurement" ? "bg-black text-[#f3f1ea]" : "bg-[#f3f1ea] text-black"
+          }`}
         >
-          <span 
-            style={{ writingMode: "vertical-rl" }} 
+          <span
+            style={{ writingMode: "vertical-rl" }}
             className="rotate-180 font-mono text-[7px] tracking-[0.25em] uppercase group-hover:opacity-80 transition-colors font-bold"
           >
             Project Ref
           </span>
           <div className="w-full flex justify-center mt-2">
-            <div className="w-[1px] h-4 border-l border-dashed border-stone-400" />
+            <div
+              className={`w-[1px] h-4 border-l border-dashed ${
+                activePanel === "procurement" ? "border-[#f3f1ea]/50" : "border-stone-400"
+              }`}
+            />
           </div>
         </div>
 
@@ -3657,20 +3663,19 @@ ${finalInput}`;
           </span>
         </button>
 
-        {/* Tab 3: POCKET */}
+        {/* Tab 3: POCKET — messy desk-drawer stash */}
         <button
-          onClick={() => togglePanel("procurement")}
-          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
-            activePanel === "procurement" ? "is-active" : ""
-          }`}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("mimi:toggle_pocket_stash"));
+            playClick();
+          }}
+          className="studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer"
         >
-          <span className={`font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors ${
-            activePanel === "procurement" ? "font-extrabold" : ""
-          }`}>
+          <span className="font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors">
             POCKET
           </span>
           <span className="font-sans text-[7px] uppercase tracking-wider studio-text-muted block leading-tight truncate w-full">
-            Saved references & assets
+            Messy stash drawer
           </span>
         </button>
 
