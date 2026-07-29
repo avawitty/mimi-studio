@@ -33,6 +33,9 @@ async function waitForAnimationFrames(page: Page, count = 2): Promise<void> {
 
 async function waitForRouterEffects(page: Page): Promise<void> {
   await page.waitForLoadState("domcontentloaded");
+  // The installed-PWA router registers its custom event listeners in React
+  // effects after the shell mounts, so give the initial render cycle time to
+  // flush before dispatching `mimi:route-request`.
   await waitForAnimationFrames(page, 4);
 }
 
@@ -309,6 +312,8 @@ test.describe("Route restoration", () => {
   test("cold launch from / restores the last saved private route", async ({
     page,
   }) => {
+    // Seed storage before any app code runs so the current /studio page can't
+    // overwrite the saved route during its own persistence effect.
     await page.addInitScript(() => {
       localStorage.setItem("mimi_last_route", "/oracle");
     });
