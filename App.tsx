@@ -2010,10 +2010,15 @@ export const App: React.FC = () => {
         setAppState(AppState.REVEALED);
       } catch (e) {
         console.error("MIMI // Zine Creation Failed:", e);
+        const message = e instanceof Error ? e.message : String(e);
+        const alreadyRefracted =
+          /Semantic Mirror|Aesthetic Refraction|Gateway|credits/i.test(message);
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
             detail: {
-              message: "Oracle Disconnected. Please try again.",
+              message: alreadyRefracted
+                ? "Oracle could not finish saving this refraction. Your draft may still be recoverable — try again or check connection."
+                : "Oracle Disconnected. Please try again.",
               type: "error",
             },
           }),

@@ -219,27 +219,28 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (cancelled || !payload?.ai) return;
         setSystemStatus((previous) => ({ ...previous, ai: payload.ai }));
         const storedProvider = localStorage.getItem('mimi_active_llm');
-        const shouldSwitchToGateway =
-          storedProvider !== 'gateway' &&
-          (payload.ai.gateway || payload.ai.aiGateway);
-        if (!storedProvider || shouldSwitchToGateway) {
-          const availableProvider: 'gateway' | 'openai' | 'gemini' | 'anthropic' | null =
-            (payload.ai.gateway || payload.ai.aiGateway)
-              ? 'gateway'
-              : payload.ai.openai
-                ? 'openai'
-                : payload.ai.gemini
-                  ? 'gemini'
-                  : payload.ai.anthropic
-                    ? 'anthropic'
-                    : null;
-          if (availableProvider) {
-            setActiveLlmProviderState(availableProvider);
-            localStorage.setItem('mimi_active_llm', availableProvider);
-            import('../services/aiProvider').then((module) =>
-              module.setGlobalAIProvider(availableProvider),
-            );
-          }
+        // Only pick a default when the user has never chosen a provider.
+        // Do NOT force-switch to gateway on every load — that routes Compose
+        // through funded AI Gateway and 403s when trial credits are exhausted.
+        if (storedProvider === 'gemini' || storedProvider === 'anthropic' || storedProvider === 'openai' || storedProvider === 'gateway') {
+          return;
+        }
+        const availableProvider: 'gateway' | 'openai' | 'gemini' | 'anthropic' | null =
+          (payload.ai.gateway || payload.ai.aiGateway)
+            ? 'gateway'
+            : payload.ai.openai
+              ? 'openai'
+              : payload.ai.gemini
+                ? 'gemini'
+                : payload.ai.anthropic
+                  ? 'anthropic'
+                  : null;
+        if (availableProvider) {
+          setActiveLlmProviderState(availableProvider);
+          localStorage.setItem('mimi_active_llm', availableProvider);
+          import('../services/aiProvider').then((module) =>
+            module.setGlobalAIProvider(availableProvider),
+          );
         }
       })
       .catch(() => {
