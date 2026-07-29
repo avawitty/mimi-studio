@@ -66,13 +66,11 @@ const CANONICAL_TONE_PALETTES: Record<string, string[]> = {
 
 interface ProfileHealthPanelProps {
   contract: TailorProfile;
-  dominantTone: string;
 }
 
-const GaugeBar: React.FC<{ value: number; label: string; accent?: string }> = ({
+const GaugeBar: React.FC<{ value: number; label: string }> = ({
   value,
   label,
-  accent = "#d97706",
 }) => {
   const pct = Math.round(value * 100);
   const color = value < 0.4 ? "#ef4444" : value < 0.7 ? "#f59e0b" : "#22c55e";
@@ -92,7 +90,7 @@ const GaugeBar: React.FC<{ value: number; label: string; accent?: string }> = ({
   );
 };
 
-const ProfileHealthPanel: React.FC<ProfileHealthPanelProps> = ({ contract, dominantTone }) => {
+const ProfileHealthPanel: React.FC<ProfileHealthPanelProps> = ({ contract }) => {
   const { diagnostics } = contract;
   const readiness = diagnostics.readyForGeneration;
   const driftLevel = diagnostics.driftVulnerability;
@@ -167,7 +165,7 @@ const ProfileHealthPanel: React.FC<ProfileHealthPanelProps> = ({ contract, domin
       {/* Missing high-value fields hint */}
       {diagnostics.missingHighValueFields.length > 0 && !diagnostics.readyForGeneration && (
         <p className="font-sans text-[9px] text-stone-500 leading-normal pt-1 border-t border-stone-800">
-          Missing: {diagnostics.missingHighValueFields.slice(0, 3).map(f => f.fieldName).join(", ")}
+          Missing: {diagnostics.missingHighValueFields.slice(0, 3).map(f => f.path).join(", ")}
           {diagnostics.missingHighValueFields.length > 3 ? ` +${diagnostics.missingHighValueFields.length - 3} more` : ""}
         </p>
       )}
@@ -214,10 +212,14 @@ export const AestheticIntelligenceChamber: React.FC = () => {
     loadData();
   }, []);
 
-  // Demo mode: no zines generated yet AND no meaningful profile draft
+  // Demo mode: no zines generated yet AND no meaningful profile draft signals
+  const draft = profile?.tailorDraft;
   const hasDraftData = Boolean(
-    profile?.tailorDraft?.aestheticDNA?.primaryArchetype ||
-    profile?.tailorDraft?.positioningCore?.anchors?.culturalReferences?.length,
+    draft?.positioningCore?.aestheticCore?.tags?.length ||
+    draft?.positioningCore?.anchors?.culturalReferences?.length ||
+    draft?.positioningCore?.exclusionPrinciples?.length ||
+    draft?.strategicSummary?.aestheticDNA ||
+    draft?.expressionEngine?.chromaticRegistry?.primaryPalette?.length,
   );
   const isDemo = zines.length === 0 && !hasDraftData;
 
@@ -494,7 +496,7 @@ export const AestheticIntelligenceChamber: React.FC = () => {
 
                 {/* Profile Health — real data when available, graceful fallback */}
                 {profileContract ? (
-                  <ProfileHealthPanel contract={profileContract} dominantTone={dominantTone} />
+                  <ProfileHealthPanel contract={profileContract} />
                 ) : (
                   <div className="p-6 bg-stone-900 text-stone-100 rounded-sm shadow-lg space-y-3 relative overflow-hidden">
                     <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-5 pointer-events-none">
