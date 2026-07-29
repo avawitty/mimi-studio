@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, Send, User, Clock, Loader2, X, Flag, Trash2, Mic, Type, Play, Pause } from 'lucide-react';
 import { t } from '../lib/i18n';
@@ -9,6 +9,7 @@ import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore
 import { handleFirestoreError, logFirestoreError, OperationType } from '../services/firebaseUtils';
 import { archiveManager } from '../services/archiveManager';
 import { VoiceCommentSection } from './VoiceCommentSection';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 
 interface Comment {
  id: string;
@@ -19,32 +20,14 @@ interface Comment {
  timestamp: number;
  commentType?: 'text' | 'voice';
  audioUrl?: string;
+ /** Duration of the voice memo in seconds */
  audioDuration?: number;
 }
 
+const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+
 const VoiceCommentPlayer: React.FC<{ audioUrl: string; duration: number }> = ({ audioUrl, duration }) => {
- const [isPlaying, setIsPlaying] = useState(false);
- const [progress, setProgress] = useState(0);
- const audioRef = useRef<HTMLAudioElement | null>(null);
-
- const toggle = () => {
-   if (!audioRef.current) {
-     audioRef.current = new Audio(audioUrl);
-     audioRef.current.ontimeupdate = () => {
-       if (audioRef.current && audioRef.current.duration) {
-         setProgress(audioRef.current.currentTime / audioRef.current.duration);
-       }
-     };
-     audioRef.current.onended = () => { setIsPlaying(false); setProgress(0); };
-   }
-   if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); }
-   else { audioRef.current.play(); setIsPlaying(true); }
- };
-
- useEffect(() => () => { audioRef.current?.pause(); }, []);
-
- const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
-
+ const { isPlaying, progress, toggle } = useAudioPlayer(audioUrl);
  return (
    <div className="flex items-center gap-3 py-1">
      <button onClick={toggle} className="p-1.5 border border-nous-border text-nous-subtle hover:text-nous-text transition-colors">
@@ -53,6 +36,7 @@ const VoiceCommentPlayer: React.FC<{ audioUrl: string; duration: number }> = ({ 
      <div className="flex-1 h-px bg-nous-border relative">
        <div className="absolute inset-y-0 left-0 bg-nous-text transition-all" style={{ width: `${progress * 100}%` }} />
      </div>
+     {/* duration stored as seconds */}
      <span className="font-mono text-[8px] text-nous-subtle tabular-nums">{fmt(duration)}</span>
    </div>
  );
@@ -120,7 +104,16 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  if (!user) return;
  setIsSubmitting(true);
  try {
- const audioUrl = await archiveManager.uploadMedia(user.uid, blob, 'voice_comments');
+ let audioUrl: string;
+ try {
+ audioUrl = await archiveManager.uploadMedia(user.uid, blob, 'voice_comments');
+ } catch (uploadError) {
+ console.error("MIMI // Voice upload failed:", uploadError);
+ window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+ detail: { message: "Voice memo upload failed. Check your connection and try again.", type: 'error' }
+ }));
+ return;
+ }
  await addDoc(collection(db, 'zine_comments'), {
  zineId,
  userId: user.uid,
@@ -128,6 +121,7 @@ export const ZineComments: React.FC<{ zineId: string; onClose?: () => void }> = 
  text: '',
  commentType: 'voice',
  audioUrl,
+ /** audioDuration stored as seconds */
  audioDuration: Math.round(duration),
  timestamp: Date.now()
  });
