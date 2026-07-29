@@ -31,6 +31,11 @@ async function waitForAnimationFrames(page: Page, count = 2): Promise<void> {
   }
 }
 
+async function waitForRouterEffects(page: Page): Promise<void> {
+  await page.waitForLoadState("domcontentloaded");
+  await waitForAnimationFrames(page, 4);
+}
+
 // ---------------------------------------------------------------------------
 // 1. SAFE AREAS
 // ---------------------------------------------------------------------------
@@ -138,7 +143,7 @@ test.describe("Navigation", () => {
     page,
   }) => {
     await page.goto("/studio");
-    await page.waitForLoadState("domcontentloaded");
+    await waitForRouterEffects(page);
 
     await page.evaluate(() => {
       window.dispatchEvent(
@@ -304,10 +309,7 @@ test.describe("Route restoration", () => {
   test("cold launch from / restores the last saved private route", async ({
     page,
   }) => {
-    // Pre-seed localStorage with a saved route.
-    await page.goto("/studio");
-    await page.waitForLoadState("domcontentloaded");
-    await page.evaluate(() => {
+    await page.addInitScript(() => {
       localStorage.setItem("mimi_last_route", "/oracle");
     });
 
@@ -365,10 +367,7 @@ test.describe("Route restoration", () => {
     });
 
     await page.goto("/auth/action?mode=signIn&oobCode=abc");
-    await page.waitForLoadState("domcontentloaded");
-    // Drain animation frames so the persistence effect has had a chance to run.
-    // If the auth route were incorrectly saved the value would change here.
-    await waitForAnimationFrames(page);
+    await page.waitForURL((url) => !url.pathname.startsWith("/auth/action"));
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),
