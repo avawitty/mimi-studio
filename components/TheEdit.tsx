@@ -111,6 +111,14 @@ export const TheEdit: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isMinting, setIsMinting] = useState(false);
 
+  const sanitizeTasteVector = (value: unknown): number[] => {
+    if (!value || typeof value !== 'object') return [0.5, 0.5, 0.5];
+    const values = Object.values(value as Record<string, unknown>)
+      .map((entry) => Number(entry))
+      .filter((entry) => Number.isFinite(entry));
+    return values.length > 0 ? values : [0.5, 0.5, 0.5];
+  };
+
   // Mocked Semantic Clusters based on user interactions
   const semanticClusters = React.useMemo(() => [
     "Luxury Utilitarian", "Low-Fidelity Archival", "Brutalist Domestic", 
@@ -132,12 +140,19 @@ export const TheEdit: React.FC = () => {
 
           const q = query(collection(db, 'product_interactions'), where('userId', '==', user.uid));
           const snapshot = await getDocs(q);
-          const events = snapshot.docs.map(doc => doc.data() as ProductTasteEvent);
+          const events = snapshot.docs
+            .map(doc => doc.data() as ProductTasteEvent)
+            .filter((event) => event?.userId === user.uid);
           
           const codex = deriveCodexState(profile, events as any);
           setCodexState(codex);
 
-          const tasteVector = (profile as any)?.tasteVector ? Object.values((profile as any).tasteVector) : [0.5, 0.5, 0.5];
+          const tasteVector = sanitizeTasteVector((profile as any)?.tasteVector);
+          if ((profile as any)?.tasteVector && tasteVector.length === 3 && tasteVector.every((n) => n === 0.5)) {
+            console.warn("MIMI // TheEdit falling back to default tasteVector due to invalid profile vector.", {
+              uid: user.uid,
+            });
+          }
           getPersonalizedEdit(user.uid, tasteVector as any, codex, profile as any).then(edit => {
             setPersonalizedEdit(edit);
           }).catch(e => console.error("MIMI // Failed to get personalized edit", e));

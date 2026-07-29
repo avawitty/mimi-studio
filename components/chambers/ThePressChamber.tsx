@@ -20,6 +20,7 @@ import {
   writeIntelProjectRun,
   type IntelHubPressHandoff,
 } from "../../lib/intelHubWorkflow";
+import { useUser } from "../../contexts/UserContext";
 
 type PressTab = "console" | "manifest";
 
@@ -29,20 +30,22 @@ const TAB_WORKFLOW: Record<PressTab, ArchiveWorkflowStep> = {
 };
 
 export const ThePressChamber: React.FC = () => {
+  const { user, profile } = useUser();
+  const ownerUid = user?.uid || profile?.uid;
   const [tab, setTab] = useState<PressTab>("console");
   const [pendingCompile, setPendingCompile] = useState<EditorialCompileExport | null>(() =>
-    getEditorialCompileExport(),
+    getEditorialCompileExport(ownerUid, true),
   );
   const [pendingIntelPack, setPendingIntelPack] = useState<IntelHubPressHandoff | null>(() =>
     readIntelHubPressHandoff(),
   );
 
   useEffect(() => {
-    const refresh = () => setPendingCompile(getEditorialCompileExport());
+    const refresh = () => setPendingCompile(getEditorialCompileExport(ownerUid, true));
     refresh();
     window.addEventListener(EDITORIAL_COMPILE_CHANGED, refresh);
     return () => window.removeEventListener(EDITORIAL_COMPILE_CHANGED, refresh);
-  }, []);
+  }, [ownerUid]);
 
   const updateIntelRun = (
     patch: Parameters<typeof updateIntelProjectRun>[1],

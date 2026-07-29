@@ -208,7 +208,7 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
   };
 
   const handleSendToStudio = (atom: MemoryAtom) => {
-    addToUsedContext(atom, 'studio');
+    addToUsedContext(atom, 'studio', user?.uid);
     setSentToStudioId(atom.id);
     window.dispatchEvent(
       new CustomEvent("mimi:route-request", { detail: { path: "/studio" } }),
@@ -223,7 +223,7 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
   };
 
   const handleSendToEdit = (atom: MemoryAtom) => {
-    addToUsedContext(atom, 'the-edit');
+    addToUsedContext(atom, 'the-edit', user?.uid);
     setSentToEditId(atom.id);
     window.dispatchEvent(
       new CustomEvent("mimi:route-request", { detail: { path: "/the-edit" } }),
@@ -235,7 +235,7 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
   };
 
   const handleSendAllToStudio = () => {
-    filteredAtoms.forEach((atom) => addToUsedContext(atom, 'studio'));
+    filteredAtoms.forEach((atom) => addToUsedContext(atom, 'studio', user?.uid));
     window.dispatchEvent(
       new CustomEvent("mimi:route-request", { detail: { path: "/studio" } }),
     );

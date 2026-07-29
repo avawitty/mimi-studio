@@ -36,6 +36,7 @@ import { resolveApiKey } from "./services/apiKeyService";
 import { diagnoseOracle } from "./services/geminiClient";
 import { createZine } from "./services/zineGenerator";
 import { clearApprovedUsedContext } from "./services/usedContextService";
+import { getEditorialCompileExport } from "./lib/editCompileExport";
 import {
   saveZineToProfile,
   fetchZineById,
@@ -60,7 +61,6 @@ import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { AgentProvider, useAgents } from "./contexts/AgentContext";
 import { MENU_STRUCTURE } from "./components/navigationConfig";
 import { canonicalizeMimiRoute } from "./lib/productCanon";
-import { getEditorialCompileExport } from "./lib/editCompileExport";
 import { LegalDocumentPage } from "./components/LegalDocumentPage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useTactileAudio } from "./hooks/useTactileAudio";
@@ -1926,14 +1926,13 @@ export const App: React.FC = () => {
             (await resolveExportCoverUrl(coverUrl, opts.studioCoverOverlays)) ?? coverUrl;
         }
 
-        const editorialCompile = getEditorialCompileExport();
-
         let cost = 2; // Default for full zine
         if (opts.isLite) cost = 1;
         if (opts.isHighFidelity || opts.deepThinking) cost = 3;
 
         await incrementGeneration(cost);
         const targetUid = profile?.uid || user?.uid || "ghost";
+        const editorialCompile = getEditorialCompileExport(targetUid, true);
         const id = await saveZineToProfile(
           targetUid,
           profile?.handle || "Ghost",
@@ -1955,7 +1954,7 @@ export const App: React.FC = () => {
           opts.lineage,
         );
         if (fragmentIds.length > 0) {
-          clearApprovedUsedContext("studio");
+          clearApprovedUsedContext("studio", targetUid);
         }
         navigate("/zine/" + id);
         setZineMetadata({

@@ -1141,7 +1141,7 @@ ${finalInput}`;
       }
     }
 
-    const approvedContext = getApprovedUsedContext("studio");
+    const approvedContext = getApprovedUsedContext("studio", currentUser?.uid);
     if (approvedContext.length > 0) {
       const block = approvedContext
         .map(
@@ -1869,7 +1869,9 @@ ${finalInput}`;
     | null
   >(null);
 
-  const [usedContextQueue, setUsedContextQueue] = useState(() => getUsedContext("studio"));
+  const [usedContextQueue, setUsedContextQueue] = useState(() =>
+    getUsedContext("studio", currentUser?.uid),
+  );
   const { theme: studioTheme, setTheme: setStudioTheme } = useStudioTheme();
   const { applyPalette } = useTheme();
 
@@ -1885,7 +1887,7 @@ ${finalInput}`;
 
   useEffect(() => {
     return subscribeUsedContext(() => {
-      const queue = getUsedContext("studio");
+      const queue = getUsedContext("studio", currentUser?.uid);
       setUsedContextQueue(queue);
       const newest = queue.find(
         (entry) => !entry.approved && Date.now() - entry.addedAt < 4000,
@@ -1894,7 +1896,7 @@ ${finalInput}`;
         setActivePanel("orchestrator");
       }
     });
-  }, []);
+  }, [currentUser?.uid]);
 
   const togglePanel = (
     mode:

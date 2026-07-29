@@ -27,6 +27,7 @@ import {
   getApprovedUsedContext,
   subscribeUsedContext,
 } from '../services/usedContextService';
+import { useUser } from '../contexts/UserContext';
 
 interface IntelProjectControlProps {
   onOpenStrategy: () => void;
@@ -55,6 +56,8 @@ export const IntelProjectControl: React.FC<IntelProjectControlProps> = ({
   onOpenStrategy,
   onOpenCapabilities,
 }) => {
+  const { user, profile } = useUser();
+  const ownerUid = user?.uid || profile?.uid;
   const [run, setRun] = useState<IntelProjectRun>(() => {
     const restored = readIntelProjectRun();
     const handoff = readIntelHubPressHandoff();
@@ -69,7 +72,7 @@ export const IntelProjectControl: React.FC<IntelProjectControlProps> = ({
     return created;
   });
   const [approvedContextCount, setApprovedContextCount] = useState(
-    () => getApprovedUsedContext().length,
+    () => getApprovedUsedContext(undefined, ownerUid).length,
   );
 
   useEffect(() => {
@@ -77,14 +80,15 @@ export const IntelProjectControl: React.FC<IntelProjectControlProps> = ({
       const restored = readIntelProjectRun();
       if (restored) setRun(restored);
     };
-    const refreshContext = () => setApprovedContextCount(getApprovedUsedContext().length);
+    const refreshContext = () =>
+      setApprovedContextCount(getApprovedUsedContext(undefined, ownerUid).length);
     window.addEventListener(INTEL_PROJECT_RUN_CHANGED, refreshRun);
     const unsubscribeContext = subscribeUsedContext(refreshContext);
     return () => {
       window.removeEventListener(INTEL_PROJECT_RUN_CHANGED, refreshRun);
       unsubscribeContext();
     };
-  }, []);
+  }, [ownerUid]);
 
   const currentStageIndex = stageIndex(run.stage);
   const nextAction = useMemo(() => {
