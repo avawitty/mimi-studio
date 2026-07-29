@@ -11,7 +11,7 @@
 **What Ava is asking**
 
 1. Audit every Mimi input, return, integration, connector, and research workflow so finishing work can distinguish real systems from decorative simulations.
-2. Design Collective Moods — a shared analytics layer of emerging motifs, tags, themes, and aesthetic movements derived from consented public signals (not an Explore page).
+2. Design **Mean Median Mode** (formerly Collective Moods) — a shared analytics layer whose readout is literally grounded in central-tendency statistics over consented public signals (not an Explore page).
 3. Let public zines contribute anonymized collective data about what people seek, wonder, share, and express — including inquiry categories and artifact-form signals.
 4. Lock the approved chamber architecture and naming system for implementation.
 
@@ -47,16 +47,27 @@ Public artifact
 → Historical archive
 ```
 
-Collective Moods must answer:
+**Mean Median Mode** must answer:
 
 - What are people wondering about?
 - What help are they seeking from AI (broad, non-diagnostic categories)?
 - Which motifs, tensions, formats, and references keep appearing?
 - How do public zines reveal collective attention and inner-world *expression* (artifact-level, never person diagnosis)?
 - Which signals are emerging, loud, saturated, or returning altered?
+- What do the **mean**, **median**, and **mode** of collective signal activity say — separately and together — about the present atmosphere?
 
 **Not:** Explore feed, leaderboard, or “popular = good.”  
-**Yes:** “This signal is appearing more often, across more contexts, with these contradictions, at this cycle stage.”
+**Yes:** “This signal’s central tendency looks like X: mean intensity Y, median Z, modal motif W — with these contradictions, at this cycle stage.”
+
+### Naming decision (locked)
+
+| Public name | Role |
+| --- | --- |
+| **Mean Median Mode** | Primary chamber / dashboard name (replaces “Collective Moods” as the user-facing title) |
+| Collective Moods | Optional conceptual alias in docs only — do not use as the primary UI label |
+| The Observatory | Parent chamber that contains Mean Median Mode, Mesopic Lens, Forecast |
+
+**Mean Median Mode** is both a poetic title and a literal analytical contract: every readout must expose measurable central-tendency functions, not decorative “mood” language alone.
 
 ---
 
@@ -66,7 +77,7 @@ Collective Moods must answer:
 | --- | --- | --- |
 | **The Proscenium** | Public performance | What entered public view? What is shared, witnessed, absorbed, refracted? |
 | **The Observatory** | Collective perception chamber | Measures, interprets, and archives public cultural signals over time |
-| **Collective Moods** | Current dashboard / readout | Present atmosphere of seeking, expressing, questioning, making |
+| **Mean Median Mode** | Current dashboard / statistical readout | Present atmosphere via mean, median, mode, and their joint profile |
 | **Mesopic Lens** | Weak-signal perception | Dim correspondences before they become trends |
 | **Starry-Eyed** | Mesopic mode | Constellation of signals not yet bright enough to call a trend |
 | **Shadow Fields** | Mesopic mode | Patterns gathering outside the center of attention |
@@ -83,7 +94,7 @@ Collective signals normalized (consent-gated)
         ↓
 Mesopic Lens detects faint relationships
         ↓
-Collective Moods describes the present
+Mean Median Mode describes the present (via central tendency)
         ↓
 Forecast proposes trajectories
         ↓
@@ -94,13 +105,69 @@ The Observatory preserves the longer record
 
 - **The Proscenium** — Public artifacts and their social afterlives.
 - **The Observatory** — Where collective cultural signals are observed over time.
-- **Collective Moods** — A living reading of what people are seeking, expressing, questioning, and beginning to make together.
+- **Mean Median Mode** — A statistical reading of what people are seeking, expressing, questioning, and beginning to make together.
 - **Mesopic Lens** — Twilight vision for the collective archive.
 - **Starry-Eyed** — A constellation of signals not yet bright enough to call a trend.
 - **Shadow Fields** — Patterns gathering outside the center of attention.
 - **Forecast** — Evidence-backed trajectories for motifs, inquiries, and cultural movement.
 - **Scry** — Research across approved memory and current sources.
 - **Tailor** — Personal evidence transformed into user-approved knowledge.
+
+### Mean · Median · Mode — analytical contract
+
+Yes: this is possible, and it should be the **primary data representation** of the dashboard — not a metaphor pasted on top of fake KPIs.
+
+For each eligible signal (or signal family) in an evidence window, compute and display:
+
+| Function | Cultural meaning | What it measures |
+| --- | --- | --- |
+| **Mean** | Average presence | Mean occurrence intensity / frequency across the window (sensitive to spikes) |
+| **Median** | Typical presence | Middle of the distribution — what “most of the window” looks like without viral skew |
+| **Mode** | Dominant motif | Most frequent canonical label / category in the set (the actual common mood) |
+| **Summation / joint profile** | How the three agree or disagree | A derived analytical object that returns all three plus relationship diagnostics |
+
+#### Required return shape
+
+```ts
+interface CentralTendencyProfile {
+  signalId: string;
+  windowStart: number;
+  windowEnd: number;
+  unit: "occurrences_per_day" | "share_of_artifacts" | "normalized_intensity";
+  mean: number;
+  median: number;
+  mode: {
+    label: string;
+    count: number;
+    share: number;
+  };
+  /** Joint analytical summary — not a random score */
+  summation: {
+    /** mean + median + mode.share (same unit basis after normalization) */
+    combinedIndex: number;
+    skewHint: "mean_above_median" | "aligned" | "median_above_mean";
+    modality: "unimodal" | "bimodal" | "multimodal" | "insufficient";
+    interpretation:
+      | "spike_driven"      // mean >> median: a few loud artifacts
+      | "broadly_shared"    // mean ≈ median; clear mode
+      | "contested"         // multimodal / weak mode
+      | "insufficient_evidence";
+  };
+  sampleSize: number;
+  uniqueArtifactCount: number;
+  uniqueContributorBand: string;
+  methodologyVersion: string;
+}
+```
+
+#### Product rules
+
+1. Every Mean Median Mode panel must show **mean, median, and mode** as first-class fields — not hide them behind a single vanity percentage.
+2. The **summation** is a derived profile (`combinedIndex` + skew/modality interpretation), not `Math.random()` confidence.
+3. When mean and median diverge, UI must say so (spike-driven vs broadly shared).
+4. Mode is a **canonical label**, never a person’s identity.
+5. Below evidence thresholds: return `insufficient_evidence` — do not invent a mood.
+6. Mesopic Lens may surface low-volume candidates, but Mean Median Mode only promotes them into the main readout when central-tendency thresholds are met.
 
 ### Proscenium social vocabulary
 
@@ -235,7 +302,7 @@ Architecture, event/signal taxonomies, cycle methodology, privacy/consent, thres
 
 ### Phase 3 — Typed contracts (Zod, no `any`)
 
-`CollectiveSignal`, `CollectiveSignalAggregate`, `CyclePosition`, `PublicArtifactContribution`, `ContributionReceipt`, `ApprovedFeed`, `FeedEntry`, `ForecastReport`, `CollectiveMoodReport`, `MesopicFinding`, `SourceReference`, `MethodologyRecord`.
+`CollectiveSignal`, `CollectiveSignalAggregate`, `CentralTendencyProfile`, `CyclePosition`, `PublicArtifactContribution`, `ContributionReceipt`, `ApprovedFeed`, `FeedEntry`, `ForecastReport`, `MeanMedianModeReport`, `MesopicFinding`, `SourceReference`, `MethodologyRecord`.
 
 ### Phase 4 — Vertical slice: public zine → signals
 
@@ -246,9 +313,9 @@ public zine → consent → topic/format extraction → model-proposed signals
 
 Model-proposed ≠ auto-canonical without validation.
 
-### Phase 5 — Collective Moods prototype (read-only, real aggregates)
+### Phase 5 — Mean Median Mode prototype (read-only, real aggregates)
 
-Present atmosphere, inquiry categories, motifs in ascent, quiet signals, cycle positions, artifact formats, methodology, limitations. Demo fixtures labeled demonstration only.
+Present atmosphere from joint central-tendency profiles; inquiry categories (modal assistance types); motifs in ascent; quiet signals; cycle positions; artifact formats; required mean/median/mode + summation strip; methodology; limitations. Demo fixtures labeled demonstration only. No fake statistics.
 
 ### Phase 6 — Mesopic Lens
 
@@ -341,21 +408,22 @@ Cycle ≠ volume alone. Weight rate of change, diversity, consistency, remix, co
 
 ---
 
-## Collective Moods UI sections
+## Mean Median Mode UI sections
 
-1. Present Atmosphere  
-2. What People Are Seeking  
-3. Motifs in Ascent  
-4. Quiet Signals (Mesopic)  
-5. Collective Tensions  
-6. Saturation Watch  
-7. Countercurrents  
-8. Recurrent Forms  
-9. Artifact Forms  
-10. Why Mimi Thinks This (window, counts, diversity, methods, uncertainty, exclusions, last updated)  
-11. What Mimi May Be Missing (**required**)
+1. Present Atmosphere (from joint central-tendency profiles)
+2. What People Are Seeking (modal inquiry / assistance categories)
+3. Mean · Median · Mode strip (required: all three + summation interpretation)
+4. Motifs in Ascent
+5. Quiet Signals (Mesopic)
+6. Collective Tensions
+7. Saturation Watch
+8. Countercurrents
+9. Recurrent Forms
+10. Artifact Forms
+11. Why Mimi Thinks This (window, sample size, mean/median/mode math, uncertainty, exclusions, last updated)
+12. What Mimi May Be Missing (**required**)
 
-Aesthetic: cultural ephemeris / observatory — not Bloomberg cosplay, not generic KPI cards. Every poetic label needs a functional explanation.
+Aesthetic: cultural ephemeris / observatory — not Bloomberg cosplay, not generic KPI cards. Every poetic label needs a functional explanation. Mean/median/mode must remain readable as real statistics.
 
 ---
 
@@ -428,8 +496,8 @@ Changed files · DB/rules/env changes · migration instructions · tests · comm
 
 ### Product principle
 
-> Collective Moods is not a leaderboard.  
-> It is an instrument for noticing what many separate practices have begun to say together.  
+> **Mean Median Mode** is not a leaderboard.  
+> It is an instrument for noticing what many separate practices have begun to say together — measured as mean presence, median typicality, and modal motif, then read as their joint profile.  
 > Build it like an observatory with receipts: dim enough to perceive, precise enough to believe, and careful about whose inner world it has been allowed to read.
 
 ---
@@ -438,10 +506,11 @@ Changed files · DB/rules/env changes · migration instructions · tests · comm
 
 1. Prompt 1 registry (or fold into Phase 1 collective audit if scoped to public/research surfaces).  
 2. Prompt 4 Scry evidence repair (unblocks trustworthy collective inputs).  
-3. Phase 1–4 collective intelligence vertical slice.  
-4. Prompt 8 Forecast metric dictionary + RSS Phase 7.  
-5. Prompt 9 Proscenium integrity before social vocabulary copy changes.  
-6. Prompt 10 release tribunal before any “ship” claim.
+3. Phase 1–4 collective intelligence vertical slice (include `CentralTendencyProfile`).  
+4. Phase 5 Mean Median Mode prototype with literal mean/median/mode + summation.  
+5. Prompt 8 Forecast metric dictionary + RSS Phase 7.  
+6. Prompt 9 Proscenium integrity before social vocabulary copy changes.  
+7. Prompt 10 release tribunal before any “ship” claim.
 
 ---
 
