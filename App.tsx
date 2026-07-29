@@ -797,6 +797,21 @@ const KeyBlockedBanner: React.FC = () => {
 
 import { CreditMeter } from "./components/CreditMeter";
 
+const LAST_ROUTE_STORAGE_KEY = "mimi_last_route";
+
+// Public / unauthenticated routes must never be persisted as the "last private
+// route" to restore on cold launch. These mirror the early-return public route
+// handlers in the App component (share links, auth actions, public profiles…).
+const isPublicRoute = (candidate: string): boolean =>
+  candidate.startsWith("/s/") ||
+  candidate.startsWith("/auth") ||
+  candidate.startsWith("/@") ||
+  candidate.startsWith("/u/") ||
+  candidate.startsWith("/stacks/") ||
+  candidate === "/showcase" ||
+  candidate === "/privacy" ||
+  candidate === "/terms";
+
 const useAppRouter = () => {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -829,9 +844,29 @@ const useAppRouter = () => {
     return () => window.removeEventListener("mimi:route-request", onRouteRequest);
   }, [navigate]);
 
+  // Persist the current private route so it can be restored on a cold launch
+  // (e.g. when the installed PWA is relaunched at the bare "/" start_url).
+  useEffect(() => {
+    if (path && path !== "/" && !isPublicRoute(path)) {
+      try {
+        localStorage.setItem(LAST_ROUTE_STORAGE_KEY, path);
+      } catch {
+        // Ignore storage failures (private mode, quota, etc.).
+      }
+    }
+  }, [path]);
+
   useEffect(() => {
     if (path === "/" || path === "") {
-      navigate("/studio", { replace: true });
+      let saved: string | null = null;
+      try {
+        saved = localStorage.getItem(LAST_ROUTE_STORAGE_KEY);
+      } catch {
+        saved = null;
+      }
+      const target =
+        saved && saved !== "/" && !isPublicRoute(saved) ? saved : "/studio";
+      navigate(target, { replace: true });
     }
   }, [navigate, path]);
 
