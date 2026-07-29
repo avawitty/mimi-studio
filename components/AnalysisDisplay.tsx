@@ -16,7 +16,7 @@ import { ThreadGraph } from './ThreadGraph';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUser } from '../contexts/UserContext';
 import { resolveApiKey } from '../services/apiKeyService';
-import { fetchMemoryAtoms } from '../services/memoryService';
+import { fetchMemoryAtoms, saveMemoryAtom, createAtomFromScribeSignal, saveLocalSignatureAtom, removeLocalSignatureAtom, fetchLocalSignatureAtoms, migrateLocalSignaturesToProfile } from '../services/memoryService';
 import { hasAccess } from '../constants';
 import { coerceToString } from '../lib/utils';
 import { useRecorder } from '../hooks/useRecorder';
@@ -214,6 +214,119 @@ export const AnalysisDisplay: React.FC<{
  const [isSynthesizingTTS, setIsSynthesizingTTS] = useState(false);
  const [ttsVoice, setTtsVoice] = useState<'Kore' | 'Koral'>('Kore');
  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+
+ // --- Signature Takeaways (applicable takeaways the reader can add to their profile) ---
+ const [signatureStatus, setSignatureStatus] = useState<Record<string, 'confirmed' | 'dismissed'>>({});
+ const [savingSignatureKey, setSavingSignatureKey] = useState<string | null>(null);
+ // Stable id per takeaway so local persistence + migration line up across renders
+ const signatureAtomIds = useRef<Record<string, string>>({});
+
+ const signatureTakeaways = useMemo(() => {
+   const cards: { key: string; category: string; value: string; note?: string }[] = [];
+   const push = (key: string, category: string, value: unknown, note?: string) => {
+     const text = coerceToString(value).trim();
+     if (text && text !== '—') cards.push({ key, category, value: text, note });
+   };
+   const roadmap: any = metadata.content?.roadmap;
+   if (roadmap) {
+     push('thesis', 'Strategic Thesis', roadmap.strategicThesis, 'The core position this issue argues for.');
+     push('axis', 'Positioning Axis', roadmap.positioningAxis, 'Where you stand on the field.');
+     push('claim', 'Core Claim', roadmap.authorityAnchor?.coreClaim, 'What must remain true.');
+     push('repeat', 'Repetition Vector', roadmap.authorityAnchor?.repetitionVector, 'What builds recognition.');
+     push('refuse', 'Exclusion Principle', roadmap.authorityAnchor?.exclusionPrinciple, 'What protects integrity.');
+     (roadmap.phases || []).forEach((phase: any, i: number) => {
+       push(`phase-${i}`, `Move · ${phase.type || `Phase ${i + 1}`}`, phase.objective, phase.strategicMove);
+     });
+     if (roadmap.driftForecast) {
+       push('drift-shift', 'Predicted Shift', roadmap.driftForecast.predictedClusterShift, 'How the field is likely to move.');
+       push('drift-refusal', 'Refusal Point', roadmap.driftForecast.refusalPoint, 'The line you will not cross.');
+     }
+   } else if (metadata.content?.blueprint) {
+     Object.entries(metadata.content.blueprint).forEach(([k, v], i) => {
+       push(`bp-${i}`, k.replace(/_/g, ' '), v);
+     });
+   } else if (metadata.content?.the_roadmap) {
+     push('roadmap', 'Roadmap', metadata.content.the_roadmap);
+   }
+   return cards;
+ }, [metadata.content?.roadmap, metadata.content?.blueprint, metadata.content?.the_roadmap]);
+
+ const confirmedSignatureCount = useMemo(
+   () => Object.values(signatureStatus).filter((s) => s === 'confirmed').length,
+   [signatureStatus],
+ );
+
+ // Hydrate confirmed state from local (ghost) storage, and migrate to profile on sign-on
+ useEffect(() => {
+   if (user?.uid) {
+     migrateLocalSignaturesToProfile(user.uid).catch(() => {});
+     return;
+   }
+   const local = fetchLocalSignatureAtoms();
+   if (local.length === 0) return;
+   const byContent = new Set(local.map((a) => a.content));
+   const restored: Record<string, 'confirmed'> = {};
+   signatureTakeaways.forEach((card) => {
+     if (byContent.has(`${card.category}: ${card.value}`)) restored[card.key] = 'confirmed';
+   });
+   if (Object.keys(restored).length) setSignatureStatus((prev) => ({ ...restored, ...prev }));
+ }, [user?.uid, signatureTakeaways]);
+
+ const buildSignatureAtom = (card: { key: string; category: string; value: string }) => {
+   const atom = createAtomFromScribeSignal({
+     content: `${card.category}: ${card.value}`,
+     signalType: 'manual',
+     projectId: metadata.title || 'Signature Takeaways',
+     title: card.category,
+     source: `Zine · ${metadata.title || 'Untitled'}`,
+     tags: ['signature', 'takeaway', 'profile'],
+   });
+   // Preserve a stable id per card so we can remove the exact local entry later
+   if (signatureAtomIds.current[card.key]) atom.id = signatureAtomIds.current[card.key];
+   else signatureAtomIds.current[card.key] = atom.id;
+   return atom;
+ };
+
+ const handleConfirmSignature = async (card: { key: string; category: string; value: string }) => {
+   setSignatureStatus((prev) => ({ ...prev, [card.key]: 'confirmed' }));
+   window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: 'click' } }));
+   const atom = buildSignatureAtom(card);
+   if (!user?.uid) {
+     // Ghost session: keep locally, sync on sign-on
+     saveLocalSignatureAtom(atom);
+     return;
+   }
+   try {
+     setSavingSignatureKey(card.key);
+     await saveMemoryAtom(user.uid, atom);
+   } catch (e) {
+     console.error('MIMI // save signature failed:', e);
+     setSignatureStatus((prev) => {
+       const next = { ...prev };
+       delete next[card.key];
+       return next;
+     });
+   } finally {
+     setSavingSignatureKey(null);
+   }
+ };
+
+ const handleDismissSignature = (card: { key: string }) => {
+   setSignatureStatus((prev) => ({ ...prev, [card.key]: 'dismissed' }));
+   window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: 'click' } }));
+ };
+
+ const handleResetSignature = (card: { key: string }) => {
+   setSignatureStatus((prev) => {
+     const next = { ...prev };
+     delete next[card.key];
+     return next;
+   });
+   // If this was a locally-kept ghost signature, drop it from local storage too
+   if (!user?.uid && signatureAtomIds.current[card.key]) {
+     removeLocalSignatureAtom(signatureAtomIds.current[card.key]);
+   }
+ };
 
  const handleReadToMe = async () => {
    if (isReadingAloud) {
@@ -1549,133 +1662,101 @@ export const AnalysisDisplay: React.FC<{
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] snap-start bg-[#F5F2EA] text-stone-950 print:min-h-0 print:py-12 relative overflow-hidden py-24 md:py-32">
  <div className="absolute inset-0 opacity-[0.035] pointer-events-none" style={{ backgroundImage: 'linear-gradient(#111 1px, transparent 1px), linear-gradient(90deg, #111 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
  <div className="w-full relative z-10 px-6 md:px-24">
- <div className="flex items-center gap-4 mb-12 text-stone-900">
+ <div className="flex items-start justify-between gap-4 mb-12 text-stone-900">
+ <div className="flex items-center gap-4">
  <div className="p-2 border border-stone-300 bg-white"><RoadmapIcon size={16} style={{ color: accentColor }} /></div>
  <div>
- <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-stone-500">From thesis to repeatable action</p>
- <h2 className="font-serif text-3xl md:text-5xl italic">Authority Roadmap</h2>
+ <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-stone-500">Keep what belongs to you</p>
+ <h2 className="font-serif text-3xl md:text-5xl italic">Signature Takeaways</h2>
  </div>
  </div>
-
- {metadata.content.roadmap ? (
- <div className="space-y-12">
- <div className="grid lg:grid-cols-[1.35fr_0.65fr] border border-stone-300 bg-white shadow-[14px_14px_0_rgba(28,25,23,0.06)]">
- <div className="p-7 md:p-12 border-b lg:border-b-0 lg:border-r border-stone-300">
- <span className="font-mono text-[9px] uppercase tracking-[0.28em] text-stone-500">01 · Strategic thesis</span>
- <p className="font-serif text-2xl md:text-4xl leading-snug mt-5 text-stone-950">{metadata.content.roadmap.strategicThesis}</p>
- </div>
- <div className="p-7 md:p-10 flex flex-col justify-between gap-8">
- <div>
- <span className="font-mono text-[9px] uppercase tracking-[0.28em] text-stone-500">Positioning axis</span>
- <p className="font-serif text-xl md:text-2xl italic leading-snug mt-4 text-stone-900">{metadata.content.roadmap.positioningAxis}</p>
- </div>
- <div className="grid grid-cols-3 gap-2">
- {[
- ['Intensity', metadata.content.roadmap.intensity || '—'],
- ['Density', metadata.content.roadmap.densityLevel ?? '—'],
- ['Timeline', metadata.content.roadmap.timelineMode || '—'],
- ].map(([label, value]) => (
- <div key={String(label)} className="border-t-2 pt-3" style={{ borderColor: accentColor }}>
- <span className="font-mono text-[7px] uppercase tracking-wider text-stone-500 block">{label}</span>
- <span className="font-mono text-xs uppercase text-stone-900 mt-1 block">{value}</span>
- </div>
- ))}
- </div>
- </div>
- </div>
-
- <div>
- <div className="flex items-center gap-4 mb-5">
- <span className="font-mono text-xs" style={{ color: accentColor }}>02</span>
- <h3 className="font-mono text-[10px] uppercase tracking-[0.25em] font-bold">The authority anchor</h3>
- <div className="h-px flex-1 bg-stone-300" />
- </div>
- <div className="grid lg:grid-cols-3 gap-4">
- {[
- ['Claim', metadata.content.roadmap.authorityAnchor?.coreClaim, 'What must remain true'],
- ['Repeat', metadata.content.roadmap.authorityAnchor?.repetitionVector, 'What builds recognition'],
- ['Refuse', metadata.content.roadmap.authorityAnchor?.exclusionPrinciple, 'What protects integrity'],
- ].map(([label, value, note], index) => (
- <div key={String(label)} className="relative border border-stone-300 bg-white p-7 min-h-[220px] flex flex-col justify-between">
- <span className="absolute top-4 right-4 font-serif italic text-4xl text-stone-200">0{index + 1}</span>
- <div>
- <span className="font-mono text-[9px] uppercase tracking-[0.24em] font-bold" style={{ color: accentColor }}>{label}</span>
- <p className="font-serif text-xl md:text-2xl leading-snug mt-5 text-stone-950">{value}</p>
- </div>
- <p className="font-mono text-[8px] uppercase tracking-wider text-stone-400 mt-7">{note}</p>
- </div>
- ))}
- </div>
- </div>
-
- {metadata.content.roadmap.phases?.length > 0 && (
- <div>
- <div className="flex items-center gap-4 mb-6">
- <span className="font-mono text-xs" style={{ color: accentColor }}>03</span>
- <h3 className="font-mono text-[10px] uppercase tracking-[0.25em] font-bold">Action sequence</h3>
- <div className="h-px flex-1 bg-stone-300" />
- </div>
- <div className="relative">
- <div className="absolute top-7 left-7 right-7 h-px bg-stone-300 hidden md:block" />
- <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4 relative">
- {metadata.content.roadmap.phases.map((phase, idx) => (
- <article key={idx} className="bg-[#171717] text-stone-50 p-6 min-h-[350px] flex flex-col">
- <div className="w-12 h-12 rounded-full border border-stone-500 bg-[#171717] flex items-center justify-center font-serif italic text-xl relative z-10" style={{ color: accentColor }}>{idx + 1}</div>
- <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-stone-400 mt-7">Phase · {phase.type}</span>
- <h4 className="font-serif text-2xl leading-tight mt-3">{phase.objective}</h4>
- <p className="font-sans text-xs leading-relaxed text-stone-300 mt-5">{phase.strategicMove}</p>
- {phase.artifactOutputs?.length > 0 && (
- <div className="flex flex-wrap gap-1.5 mt-5">
- {phase.artifactOutputs.map((output, outputIndex) => (
- <span key={outputIndex} className="border border-stone-700 px-2 py-1 font-mono text-[7px] uppercase tracking-wider text-stone-300">{output}</span>
- ))}
+ {signatureTakeaways.length > 0 && (
+ <div className="hidden sm:block text-right shrink-0">
+ <span className="font-serif text-3xl md:text-4xl leading-none" style={{ color: accentColor }}>{confirmedSignatureCount}</span>
+ <span className="font-serif text-xl text-stone-400">/{signatureTakeaways.length}</span>
+ <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-stone-500 mt-1">Kept</p>
  </div>
  )}
- <div className="mt-auto pt-6 space-y-3">
- {phase.riskToIntegrity && <p className="font-mono text-[8px] leading-relaxed text-rose-300"><span className="uppercase tracking-wider">Integrity risk</span><br />{phase.riskToIntegrity}</p>}
- {phase.signalToMonitor && <p className="font-mono text-[8px] leading-relaxed text-emerald-300"><span className="uppercase tracking-wider">Watch signal</span><br />{phase.signalToMonitor}</p>}
+ </div>
+
+ {signatureTakeaways.length > 0 ? (
+ <div className="space-y-6">
+ <p className="font-serif italic text-lg md:text-xl text-stone-600 max-w-2xl leading-relaxed">
+ Mimi distilled these signatures from this issue. Confirm the ones that ring true to fold them into your profile — dismiss the ones that don&apos;t.{!user?.uid && ' Signatures are kept on this device and sync the moment you sign on.'}
+ </p>
+ <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+ {signatureTakeaways.map((card) => {
+ const status = signatureStatus[card.key];
+ const isSaving = savingSignatureKey === card.key;
+ return (
+ <article
+ key={card.key}
+ className={`relative border bg-white p-6 flex flex-col justify-between min-h-[220px] transition-all duration-300 ${status === 'dismissed' ? 'opacity-45' : ''}`}
+ style={{ borderColor: status === 'confirmed' ? accentColor : '#d6d3d1', borderLeftWidth: status === 'confirmed' ? 3 : 1 }}
+ >
+ <div>
+ <div className="flex items-center justify-between gap-2">
+ <span className="font-mono text-[9px] uppercase tracking-[0.24em] font-bold" style={{ color: accentColor }}>{card.category}</span>
+ {status === 'confirmed' && (
+ <span className="inline-flex items-center gap-1 font-mono text-[7px] uppercase tracking-wider text-stone-500">
+ <Check size={10} style={{ color: accentColor }} /> {user?.uid ? 'In profile' : 'Kept'}
+ </span>
+ )}
+ </div>
+ <p className="font-serif text-lg md:text-xl leading-snug mt-4 text-stone-950">{card.value}</p>
+ {card.note && <p className="font-mono text-[8px] uppercase tracking-wider text-stone-400 mt-4">{card.note}</p>}
+ </div>
+
+ <div className="mt-6 pt-4 border-t border-stone-200">
+ {status === 'confirmed' ? (
+ <button
+ type="button"
+ onClick={() => handleResetSignature(card)}
+ aria-label={`Remove ${card.category} from your profile`}
+ className="w-full min-h-[44px] flex items-center justify-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors"
+ >
+ {isSaving ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+ Remove
+ </button>
+ ) : status === 'dismissed' ? (
+ <button
+ type="button"
+ onClick={() => handleResetSignature(card)}
+ aria-label={`Reconsider ${card.category}`}
+ className="w-full min-h-[44px] flex items-center justify-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors"
+ >
+ <RefreshCw size={12} /> Reconsider
+ </button>
+ ) : (
+ <div className="flex items-stretch gap-2">
+ <button
+ type="button"
+ onClick={() => handleConfirmSignature(card)}
+ aria-label={`Add ${card.category} to your profile`}
+ className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 text-white font-mono text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
+ style={{ backgroundColor: accentColor }}
+ >
+ <Check size={13} strokeWidth={2.4} /> Add
+ </button>
+ <button
+ type="button"
+ onClick={() => handleDismissSignature(card)}
+ aria-label={`Dismiss ${card.category}`}
+ className="w-12 min-h-[44px] flex items-center justify-center border border-stone-300 text-stone-500 hover:text-stone-900 hover:border-stone-500 active:scale-95 transition-all"
+ >
+ <X size={14} />
+ </button>
+ </div>
+ )}
  </div>
  </article>
- ))}
+ );
+ })}
  </div>
- </div>
- </div>
- )}
-
- {metadata.content.roadmap.driftForecast && (
- <div className="border-y border-stone-400 py-8 grid md:grid-cols-[0.35fr_1fr] gap-8">
- <div>
- <span className="font-mono text-[9px] uppercase tracking-[0.28em]" style={{ color: accentColor }}>04 · Drift forecast</span>
- <h3 className="font-serif text-3xl italic mt-3">Know when the world is moving—and when to refuse it.</h3>
- </div>
- <div className="grid sm:grid-cols-2 gap-x-8 gap-y-6">
- {[
- ['Predicted shift', metadata.content.roadmap.driftForecast.predictedClusterShift],
- ['Audience evolution', metadata.content.roadmap.driftForecast.audienceEvolution],
- ['Absorption risk', metadata.content.roadmap.driftForecast.absorptionRisk],
- ['Refusal point', metadata.content.roadmap.driftForecast.refusalPoint],
- ].filter(([, value]) => value).map(([label, value]) => (
- <div key={label} className="border-l-2 pl-4" style={{ borderColor: accentColor }}>
- <span className="font-mono text-[8px] uppercase tracking-wider text-stone-500">{label}</span>
- <p className="font-sans text-sm leading-relaxed text-stone-800 mt-2">{value}</p>
- </div>
- ))}
- </div>
- </div>
- )}
- </div>
- ) : metadata.content.blueprint ? (
- <div className="grid md:grid-cols-2 gap-4">
- {Object.entries(metadata.content.blueprint).map(([key, val], i) => (
- <div key={i} className="border border-stone-300 bg-white p-7">
- <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: accentColor }}>0{i+1} · {key.replace('_', ' ')}</span>
- <p className="font-serif text-xl leading-relaxed text-stone-900 mt-4">{String(val)}</p>
- </div>
- ))}
  </div>
  ) : (
  <div className="border border-stone-300 bg-white p-10">
- <p className="font-serif text-2xl text-stone-900">{metadata.content.the_roadmap || "No architectural blueprint detected."}</p>
+ <p className="font-serif text-2xl text-stone-900">{metadata.content.the_roadmap || "No signatures distilled for this issue yet."}</p>
  </div>
  )}
  </div>

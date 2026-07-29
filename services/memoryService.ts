@@ -293,6 +293,79 @@ export const saveAskAnswerAsAtom = async (
   return atom;
 };
 
+/* ------------------------------------------------------------------ *
+ * Ghost-session signature persistence (localStorage-backed)
+ * Lets unsigned readers keep confirmed "Signature Takeaways" locally,
+ * then migrate them into their profile the moment they sign on.
+ * ------------------------------------------------------------------ */
+
+const LOCAL_SIGNATURE_KEY = 'mimi_local_signatures';
+
+/** Reads locally-stored signature atoms saved during a ghost session. */
+export function fetchLocalSignatureAtoms(): MemoryAtom[] {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_SIGNATURE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as MemoryAtom[]) : [];
+  } catch (error) {
+    console.warn('MIMI // fetchLocalSignatureAtoms failed:', error);
+    return [];
+  }
+}
+
+/** Saves a signature atom to localStorage (deduped by id). */
+export function saveLocalSignatureAtom(atom: MemoryAtom): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const existing = fetchLocalSignatureAtoms().filter((a) => a.id !== atom.id);
+    const next = [...existing, { ...atom, kind: MEMORY_ATOM_KIND }];
+    localStorage.setItem(LOCAL_SIGNATURE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+      detail: { message: 'Signature kept locally — sign on to sync it.', type: 'success' },
+    }));
+  } catch (error) {
+    console.warn('MIMI // saveLocalSignatureAtom failed:', error);
+  }
+}
+
+/** Removes a locally-stored signature atom by id. */
+export function removeLocalSignatureAtom(atomId: string): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const next = fetchLocalSignatureAtoms().filter((a) => a.id !== atomId);
+    localStorage.setItem(LOCAL_SIGNATURE_KEY, JSON.stringify(next));
+  } catch (error) {
+    console.warn('MIMI // removeLocalSignatureAtom failed:', error);
+  }
+}
+
+/**
+ * Migrates any ghost-session signatures into the signed-in user's profile.
+ * Safe to call on every sign-on; clears the local cache once synced.
+ */
+export async function migrateLocalSignaturesToProfile(userId: string): Promise<number> {
+  const local = fetchLocalSignatureAtoms();
+  if (local.length === 0) return 0;
+  let migrated = 0;
+  for (const atom of local) {
+    try {
+      await saveMemoryAtom(userId, atom);
+      migrated += 1;
+    } catch (error) {
+      console.warn('MIMI // migrateLocalSignaturesToProfile atom failed:', error);
+    }
+  }
+  if (migrated > 0 && typeof localStorage !== 'undefined') {
+    localStorage.removeItem(LOCAL_SIGNATURE_KEY);
+    window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+      detail: { message: `${migrated} signature${migrated === 1 ? '' : 's'} synced to your profile.`, type: 'success' },
+    }));
+  }
+  return migrated;
+}
+
 /** Grounding block for Studio generation — aligns with usedContextService. */
 export function memoryAtomsToContextBlock(atoms: MemoryAtom[]): string {
   if (atoms.length === 0) return '';
