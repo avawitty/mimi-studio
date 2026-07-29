@@ -17,6 +17,21 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      // Simulates an iPhone running Safari in installed-PWA (standalone) mode.
+      // The iOS PWA shell tests in e2e/ios-pwa-shell.spec.ts target this project.
+      name: 'ios-pwa',
+      use: {
+        ...devices['iPhone 14'],
+        // Emulate the display-mode:standalone media query so code paths that
+        // branch on navigator.standalone or matchMedia('(display-mode: standalone)')
+        // behave as they would on a real home-screen install.
+        launchOptions: {
+          args: ['--force-display-mode-in-flags=standalone'],
+        },
+      },
+      testMatch: '**/ios-pwa-shell.spec.ts',
+    },
   ],
   webServer: {
     command: 'npm run dev',

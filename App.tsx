@@ -797,6 +797,31 @@ const KeyBlockedBanner: React.FC = () => {
 
 import { CreditMeter } from "./components/CreditMeter";
 
+const ROUTE_PERSIST_KEY = "mimi_last_route";
+
+/**
+ * Returns true for private app routes that should be persisted for cold-launch
+ * restoration. Public share, auth, legal, and the bare root are excluded so
+ * a user who opens a shared link never "inherits" it as their next cold-launch
+ * destination.
+ */
+const isRestorableRoute = (p: string): boolean => {
+  if (!p || p === "/" || p === "") return false;
+  if (
+    p.startsWith("/s/") ||
+    p.startsWith("/@") ||
+    p.startsWith("/u/") ||
+    p.startsWith("/stacks/") ||
+    p.startsWith("/auth/") ||
+    p === "/privacy" ||
+    p === "/terms" ||
+    p === "/showcase"
+  ) {
+    return false;
+  }
+  return true;
+};
+
 const useAppRouter = () => {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -829,9 +854,32 @@ const useAppRouter = () => {
     return () => window.removeEventListener("mimi:route-request", onRouteRequest);
   }, [navigate]);
 
+  // Persist the current route for cold-launch restoration (iOS installed PWA
+  // always launches from start_url "/", so we restore the user's last private
+  // route via localStorage).
+  useEffect(() => {
+    if (isRestorableRoute(path)) {
+      try {
+        localStorage.setItem(ROUTE_PERSIST_KEY, path);
+      } catch {
+        // Storage may be restricted; silently skip.
+      }
+    }
+  }, [path]);
+
   useEffect(() => {
     if (path === "/" || path === "") {
-      navigate("/studio", { replace: true });
+      // Attempt to restore the last private route on cold launch.
+      let restoredPath = "/studio";
+      try {
+        const saved = localStorage.getItem(ROUTE_PERSIST_KEY);
+        if (saved && isRestorableRoute(saved)) {
+          restoredPath = saved;
+        }
+      } catch {
+        // Storage restricted; fall back to default.
+      }
+      navigate(restoredPath, { replace: true });
     }
   }, [navigate, path]);
 
