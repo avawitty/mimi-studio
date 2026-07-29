@@ -18,7 +18,11 @@ export default async function handler(req: any, res: any) {
   try {
     const { action, params } = await readJsonBody(req);
     const headerGeminiKey = String(req.headers["x-api-key"] || "").trim();
-    const { apiKey: gatewayKey, access } = !headerGeminiKey && getServerAiGatewayKey()
+
+    // For image generation requests, always prefer the AI Gateway when available —
+    // gateway models (e.g. openai/gpt-image-2) are faster and don't require a Gemini key.
+    const isImageAction = action === "generateContent" && isGeminiImageRequest(params);
+    const { apiKey: gatewayKey, access } = (!headerGeminiKey || isImageAction) && getServerAiGatewayKey()
       ? await resolveFundedGatewayApiKey(req, fundedGatewayCreditCost())
       : { apiKey: "", access: null };
 

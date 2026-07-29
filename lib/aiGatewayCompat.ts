@@ -283,6 +283,102 @@ const imageSizeFromAspectRatio = (aspectRatio?: string) => {
   return "1024x1024";
 };
 
+/** True for Google Gemini image models on the gateway (type: language, chat-completions path). */
+const isGatewayGeminiImageModel = (model: string) =>
+  model.startsWith("google/gemini") && model.includes("image");
+
+/**
+ * Generate an image via chat-completions for Google Gemini image models on the gateway.
+ * These models (e.g. google/gemini-3.1-flash-lite-image) are language-type models that
+ * output interleaved text + image via the /v1/chat/completions endpoint.
+ */
+const generateGatewayGeminiImageBytes = async (
+  params: any,
+  apiKey: string,
+  model: string,
+): Promise<{ base64: string; mimeType: string; model: string; prompt: string }> => {
+  const prompt = extractImagePrompt(params);
+  const aspectRatio =
+    params?.config?.aspectRatio ||
+    params?.config?.imageConfig?.aspectRatio ||
+    "1:1";
+
+  const body: Record<string, any> = {
+    model,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: prompt,
+          },
+        ],
+      },
+    ],
+    max_tokens: 4096,
+    // Request image output via modalities hint (gateway passes this through)
+    modalities: ["text", "image"],
+  };
+
+  // Pass aspect ratio as a gateway extension hint if supported
+  if (aspectRatio && aspectRatio !== "1:1") {
+    body.image_aspect_ratio = aspectRatio;
+  }
+
+  const upstream = await fetch(`${AI_GATEWAY_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const raw = await upstream.text();
+  if (!upstream.ok) {
+    throwGatewayError(upstream.status, raw, "Vercel AI Gateway Gemini image generation failed.");
+  }
+  const payload = parseJson(raw) || {};
+
+  // Parse interleaved response: look for image_url parts in the message content
+  const choice = payload?.choices?.[0] || {};
+  const content = choice?.message?.content || [];
+  const parts = Array.isArray(content) ? content : [];
+
+  for (const part of parts) {
+    if (part?.type === "image_url" && part?.image_url?.url) {
+      const dataUrl = part.image_url.url as string;
+      const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        return { base64: match[2], mimeType: match[1], model, prompt };
+      }
+    }
+    // Some gateways return inline_data style
+    if (part?.type === "inline_data" && part?.inline_data?.data) {
+      return {
+        base64: part.inline_data.data,
+        mimeType: part.inline_data.mime_type || "image/png",
+        model,
+        prompt,
+      };
+    }
+  }
+
+  // Fallback: check if the message content string is a data URL
+  if (typeof content === "string" && content.startsWith("data:")) {
+    const match = content.match(/^data:([^;]+);base64,(.+)$/);
+    if (match) {
+      return { base64: match[2], mimeType: match[1], model, prompt };
+    }
+  }
+
+  throw Object.assign(new Error("Vercel AI Gateway Gemini image model returned no image data."), {
+    status: 502,
+    code: "NO_IMAGE_RETURNED",
+  });
+};
+
 const generateGatewayImageBytes = async (
   params: any,
   apiKey: string,
@@ -293,6 +389,12 @@ const generateGatewayImageBytes = async (
     params?.config?.imageConfig?.aspectRatio ||
     "1:1";
   const model = modelFor("image", "gateway");
+
+  // Google Gemini image models on the gateway use chat completions, not /v1/images/generations
+  if (isGatewayGeminiImageModel(model)) {
+    const result = await generateGatewayGeminiImageBytes(params, apiKey, model);
+    return { base64: result.base64, model, prompt };
+  }
 
   const upstream = await fetch(`${AI_GATEWAY_BASE_URL}/images/generations`, {
     method: "POST",

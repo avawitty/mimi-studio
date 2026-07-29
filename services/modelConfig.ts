@@ -66,8 +66,8 @@ export const MODELS: Record<LLMProviderId, RoleMap> = {
   gateway: {
     textFast:  env('AI_GATEWAY_TEXT_FAST_MODEL',  'openai/gpt-5.6-luna'),
     textDeep:  env('AI_GATEWAY_MODEL',            'openai/gpt-5.6-luna'),
-    image:     env('AI_GATEWAY_IMAGE_MODEL',      'openai/gpt-image-1.5'),
-    imageEdit: env('AI_GATEWAY_IMAGE_EDIT_MODEL', 'openai/gpt-image-1.5'),
+    image:     env('AI_GATEWAY_IMAGE_MODEL',      'openai/gpt-image-2'),
+    imageEdit: env('AI_GATEWAY_IMAGE_EDIT_MODEL', 'openai/gpt-image-2'),
     video:     env('AI_GATEWAY_VIDEO_MODEL',      'google/veo-3.1-fast-generate-001'),
     embedding: env('AI_GATEWAY_EMBEDDING_MODEL',  'openai/text-embedding-3-small'),
   },
