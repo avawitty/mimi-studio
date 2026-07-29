@@ -4100,7 +4100,7 @@ const REPORT_FORMAT_INSTRUCTIONS: Record<ReportCitationFormat, string> = {
 
 export async function generateBrandIntakeReport(brandName: string, vibeDescription: string, profile: any, reportFormat: ReportCitationFormat = 'editorial'): Promise<any> {
   return withResilience(async (ai) => {
-    const formatInstruction = REPORT_FORMAT_INSTRUCTIONS[reportFormat];
+    const formatInstruction = REPORT_FORMAT_INSTRUCTIONS[reportFormat] ?? REPORT_FORMAT_INSTRUCTIONS['editorial'];
     const prompt = `
       Analyze this brand/project:
       Name: "${brandName}"

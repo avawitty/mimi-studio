@@ -169,6 +169,7 @@ export const BrandIntakeView: React.FC = () => {
                         key={opt.value}
                         type="button"
                         onClick={() => setReportFormat(opt.value)}
+                        aria-pressed={reportFormat === opt.value}
                         className={`p-3 text-left border transition-colors ${reportFormat === opt.value ? 'bg-black text-white border-black' : 'bg-white border-[#e5e5e5] hover:border-black'}`}
                       >
                         <span className="block font-mono text-[9px] uppercase tracking-widest font-bold mb-1">{opt.label}</span>
