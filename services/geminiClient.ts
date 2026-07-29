@@ -47,6 +47,23 @@ const handleProxyError = async (res: Response): Promise<Error> => {
   return err;
 };
 
+
+const buildGeminiProxyHeaders = async (key?: string): Promise<Record<string, string>> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  if (key) {
+    headers['x-api-key'] = key;
+    return headers;
+  }
+  try {
+    const { auth } = await import('./firebaseInit');
+    const token = await auth.currentUser?.getIdToken();
+    if (token) headers['x-user-token'] = `Bearer ${token}`;
+  } catch {}
+  return headers;
+};
+
 const safeJsonResponse = async (res: Response): Promise<any> => {
   const contentType = res.headers.get('content-type') || '';
   const text = await res.text();
@@ -89,22 +106,15 @@ export const getClient = (apiKeyOverride?: string, excludeKeys: string[] = []) =
         key = availableKeys[0];
       }
     }
-    if (!key) {
-      key = 'AQ.Ab8RN6Ki0g5jYnuc_zbA7f35hdldLE4Wuj3czw_cQxxmivstAQ';
-    }
     
-    // Fallback real SDK client for non-models endpoints like chats/live that run directly over WebSocket
-    const realGenAi = new GoogleGenAI({ apiKey: key });
+    // Fallback real SDK client for non-models endpoints like chats/live that run directly over WebSocket.
+    // Text/image generation without a BYOK key is routed through Mimi's funded Gateway proxy below.
+    const realGenAi = new GoogleGenAI({ apiKey: key || 'unused' });
  
     const client = {
       models: {
         generateContent: async (params: any) => {
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json'
-          };
-          if (key) {
-            headers['x-api-key'] = key;
-          }
+          const headers = await buildGeminiProxyHeaders(key);
           const res = await window.fetch('/api/proxy/gemini', {
             method: 'POST',
             headers,
@@ -119,12 +129,7 @@ export const getClient = (apiKeyOverride?: string, excludeKeys: string[] = []) =
           return await safeJsonResponse(res);
         },
         embedContent: async (params: any) => {
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json'
-          };
-          if (key) {
-            headers['x-api-key'] = key;
-          }
+          const headers = await buildGeminiProxyHeaders(key);
           const res = await window.fetch('/api/proxy/gemini', {
             method: 'POST',
             headers,
@@ -139,12 +144,7 @@ export const getClient = (apiKeyOverride?: string, excludeKeys: string[] = []) =
           return await safeJsonResponse(res);
         },
         generateImages: async (params: any) => {
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json'
-          };
-          if (key) {
-            headers['x-api-key'] = key;
-          }
+          const headers = await buildGeminiProxyHeaders(key);
           const res = await window.fetch('/api/proxy/gemini', {
             method: 'POST',
             headers,
@@ -159,12 +159,7 @@ export const getClient = (apiKeyOverride?: string, excludeKeys: string[] = []) =
           return await safeJsonResponse(res);
         },
         generateVideos: async (params: any) => {
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json'
-          };
-          if (key) {
-            headers['x-api-key'] = key;
-          }
+          const headers = await buildGeminiProxyHeaders(key);
           const res = await window.fetch('/api/proxy/gemini', {
             method: 'POST',
             headers,

@@ -6,6 +6,7 @@ import React, {
   Suspense,
   lazy,
 } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { ThimbleDashboard } from "./components/ThimbleDashboard";
 import { ArchitectureView } from "./components/ArchitectureView";
 import { CommandDrawer } from "./components/CommandDrawer";
@@ -2396,6 +2397,7 @@ export const App: React.FC = () => {
         </motion.div>
       )}
       </div>
+      <Analytics />
     </IntelligenceGateContext.Provider>
   );
 };
