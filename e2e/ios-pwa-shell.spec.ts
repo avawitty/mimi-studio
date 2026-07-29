@@ -306,9 +306,19 @@ test.describe("Route restoration", () => {
     // Pre-seed localStorage with a saved route.
     await page.goto("/studio");
     await page.waitForLoadState("domcontentloaded");
+    await expect
+      .poll(async () =>
+        page.evaluate(() => localStorage.getItem("mimi_last_route")),
+      )
+      .toBe("/studio");
     await page.evaluate(() => {
       localStorage.setItem("mimi_last_route", "/oracle");
     });
+    await expect
+      .poll(async () =>
+        page.evaluate(() => localStorage.getItem("mimi_last_route")),
+      )
+      .toBe("/oracle");
 
     // Cold launch: navigate to bare "/".
     await page.goto("/");
@@ -322,6 +332,11 @@ test.describe("Route restoration", () => {
   }) => {
     await page.goto("/studio");
     await page.waitForLoadState("domcontentloaded");
+    await expect
+      .poll(async () =>
+        page.evaluate(() => localStorage.getItem("mimi_last_route")),
+      )
+      .toBe("/studio");
     await page.evaluate(() => localStorage.removeItem("mimi_last_route"));
 
     await page.goto("/");
@@ -418,6 +433,11 @@ test.describe("Route restoration", () => {
     for (const savedRoute of invalidSavedRoutes) {
       await page.goto("/studio");
       await page.waitForLoadState("domcontentloaded");
+      await expect
+        .poll(async () =>
+          page.evaluate(() => localStorage.getItem("mimi_last_route")),
+        )
+        .toBe("/studio");
       await page.evaluate((value) => {
         localStorage.setItem("mimi_last_route", value);
       }, savedRoute);
