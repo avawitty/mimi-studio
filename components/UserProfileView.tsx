@@ -34,6 +34,7 @@ import { TheWard } from "./TheWard";
 import { ConnectionsManager } from "./ConnectionsManager";
 import { ApiKeyRing } from "./ApiKeyRing";
 import { ThePort } from "./ThePort";
+import { AddToHomeScreenBanner } from "./AddToHomeScreenBanner";
 import { getStoredKey, validateKey, clearKey, storeKey } from "../services/apiKeyService";
 import { CheckCircle2 as CheckCircle2Icon, XCircle as XCircleIcon } from "lucide-react";
 import { useIntelligenceGate } from "../App";
