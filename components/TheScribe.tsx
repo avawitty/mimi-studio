@@ -68,7 +68,8 @@ const ENTITY_CONFIG: ReadonlyArray<{
 ] as const;
 
 export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mimi', initialIntent = '' }) => {
-  const [activeEntity, setActiveEntity] = useState<EntityId>(initialTab);
+  const initialEntity: EntityId = ENTITY_CONFIG.some(({ id }) => id === initialTab) ? initialTab : 'mimi';
+  const [activeEntity, setActiveEntity] = useState<EntityId>(initialEntity);
   const [userNotes, setUserNotes] = useState('');
   const [aiTranscript, setAiTranscript] = useState('');
   const [activeCaptureTab, setActiveCaptureTab] = useState<'notes' | 'sketch' | 'context'>('notes');
@@ -229,7 +230,7 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
           role: "Structural Core",
           voice: "Charon",
           instruction: ENGINE_SYSTEM_INSTRUCTION,
-          theme: 'cyrus' as const
+          theme: 'mimi' as const
         };
       case 'synthesis':
         return {
