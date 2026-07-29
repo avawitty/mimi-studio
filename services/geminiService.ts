@@ -4089,15 +4089,25 @@ export async function generateAestheticSiblings(userTaste: any): Promise<{ name:
   });
 }
 
-export async function generateBrandIntakeReport(brandName: string, vibeDescription: string, profile: any): Promise<any> {
+export type ReportCitationFormat = 'editorial' | 'mla' | 'apa' | 'chicago';
+
+const REPORT_FORMAT_INSTRUCTIONS: Record<ReportCitationFormat, string> = {
+  editorial: "Write in an evocative, high-concept editorial register. Use sensory and structural descriptors. Avoid academic hedging. Voice should feel like a luxury brand strategist meets cultural theorist — precise, confident, slightly poetic.",
+  mla: "Write in MLA style: humanities-grounded, evidence-led prose. Frame psychographic and archetype analysis as cultural criticism. Use present tense for brand description. Attribute aesthetic movements to their intellectual lineage (e.g., 'As Debord observed...' or 'Drawing from Bauhaus principles...'). Include parenthetical in-text references where relevant.",
+  apa: "Write in APA style: behavioral and research-oriented framing. Present findings as empirical observations about consumer psychology and brand perception. Use passive constructions where appropriate ('It was observed that...', 'The data suggest...'). Frame archetypes as psychographic segments with behavioral drivers.",
+  chicago: "Write in Chicago/Turabian style: archival, historically contextualised prose. Situate the brand within a specific cultural and design-historical moment. Use footnote-style commentary indicators (marked as [fn1], [fn2]) to suggest reference sources. Employ a measured, scholarly editorial tone typical of art history or design criticism.",
+};
+
+export async function generateBrandIntakeReport(brandName: string, vibeDescription: string, profile: any, reportFormat: ReportCitationFormat = 'editorial'): Promise<any> {
   return withResilience(async (ai) => {
+    const formatInstruction = REPORT_FORMAT_INSTRUCTIONS[reportFormat] ?? REPORT_FORMAT_INSTRUCTIONS['editorial'];
     const prompt = `
       Analyze this brand/project:
       Name: "${brandName}"
       Description / Vibe: "${vibeDescription}"
       User Profile Context: ${JSON.stringify(profile?.tasteProfile || {})}
 
-      Generate a high-concept, highly strategic, editorial-grade Aesthetic Intelligence Report. Use elite, structural, sensory, design, and psychological descriptors. Avoid cliché AI hype words.
+      Generate a high-concept, highly strategic Aesthetic Intelligence Report. ${formatInstruction} Avoid cliché AI hype words.
 
       Output JSON with exactly these keys:
       {
