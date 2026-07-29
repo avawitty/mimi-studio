@@ -31,8 +31,8 @@ export default async function handler(req: any, res: any) {
             });
         if (access) {
           await chargeMimiFundedGateway(access, {
-            model: result?.model,
-            usage: result?.usage,
+            model: (result as any)?.modelVersion ?? (result as any)?.model,
+            usage: (result as any)?.usageMetadata ?? (result as any)?.usage,
             feature: "gemini-compat-content",
           });
         }
@@ -41,14 +41,14 @@ export default async function handler(req: any, res: any) {
       if (action === "embedContent") {
         const result = await embedGeminiContentViaGateway(params, gatewayKey);
         if (access) {
-          await chargeMimiFundedGateway(access, { model: result?.model, usage: result?.usage, feature: "gemini-compat-embedding" });
+          await chargeMimiFundedGateway(access, { model: (result as any)?.modelVersion ?? (result as any)?.model, usage: (result as any)?.usageMetadata ?? (result as any)?.usage, feature: "gemini-compat-embedding" });
         }
         return sendJson(res, 200, result);
       }
       if (action === "generateImages") {
         const result = await generateGeminiImagesViaGateway(params, gatewayKey);
         if (access) {
-          await chargeMimiFundedGateway(access, { model: result?.model, usage: result?.usage, feature: "gemini-compat-image" });
+          await chargeMimiFundedGateway(access, { model: (result as any)?.modelVersion ?? (result as any)?.model, usage: (result as any)?.usageMetadata ?? (result as any)?.usage, feature: "gemini-compat-image" });
         }
         return sendJson(res, 200, result);
       }
