@@ -72,6 +72,31 @@ const emptyXml = buildRssXml({
 assert(emptyXml.includes("<channel>"), "empty feed still valid channel");
 assert(!emptyXml.includes("<item>"), "empty feed has no items");
 
+// Recency helpers: publishedAt must beat older timestamp when ranking feed items.
+{
+  const newerPublish = mapZineToRssItem(
+    {
+      id: "zine_new_pub",
+      title: "Newly public old draft",
+      publishedAt: 2_000,
+      timestamp: 100,
+    },
+    getZineCanonicalUrl("zine_new_pub", base),
+  );
+  const olderFresh = mapZineToRssItem(
+    {
+      id: "zine_old",
+      title: "Older creation",
+      timestamp: 1_500,
+    },
+    getZineCanonicalUrl("zine_old", base),
+  );
+  const ranked = [olderFresh, newerPublish].sort(
+    (a, b) => b.pubDateMs - a.pubDateMs,
+  );
+  assert(ranked[0].id === "zine_new_pub", "publishedAt wins feed recency over older timestamp");
+}
+
 if (failures > 0) {
   console.error(`\n${failures} assertion(s) failed`);
   process.exit(1);
