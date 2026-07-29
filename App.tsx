@@ -66,7 +66,6 @@ import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useTactileAudio } from "./hooks/useTactileAudio";
 
 // Lazy load views to reduce initial request count and prevent 429 errors
-import { MobileNavigation } from "./components/MobileNavigation";
 import { FloatingDialNav } from "./components/FloatingDialNav";
 import { MobileProfileModal } from "./components/MobileProfileModal";
 const ArchiveCloudNebula = lazy(
@@ -2446,21 +2445,14 @@ export const App: React.FC = () => {
               </Suspense>
             </motion.div>
           </AnimatePresence>
-          <MobileNavigation
-            currentView={viewMode}
-            setViewMode={setViewMode}
-            profile={profile}
-            isGenerating={appState === AppState.THINKING}
-          />
-          {/* PROTOTYPE: floating dial nav — activate with ?dialproto=1. Remove after sign-off. */}
-          {typeof window !== "undefined" &&
-            new URLSearchParams(window.location.search).get("dialproto") === "1" && (
-              <FloatingDialNav
-                currentView={viewMode}
-                onNavigate={setViewMode}
-                onOpenIndex={() => setIsNavOpen(true)}
-              />
-            )}
+          {/* Primary mobile nav: draggable floating dial (replaces the bottom pill bar). */}
+          <div className="md:hidden">
+            <FloatingDialNav
+              currentView={viewMode}
+              onNavigate={setViewMode}
+              onOpenIndex={() => setIsNavOpen(true)}
+            />
+          </div>
           <SelectionMemoryCapture />
           <CookieConsentBanner />
         </main>

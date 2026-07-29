@@ -62,11 +62,12 @@ export const FloatingDialNav: React.FC<FloatingDialNavProps> = ({
   const [ready, setReady] = useState(false);
   const draggingRef = useRef(false);
 
-  // Restore last position (default: bottom-right, above the safe area).
+  // Restore last position (default: mid-right edge, like iOS AssistiveTouch,
+  // so it clears both the top bar and the studio's fixed bottom action bars).
   useEffect(() => {
     const fallback = {
-      x: window.innerWidth - DIAL_SIZE - 20,
-      y: window.innerHeight - DIAL_SIZE - 32,
+      x: window.innerWidth - DIAL_SIZE - 16,
+      y: Math.round(window.innerHeight * 0.62),
     };
     try {
       const saved = localStorage.getItem(storageKey);
