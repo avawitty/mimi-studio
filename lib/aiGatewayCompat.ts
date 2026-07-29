@@ -417,3 +417,97 @@ export const isGeminiImageRequest = (params: any) => {
   return model.includes("image") || Array.isArray(params?.config?.responseModalities) &&
     params.config.responseModalities.some((value: any) => String(value).toLowerCase().includes("image"));
 };
+
+export const isGeminiVideoRequest = (params: any) => {
+  const model = String(params?.model || "").toLowerCase();
+  return model.includes("veo") || model.includes("video");
+};
+
+/**
+ * Generate a video via the Vercel AI Gateway using the /v1/videos/generations endpoint.
+ * Returns a Gemini-compat shape so existing callers can consume it unchanged.
+ */
+export const generateGeminiVideoViaGateway = async (
+  params: any,
+  apiKey: string,
+): Promise<{ done: boolean; response?: any; _gatewayJobId?: string }> => {
+  const model = modelFor("video", "gateway");
+  const prompt = String(params?.prompt || extractImagePrompt(params) || "");
+  const aspectRatio = params?.config?.aspectRatio || "16:9";
+  const imageBytes = params?.image?.imageBytes || null;
+  const imageMimeType = params?.image?.mimeType || "image/jpeg";
+
+  const body: Record<string, any> = {
+    model,
+    prompt,
+    aspect_ratio: aspectRatio,
+    duration_seconds: 5,
+    n: 1,
+  };
+
+  if (imageBytes) {
+    body.image = { b64_json: imageBytes, mime_type: imageMimeType };
+  }
+
+  const upstream = await fetch(`${AI_GATEWAY_BASE_URL}/videos/generations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const raw = await upstream.text();
+  if (!upstream.ok) {
+    throwGatewayError(upstream.status, raw, "Vercel AI Gateway video generation failed.");
+  }
+  const payload = parseJson(raw) || {};
+
+  // If the gateway returns a job ID (async), surface it; otherwise treat as done
+  const jobId = payload?.id || payload?.jobId || "";
+  const videoUrl = payload?.data?.[0]?.url || payload?.url || "";
+
+  return {
+    done: Boolean(videoUrl),
+    _gatewayJobId: jobId,
+    response: videoUrl
+      ? {
+          generatedVideos: [
+            {
+              video: { uri: videoUrl, mimeType: "video/mp4" },
+            },
+          ],
+          provider: "vercel-ai-gateway",
+          model,
+        }
+      : undefined,
+  };
+};
+
+/**
+ * Poll the AI Gateway for an async video job result.
+ */
+export const pollGatewayVideoOperation = async (
+  jobId: string,
+  apiKey: string,
+): Promise<{ done: boolean; response?: any }> => {
+  const upstream = await fetch(`${AI_GATEWAY_BASE_URL}/videos/generations/${jobId}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  const raw = await upstream.text();
+  if (!upstream.ok) {
+    throwGatewayError(upstream.status, raw, "Vercel AI Gateway video poll failed.");
+  }
+  const payload = parseJson(raw) || {};
+  const videoUrl = payload?.data?.[0]?.url || payload?.url || "";
+  return {
+    done: Boolean(videoUrl) || payload?.status === "succeeded",
+    response: videoUrl
+      ? {
+          generatedVideos: [{ video: { uri: videoUrl, mimeType: "video/mp4" } }],
+          provider: "vercel-ai-gateway",
+        }
+      : undefined,
+  };
+};

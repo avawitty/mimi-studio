@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { FileAudio, Loader2, Play, Sparkles, Upload, X } from 'lucide-react';
 import { getClient } from '../services/geminiClient';
 import { GoogleGenAI } from '@google/genai';
+import { modelFor } from '../services/modelConfig';
 
 export const DarkroomTranscription: React.FC = () => {
  const [file, setFile] = useState<{ data: string; mimeType: string; name: string } | null>(null);
@@ -41,7 +42,7 @@ export const DarkroomTranscription: React.FC = () => {
  const prompt = `Please provide a highly accurate transcription of this audio/video file. Include speaker labels if there are multiple speakers, and note any significant background sounds or music in brackets.`;
 
  const response = await ai.models.generateContent({
- model: 'gemini-3.5-flash',
+ model: modelFor('textFast', 'gemini'),
  contents: {
  parts: [
  { inlineData: { data: base64Data, mimeType: file.mimeType } },

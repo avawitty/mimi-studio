@@ -88,19 +88,19 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
 
   return (
     <div className="archive-chamber flex flex-col h-full min-h-0">
-      <header className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${compactHeader ? 'py-2' : 'py-3 md:py-4'}`}>
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
+      <header className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${compactHeader ? 'py-2' : 'py-2 md:py-4'}`}>
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-2 md:gap-3">
           <div className="min-w-0">
             {!compactHeader ? (
-              <p className="font-mono text-[8px] uppercase tracking-[0.35em] archive-text-muted font-black">
+              <p className="font-mono text-[8px] uppercase tracking-[0.35em] archive-text-muted font-black hidden md:block">
                 {module.engine}
               </p>
             ) : null}
-            <h1 className={`font-serif italic archive-text-ink tracking-tight ${compactHeader ? 'text-lg' : 'text-xl md:text-2xl'}`}>
+            <h1 className={`font-serif italic archive-text-ink tracking-tight ${compactHeader ? 'text-lg' : 'text-base md:text-2xl'}`}>
               {module.name}
             </h1>
             {!compactHeader ? (
-              <p className="font-sans text-[10px] archive-text-muted mt-1 max-w-2xl leading-relaxed">
+              <p className="font-sans text-[10px] archive-text-muted mt-1 max-w-2xl leading-relaxed hidden md:block">
                 {headerNote ?? module.userFlow}
               </p>
             ) : null}
@@ -127,7 +127,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
         {!compactHeader ? (
         <nav
           aria-label="Workflow"
-          className="mt-4 flex flex-wrap items-center gap-1 md:gap-2"
+          className="mt-2 md:mt-4 flex flex-wrap items-center gap-1 md:gap-2"
         >
           {workflowSteps.map((step, index) => {
             const isActive = step === activeWorkflowStep;
