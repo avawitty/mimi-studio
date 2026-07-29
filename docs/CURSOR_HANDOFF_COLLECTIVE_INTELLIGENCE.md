@@ -81,7 +81,7 @@ Public artifact
 | **Mesopic Lens** | Weak-signal perception | Dim correspondences before they become trends |
 | **Starry-Eyed** | Mesopic mode | Constellation of signals not yet bright enough to call a trend |
 | **Shadow Fields** | Mesopic mode | Patterns gathering outside the center of attention |
-| **Forecast** | Trajectory reports | Evidence-backed cultural scenarios over time |
+| **Forecast** | Trajectory / research-API projections | Forward scenarios from live research providers + observed baselines + RSS |
 | **Scry** | Research + source gathering | Answer across approved memory and current sources — layers kept distinct |
 | **Tailor** | Personal evidence → approved taste knowledge | Private by default; never auto-enters collective analytics |
 
@@ -109,7 +109,7 @@ The Observatory preserves the longer record
 - **Mesopic Lens** — Twilight vision for the collective archive.
 - **Starry-Eyed** — A constellation of signals not yet bright enough to call a trend.
 - **Shadow Fields** — Patterns gathering outside the center of attention.
-- **Forecast** — Evidence-backed trajectories for motifs, inquiries, and cultural movement.
+- **Forecast** — Evidence-backed trajectories from research APIs, RSS, and observed Mean Median Mode baselines.
 - **Scry** — Research across approved memory and current sources.
 - **Tailor** — Personal evidence transformed into user-approved knowledge.
 
@@ -169,6 +169,81 @@ interface CentralTendencyProfile {
 5. Below evidence thresholds: return `insufficient_evidence` — do not invent a mood.
 6. Mesopic Lens may surface low-volume candidates, but Mean Median Mode only promotes them into the main readout when central-tendency thresholds are met.
 
+### Forecast = research-API projection layer (locked architecture)
+
+**Best hypothetical architecture (confirmed from existing `TheForecast` + `researchService` shape):**
+
+| Chamber | Time orientation | Primary inputs | Job |
+| --- | --- | --- | --- |
+| **Mean Median Mode** | Present | Consented public Mimi signals (zines, tags, inquiries, forms) | Observe — return mean / median / mode / summation |
+| **Forecast** | Forward | Research APIs + RSS + Mean Median Mode aggregates + personal/brand scope | Project — return trajectory hypotheses with citations |
+| **Scry** | Query-time | Personal memory + web + reading + shadow | Gather evidence for a question |
+| **Mesopic Lens** | Early / faint | Low-volume aggregates before they clear central-tendency thresholds | Detect weak structure |
+
+Do **not** put research-API trend projection inside Mean Median Mode.  
+Do **not** pretend Forecast’s overview weather/drift panels are Mean Median Mode.
+
+#### What already exists (use as the Forecast spine)
+
+Inspected in-repo and matching uploaded production bundles:
+
+- `components/TheForecast.tsx` — scopes (`personal` / `company`), vectors (`overview` / `content` / `culture`), Content Forecasting UI that already expects provider-labeled synthesis + trends + sourced citations.
+- `services/researchService.ts` — provider-neutral return shape:
+
+```ts
+interface ResearchSynthesisResponse {
+  synthesis: string;
+  trends: ForecastTrend[]; // format, velocity, score, analysis, sources[]
+  provider: string;
+}
+```
+
+Provider candidates already sketched in that adapter: Exa, Perplexity, Tavily, ThinkingLabs.
+
+#### What is currently costume (must be repaired, not celebrated)
+
+- `fetchContentForecast` returns **simulated** provider payloads keyed off whether an API key exists — not live research.
+- Overview **Drift Probability** falls back to `Math.floor(Math.random() * 30 + 10)`.
+- Cultural Shifts vector is hard-coded copy (“Post-Authenticity”, “Memetic Velocity: High”).
+- Trend `score` / `credibility` in mocks are invented.
+
+#### Correct Forecast contract going forward
+
+```
+Mean Median Mode profiles (observed)
+        +
+RSS freshness spine (approved feeds)
+        +
+ONE live research provider (Exa or You.com initially; others feature-flagged)
+        +
+optional personal Thimble / Brand OS scope
+        ↓
+ForecastReport {
+  status: success | partial | empty | failed | speculative
+  observed: CentralTendencyProfile[]      // from Mean Median Mode
+  external: ResearchSynthesisResponse     // real provider, schema-validated
+  trajectories: TrajectoryHypothesis[]    // model-interpreted, labeled
+  contradictions: EvidenceItem[]
+  evidenceWindow / source diversity / methodology / what-might-be-missing
+}
+```
+
+Rules:
+
+1. Research APIs belong to **Forecast** (and secondarily Scry), not to Mean Median Mode.
+2. Forecast may *consume* Mean Median Mode as the observed baseline it projects from.
+3. Personal vs Brand OS scope stays on Forecast (already in UI) — Mean Median Mode stays collective/anonymous.
+4. Replace simulated `fetchContentForecast` with a real adapter + honest empty/partial states.
+5. Velocity labels (`Surging` / `Rising` / `Decaying`) must derive from measured change or provider fields — never hardcoded mock scores presented as live telemetry.
+6. Cartesian/chart surfaces (Recharts bundle context) may visualize Forecast trajectories and Mean Median Mode distributions, but charts must bind to real series or show empty states — no decorative “live” bars.
+
+#### Product distinction (one line each)
+
+- **Mean Median Mode:** What the consented collective *is doing* right now, statistically.
+- **Forecast:** What research APIs + observed baselines suggest *may be gathering force* next — with receipts.
+- **Scry:** Answer *this* question across memory and sources.
+- **Mesopic Lens:** Notice the faint pattern before it clears the mean/median/mode bar.
+
 ### Proscenium social vocabulary
 
 | Conventional | Mimi term | Meaning |
@@ -217,7 +292,9 @@ P0 risks already identified in review — verify with code before changing:
 | Search / discovery | One of You.com **or** Exa (Exa for semantic adjacency; You.com for broad current research) |
 | Extraction / scheduled observation | Apify — not default Scry search |
 | Synthesis | Existing model gateway (OpenAI/Gemini/Vercel) — interprets evidence; is not the evidence |
-| Freshness | **RSS/Atom first** for Forecast spine |
+| Freshness | **RSS/Atom first** as Forecast temporal spine |
+| Projection / research APIs | **Forecast only** — reuse `ResearchSynthesisResponse`; one live provider first (Exa or You.com); others flagged |
+| Collective present-tense stats | **Mean Median Mode only** — no research-API cosplay inside the dashboard |
 | Reject for now | Extra Keychain entries without adapters, health checks, consuming workflows, error states, privacy docs |
 
 ---
@@ -235,7 +312,7 @@ Run in order. Each: inspect → evidence → narrowly scoped change. Extend exis
 | 5 | Connector readiness | `docs/CONNECTOR_READINESS.md` | Docs |
 | 6 | Provider adapter | `ResearchProvider` + one production adapter + feature flags + contract tests | Yes |
 | 7 | Apify correctly | Proposal only: 3 actor workflows; no crawl without allowlists/limits/provenance | Proposal |
-| 8 | Forecast from evidence | `docs/FORECAST_METRIC_DICTIONARY.md`; remove random metrics; one honest example | Contract + example |
+| 8 | Forecast from evidence | `docs/FORECAST_METRIC_DICTIONARY.md`; replace simulated `fetchContentForecast` with one live provider; remove random drift; wire Mean Median Mode baselines into ForecastReport; one honest example | Contract + adapter + example |
 | 9 | Proscenium integrity | `docs/PROSCENIUM_INTEGRITY_AUDIT.md` + rules model + backlog | No rename/copy this pass |
 | 10 | Release tribunal | Run verify/lint/build/e2e; `RELEASE_TRIBUNAL.md`; SHIP / SHIP WITH LIMITATIONS / DO NOT SHIP | Fix real failures only |
 
@@ -325,9 +402,16 @@ Weak-signal analysis + Starry-Eyed + Shadow Fields; recommend primary UI. Never 
 
 Approved feeds → scheduled fetch → normalize → dedupe → store → extract → Forecast evidence. Small curated set; SSRF/allowlist; server-side only.
 
-### Phase 8 — Forecast
+### Phase 8 — Forecast (research-API projection chamber)
 
-One evidence-backed report (aggregates + RSS + counters + uncertainty). No forecast below thresholds.
+Harden the existing Forecast spine (`TheForecast.tsx` + `researchService.ts`):
+
+- one live research provider → real `ResearchSynthesisResponse`
+- consume Mean Median Mode `CentralTendencyProfile[]` as observed baseline
+- RSS signals as freshness spine
+- remove random drift / hard-coded cultural shifts presented as live
+- one evidence-backed `ForecastReport` with contradictions + uncertainty
+- no forecast below thresholds; speculative mode labeled if used
 
 ---
 
