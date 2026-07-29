@@ -153,9 +153,7 @@ test.describe("Navigation", () => {
         new CustomEvent("mimi:route-request", { detail: { path: "/oracle" } }),
       );
     });
-    await page.waitForFunction(
-      () => window.location.pathname === "/oracle",
-    );
+    await page.waitForURL((url) => url.pathname === "/oracle");
     expect(new URL(page.url()).pathname).toBe("/oracle");
   });
 });
@@ -319,7 +317,7 @@ test.describe("Route restoration", () => {
 
     // Cold launch: navigate to bare "/".
     await page.goto("/");
-    await page.waitForURL((url) => url.pathname !== "/");
+    await page.waitForURL((url) => url.pathname === "/oracle");
 
     expect(new URL(page.url()).pathname).toBe("/oracle");
   });
@@ -329,6 +327,11 @@ test.describe("Route restoration", () => {
   }) => {
     await page.goto("/studio");
     await page.waitForLoadState("domcontentloaded");
+    await expect
+      .poll(async () =>
+        page.evaluate(() => localStorage.getItem("mimi_last_route")),
+      )
+      .toBe("/studio");
     await page.evaluate(() => localStorage.removeItem("mimi_last_route"));
 
     await page.goto("/");
@@ -370,11 +373,72 @@ test.describe("Route restoration", () => {
     });
 
     await page.goto("/auth/action?mode=signIn&oobCode=abc");
-    await page.waitForURL((url) => !url.pathname.startsWith("/auth/action"));
+    await page.waitForLoadState("domcontentloaded");
+    await expect
+      .poll(async () => {
+        try {
+          return await page.evaluate(() =>
+            localStorage.getItem("mimi_last_route"),
+          );
+        } catch {
+          return null;
+        }
+      })
+      .toBe("/studio");
 
     const saved = await page.evaluate(() =>
       localStorage.getItem("mimi_last_route"),
     );
     expect(saved).toBe("/studio");
+  });
+
+  test("checkout callback routes are never saved as the last private route", async ({
+    page,
+  }) => {
+    await page.goto("/studio");
+    await page.waitForLoadState("domcontentloaded");
+    await page.evaluate(() => {
+      localStorage.setItem("mimi_last_route", "/studio");
+    });
+
+    await page.goto("/success?checkout=success&plan=core&interval=month");
+    await page.waitForLoadState("domcontentloaded");
+    await waitForAnimationFrames(page);
+
+    const saved = await page.evaluate(() =>
+      localStorage.getItem("mimi_last_route"),
+    );
+    expect(saved).toBe("/studio");
+  });
+
+  test("cold launch ignores malformed or unknown saved routes", async ({
+    page,
+  }) => {
+    const invalidSavedRoutes = [
+      "/success",
+      "//evil.example/path",
+      "javascript:alert(1)",
+      "data:text/html,<h1>x</h1>",
+      "vbscript:msgbox(1)",
+      "file:///tmp/mimi-route",
+    ];
+
+    for (const savedRoute of invalidSavedRoutes) {
+      await page.goto("/studio");
+      await page.waitForLoadState("domcontentloaded");
+      await expect
+        .poll(async () =>
+          page.evaluate(() => localStorage.getItem("mimi_last_route")),
+        )
+        .toBe("/studio");
+      await page.evaluate((value) => {
+        localStorage.setItem("mimi_last_route", value);
+      }, savedRoute);
+
+      await page.goto("/");
+      await page.waitForURL((url) => url.pathname !== "/");
+
+      expect(new URL(page.url()).pathname).toBe("/studio");
+    }
   });
 });
