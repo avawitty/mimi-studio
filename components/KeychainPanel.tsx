@@ -102,7 +102,7 @@ export const KeychainPanel: React.FC = () => {
             Keys live in your browser's LocalStorage only — never stored on Firebase or transmitted to third parties
           </p>
         </div>
-        <span className="text-[10px] uppercase tracking-widest font-mono px-3 py-1 border border-nous-border rounded-none text-nous-subtle">
+        <span className="text-[10px] uppercase tracking-widest font-mono px-3 py-1 border border-nous-border rounded-nous-sm text-nous-subtle">
           Vault Secure
         </span>
       </div>
@@ -120,7 +120,7 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-mono text-[9px] uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-warning/40 text-warning font-mono text-[9px] uppercase tracking-wider"
                   >
                     <Loader2 size={10} className="animate-spin" /> Verifying...
                   </motion.span>
@@ -130,9 +130,9 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-mono text-[9px] uppercase tracking-wider font-bold"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-positive/40 text-positive font-mono text-[9px] uppercase tracking-wider font-bold"
                   >
-                    <CheckCircle2 size={10} className="text-emerald-500" /> Active & Verified
+                    <CheckCircle2 size={10} className="text-positive" /> Active & Verified
                   </motion.span>
                 )}
                 {validationStatuses.gemini.status === 'invalid' && (
@@ -140,9 +140,9 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-red-300 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 font-mono text-[9px] uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-danger/40 text-danger font-mono text-[9px] uppercase tracking-wider"
                   >
-                    <XCircle size={10} className="text-red-500" /> Validation Failed
+                    <XCircle size={10} className="text-danger" /> Validation Failed
                   </motion.span>
                 )}
                 {validationStatuses.gemini.status === 'unchecked' && (
@@ -150,7 +150,7 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-nous-border bg-nous-base/30 text-nous-subtle font-mono text-[9px] uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-nous-border text-nous-subtle font-mono text-[9px] uppercase tracking-wider"
                   >
                     Not Verified
                   </motion.span>
@@ -168,7 +168,7 @@ export const KeychainPanel: React.FC = () => {
                 value={geminiKey} 
                 onChange={(e) => setGeminiKey(e.target.value)} 
                 placeholder="AIzaSy..." 
-                className="w-full bg-nous-base border border-nous-border p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
+                className="w-full bg-nous-base border border-nous-border rounded-nous-sm p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
               />
               <button 
                 type="button"
@@ -182,7 +182,7 @@ export const KeychainPanel: React.FC = () => {
               <button 
                 onClick={() => handleSave('gemini', geminiKey, setGeminiKey)}
                 disabled={validationStatuses.gemini.status === 'validating'}
-                className="px-5 py-3 bg-nous-text hover:opacity-80 text-nous-base font-mono text-[10px] uppercase tracking-widest transition-opacity flex items-center justify-center gap-2 min-w-[80px]"
+                className="px-5 py-3 surface-action font-mono text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 min-w-[80px]"
               >
                 {saved['gemini'] ? 'Saved' : 'Anchor'}
               </button>
@@ -191,14 +191,14 @@ export const KeychainPanel: React.FC = () => {
                   <button 
                     onClick={() => handleValidate('gemini', geminiKey)}
                     disabled={validationStatuses.gemini.status === 'validating'}
-                    className="px-4 py-3 bg-transparent border border-nous-border text-nous-text hover:bg-nous-base font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
+                    className="px-4 py-3 bg-transparent border border-nous-border rounded-nous-sm text-nous-text hover:bg-nous-text hover:text-nous-base font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
                     title="Run Integrity Test"
                   >
                     Test
                   </button>
                   <button 
                     onClick={() => handleClear('gemini', setGeminiKey)}
-                    className="px-4 py-3 bg-transparent border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/10 font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
+                    className="px-4 py-3 bg-transparent border border-danger/40 rounded-nous-sm text-danger hover:bg-danger/10 font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
                   >
                     Clear
                   </button>
@@ -209,7 +209,7 @@ export const KeychainPanel: React.FC = () => {
 
           {/* Validation Feedback details */}
           {validationStatuses.gemini.status === 'invalid' && validationStatuses.gemini.error && (
-            <div className="mt-3 text-[10px] font-mono text-red-600 bg-red-50 dark:bg-red-950/10 border border-red-200 p-2.5 flex items-start gap-2">
+            <div className="mt-3 text-[10px] font-mono text-danger rounded-nous-sm border border-danger/40 p-2.5 flex items-start gap-2">
               <ShieldAlert size={12} className="shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Error message:</span> {validationStatuses.gemini.error}
@@ -219,7 +219,7 @@ export const KeychainPanel: React.FC = () => {
 
           {/* Special note on key status */}
           {!getStoredKey('gemini') && (
-            <div className="mt-3 text-[9px] font-mono text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/50 p-2.5 flex items-start gap-2">
+            <div className="mt-3 text-[9px] font-mono text-warning rounded-nous-sm border border-warning/40 p-2.5 flex items-start gap-2">
               <Sparkles size={11} className="shrink-0 mt-0.5 animate-pulse" />
               <div>
                 No custom key set. The system is running using the shared <span className="font-bold">Sovereign Fallback Key</span>. Enter your own API key to ensure fully dedicated private compute limits.
@@ -239,7 +239,7 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-mono text-[9px] uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-warning/40 text-warning font-mono text-[9px] uppercase tracking-wider"
                   >
                     <Loader2 size={10} className="animate-spin" /> Verifying...
                   </motion.span>
@@ -249,9 +249,9 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-mono text-[9px] uppercase tracking-wider font-bold"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-positive/40 text-positive font-mono text-[9px] uppercase tracking-wider font-bold"
                   >
-                    <CheckCircle2 size={10} className="text-emerald-500" /> Active & Verified
+                    <CheckCircle2 size={10} className="text-positive" /> Active & Verified
                   </motion.span>
                 )}
                 {validationStatuses.openai.status === 'invalid' && (
@@ -259,9 +259,9 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-red-300 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 font-mono text-[9px] uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-danger/40 text-danger font-mono text-[9px] uppercase tracking-wider"
                   >
-                    <XCircle size={10} className="text-red-500" /> Validation Failed
+                    <XCircle size={10} className="text-danger" /> Validation Failed
                   </motion.span>
                 )}
                 {validationStatuses.openai.status === 'unchecked' && (
@@ -269,7 +269,7 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-nous-border bg-nous-base/30 text-nous-subtle font-mono text-[9px] uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-nous-border text-nous-subtle font-mono text-[9px] uppercase tracking-wider"
                   >
                     Not Verified
                   </motion.span>
@@ -287,7 +287,7 @@ export const KeychainPanel: React.FC = () => {
                 value={openaiKey} 
                 onChange={(e) => setOpenaiKey(e.target.value)} 
                 placeholder="sk-proj-..." 
-                className="w-full bg-nous-base border border-nous-border p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
+                className="w-full bg-nous-base border border-nous-border rounded-nous-sm p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
               />
               <button 
                 type="button"
@@ -301,7 +301,7 @@ export const KeychainPanel: React.FC = () => {
               <button 
                 onClick={() => handleSave('openai', openaiKey, setOpenaiKey)}
                 disabled={validationStatuses.openai.status === 'validating'}
-                className="px-5 py-3 bg-nous-text hover:opacity-80 text-nous-base font-mono text-[10px] uppercase tracking-widest transition-opacity flex items-center justify-center gap-2 min-w-[80px]"
+                className="px-5 py-3 surface-action font-mono text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 min-w-[80px]"
               >
                 {saved['openai'] ? 'Saved' : 'Anchor'}
               </button>
@@ -310,14 +310,14 @@ export const KeychainPanel: React.FC = () => {
                   <button 
                     onClick={() => handleValidate('openai', openaiKey)}
                     disabled={validationStatuses.openai.status === 'validating'}
-                    className="px-4 py-3 bg-transparent border border-nous-border text-nous-text hover:bg-nous-base font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
+                    className="px-4 py-3 bg-transparent border border-nous-border rounded-nous-sm text-nous-text hover:bg-nous-text hover:text-nous-base font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
                     title="Run Integrity Test"
                   >
                     Test
                   </button>
                   <button 
                     onClick={() => handleClear('openai', setOpenaiKey)}
-                    className="px-4 py-3 bg-transparent border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/10 font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
+                    className="px-4 py-3 bg-transparent border border-danger/40 rounded-nous-sm text-danger hover:bg-danger/10 font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
                   >
                     Clear
                   </button>
@@ -327,7 +327,7 @@ export const KeychainPanel: React.FC = () => {
           </div>
 
           {validationStatuses.openai.status === 'invalid' && validationStatuses.openai.error && (
-            <div className="mt-3 text-[10px] font-mono text-red-600 bg-red-50 dark:bg-red-950/10 border border-red-200 p-2.5 flex items-start gap-2">
+            <div className="mt-3 text-[10px] font-mono text-danger rounded-nous-sm border border-danger/40 p-2.5 flex items-start gap-2">
               <ShieldAlert size={12} className="shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Error message:</span> {validationStatuses.openai.error}
@@ -347,7 +347,7 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-mono text-[9px] uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-warning/40 text-warning font-mono text-[9px] uppercase tracking-wider"
                   >
                     <Loader2 size={10} className="animate-spin" /> Verifying...
                   </motion.span>
@@ -357,9 +357,9 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-mono text-[9px] uppercase tracking-wider font-bold"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-positive/40 text-positive font-mono text-[9px] uppercase tracking-wider font-bold"
                   >
-                    <CheckCircle2 size={10} className="text-emerald-500" /> Active & Verified
+                    <CheckCircle2 size={10} className="text-positive" /> Active & Verified
                   </motion.span>
                 )}
                 {validationStatuses.anthropic.status === 'invalid' && (
@@ -367,9 +367,9 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-red-300 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 font-mono text-[9px] uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-danger/40 text-danger font-mono text-[9px] uppercase tracking-wider"
                   >
-                    <XCircle size={10} className="text-red-500" /> Validation Failed
+                    <XCircle size={10} className="text-danger" /> Validation Failed
                   </motion.span>
                 )}
                 {validationStatuses.anthropic.status === 'unchecked' && (
@@ -377,7 +377,7 @@ export const KeychainPanel: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.8 }} 
                     animate={{ opacity: 1, scale: 1 }} 
                     exit={{ opacity: 0 }}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-nous-border bg-nous-base/30 text-nous-subtle font-mono text-[9px] uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-nous-sm border border-nous-border text-nous-subtle font-mono text-[9px] uppercase tracking-wider"
                   >
                     Not Verified
                   </motion.span>
@@ -395,7 +395,7 @@ export const KeychainPanel: React.FC = () => {
                 value={anthropicKey} 
                 onChange={(e) => setAnthropicKey(e.target.value)} 
                 placeholder="sk-ant-..." 
-                className="w-full bg-nous-base border border-nous-border p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
+                className="w-full bg-nous-base border border-nous-border rounded-nous-sm p-3 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text pr-14"
               />
               <button 
                 type="button"
@@ -409,7 +409,7 @@ export const KeychainPanel: React.FC = () => {
               <button 
                 onClick={() => handleSave('anthropic', anthropicKey, setAnthropicKey)}
                 disabled={validationStatuses.anthropic.status === 'validating'}
-                className="px-5 py-3 bg-nous-text hover:opacity-80 text-nous-base font-mono text-[10px] uppercase tracking-widest transition-opacity flex items-center justify-center gap-2 min-w-[80px]"
+                className="px-5 py-3 surface-action font-mono text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 min-w-[80px]"
               >
                 {saved['anthropic'] ? 'Saved' : 'Anchor'}
               </button>
@@ -418,14 +418,14 @@ export const KeychainPanel: React.FC = () => {
                   <button 
                     onClick={() => handleValidate('anthropic', anthropicKey)}
                     disabled={validationStatuses.anthropic.status === 'validating'}
-                    className="px-4 py-3 bg-transparent border border-nous-border text-nous-text hover:bg-nous-base font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
+                    className="px-4 py-3 bg-transparent border border-nous-border rounded-nous-sm text-nous-text hover:bg-nous-text hover:text-nous-base font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
                     title="Run Integrity Test"
                   >
                     Test
                   </button>
                   <button 
                     onClick={() => handleClear('anthropic', setAnthropicKey)}
-                    className="px-4 py-3 bg-transparent border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/10 font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
+                    className="px-4 py-3 bg-transparent border border-danger/40 rounded-nous-sm text-danger hover:bg-danger/10 font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center"
                   >
                     Clear
                   </button>
@@ -435,7 +435,7 @@ export const KeychainPanel: React.FC = () => {
           </div>
 
           {validationStatuses.anthropic.status === 'invalid' && validationStatuses.anthropic.error && (
-            <div className="mt-3 text-[10px] font-mono text-red-600 bg-red-50 dark:bg-red-950/10 border border-red-200 p-2.5 flex items-start gap-2">
+            <div className="mt-3 text-[10px] font-mono text-danger rounded-nous-sm border border-danger/40 p-2.5 flex items-start gap-2">
               <ShieldAlert size={12} className="shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Error message:</span> {validationStatuses.anthropic.error}

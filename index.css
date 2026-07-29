@@ -19,6 +19,16 @@
     --nous-border: #e5e5e5;
     --nous-paper: #f9f7f2; /* Warm cream paper */
 
+    /* Semantic status colors — the ONLY non-mono hues in the system */
+    --nous-positive: #3f6212; /* muted olive-green */
+    --nous-warning: #854d0e;  /* muted ochre */
+    --nous-danger: #991b1b;   /* muted oxblood */
+
+    /* Soft, consistent corner radius scale */
+    --nous-radius: 0.375rem;      /* 6px — cards, panels, buttons */
+    --nous-radius-sm: 0.25rem;    /* 4px — inputs, chips, small controls */
+    --nous-radius-lg: 0.5rem;     /* 8px — modals, large surfaces */
+
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
     --era-font-serif: "Cormorant Garamond", serif;
@@ -34,6 +44,12 @@
     --nous-charcoal: #1f1f1f;
     --nous-border: #262626;
     --nous-paper: #121212; /* Deep charcoal paper */
+
+    /* Semantic status colors — brightened for dark surfaces */
+    --nous-positive: #a3e635; /* lime */
+    --nous-warning: #fbbf24;  /* amber */
+    --nous-danger: #f87171;   /* soft red */
+
     --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
   }
 
@@ -394,11 +410,53 @@
     @apply font-sans text-base md:text-lg font-normal leading-relaxed;
   }
   .text-small {
-    @apply font-sans text-sm font-normal leading-normal text-stone-600 dark:text-stone-400;
+    @apply font-sans text-sm font-normal leading-normal text-nous-subtle;
   }
   .text-micro {
-    @apply font-mono text-[10px] uppercase tracking-widest font-bold text-stone-600 dark:text-stone-400;
+    @apply font-mono text-[10px] uppercase tracking-widest font-bold text-nous-subtle;
   }
+  /* Eyebrow / label — the recurring "kicker" line above headings */
+  .text-eyebrow {
+    @apply font-mono text-[10px] uppercase tracking-widest text-nous-subtle;
+  }
+
+  /* SURFACE PRIMITIVES — the single source of truth for panels/cards.
+     Uses design tokens only, so every surface respects the active palette. */
+  .surface-card {
+    background-color: var(--nous-base);
+    border: 1px solid var(--nous-border);
+    border-radius: var(--nous-radius);
+  }
+  .surface-inset {
+    background-color: var(--nous-paper);
+    border: 1px solid var(--nous-border);
+    border-radius: var(--nous-radius-sm);
+  }
+  /* Primary action — inverted mono fill */
+  .surface-action {
+    background-color: var(--nous-text);
+    color: var(--nous-base);
+    border-radius: var(--nous-radius-sm);
+    transition: opacity 0.15s ease;
+  }
+  .surface-action:hover { opacity: 0.85; }
+  .surface-action:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* CONSISTENT RADIUS SCALE (soft + uniform) */
+  .rounded-nous { border-radius: var(--nous-radius); }
+  .rounded-nous-sm { border-radius: var(--nous-radius-sm); }
+  .rounded-nous-lg { border-radius: var(--nous-radius-lg); }
+
+  /* SEMANTIC STATUS COLORS */
+  .text-positive { color: var(--nous-positive); }
+  .text-warning { color: var(--nous-warning); }
+  .text-danger { color: var(--nous-danger); }
+  .bg-positive { background-color: var(--nous-positive); }
+  .bg-warning { background-color: var(--nous-warning); }
+  .bg-danger { background-color: var(--nous-danger); }
+  .border-positive { border-color: var(--nous-positive); }
+  .border-warning { border-color: var(--nous-warning); }
+  .border-danger { border-color: var(--nous-danger); }
 
   /* GRID CONSTRAINTS */
   .grid-container {

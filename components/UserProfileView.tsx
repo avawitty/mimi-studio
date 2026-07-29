@@ -471,7 +471,7 @@ export const UserProfileView: React.FC = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className={`fixed top-24 z-[10000] px-8 py-3 rounded-none font-sans text-[10px] uppercase tracking-widest font-black border ${message.type === "success" ? "bg-nous-text text-nous-base border-nous-text " : "bg-red-500 text-white border-red-400"}`}
+            className={`fixed top-24 z-[10000] px-8 py-3 rounded-nous-sm font-sans text-[10px] uppercase tracking-widest font-black border ${message.type === "success" ? "bg-nous-text text-nous-base border-nous-text" : "bg-danger text-nous-base border-danger"}`}
           >
             {message.text}
           </motion.div>
@@ -511,7 +511,7 @@ export const UserProfileView: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full bg-nous-base rounded-none overflow-hidden border border-nous-border p-8"
+          className="w-full surface-card overflow-hidden p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -521,7 +521,7 @@ export const UserProfileView: React.FC = () => {
           </div>
 
           <div className="mb-8 flex items-center gap-6">
-            <div className="relative w-20 h-20 rounded-none overflow-hidden border border-nous-border bg-nous-base flex items-center justify-center shrink-0">
+            <div className="relative w-20 h-20 rounded-nous-sm overflow-hidden border border-nous-border bg-nous-base flex items-center justify-center shrink-0">
               {avatar ? (
                 <img
                   src={avatar}
@@ -565,7 +565,7 @@ export const UserProfileView: React.FC = () => {
               className="w-full bg-transparent font-mono text-lg border-b border-nous-border pb-1 focus:outline-none focus:border-nous-border dark:focus:border-nous-border"
             />
             {handleAvailable === false && (
-              <p className="text-red-500 text-[10px] mt-1">
+              <p className="text-danger text-[10px] mt-1">
                 Handle unavailable
               </p>
             )}
@@ -633,7 +633,7 @@ export const UserProfileView: React.FC = () => {
                         externalLinks.filter((_, idx) => idx !== i),
                       )
                     }
-                    className="text-red-500 ml-2"
+                    className="text-danger ml-2"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -646,7 +646,7 @@ export const UserProfileView: React.FC = () => {
                     { title: "Link", url: "" },
                   ])
                 }
-                className="w-full py-2 border border-dashed border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-colors rounded-none"
+                className="w-full py-2 border border-dashed border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-colors rounded-nous-sm"
               >
                 Add Resource
               </button>
@@ -659,7 +659,7 @@ export const UserProfileView: React.FC = () => {
               <>
                 <button
                   onClick={() => handleGoogleLink()}
-                  className="w-full flex items-center justify-center gap-2 py-4 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base hover:text-nous-text dark:hover:bg-stone-200 dark:hover:text-black transition-all rounded-none"
+                  className="w-full flex items-center justify-center gap-2 py-4 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-text hover:text-nous-base transition-all rounded-nous-sm"
                 >
                   Sign in with Google
                 </button>
@@ -670,13 +670,13 @@ export const UserProfileView: React.FC = () => {
                       loginWithEmail(email, window.location.href);
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-4 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base hover:text-nous-text dark:hover:bg-stone-200 dark:hover:text-black transition-all rounded-none"
+                  className="w-full flex items-center justify-center gap-2 py-4 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-text hover:text-nous-base transition-all rounded-nous-sm"
                 >
                   Sign in with Email Link
                 </button>
               </>
             ) : (
-              <div className="w-full flex items-center justify-center gap-2 py-4 border border-nous-border/30 bg-nous-base/10 text-[10px] uppercase tracking-widest text-nous-text rounded-none">
+              <div className="w-full flex items-center justify-center gap-2 py-4 border border-nous-border/30 bg-nous-base/10 text-[10px] uppercase tracking-widest text-nous-text rounded-nous-sm">
                 <Check size={14} /> Identity Anchored
               </div>
             )}
@@ -703,37 +703,37 @@ export const UserProfileView: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   {geminiKeyStatus === 'checking' && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 text-[10px] uppercase tracking-wider animate-pulse">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-nous-sm border border-warning/40 text-warning text-[10px] uppercase tracking-wider animate-pulse">
                       <Loader2 size={10} className="animate-spin" /> Verifying...
                     </span>
                   )}
                   {geminiKeyStatus === 'valid' && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-bold">
-                      <CheckCircle2Icon size={12} className="text-emerald-500" /> Key Verified
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-nous-sm border border-positive/40 text-positive text-[10px] uppercase tracking-wider font-bold">
+                      <CheckCircle2Icon size={12} className="text-positive" /> Key Verified
                     </span>
                   )}
                   {geminiKeyStatus === 'fallback' && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-blue-300 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 text-[10px] uppercase tracking-wider font-bold">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-nous-sm border border-nous-border text-nous-subtle text-[10px] uppercase tracking-wider font-bold">
                       Fallback Active
                     </span>
                   )}
                   {geminiKeyStatus === 'invalid' && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 border border-red-300 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 text-[10px] uppercase tracking-wider font-bold">
-                      <XCircleIcon size={12} className="text-red-500" /> Invalid Key
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-nous-sm border border-danger/40 text-danger text-[10px] uppercase tracking-wider font-bold">
+                      <XCircleIcon size={12} className="text-danger" /> Invalid Key
                     </span>
                   )}
                 </div>
               </div>
 
               {geminiKeyStatus === 'invalid' && geminiKeyError && (
-                <p className="text-[10px] text-red-600 bg-red-50 dark:bg-red-950/10 border border-red-200 p-2.5 font-mono mt-2 leading-relaxed">
+                <p className="text-[10px] text-danger rounded-nous-sm border border-danger/40 p-2.5 font-mono mt-2 leading-relaxed">
                   <span className="font-bold">Error details:</span> {geminiKeyError}
                 </p>
               )}
 
               {/* Inline Key Re-entry and Management Actions */}
               {isUpdatingKey ? (
-                <div className="mt-3 p-4 border border-dashed border-nous-border bg-stone-50/50 dark:bg-stone-900/50 space-y-3 font-mono text-xs">
+                <div className="mt-3 p-4 surface-inset space-y-3 font-mono text-xs">
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider text-nous-subtle mb-1">
                       Enter Gemini API Key
@@ -743,7 +743,7 @@ export const UserProfileView: React.FC = () => {
                       placeholder="AIzaSy..."
                       value={newKeyInput}
                       onChange={(e) => setNewKeyInput(e.target.value)}
-                      className="w-full bg-white dark:bg-stone-950 border border-nous-border p-2.5 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text"
+                      className="w-full bg-nous-base border border-nous-border rounded-nous-sm p-2.5 font-mono text-xs focus:outline-none focus:border-nous-text text-nous-text"
                     />
                     <span className="block text-[8px] text-nous-subtle mt-1 uppercase tracking-widest">
                       Your key is securely anchored in local storage and never transmitted to external services.
@@ -758,7 +758,7 @@ export const UserProfileView: React.FC = () => {
                     </button>
                     <button
                       onClick={handleInlineSaveKey}
-                      className="px-4 py-1.5 bg-nous-text text-white dark:text-black hover:bg-stone-800 text-[9px] uppercase tracking-widest font-bold transition-all"
+                      className="px-4 py-1.5 surface-action text-[9px] uppercase tracking-widest font-bold"
                     >
                       Anchor & Test
                     </button>
@@ -779,7 +779,7 @@ export const UserProfileView: React.FC = () => {
                       </button>
                       <button
                         onClick={handleClearAndReconnect}
-                        className="px-3 py-1.5 border border-red-200 hover:bg-red-50 dark:hover:bg-red-950/15 text-[9px] uppercase tracking-widest text-red-600 transition-colors"
+                        className="px-3 py-1.5 rounded-nous-sm border border-danger/40 hover:bg-danger/10 text-[9px] uppercase tracking-widest text-danger transition-colors"
                       >
                         Disconnect Key
                       </button>
@@ -868,7 +868,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+          className="w-full surface-card p-8"
         >
           <h2 className="font-serif italic text-2xl text-nous-text mb-2">
             Navigation
@@ -1025,7 +1025,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+          className="w-full surface-card p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -1059,7 +1059,7 @@ export const UserProfileView: React.FC = () => {
                     (archetype, i) => (
                       <span
                         key={i}
-                        className="px-4 py-2 bg-nous-base text-nous-text text-xs font-mono rounded-none border border-nous-border"
+                        className="px-4 py-2 bg-nous-base text-nous-text text-xs font-mono rounded-nous-sm border border-nous-border"
                       >
                         {archetype}
                       </span>
@@ -1094,7 +1094,7 @@ export const UserProfileView: React.FC = () => {
                     return subset.map((cluster, i) => (
                       <span
                         key={i}
-                        className="px-3 py-1 bg-transparent border border-nous-border text-nous-subtle text-[10px] font-mono tracking-wider rounded-none uppercase"
+                        className="px-3 py-1 bg-transparent border border-nous-border text-nous-subtle text-[10px] font-mono tracking-wider rounded-nous-sm uppercase"
                       >
                         # {cluster}
                       </span>
@@ -1114,7 +1114,7 @@ export const UserProfileView: React.FC = () => {
                         (constraint, i) => (
                           <span
                             key={i}
-                            className="px-4 py-2 bg-nous-base /50 text-nous-subtle text-xs font-mono rounded-none border border-nous-border"
+                            className="px-4 py-2 bg-nous-base /50 text-nous-subtle text-xs font-mono rounded-nous-sm border border-nous-border"
                           >
                             {constraint}
                           </span>
@@ -1125,7 +1125,7 @@ export const UserProfileView: React.FC = () => {
                 )}
             </div>
           ) : (
-            <div className="text-center p-8 border border-dashed border-nous-border rounded-none">
+            <div className="text-center p-8 border border-dashed border-nous-border rounded-nous-sm">
               <p className="font-mono text-xs text-nous-subtle mb-6 uppercase tracking-widest">
                 No Graph Data Detected
               </p>
@@ -1137,7 +1137,7 @@ export const UserProfileView: React.FC = () => {
                     }),
                   )
                 }
-                className="px-8 py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-[0.2em] hover:opacity-80 transition-opacity rounded-none"
+                className="px-8 py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-[0.2em] hover:opacity-80 transition-opacity rounded-nous-sm"
               >
                 Extract Graph
               </button>
@@ -1153,7 +1153,7 @@ export const UserProfileView: React.FC = () => {
                   }),
                 )
               }
-              className="p-4 border border-nous-border text-left hover:bg-nous-base transition-colors rounded-none"
+              className="p-4 border border-nous-border text-left hover:bg-nous-base transition-colors rounded-nous-sm"
             >
               <h4 className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle mb-2">
                 Taste Graph
@@ -1170,7 +1170,7 @@ export const UserProfileView: React.FC = () => {
                   }),
                 )
               }
-              className="p-4 border border-nous-border text-left hover:bg-nous-base transition-colors rounded-none"
+              className="p-4 border border-nous-border text-left hover:bg-nous-base transition-colors rounded-nous-sm"
             >
               <h4 className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle mb-2">
                 Semantic Network
@@ -1187,7 +1187,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+          className="w-full surface-card p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1212,7 +1212,7 @@ export const UserProfileView: React.FC = () => {
                         base: e.target.value,
                       }))
                     }
-                    className="w-8 h-8 rounded-none border border-nous-border cursor-pointer"
+                    className="w-8 h-8 rounded-nous-sm border border-nous-border cursor-pointer"
                   />
                   <input
                     type="text"
@@ -1241,7 +1241,7 @@ export const UserProfileView: React.FC = () => {
                         text: e.target.value,
                       }))
                     }
-                    className="w-8 h-8 rounded-none border border-nous-border cursor-pointer"
+                    className="w-8 h-8 rounded-nous-sm border border-nous-border cursor-pointer"
                   />
                   <input
                     type="text"
@@ -1270,7 +1270,7 @@ export const UserProfileView: React.FC = () => {
                         accent: e.target.value,
                       }))
                     }
-                    className="w-8 h-8 rounded-none border border-nous-border cursor-pointer"
+                    className="w-8 h-8 rounded-nous-sm border border-nous-border cursor-pointer"
                   />
                   <input
                     type="text"
@@ -1345,7 +1345,7 @@ export const UserProfileView: React.FC = () => {
                     fontFamily: customColors.fontFamily,
                   })
                 }
-                className="px-6 py-3 bg-nous-text text-nous-base text-[10px] uppercase tracking-[0.2em] hover:bg-stone-500 transition-colors rounded-none"
+                className="px-6 py-3 surface-action text-[10px] uppercase tracking-[0.2em]"
               >
                 Inject CSS Theme
               </button>
@@ -1363,7 +1363,7 @@ export const UserProfileView: React.FC = () => {
                     detail: { message: "CSS Themes Reset to Default Journal", icon: <RotateCcw size={14} /> }
                   }));
                 }}
-                className="px-6 py-3 border border-dashed border-nous-border text-nous-text text-[10px] uppercase tracking-[0.2em] hover:bg-nous-base transition-colors rounded-none"
+                className="px-6 py-3 border border-dashed border-nous-border text-nous-text text-[10px] uppercase tracking-[0.2em] hover:bg-nous-base transition-colors rounded-nous-sm"
               >
                 Reset CSS Styles
               </button>
@@ -1381,7 +1381,7 @@ export const UserProfileView: React.FC = () => {
                         fontFamily: PALETTES[preset].fontFamily || "sans",
                       });
                     }}
-                    className="px-4 py-3 border border-nous-border text-[10px] uppercase font-mono tracking-widest hover:bg-nous-base rounded-none transition-colors"
+                    className="px-4 py-3 border border-nous-border text-[10px] uppercase font-mono tracking-widest hover:bg-nous-base rounded-nous-sm transition-colors"
                   >
                     Load: {preset}
                   </button>
@@ -1398,13 +1398,13 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+          className="w-full surface-card p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
               Global Structural Logic
             </h2>
-            <span className="text-[10px] uppercase tracking-widest font-mono px-3 py-1 border border-nous-border rounded-none text-nous-subtle">
+            <span className="text-[10px] uppercase tracking-widest font-mono px-3 py-1 border border-nous-border rounded-nous-sm text-nous-subtle">
               Agent Config
             </span>
           </div>
@@ -1417,19 +1417,19 @@ export const UserProfileView: React.FC = () => {
               <div className="flex flex-wrap gap-2 mb-6">
                 <button
                   onClick={() => setArchetype("editorial-serif")}
-                  className={`text-[10px] font-mono border px-4 py-2 rounded-none ${archetype === "editorial-serif" ? "bg-nous-text text-nous-base border-nous-text" : "bg-nous-base border-nous-border"}`}
+                  className={`text-[10px] font-mono border px-4 py-2 rounded-nous-sm ${archetype === "editorial-serif" ? "bg-nous-text text-nous-base border-nous-text" : "bg-nous-base border-nous-border"}`}
                 >
                   Editorial
                 </button>
                 <button
                   onClick={() => setArchetype("minimalist-sans")}
-                  className={`text-[10px] font-mono border px-4 py-2 rounded-none ${archetype === "minimalist-sans" ? "bg-nous-text text-nous-base border-nous-text" : "bg-nous-base border-nous-border"}`}
+                  className={`text-[10px] font-mono border px-4 py-2 rounded-nous-sm ${archetype === "minimalist-sans" ? "bg-nous-text text-nous-base border-nous-text" : "bg-nous-base border-nous-border"}`}
                 >
                   Minimalist
                 </button>
                 <button
                   onClick={() => setArchetype("brutalist-mono")}
-                  className={`text-[10px] font-mono border px-4 py-2 rounded-none ${archetype === "brutalist-mono" ? "bg-nous-text text-nous-base border-nous-text" : "bg-nous-base border-nous-border"}`}
+                  className={`text-[10px] font-mono border px-4 py-2 rounded-nous-sm ${archetype === "brutalist-mono" ? "bg-nous-text text-nous-base border-nous-text" : "bg-nous-base border-nous-border"}`}
                 >
                   Brutalist
                 </button>
@@ -1443,7 +1443,7 @@ export const UserProfileView: React.FC = () => {
                     </label>
                     <button
                       onClick={() => setCuratorEnabled(!curatorEnabled)}
-                      className={`text-[10px] font-mono px-2 py-1 rounded-none border ${curatorEnabled ? "text-nous-text border-nous-border bg-nous-base" : "text-nous-subtle border-nous-border bg-transparent"}`}
+                      className={`text-[10px] font-mono px-2 py-1 rounded-nous-sm border ${curatorEnabled ? "text-nous-text border-nous-border bg-nous-base" : "text-nous-subtle border-nous-border bg-transparent"}`}
                     >
                       {curatorEnabled ? "ENABLED" : "DISABLED"}
                     </button>
@@ -1468,7 +1468,7 @@ export const UserProfileView: React.FC = () => {
                     </label>
                     <button
                       onClick={() => setSentinelEnabled(!sentinelEnabled)}
-                      className={`text-[10px] font-mono px-2 py-1 rounded-none border ${sentinelEnabled ? "text-nous-text border-nous-border bg-nous-base" : "text-nous-subtle border-nous-border bg-transparent"}`}
+                      className={`text-[10px] font-mono px-2 py-1 rounded-nous-sm border ${sentinelEnabled ? "text-nous-text border-nous-border bg-nous-base" : "text-nous-subtle border-nous-border bg-transparent"}`}
                     >
                       {sentinelEnabled ? "ENABLED" : "DISABLED"}
                     </button>
@@ -1497,7 +1497,7 @@ export const UserProfileView: React.FC = () => {
                 value={tasteDefinition}
                 onChange={(e) => setTasteDefinition(e.target.value)}
                 placeholder="Describe your baseline era, inspirations, and scotopic preferences..."
-                className="font-serif text-lg leading-snug text-nous-subtle border border-nous-border rounded-none p-4 bg-nous-base /50 resize-none flex-grow focus:outline-none focus:ring-1 focus:ring-stone-400 w-full"
+                className="font-serif text-lg leading-snug text-nous-subtle border border-nous-border rounded-nous-sm p-4 bg-nous-base /50 resize-none flex-grow focus:outline-none focus:ring-1 focus:ring-stone-400 w-full"
               />
             </div>
           </div>
@@ -1508,7 +1508,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+          className="w-full surface-card p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1536,13 +1536,13 @@ export const UserProfileView: React.FC = () => {
                 <div className="flex gap-4 mt-4">
                   <button
                     onClick={handleCreateMask}
-                    className="flex-1 py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest rounded-none hover:bg-nous-text0 transition-colors"
+                    className="flex-1 py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest rounded-nous-sm hover:bg-nous-text0 transition-colors"
                   >
                     Mint
                   </button>
                   <button
                     onClick={() => setIsAddingPersona(false)}
-                    className="flex-1 py-4 border border-nous-border text-[10px] uppercase tracking-widest rounded-none hover:bg-nous-base transition-colors"
+                    className="flex-1 py-4 border border-nous-border text-[10px] uppercase tracking-widest rounded-nous-sm hover:bg-nous-base transition-colors"
                   >
                     Cancel
                   </button>
@@ -1579,7 +1579,7 @@ export const UserProfileView: React.FC = () => {
                 </div>
                 <button
                   onClick={handleUpdateActiveMask}
-                  className="w-full py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest rounded-none hover:bg-nous-text0 transition-colors mt-4"
+                  className="w-full py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest rounded-nous-sm hover:bg-nous-text0 transition-colors mt-4"
                 >
                   Save Parameters
                 </button>
@@ -1609,7 +1609,7 @@ export const UserProfileView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-nous-base /50 rounded-none p-4 mb-6 border border-nous-border">
+                <div className="bg-nous-base /50 rounded-nous-sm p-4 mb-6 border border-nous-border">
                   <div className="flex justify-between text-[10px] font-mono mb-2">
                     <span className="text-nous-subtle">Identity Namespace</span>
                     <span>
@@ -1636,7 +1636,7 @@ export const UserProfileView: React.FC = () => {
 
                 <button
                   onClick={() => setIsAddingPersona(true)}
-                  className="w-full py-4 bg-nous-base text-[10px] uppercase tracking-widest hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors rounded-none font-medium"
+                  className="w-full py-4 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-text hover:text-nous-base transition-colors rounded-nous-sm font-medium"
                 >
                   Mint New Mask
                 </button>
@@ -1650,7 +1650,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+          className="w-full surface-card p-8"
         >
           {/* Patron Status Bar */}
           <div className="mb-8 pb-8 border-b border-nous-border">
@@ -1661,7 +1661,7 @@ export const UserProfileView: React.FC = () => {
                   Membership &amp; Access Level
                 </p>
               </div>
-              <span className="text-[10px] font-mono text-nous-subtle bg-nous-base px-3 py-1 rounded-none border border-nous-border shrink-0">
+              <span className="text-[10px] font-mono text-nous-subtle bg-nous-base px-3 py-1 rounded-nous-sm border border-nous-border shrink-0">
                 Since{" "}
                 {new Date(
                   profile?.createdAt || Date.now(),
@@ -1679,10 +1679,10 @@ export const UserProfileView: React.FC = () => {
             >
               <div className="flex items-center gap-4">
                 <div
-                  className={`w-2 h-10 rounded-none shrink-0 ${
+                  className={`w-2 h-10 rounded-nous-sm shrink-0 ${
                     isPatronActive
                       ? "bg-nous-text"
-                      : "bg-stone-300 dark:bg-stone-600"
+                      : "bg-nous-border"
                   }`}
                 />
                 <div>
@@ -1699,7 +1699,7 @@ export const UserProfileView: React.FC = () => {
                       className={`text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 border ${
                         isPatronActive
                           ? "border-nous-border text-nous-text bg-nous-base"
-                          : "border-stone-300 text-nous-subtle dark:border-stone-600"
+                          : "border-nous-border text-nous-subtle"
                       }`}
                     >
                       {isPatronActive ? "Active" : "Free Tier"}
@@ -1739,7 +1739,7 @@ export const UserProfileView: React.FC = () => {
                 type="button"
                 onClick={handleOpenBillingPortal}
                 disabled={isBillingPortalLoading}
-                className="flex items-center justify-center gap-2 px-6 py-3 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-all rounded-none"
+                className="flex items-center justify-center gap-2 px-6 py-3 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-all rounded-nous-sm"
               >
                 {isBillingPortalLoading ? (
                   <Loader2 size={13} className="animate-spin" />
@@ -1755,7 +1755,7 @@ export const UserProfileView: React.FC = () => {
                       new CustomEvent("mimi:open_patron_modal"),
                     )
                   }
-                  className="flex-1 py-3 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity rounded-none font-bold"
+                  className="flex-1 py-3 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity rounded-nous-sm font-bold"
                 >
                   Upgrade to Patron →
                 </button>
@@ -1782,7 +1782,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+          className="w-full surface-card p-8"
         >
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex flex-col gap-4 w-full md:w-auto">
@@ -1797,7 +1797,7 @@ export const UserProfileView: React.FC = () => {
               <button
                 onClick={handleExportData}
                 disabled={isExporting}
-                className="flex items-center justify-center gap-2 px-6 py-4 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-colors rounded-none w-full"
+                className="flex items-center justify-center gap-2 px-6 py-4 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-colors rounded-nous-sm w-full"
               >
                 {isExporting ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -1812,13 +1812,13 @@ export const UserProfileView: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="px-8 py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity rounded-none font-medium"
+                className="px-8 py-4 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest hover:opacity-80 transition-opacity rounded-nous-sm font-medium"
               >
                 {isSaving ? "Committing..." : "Commit Global Handshake"}
               </button>
               <button
                 onClick={logout}
-                className="px-8 py-4 border border-red-200 text-red-600 text-[10px] uppercase tracking-widest hover:bg-red-50 transition-colors rounded-none"
+                className="px-8 py-4 border border-danger/40 text-danger text-[10px] uppercase tracking-widest hover:bg-danger/10 transition-colors rounded-nous-sm"
               >
                 De-Anchor Account
               </button>
