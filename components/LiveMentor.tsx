@@ -30,11 +30,18 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
     }
   }, [transcript, onTranscriptUpdate]);
 
-  // Visualizer loop
+  // Visualizer loop — canvas only mounts while connected; depend on both.
   useEffect(() => {
-    if (!analyser || !canvasRef.current) return;
-    
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = 0;
+    }
+
+    if (!analyser || !isConnected) return;
+
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -82,24 +89,22 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = 0;
       }
     };
   }, [analyser, isConnected, isMimi, strokeColor]);
 
-  // Auto-connect and disconnect on unmount
+  // Disconnect on unmount only — do not auto-connect.
+  // iOS Safari requires a user gesture for mic + AudioContext; the UI copy
+  // ("Tap to initiate vocal sync") is the intentional entry point for all entities.
   useEffect(() => {
-    let mounted = true;
-    connect().catch(e => {
-      if (mounted) console.error("MIMI // Auto-connect failed:", e);
-    });
     return () => {
-      mounted = false;
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [disconnect]);
 
   const toggleConnection = () => {
-    if (isConnected) {
+    if (isConnected || isConnecting) {
       disconnect();
     } else {
       connect().catch(e => console.error("MIMI // Connection failed:", e));
