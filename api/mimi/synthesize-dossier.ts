@@ -26,6 +26,7 @@ const dossierSchema = z.object({
     .max(8, "Upload at most 8 reference images."),
   userBlurb: z.string().optional(),
   blueprintDigest: z.string().optional(),
+  priorMemoryDigest: z.string().optional(),
 });
 
 export default async function handler(req: any, res: any) {
@@ -39,6 +40,7 @@ export default async function handler(req: any, res: any) {
     const images = input.images as DossierImagePayload[];
     const userBlurb = input.userBlurb;
     const blueprintDigest = input.blueprintDigest?.trim() || undefined;
+    const priorMemoryDigest = input.priorMemoryDigest?.trim() || undefined;
 
     if (images.length < 3 && !blueprintDigest) {
       return sendError(
@@ -56,12 +58,17 @@ export default async function handler(req: any, res: any) {
       return sendError(
         res,
         403,
-        "Sign in with trial credits remaining, upgrade to a paid plan, or add your own Gemini key in Settings.",
+        "Sign in with trial credits remaining, upgrade to a paid plan, or add your own OpenAI / Anthropic / Gemini key in Settings.",
         "NO_CREDITS",
       );
     }
 
-    const userPrompt = buildCreativeDossierUserPrompt(images.length, userBlurb, blueprintDigest);
+    const userPrompt = buildCreativeDossierUserPrompt(
+      images.length,
+      userBlurb,
+      blueprintDigest,
+      priorMemoryDigest,
+    );
     const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
       { type: "text", text: userPrompt },
     ];

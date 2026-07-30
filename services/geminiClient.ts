@@ -255,7 +255,8 @@ export async function withResilience<T>(
   attemptedKeys: string[] = [],
   suppressGlobalEvents: boolean = false
 ): Promise<T> {
-  if (getActiveProviderId() !== 'gemini') {
+  const activeId = getActiveProviderId();
+  if (activeId !== 'gemini') {
     const aiProvider = getAIProvider();
     const { ai: realAi } = getClient(apiKeyOverride, attemptedKeys);
     
@@ -272,9 +273,28 @@ export async function withResilience<T>(
     };
     try {
         return await operation(mockAi);
-    } catch(e) {
-        throw e;
-    }
+    } catch (primaryError: any) {
+        const msg = String(primaryError?.message || primaryError || "");
+        // Gateway/BYOK path failed (often 403 credits). Prefer Gemini proxy next
+        // and stop forcing the dead gateway choice for subsequent Oracle calls.
+        if (
+          activeId === "gateway" &&
+          (/credits|403|Gateway|sign in/i.test(msg)) &&
+          typeof localStorage !== "undefined"
+        ) {
+          try {
+            localStorage.setItem("mimi_active_llm", "gemini");
+            setGlobalAIProvider("gemini");
+          } catch {
+            // ignore storage failures
+          }
+        }
+        console.warn(
+          `MIMI // Oracle: Active provider "${activeId}" failed; falling back to Gemini proxy path.`,
+          msg,
+        );
+        // Continue into gemini resilience path below.
+      }
   }
 
   const { ai, keyUsed, source } = getClient(apiKeyOverride, attemptedKeys);
@@ -324,7 +344,9 @@ export async function withResilience<T>(
       error.message?.includes('403') || 
       error.message?.includes('PERMISSION_DENIED') ||
       error.message?.includes('api-key-expired') ||
-      error.message?.includes('API_KEY_INVALID');
+      error.message?.includes('API_KEY_INVALID') ||
+      error.message?.includes('credits') ||
+      error.message?.includes('Gateway');
 
     const hasMoreKeys = globalKeyRing.length > 0 && globalKeyRing.filter(k => !attemptedKeys.includes(k)).length > 0;
     const canRetry = isQuotaError || isOverloadError || (isKeyError && hasMoreKeys && keyUsed !== 'Proxy' && keyUsed !== '');
@@ -392,33 +414,47 @@ export async function withResilience<T>(
   }
 }
 
-import { getAIProvider, getActiveProviderId } from './aiProvider';
+import { getAIProvider, getActiveProviderId, setGlobalAIProvider } from './aiProvider';
 
 export async function tryModels<T>(
     models: string[],
     operation: (ai: any, model: string) => Promise<T>,
     apiKeyOverride?: string
 ): Promise<T> {
-    const aiProvider = getAIProvider();
-    const { ai: realAi } = getClient(apiKeyOverride, []);
-    const mockAi = {
-        models: {
-            generateContent: async (params: any) => {
-                if (params.model && params.model.includes('image')) {
-                    return await realAi.models.generateContent(params);
-                }
-                return await aiProvider.generateContent(params);
-            },
-            generateImages: async (params: any) => await realAi.models.generateImages(params)
-        }
-    };
+    const activeId = getActiveProviderId();
     
-    if (getActiveProviderId() !== 'gemini') {
+    if (activeId !== 'gemini') {
+        const aiProvider = getAIProvider();
+        const { ai: realAi } = getClient(apiKeyOverride, []);
+        const mockAi = {
+            models: {
+                generateContent: async (params: any) => {
+                    if (params.model && params.model.includes('image')) {
+                        return await realAi.models.generateContent(params);
+                    }
+                    return await aiProvider.generateContent(params);
+                },
+                generateImages: async (params: any) => await realAi.models.generateImages(params)
+            }
+        };
         try {
             return await operation(mockAi, models[0]);
-        } catch (error) {
-            console.error(`MIMI // Provider ${getActiveProviderId()} failed:`, error);
-            throw error;
+        } catch (error: any) {
+            const msg = String(error?.message || error || "");
+            console.warn(`MIMI // Provider ${activeId} failed; falling back to Gemini model ladder:`, msg);
+            if (
+              activeId === "gateway" &&
+              /credits|403|Gateway|sign in/i.test(msg) &&
+              typeof localStorage !== "undefined"
+            ) {
+              try {
+                localStorage.setItem("mimi_active_llm", "gemini");
+                setGlobalAIProvider("gemini");
+              } catch {
+                // ignore
+              }
+            }
+            // Fall through to Gemini model ladder below.
         }
     }
 
@@ -426,6 +462,7 @@ export async function tryModels<T>(
         const model = models[i];
         const isLastModel = i === models.length - 1;
         try {
+            // Force gemini path inside withResilience for the ladder (avoid re-entering gateway).
             return await withResilience(async (ai) => await operation(ai, model), apiKeyOverride, 5, 2000, [], !isLastModel);
         } catch (error: any) {
             console.warn(`MIMI // Model fallback: ${model} failed, attempting next...`);
