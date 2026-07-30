@@ -8,6 +8,7 @@ import {
 } from '../../services/tasteImportService';
 import {
   assignScopeBatch,
+  canRequestEvidenceRead,
   compileIntakeHandoff,
   deriveReadProgress,
   groupIntoCollections,
@@ -396,8 +397,26 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
   );
 
   const committedCount = evidence.length;
+  const stagedSelectedCount = staged.filter(
+    (s) => !s.isCollection && s.selected !== false,
+  ).length;
+  const readGate = canRequestEvidenceRead({
+    acceptedCount: committedCount,
+    stagedSelectedCount,
+    curiosityIds,
+    customCuriosity,
+  });
   const ctaLabel = analysisAvailable ? 'Update my reading' : 'Read my references';
-  const canContinue = committedCount >= 3 && !uploading;
+  const canContinue = readGate.canRequest && !uploading;
+
+  const blockedCtaLabel = (() => {
+    if (readGate.canRequest) return null;
+    // Prefer guiding toward the nearer unlock path for this panel.
+    if (readGate.curiosityNeeded <= readGate.referencesNeeded) {
+      return `Add ${readGate.curiosityNeeded} more input${readGate.curiosityNeeded === 1 ? '' : 's'}`;
+    }
+    return `Add ${readGate.referencesNeeded} more reference${readGate.referencesNeeded === 1 ? '' : 's'}`;
+  })();
 
   // Committed evidence preview (compact)
   const committedPreview = evidence.slice(0, 12);
@@ -598,24 +617,31 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
           type="button"
           disabled={!canContinue}
           onClick={() => {
-            const handoff = compileIntakeHandoff({
-              evidenceItems: staged.filter((s) => !s.isCollection),
-              curiosityIds,
-              customCuriosity,
-              directContext: blurb,
-            });
-            onHandoffReady?.({
-              intendedHelp: handoff.intendedHelp,
-              customCuriosity,
-              directContext: blurb,
-              compilation: handoff,
-            });
-            onContinue();
+            void (async () => {
+              // Commit any selected staged references before analysis so they
+              // count toward the read and are not left behind in the staging tray.
+              if (stagedSelectedCount > 0) {
+                await commitStaged();
+              }
+              const handoff = compileIntakeHandoff({
+                evidenceItems: staged.filter((s) => !s.isCollection),
+                curiosityIds,
+                customCuriosity,
+                directContext: blurb,
+              });
+              onHandoffReady?.({
+                intendedHelp: handoff.intendedHelp,
+                customCuriosity,
+                directContext: blurb,
+                compilation: handoff,
+              });
+              onContinue();
+            })();
           }}
           className="w-full min-h-[52px] py-3.5 bg-nous-text text-[#FDFBF7] dark:bg-[#FDFBF7] dark:text-nous-text text-xs uppercase tracking-[0.22em] disabled:opacity-40 inline-flex items-center justify-center gap-2"
         >
-          {committedCount < 3
-            ? `Add ${3 - committedCount} more reference${3 - committedCount === 1 ? '' : 's'}`
+          {!readGate.canRequest
+            ? blockedCtaLabel
             : (
               <>
                 {ctaLabel}

@@ -166,19 +166,28 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
         .trim();
 
       // Direct statements outrank inference — store as a note evidence node
-      // when the user wrote open context that has not yet been committed.
-      if (blurb.trim() && !evidence.some((e) => e.extractedMetadata?.kind === 'direct_statement')) {
-        const statement = buildDirectStatementEvidence(blurb.trim(), 'session');
+      // when the user wrote open context / free-text curiosity, or selected
+      // enough curiosity prompts to unlock a read without uploaded references.
+      const statementText =
+        blurb.trim() ||
+        customCuriosity.trim() ||
+        (curiosityLines.length >= 3 ? curiosityLines.map((l) => `• ${l}`).join('\n') : '');
+      if (statementText && !evidence.some((e) => e.extractedMetadata?.kind === 'direct_statement')) {
+        const fromCustom = Boolean(customCuriosity.trim() && !blurb.trim());
+        const fromPrompts = Boolean(!blurb.trim() && !customCuriosity.trim() && curiosityLines.length >= 3);
+        const statement = buildDirectStatementEvidence(statementText, 'session');
         if (statement) {
           await addEvidenceNode(uid, project.id, {
             sourceType: statement.evidenceSourceType,
-            title: statement.title,
+            title: fromCustom ? 'Curiosity' : fromPrompts ? 'Curiosity prompts' : statement.title,
             description: statement.description,
             extractedMetadata: {
               ...statement.rawMetadata,
               intakeScope: statement.scope,
               intakeId: statement.id,
               intendedHelp: curiosityLines,
+              ...(fromCustom ? { fromCustomCuriosity: true } : {}),
+              ...(fromPrompts ? { fromCuriosityPrompts: true } : {}),
             },
           });
         }
