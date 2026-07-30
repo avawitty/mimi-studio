@@ -279,7 +279,11 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
       try {
         await updateDoc(doc(db, "zines", zine.id), {
           isPublic: nextPublic,
-          ...(nextPublic ? { publishedAt: Date.now() } : {}),
+          // Bump both fields so Keep Tabs RSS windows (orderBy timestamp and
+          // orderBy publishedAt) include republished older drafts.
+          ...(nextPublic
+            ? { publishedAt: Date.now(), timestamp: Date.now() }
+            : {}),
         });
         const handle = zine.userHandle || profile?.handle;
         window.dispatchEvent(
