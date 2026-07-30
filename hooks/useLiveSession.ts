@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { LiveServerMessage, Modality, Type } from '@google/genai';
-import { resolveLiveAiCredentials } from '../services/liveAuth';
+import { resolveLiveAiCredentials, type LiveAiCredentials } from '../services/liveAuth';
 
 // Audio helpers
 function floatTo16BitPCM(input: Float32Array) {
@@ -125,12 +125,32 @@ export const useLiveSession = (
     const currentAttempt = ++attemptCounterRef.current;
     currentAttemptRef.current = currentAttempt;
 
+    // Resolve credentials ONCE per tap — never inside the retry loop.
+    // For the non-BYOK path this POSTs /api/live/token, which mints a
+    // Gemini Live ephemeral token AND charges credits at mint time. Minting
+    // per-retry would charge the user 2×–6× for a single tap when the
+    // subsequent WebSocket handshake hits a transient failure. Ephemeral
+    // tokens are single-use, so we reuse the same one across handshake
+    // retries rather than re-mint (and re-charge).
+    let ai: LiveAiCredentials["ai"];
+    let model: LiveAiCredentials["model"];
+    try {
+      const creds = await resolveLiveAiCredentials();
+      if (currentAttemptRef.current !== currentAttempt) return;
+      ai = creds.ai;
+      model = creds.model;
+    } catch (e: any) {
+      if (currentAttemptRef.current !== currentAttempt) return;
+      console.error("MIMI // Failed to resolve live credentials", e);
+      setError(e?.message || "Failed to establish link.");
+      setIsConnected(false);
+      setIsConnecting(false);
+      return;
+    }
+
     for (let i = 0; i < retries; i++) {
       if (currentAttemptRef.current !== currentAttempt) return;
       try {
-        const { ai, model } = await resolveLiveAiCredentials();
-        if (currentAttemptRef.current !== currentAttempt) return;
-
         // 1. Setup Audio Output Context (24kHz for Gemini output)
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
