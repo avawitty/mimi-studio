@@ -116,23 +116,17 @@ export async function fetchPublicFeedZines(
   // timestamp exists on all zines and keeps the limit window deterministic.
   // publishedAt (set on make-public) is preferred for recency when present —
   // merge both ordered queries so legacy public docs without publishedAt still appear.
-  // The timestamp-ordered query is the primary window and has no fallback, so a
-  // failure here (e.g. missing/still-building composite index or a transient
-  // Firestore error) must propagate. Swallowing it to [] would make a broken
-  // feed look identical to a creator with no public issues; re-throwing lets the
-  // route return a visible 500 (surfacing Firestore's index-creation link).
-  const byTimestamp: QuerySnapshot = await base.orderBy("timestamp", "desc").limit(take).get();
-
-  let byPublished: QueryDocumentSnapshot[] = [];
-  try {
-    const publishedSnap = await base.orderBy("publishedAt", "desc").limit(take).get();
-    byPublished = publishedSnap.docs;
-  } catch {
-    // Composite index may be missing; timestamp-ordered window is still correct.
-  }
+  // Both ordered queries must succeed. Swallowing a publishedAt failure would
+  // silently drop republished drafts (ZineCard historically bumped publishedAt
+  // without timestamp) and serve a stale timestamp-only window instead of a
+  // visible 500 while composite indexes are missing/building.
+  const [byTimestamp, byPublished]: [QuerySnapshot, QuerySnapshot] = await Promise.all([
+    base.orderBy("timestamp", "desc").limit(take).get(),
+    base.orderBy("publishedAt", "desc").limit(take).get(),
+  ]);
 
   return dedupeNewest(
-    [...byPublished, ...byTimestamp.docs].map((docSnap) => mapPublicFeedZine(docSnap)),
+    [...byPublished.docs, ...byTimestamp.docs].map((docSnap) => mapPublicFeedZine(docSnap)),
     take,
   );
 }
