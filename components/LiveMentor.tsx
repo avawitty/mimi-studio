@@ -194,7 +194,7 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
           <p className="font-mono text-[9px] text-red-500 uppercase tracking-[0.2em]">{error}</p>
         ) : isConnecting ? (
           <p className={`font-mono text-[9px] uppercase tracking-[0.3em] animate-pulse ${isMimi ? 'text-black/40' : 'text-white/40'}`}>
-            Establishing Link...
+            Establishing Link... Tap to cancel.
           </p>
         ) : isConnected ? (
           <p className={`font-mono text-[9px] uppercase tracking-[0.3em] ${isMimi ? 'text-black/60' : 'text-white/60'}`}>
