@@ -156,6 +156,7 @@ const PatronMintView = lazy(() =>
 );
 import { ApiSwitcher } from "./components/ApiSwitcher";
 import { MimiGateway } from "./components/MimiGateway";
+import { CoreLoopOnboarding } from "./components/CoreLoopOnboarding";
 import { ClinicalAuditDrawer } from "./components/ClinicalAuditDrawer";
 import { ProfileHoverCard } from "./components/ProfileHoverCard";
 import { AuthAction } from "./components/AuthAction";
@@ -2262,6 +2263,7 @@ export const App: React.FC = () => {
       </AnimatePresence>
 
       <MimiGateway isOpen={showGateway} onClose={() => setShowGateway(false)} />
+      <CoreLoopOnboarding ready={!authLoading && !isElevatorLoading && !showGateway} />
       <ApiKeyShield isOpen={!memoizedHasApiKey} onClose={() => {}} />
 
       <RegistryAlert />
