@@ -20,7 +20,19 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          for attempt in 1 2 3; do
+            status=0
+            npm ci || status=$?
+            if [ "$status" -eq 0 ]; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit "$status"
+            fi
+            echo "npm ci failed on attempt $attempt; retrying..."
+            sleep 15
+          done
 
       - name: Get Playwright version
         id: playwright-version

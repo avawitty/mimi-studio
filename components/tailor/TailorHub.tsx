@@ -29,7 +29,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
   navigate,
   initialPanel = 'intake',
 }) => {
-  const { updateProfile, profile, user, login } = useUser();
+  const { updateProfile, profile, user, login, isSimulatedMode } = useUser();
   const [mode, setMode] = useState<TailorPanel>(initialPanel);
   const [resumeProject, setResumeProject] = useState<TailorProject | null>(null);
   const [resumeEvidence, setResumeEvidence] = useState<EvidenceNode[]>([]);
@@ -44,6 +44,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
   };
 
   const selectPanel = (panel: TailorPanel) => {
+    if (isSimulatedMode && panel !== 'blueprint') return;
     // Always switch panels so the tab visibly responds (esp. on mobile).
     // Auth-gated panels render their own in-panel sign-in prompt below,
     // instead of firing a full-page redirect that dies inside the preview.
@@ -120,6 +121,11 @@ export const TailorHub: React.FC<TailorHubProps> = ({
             })}
           </nav>
         </div>
+        {isSimulatedMode && (
+          <div className="mt-2 border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[8px] tracking-[0.16em] text-amber-700 dark:text-amber-300">
+            Simulated mode active due to billing/limit. Tailor advanced modules are temporarily limited.
+          </div>
+        )}
       </div>
 
       <div className="min-h-0 flex-1">
@@ -183,6 +189,29 @@ export const TailorHub: React.FC<TailorHubProps> = ({
         )}
         {mode === 'style-lab' && <ArtStyleChamber />}
         {mode === 'diagnostics' && <AestheticIntelligenceChamber />}
+        {isSimulatedMode && mode !== 'blueprint' && (
+          <div className="flex h-full min-h-0 items-center justify-center px-6 py-12">
+            <div className="w-full max-w-xl text-center">
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-amber-600">
+                Simulated Tailor Mode
+              </p>
+              <h2 className="mt-3 font-serif text-2xl text-stone-900 dark:text-stone-100">
+                Advanced Tailor modules are temporarily unavailable.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                We detected a billing/limit condition and automatically switched to simulated mode.
+                Blueprint editing remains available while cloud-backed modules are limited.
+              </p>
+              <button
+                type="button"
+                onClick={() => selectPanel('blueprint')}
+                className="mt-6 inline-flex min-h-11 items-center justify-center border border-stone-300 px-6 font-mono text-[10px] uppercase tracking-[0.2em] text-stone-700 transition-colors hover:bg-stone-100 dark:border-stone-700 dark:text-stone-200 dark:hover:bg-stone-900"
+              >
+                Return to blueprint
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       <ChamberHandoff moduleId="tailor" />
     </div>

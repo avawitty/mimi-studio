@@ -5,7 +5,6 @@ import {
   requireMethod,
   sendError,
   sendJson,
-  serverAiEnabled,
 } from "../../lib/apiUtils.js";
 import {
   chargeMimiFundedGateway,
@@ -18,6 +17,11 @@ import { modelFor } from "../../services/modelConfig.js";
  * Mint a short-lived Gemini Live ephemeral token for browser WebSocket sessions.
  * Live cannot route through the HTTP AI Gateway proxy — the client connects
  * directly to Google with this token (or a BYOK key).
+ *
+ * Authorization: BYOK via x-api-key, OR signed-in funded-gateway access.
+ * Unauthenticated server-key minting is opt-in via MIMI_LIVE_ALLOW_UNAUTH=true
+ * for local smoke tests only — never enabled by MIMI_ENABLE_SERVER_AI alone
+ * (server.ts auto-sets that whenever any provider key exists).
  */
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
@@ -38,8 +42,7 @@ export default async function handler(req: any, res: any) {
       mintKey = headerKey;
     } else {
       // Live ephemeral tokens require a real Gemini Developer API key —
-      // the AI Gateway key cannot mint them. Read env directly so voice
-      // works even when MIMI_ENABLE_SERVER_AI is off for other providers.
+      // the AI Gateway key cannot mint them.
       const serverKey =
         String(process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim() ||
         providerKey(req, "gemini");
@@ -55,8 +58,8 @@ export default async function handler(req: any, res: any) {
       access = await resolveMimiFundedGatewayAccess(req, liveCost);
       if (access.allowed) {
         mintKey = serverKey;
-      } else if (serverAiEnabled()) {
-        // Local / server-AI mode mirrors the HTTP Gemini proxy fallback.
+      } else if (process.env.MIMI_LIVE_ALLOW_UNAUTH === "true") {
+        // Explicit local/dev override only — not tied to MIMI_ENABLE_SERVER_AI.
         mintKey = serverKey;
         access = null;
       } else if (access.uid) {

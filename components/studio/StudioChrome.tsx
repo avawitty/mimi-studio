@@ -136,7 +136,8 @@ export const StudioChrome: React.FC<{
 
   return (
     <header
-      className="studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 py-3.5 flex items-center justify-between gap-3 z-20 studio-chrome--mobile-safe"
+      className="studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 pb-3.5 flex items-center justify-between gap-3 z-20 studio-chrome--mobile-safe"
+      style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.875rem)" }}
     >
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (

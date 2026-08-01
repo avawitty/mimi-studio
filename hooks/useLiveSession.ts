@@ -22,6 +22,11 @@ function base64ToUint8Array(base64: string) {
   return bytes;
 }
 
+function closeAudioContext(ctx: AudioContext | null) {
+  if (!ctx) return;
+  try { ctx.close(); } catch {}
+}
+
 export const useLiveSession = (
   systemInstruction: string,
   voiceName: string = 'Kore',
@@ -68,20 +73,20 @@ export const useLiveSession = (
         });
         streamRef.current = null;
       }
-      if (processorRef.current && inputContextRef.current) {
+      if (processorRef.current) {
         try { processorRef.current.disconnect(); } catch(e) {}
-        if (sourceRef.current) {
-            try { sourceRef.current.disconnect(); } catch(e) {}
-        }
+      }
+      if (sourceRef.current) {
+        try { sourceRef.current.disconnect(); } catch(e) {}
       }
       processorRef.current = null;
       sourceRef.current = null;
       if (audioContextRef.current) {
-        try { audioContextRef.current.close(); } catch(e) {}
+        closeAudioContext(audioContextRef.current);
         audioContextRef.current = null;
       }
       if (inputContextRef.current) {
-        try { inputContextRef.current.close(); } catch(e) {}
+        closeAudioContext(inputContextRef.current);
         inputContextRef.current = null;
       }
       if (analyserRef.current) {
@@ -117,7 +122,7 @@ export const useLiveSession = (
     setIsConnecting(true);
 
     // Tear down any prior session/contexts before opening a new one
-    if (sessionRef.current || audioContextRef.current || inputContextRef.current) {
+    if (sessionRef.current || audioContextRef.current || inputContextRef.current || streamRef.current) {
       cleanup();
       setIsConnecting(true);
     }
@@ -125,55 +130,86 @@ export const useLiveSession = (
     const currentAttempt = ++attemptCounterRef.current;
     currentAttemptRef.current = currentAttempt;
 
-    // Resolve credentials ONCE per tap — never inside the retry loop.
-    // For the non-BYOK path this POSTs /api/live/token, which mints a
-    // Gemini Live ephemeral token AND charges credits at mint time. Minting
-    // per-retry would charge the user 2×–6× for a single tap when the
-    // subsequent WebSocket handshake hits a transient failure. Ephemeral
-    // tokens are single-use, so we reuse the same one across handshake
-    // retries rather than re-mint (and re-charge).
-    let ai: LiveAiCredentials["ai"];
-    let model: LiveAiCredentials["model"];
+    // Unlock audio synchronously inside the tap gesture BEFORE any network await.
+    // Safari drops user-activation across awaits; creating/resuming here keeps playback alive.
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    let outputCtx: AudioContext | null = new AudioContextClass({ sampleRate: 24000 });
+    let inputCtx: AudioContext | null = new AudioContextClass({ sampleRate: 16000 });
+    const resumeOutput = outputCtx.resume().catch((): undefined => undefined);
+    const resumeInput = inputCtx.resume().catch((): undefined => undefined);
+    // Start mic permission from the same gesture (iOS); wire after session opens.
+    const micPromise = navigator.mediaDevices.getUserMedia({ audio: true }).catch((e: any) => {
+      throw e;
+    });
+
+    // Mint credentials ONCE per user tap — retries must not re-bill funded gateway credits.
+    let credentials: LiveAiCredentials;
     try {
-      const creds = await resolveLiveAiCredentials();
-      if (currentAttemptRef.current !== currentAttempt) return;
-      ai = creds.ai;
-      model = creds.model;
+      credentials = await resolveLiveAiCredentials();
+      await Promise.all([resumeOutput, resumeInput]);
     } catch (e: any) {
-      if (currentAttemptRef.current !== currentAttempt) return;
-      console.error("MIMI // Failed to resolve live credentials", e);
-      setError(e?.message || "Failed to establish link.");
-      setIsConnected(false);
-      setIsConnecting(false);
+      if (currentAttemptRef.current === currentAttempt) {
+        closeAudioContext(outputCtx);
+        closeAudioContext(inputCtx);
+        outputCtx = null;
+        inputCtx = null;
+        micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+        setError(e?.message || "Failed to establish link.");
+        setIsConnecting(false);
+      } else {
+        closeAudioContext(outputCtx);
+        closeAudioContext(inputCtx);
+        micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+      }
       return;
     }
 
+    if (currentAttemptRef.current !== currentAttempt) {
+      // Superseded: dispose only our local contexts — do NOT call shared cleanup().
+      closeAudioContext(outputCtx);
+      closeAudioContext(inputCtx);
+      micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+      return;
+    }
+
+    // Publish contexts to shared refs only while we still own the attempt.
+    audioContextRef.current = outputCtx;
+    inputContextRef.current = inputCtx;
+
+    const abandonLocalIfStale = () => {
+      if (currentAttemptRef.current === currentAttempt) return false;
+      // Newer attempt may already own the shared refs — only close locals we still hold.
+      if (audioContextRef.current === outputCtx) audioContextRef.current = null;
+      if (inputContextRef.current === inputCtx) inputContextRef.current = null;
+      closeAudioContext(outputCtx);
+      closeAudioContext(inputCtx);
+      outputCtx = null;
+      inputCtx = null;
+      micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+      return true;
+    };
+
     for (let i = 0; i < retries; i++) {
-      if (currentAttemptRef.current !== currentAttempt) return;
+      if (abandonLocalIfStale()) return;
       try {
-        // 1. Setup Audio Output Context (24kHz for Gemini output)
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
-
-        // 2. Setup Audio Input Context (16kHz for Gemini input)
-        inputContextRef.current = new AudioContextClass({ sampleRate: 16000 });
-
-        // Resume contexts — required after a user gesture on iOS Safari
-        await Promise.all([
-          audioContextRef.current.resume().catch((): undefined => undefined),
-          inputContextRef.current.resume().catch((): undefined => undefined),
-        ]);
-        if (currentAttemptRef.current !== currentAttempt) {
-          cleanup();
-          return;
+        if (!outputCtx || !inputCtx) {
+          throw new Error("Audio contexts unavailable.");
         }
 
-        // 3. Setup Analyser for Visualizer (expose via state only after onopen)
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        analyserRef.current.fftSize = 256;
-        analyserRef.current.connect(audioContextRef.current.destination);
+        // Re-resume in case Safari suspended during the credential await
+        await Promise.all([
+          outputCtx.resume().catch((): undefined => undefined),
+          inputCtx.resume().catch((): undefined => undefined),
+        ]);
+        if (abandonLocalIfStale()) return;
 
-        // 4. Connect Live Session
+        // Analyser for visualizer (expose via state only after onopen)
+        const localAnalyser = outputCtx.createAnalyser();
+        localAnalyser.fftSize = 256;
+        localAnalyser.connect(outputCtx.destination);
+        analyserRef.current = localAnalyser;
+
+        const { ai, model } = credentials;
         const sessionPromise = ai.live.connect({
           model,
           config: {
@@ -217,9 +253,8 @@ export const useLiveSession = (
               setIsConnecting(false);
               setAnalyser(analyserRef.current);
 
-              // Start Mic Stream (must follow a user gesture on iOS)
               try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const stream = await micPromise;
                 if (currentAttemptRef.current !== currentAttempt) {
                   stream.getTracks().forEach(t => t.stop());
                   return;
@@ -268,6 +303,7 @@ export const useLiveSession = (
                 processor.connect(inputContextRef.current.destination);
               } catch (e: any) {
                 console.warn("Mic Access Failed", e);
+                if (currentAttemptRef.current !== currentAttempt) return;
                 if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
                   setError("Microphone permission denied. Enable in browser.");
                 } else if (e.name === 'NotFoundError' || (e.message && e.message.includes('Requested device not found'))) {
@@ -281,7 +317,6 @@ export const useLiveSession = (
             onmessage: async (msg: LiveServerMessage) => {
               if (currentAttemptRef.current !== currentAttempt) return;
               try {
-                // Handle Transcriptions
                 if (msg.serverContent?.modelTurn?.parts) {
                   msg.serverContent.modelTurn.parts.forEach(part => {
                     if (part.text) {
@@ -296,7 +331,6 @@ export const useLiveSession = (
                   setTranscript(prev => prev + msg.serverContent!.inputTranscription!.text);
                 }
 
-                // Handle Tool Calls
                 if (msg.toolCall) {
                   const functionCalls = msg.toolCall.functionCalls;
                   if (functionCalls) {
@@ -333,7 +367,6 @@ export const useLiveSession = (
                   }
                 }
 
-                // Handle Audio Output
                 const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                 if (audioData && audioContextRef.current) {
                   setIsSpeaking(true);
@@ -342,7 +375,6 @@ export const useLiveSession = (
                   }
                   const bytes = base64ToUint8Array(audioData);
 
-                  // Manual PCM decoding (16-bit little-endian to float)
                   const dataInt16 = new Int16Array(bytes.buffer);
                   const audioBuffer = audioContextRef.current.createBuffer(1, dataInt16.length, 24000);
                   const channelData = audioBuffer.getChannelData(0);
@@ -411,20 +443,39 @@ export const useLiveSession = (
           if (typeof session.close === 'function') {
             try { session.close(); } catch(e) {}
           }
+          // Do not shared-cleanup — a newer attempt owns the refs.
           return;
         }
         sessionRef.current = session;
         return; // Success
       } catch (e: any) {
-        if (currentAttemptRef.current !== currentAttempt) return;
+        if (currentAttemptRef.current !== currentAttempt) {
+          // Stale — leave the newer attempt alone.
+          return;
+        }
         console.error(`Connection Attempt ${i + 1} Failed`, e);
-        cleanup();
+
+        // Soft-reset session/analyser for retry, but keep unlocked audio contexts + credentials.
+        if (sessionRef.current && typeof sessionRef.current.close === 'function') {
+          try { sessionRef.current.close(); } catch {}
+        }
+        sessionRef.current = null;
+        if (analyserRef.current) {
+          try { analyserRef.current.disconnect(); } catch {}
+          analyserRef.current = null;
+        }
+        setAnalyser(null);
+        setIsConnected(false);
         setIsConnecting(true);
 
         if (i === retries - 1) {
           setError(e.message || "Failed to establish link.");
-          setIsConnected(false);
           setIsConnecting(false);
+          // Full cleanup only on final failure of the active attempt.
+          // If onopen never fired, the eagerly-granted mic stream was never
+          // assigned to streamRef, so cleanup() can't stop it — stop it here.
+          micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+          cleanup();
         } else {
           await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
         }

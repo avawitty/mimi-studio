@@ -67,7 +67,8 @@ interface UserContextType {
   keyLogin: (handle: string, apiKey: string) => Promise<void>;
   verifyIdentity: () => Promise<void>;
   isEnvironmentRestricted: boolean;
-  isDatabaseMissing: boolean; 
+  isDatabaseMissing: boolean;
+  isSimulatedMode: boolean;
   isKeyBlocked: boolean;
   setKeyBlocked: (blocked: boolean) => void;
   authError: string | null;
@@ -182,12 +183,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authError, setAuthError] = useState<string | null>(null);
   const [isEnvironmentRestricted, setIsEnvironmentRestricted] = useState(false);
   const [isDatabaseMissing, setIsDatabaseMissing] = useState(false);
+  const [isSimulatedMode, setIsSimulatedMode] = useState(() => {
+    try {
+      return localStorage.getItem('mimi_simulated_mode') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [isKeyBlocked, setKeyBlocked] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(true);
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
     auth: 'syncing',
     oracle: 'ready',
-    storage: 'nominal'
+    storage: isSimulatedMode ? 'limited' : 'nominal'
   });
   
   const [activeThread, setActiveThread] = useState<NarrativeThread | null>(null);
@@ -446,14 +454,38 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const handleRegistryAlert = (e: any) => {
       const { message } = e.detail;
-      if (message && (
-        message.includes('Database connection failed') || 
-        (message.includes('not-found') && message.includes('Database')) ||
-        message.includes('dunning') ||
-        message.includes('403') ||
-        message.includes('Invalid Credentials') ||
-        message.includes('permission-denied')
-      )) {
+      if (!message) return;
+
+      const msg = String(message).toLowerCase();
+      const isHardMissing =
+        msg.includes('database connection failed') ||
+        (msg.includes('not-found') && msg.includes('database')) ||
+        msg.includes('does not exist in project');
+      const isBillingOrLimit =
+        msg.includes('dunning') ||
+        msg.includes('billing') ||
+        msg.includes('quota') ||
+        msg.includes('limit') ||
+        msg.includes('403') ||
+        msg.includes('invalid credential') ||
+        msg.includes('invalid-credential') ||
+        msg.includes('permission-denied');
+
+      if (isBillingOrLimit) {
+        setIsSimulatedMode(true);
+        setIsDatabaseMissing(false);
+        if (!msg.includes('automatic fallback to simulated mode')) {
+          window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+            detail: {
+              type: 'error',
+              message: 'Automatic Fallback to Simulated Mode active due to billing/limit. Limiting functions in the Tailor.'
+            }
+          }));
+        }
+        return;
+      }
+
+      if (isHardMissing) {
         setIsDatabaseMissing(true);
       }
     };
@@ -1352,10 +1384,23 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.warn("MIMI // Auth Bypassed by User.");
   }, []);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('mimi_simulated_mode', isSimulatedMode ? '1' : '0');
+    } catch {
+      // no-op
+    }
+    setSystemStatus((prev) => ({
+      ...prev,
+      storage: isSimulatedMode ? 'limited' : (prev.storage === 'limited' ? 'nominal' : prev.storage)
+    }));
+  }, [isSimulatedMode]);
+
   return (
     <UserContext.Provider value={{ 
       user, profile, loading, isElevatorLoading, setElevatorLoading, updateProfile, toggleZineStar,
       login, loginWithEmail, completeEmailLogin, signUpWithEmailPassword, signInWithEmailPassword, upgradeGhostAccount, signInWithGoogleRedirect, ghostLogin, speedGhostEntrance, linkAccount, keyLogin, verifyIdentity, isEnvironmentRestricted, isDatabaseMissing, isKeyBlocked, setKeyBlocked, authError,
+      isSimulatedMode,
       hasApiKey, openKeySelector, logout, refreshHasApiKey, systemStatus, setOracleStatus,
       apiKeys, setApiKey, removeApiKey, activeLlmProvider, setActiveLlmProvider,
       featureFlags, toggleFeature,

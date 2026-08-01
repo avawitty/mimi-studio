@@ -372,7 +372,11 @@ test.describe("Route restoration", () => {
       localStorage.setItem("mimi_last_route", "/studio");
     });
 
-    await page.goto("/auth/action?mode=signIn&oobCode=abc");
+    // Use an auth route that renders in place instead of one that immediately
+    // redirects (for example the sign-in email-link flow). The behavior under
+    // test is route persistence, so we keep the route stable while the
+    // persistence effect has a chance to run.
+    await page.goto("/auth/action");
     await page.waitForLoadState("domcontentloaded");
     await expect
       .poll(async () => {
