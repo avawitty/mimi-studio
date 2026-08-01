@@ -1795,40 +1795,49 @@ export const AnalysisDisplay: React.FC<{
  </motion.section>
  )}
 
- {/* 9b. USED CONTEXT (Scribe atoms applied to this issue) */}
+ {/* 9b. USED CONTEXT — colophon: what approved knowledge shaped this issue */}
  {(scribeFragments.length > 0 || (metadata.fragmentsUsed?.length ?? 0) > 0) && (
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center px-6 md:px-24 snap-start bg-nous-base text-nous-text print:min-h-0 print:py-12">
- <div className="max-w-4xl w-full space-y-16">
- <SectionHeader label="Used Context" icon={BookOpen} style={{ color: accentColor }} />
- <div className="space-y-8">
- <p className="font-serif italic text-2xl text-nous-subtle leading-relaxed">
- Scribe atoms the reader approved before this issue was accessioned.
+ <div className="max-w-3xl w-full space-y-12">
+ <div className="space-y-4 border-b border-nous-border pb-8">
+ <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle" style={{ color: accentColor }}>
+ Colophon
  </p>
- <div className="grid gap-6">
- {scribeFragments.length > 0 ? scribeFragments.map((atom) => (
- <div key={atom.id} className="flex items-start gap-4 p-4 border border-nous-border rounded-none bg-nous-base/50">
- <div className="w-8 h-8 rounded-none bg-stone-200 flex items-center justify-center shrink-0">
- <BookOpen size={14} className="text-nous-subtle"/>
+ <SectionHeader label="Used Context" icon={BookOpen} style={{ color: accentColor }} />
+ <p className="font-serif italic text-xl md:text-2xl text-nous-subtle leading-relaxed max-w-xl">
+ Memory the creator approved before this issue was composed — not chat history, not silent inference.
+ </p>
+ <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-nous-subtle">
+ {(scribeFragments.length || metadata.fragmentsUsed?.length || 0)} approved atom{(scribeFragments.length || metadata.fragmentsUsed?.length || 0) === 1 ? '' : 's'}
+ </p>
  </div>
- <div className="space-y-1">
- <div className="flex items-center gap-2">
- <span className="font-serif italic text-sm text-nous-text">{atom.title || 'Untitled Fragment'}</span>
+ <ol className="space-y-0 divide-y divide-nous-border border-t border-b border-nous-border">
+ {scribeFragments.length > 0 ? scribeFragments.map((atom, index) => (
+ <li key={atom.id} className="py-6 flex gap-5 items-start">
+ <span className="font-mono text-[10px] text-nous-subtle tabular-nums w-8 shrink-0 pt-1">
+ {String(index + 1).padStart(2, '0')}
+ </span>
+ <div className="space-y-2 min-w-0 flex-1">
+ <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+ <span className="font-serif italic text-base text-nous-text">{atom.title || 'Untitled Fragment'}</span>
  {atom.source && (
- <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle border border-nous-border px-1">{atom.source}</span>
+ <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
+ {atom.source}
+ </span>
  )}
  </div>
  <p className="font-sans text-sm text-nous-subtle leading-relaxed whitespace-pre-wrap">
  {atom.content}
  </p>
  </div>
- </div>
- )) : metadata.fragmentsUsed?.map((id) => (
- <div key={id} className="p-4 border border-nous-border font-mono text-[10px] text-nous-subtle">
- Fragment {id.split('_').pop()}
- </div>
+ </li>
+ )) : metadata.fragmentsUsed?.map((id, index) => (
+ <li key={id} className="py-4 flex gap-5 font-mono text-[10px] text-nous-subtle">
+ <span className="tabular-nums w-8 shrink-0">{String(index + 1).padStart(2, '0')}</span>
+ <span>Fragment {id.split('_').pop()}</span>
+ </li>
  ))}
- </div>
- </div>
+ </ol>
  </div>
  </motion.section>
  )}
