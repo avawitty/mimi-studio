@@ -44,6 +44,7 @@ const app_1 = require("firebase-admin/app");
 const auth_1 = require("firebase-admin/auth");
 const firestore_1 = require("firebase-admin/firestore");
 const stripe_1 = __importDefault(require("stripe"));
+const firestore_2 = require("./firestore");
 (0, app_1.initializeApp)();
 const app = (0, express_1.default)();
 app.use((0, cookie_parser_1.default)());
@@ -69,7 +70,7 @@ app.use((req, res, next) => {
     }
     next();
 });
-const db = (0, firestore_1.getFirestore)();
+const db = (0, firestore_2.getMimiFirestore)();
 const normalizeMimiPlan = (planInput) => {
     const value = String(planInput || 'free').trim().toLowerCase();
     if (value === 'core')
