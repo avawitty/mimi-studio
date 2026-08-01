@@ -15,7 +15,7 @@ export default {
     extend: {
       fontFamily: {
         "display": ['"Cormorant Garamond"', "serif"],
-        "sans": ['"Inter"', '"Public Sans"', "sans-serif"],
+        "sans": ['"Geist Variable"', '"Public Sans"', "sans-serif"],
         serif: ['"Cormorant Garamond"', 'serif'],
         bodoni: ['"Bodoni Moda"', 'serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
@@ -24,14 +24,22 @@ export default {
       },
       colors: {
         "primary": "#1a1a1a",
-        "background-light": "#EAE8E3",
+        "background-light": "#FAFAFA",
         "background-dark": "#191919",
         "canvas-border": "#000000",
         archival: {
-          beige: '#F2F0E9',
-          border: '#D1CFCA',
-          text: '#2A2A2A',
-          accent: '#8E8C84'
+          beige: '#FAFAFA',
+          border: '#D4D4D4',
+          text: '#0A0A0A',
+          accent: '#78716C'
+        },
+        mimi: {
+          field: 'var(--mimi-field)',
+          worktable: 'var(--mimi-worktable)',
+          ink: 'var(--mimi-ink)',
+          olive: 'var(--mimi-olive)',
+          stone: 'var(--mimi-stone)',
+          hairline: 'var(--mimi-hairline)',
         },
         nous: {
           base: 'var(--nous-base)',
@@ -42,6 +50,7 @@ export default {
           accent: 'var(--nous-accent)',
           border: 'var(--nous-border)',
           paper: 'var(--nous-paper)',
+          olive: 'var(--nous-olive)',
         }
       },
       backgroundImage: {

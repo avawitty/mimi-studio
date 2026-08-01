@@ -19,6 +19,11 @@ import {
   Award,
   Crown
 } from 'lucide-react';
+import {
+  PublicField,
+  EditorialPlate,
+} from './public-face';
+import { PressReveal } from './motion/PressReveal';
 
 interface EditorialFrontPageProps {
   onSelectZine: (zineId: string) => void;
@@ -100,72 +105,39 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({ onSelect
     }
   ];
 
-  return (
-    <div className="w-full h-full min-h-0 overflow-y-auto bg-[#FAF8F5] dark:bg-[#080808] text-stone-900 dark:text-stone-100 font-sans transition-colors duration-300 pb-32">
-      
-      {/* Editorial Header Block */}
-      <section className="border-b border-stone-200 dark:border-stone-850 px-6 py-12 md:py-24 max-w-7xl mx-auto flex flex-col gap-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-stone-200 dark:border-stone-850 pb-8 gap-4">
-          <div className="space-y-1">
-            <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-400 font-bold">
-              EST. 2026 // ESTABLISHED INDEPENDENT PUBLIC NODE
-            </p>
-            <h1 className="leading-none">
-              <span className="sr-only">Mimi Zine</span>
-              <img
-                src="/brand/official/mimi-primary-wordmark-light.svg"
-                alt=""
-                className="w-full max-w-[34rem] h-auto object-contain object-left dark:hidden"
-              />
-              <img
-                src="/brand/official/mimi-primary-wordmark-dark.svg"
-                alt=""
-                className="hidden w-full max-w-[34rem] h-auto object-contain object-left dark:block"
-              />
-            </h1>
-          </div>
-          <div className="text-left md:text-right font-mono text-[9px] uppercase tracking-wider text-stone-500 space-y-1">
-            <p>ISSUE 01 // SOFT BRUTALISM</p>
-            <p className="text-emerald-600 dark:text-emerald-400 font-bold">TASTE MATRIX ACTIVE CORE</p>
-          </div>
-        </div>
+  const featured = essays[0];
 
-        {/* Brand Mission Statement */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4">
-          <div className="md:col-span-8">
-            <p className="font-serif italic text-xl md:text-3xl text-stone-800 dark:text-stone-200 leading-snug">
-              "We refuse the frictionless. In an era where algorithms flatten taste into empty averages, Mimi Zine serves as a structured, defensive archive for original creative expressions, tactile materiality, and machine-optimized discovery."
-            </p>
-          </div>
-          <div className="md:col-span-4 flex flex-col justify-end gap-4">
-            <div className="p-4 bg-stone-100 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-none relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none">
-                <Crown size={72} />
-              </div>
-              <h4 className="font-mono text-[8px] uppercase tracking-widest font-black text-stone-500 mb-2">Canonical Gateway</h4>
-              <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-normal mb-3">
-                Become part of our sovereign community. Lock down your own private archive vault node.
-              </p>
-              <button
-                onClick={onOpenGateway}
-                className="w-full flex items-center justify-between text-left font-mono text-[9px] uppercase tracking-wider font-extrabold border border-stone-800 dark:border-stone-200 px-3 py-1.5 hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all"
-              >
-                <span>Initialize Identity Vault</span>
-                <ArrowUpRight size={12} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+  return (
+    <PublicField className="w-full h-full min-h-0 overflow-y-auto font-sans transition-colors duration-300 pb-32">
+      {/* First viewport: one editorial plate (PRD-02 / PRD-07) */}
+      <PressReveal>
+        <EditorialPlate
+          thesis="We refuse the frictionless."
+          supporting="A defensive archive for original expression, tactile materiality, and taste you approve — not averages the feed invents."
+          actionLabel="Enter the issue"
+          onAction={() => {
+            const el = document.getElementById('mimi-front-issue');
+            el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          folioLabel="Issue 01"
+          visual={
+            <img
+              src={featured.image}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover grayscale"
+            />
+          }
+        />
+      </PressReveal>
 
       {/* Main Issue Presentation Grid */}
-      <section className="px-6 py-12 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <section id="mimi-front-issue" className="px-6 py-12 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 border-t border-[var(--mimi-hairline,#d4d4d4)]">
         
         {/* Left Column: List of Essays / Table of Contents */}
         <div className="lg:col-span-8 flex flex-col gap-12">
           <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-850 pb-4">
             <h3 className="font-mono text-[10px] uppercase tracking-widest font-black text-stone-500">I. FLAGSHIP ESSAYS & BRIEFINGS</h3>
-            <span className="font-sans text-[10px] uppercase text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/10">3 items active</span>
+            <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[var(--mimi-olive,#5A5A40)] font-semibold">3 active</span>
           </div>
 
           <div className="flex flex-col gap-12 divide-y divide-stone-200 dark:divide-stone-850">
@@ -175,7 +147,7 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({ onSelect
                   {/* Essay Header and Meta */}
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-[8px] uppercase tracking-widest text-[#937C64] dark:text-[#C5B39A] font-extrabold px-2 py-0.5 bg-stone-100 dark:bg-stone-900 border border-current/20">
+                      <span className="font-sans text-[8px] uppercase tracking-[0.22em] text-[var(--mimi-olive,#5A5A40)] font-semibold">
                         {essay.category}
                       </span>
                       <span className="text-stone-400 dark:text-stone-500 text-[10px] font-mono">{essay.date}</span>
@@ -389,6 +361,6 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({ onSelect
           </div>
         </div>
       </section>
-    </div>
+    </PublicField>
   );
 };

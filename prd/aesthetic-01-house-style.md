@@ -1,6 +1,6 @@
 # PRD-01: House Style v2 — Print-Shop Discipline
 
-**Status**: Ideation / Draft  
+**Status**: Implementing (tokens + public kit landed)  
 **Parent**: [`aesthetic-system-overview.md`](./aesthetic-system-overview.md)  
 **Proof**: [`proofs/aesthetic/01-house-style-board.jpg`](../proofs/aesthetic/01-house-style-board.jpg)
 

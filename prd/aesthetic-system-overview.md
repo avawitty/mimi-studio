@@ -1,6 +1,6 @@
 # PRD: Mimi Aesthetic System — Print-Shop Discipline
 
-**Status**: Ideation / Draft  
+**Status**: Implementation in progress (Phase A–B landed on branch)  
 **Branch**: `meaesthetic-system-3413`  
 **Type**: Design systems + surface UX  
 **Related**: `docs/editorial-front-page-functional-spec.md`, `index.css`, `components/ui/mimiMaterials.css`  

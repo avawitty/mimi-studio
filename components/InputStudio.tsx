@@ -119,6 +119,7 @@ import { useStudioDollSelection } from "../hooks/useStudioDollSelection";
 import { StudioDollToggle } from "./StudioDollToggle";
 import { PearlButton } from "./ui/PearlButton";
 import { dispatchStudioAlert } from "../lib/studioAlert";
+import { UsedContextColophon } from "./provenance/UsedContextColophon";
 import { useUrlIngest } from "../hooks/useUrlIngest";
 import { useMediaUpload } from "../hooks/useMediaUpload";
 
@@ -4673,6 +4674,17 @@ ${finalInput}`;
 
                   {activePanel === "orchestrator" && (
                     <div className="space-y-4">
+                      <UsedContextColophon
+                        target="studio"
+                        defaultExpanded
+                        className="border border-stone-700"
+                        onOpenScribe={() => {
+                          window.dispatchEvent(
+                            new CustomEvent("mimi:change_view", { detail: "scribe" }),
+                          );
+                          setActivePanel(null);
+                        }}
+                      />
                       {/* Tailor Draft Section */}
                       <div className="space-y-2 border-b border-stone-850 pb-4">
                         <div className="flex items-center justify-between gap-2">

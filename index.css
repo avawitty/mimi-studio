@@ -16,12 +16,23 @@
     --nous-accent: #78716c; /* Desaturated stone */
     --nous-olive: #5A5A40;
     --nous-charcoal: #262626;
-    --nous-border: #e5e5e5;
-    --nous-paper: #f9f7f2; /* Warm cream paper */
+    --nous-border: #d4d4d4; /* Hairline preference (House Style v2) */
+    /* Paper: cool/neutral field — avoid warm-cream lifestyle wash on public surfaces */
+    --nous-paper: #fafafa;
+
+    /* House Style v2 — print-shop discipline (docs/house-style-v2.md) */
+    --mimi-field: #ffffff;
+    --mimi-worktable: #fafafa;
+    --mimi-ink: #0a0a0a;
+    --mimi-olive: #5a5a40;
+    --mimi-stone: #78716c;
+    --mimi-hairline: #d4d4d4;
+    --mimi-grain-opacity: 0.08;
 
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
     --era-font-serif: "Cormorant Garamond", serif;
+    /* Cool/neutral tooth; public surfaces use .mimi-public-grain at ≤12% */
     --era-bg-image: url("https://www.transparenttextures.com/patterns/cream-paper.png");
   }
 
@@ -30,10 +41,16 @@
     --nous-text: #FAF9F6; /* Cream/Off-white */
     --nous-subtle: #A3A3A3; 
     --nous-accent: #E5E5E5;
-    --nous-olive: #404040;
+    --nous-olive: #5A5A40;
     --nous-charcoal: #1f1f1f;
     --nous-border: #262626;
     --nous-paper: #121212; /* Deep charcoal paper */
+    --mimi-field: #ffffff; /* Public plates stay precious white even in dark app shell */
+    --mimi-worktable: #0c0c0c;
+    --mimi-ink: #0a0a0a; /* Ink on public white field */
+    --mimi-olive: #5a5a40;
+    --mimi-stone: #78716c;
+    --mimi-hairline: #d4d4d4;
     --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
   }
 
@@ -85,32 +102,32 @@
     color: var(--nous-text);
   }
 
-  /* Studio / Worktable editorial shell (light + dark) */
+  /* Studio / Worktable editorial shell (light + dark) — cooler chrome, less cream */
   .studio-worktable {
-    --studio-chrome: #f3f1ea;
+    --studio-chrome: #f5f5f5;
     --studio-canvas: #ffffff;
-    --studio-panel: #fafaf8;
+    --studio-panel: #fafafa;
     --studio-surface: #ffffff;
     --studio-workspace: #ffffff;
     --studio-rail: #0a0a0a;
     --studio-rail-track: rgba(0, 0, 0, 0.12);
     --studio-ink: #0a0a0a;
     --studio-muted: #6b6b6b;
-    --studio-border: #e3e3de;
-    --studio-divider: #d4d4ce;
-    --studio-polaroid: #faf9f6;
+    --studio-border: #d4d4d4;
+    --studio-divider: #d4d4d4;
+    --studio-polaroid: #fafafa;
     --studio-polaroid-slot: #121212;
-    --studio-tab-bg: #f3f1ea;
+    --studio-tab-bg: #f5f5f5;
     --studio-tab-active: #0a0a0a;
-    --studio-ref-tab: #f3f1ea;
+    --studio-ref-tab: #f5f5f5;
     --studio-ref-tab-ink: #0a0a0a;
     --studio-icon-hover: rgba(0, 0, 0, 0.04);
   }
 
-  /* Binder Portfolio dark field: cream header chrome on black gallery */
+  /* Binder Portfolio dark field: cool header chrome on black gallery */
   .studio-worktable[data-studio-theme="dark"],
   .studio-worktable.binder-portfolio[data-studio-theme="dark"] {
-    --studio-chrome: #f3f1ea;
+    --studio-chrome: #f0f0f0;
     --studio-canvas: #050505;
     --studio-panel: #101010;
     --studio-surface: #0c0c0c;
@@ -125,9 +142,31 @@
     --studio-polaroid-slot: #121212;
     --studio-tab-bg: #0a0a0a;
     --studio-tab-active: #faf9f6;
-    --studio-ref-tab: #f3f1ea;
+    --studio-ref-tab: #f0f0f0;
     --studio-ref-tab-ink: #0a0a0a;
     --studio-icon-hover: rgba(255, 255, 255, 0.06);
+  }
+
+  /* Public face kit — white field, cool grain, hairlines */
+  [data-surface="public"],
+  .mimi-public-field {
+    --mimi-field: #ffffff;
+    --mimi-ink: #0a0a0a;
+    --mimi-olive: #5a5a40;
+    --mimi-stone: #78716c;
+    --mimi-hairline: #d4d4d4;
+    color: var(--mimi-ink);
+    background-color: var(--mimi-field);
+  }
+
+  .mimi-public-grain {
+    background-image: url("https://www.transparenttextures.com/patterns/noise.png");
+    background-repeat: repeat;
+  }
+
+  .mimi-wordmark {
+    font-family: var(--era-font-serif), "Cormorant Garamond", serif;
+    font-variant-ligatures: none;
   }
 
   .studio-worktable {
