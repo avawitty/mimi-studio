@@ -34,7 +34,7 @@ Brand feeling currently lives inside the app’s chambers. Outside Mimi, Midjour
 - White field, inset hairline plate border.
 - Aesthetic name in Cormorant (hero).
 - Geometric press mark derived from signature DNA (black + olive only).
-- Colophon line: approved atom count · plate date · MIMI.
+- Colophon line: approved atom count · plate date · **Mimi**.
 - No charts on the exportable face.
 
 **Exports**

@@ -32,12 +32,12 @@ Studio, Signature, Stand, and Front Page often read as **chamber dashboards**: t
 
 | Element | First viewport | Below / secondary |
 |---------|----------------|-------------------|
-| Brand | Hero-level MIMI | — |
+| Brand | Hero-level **Mimi** (title case) | — |
 | Thesis | One issue line / dek | Essay list, contributors |
 | Action | Enter issue / Read | Subscribe, Gateway |
 | Visual | Full-bleed cover (edge-to-edge) | Grid of further pieces |
 
-**Intention:** Mag fold cover, not magazine CMS dashboard. No stats, schedules, or promo chips in viewport 1 (aligns with existing front-page functional spec’s “current issue” spirit).
+**Intention:** Mag fold cover, not magazine CMS dashboard. No stats, schedules, or promo chips in viewport 1 (aligns with existing front-page functional spec’s “current issue” spirit). Masthead is title-case **Mimi** in Cormorant — not all-caps `MIMI` (magazine generators bias toward caps; implementation must force title case).
 
 ### Studio (`InputStudio` / Quiet Studio / Cover)
 
@@ -54,7 +54,7 @@ Studio, Signature, Stand, and Front Page often read as **chamber dashboards**: t
 
 | Element | First viewport | Secondary |
 |---------|----------------|-----------|
-| Brand | MIMI + “Signature” | — |
+| Brand | **Mimi** + “Signature” | — |
 | Thesis | Aesthetic name / plate title | Charts, DNA metrics |
 | Action | Export / Share | Regenerate, history |
 | Visual | Collectible plate (see PRD-03) | Drift charts |

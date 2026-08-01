@@ -17,7 +17,8 @@ The product differentiator is not “pretty generation UI.” It is **approved t
 ## North-star aesthetic thesis
 
 > **Print-shop archive, not lifestyle blog.**  
-> High-contrast black/white field, olive and stone as accents only, serif for names and theses, Geist for system, column rules over cards, provenance as colophon, motion as press mechanics.
+> High-contrast black/white field, olive and stone as accents only, serif for names and theses, Geist for system, column rules over cards, provenance as colophon, motion as press mechanics.  
+> **Wordmark casing: `Mimi`** (title case in Cormorant) — not all-caps `MIMI`, not `mimi` as display brand.
 
 ## Pillars (mapped PRDs)
 

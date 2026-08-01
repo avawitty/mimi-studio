@@ -29,7 +29,7 @@ Moodboard, Studio, and Darkroom often present as tool consoles. On mobile especi
 
 ```
 ┌─────────────────────────────┐
-│ MIMI · Issue          [···] │  ← 40–48px chrome
+│ Mimi · Issue          [···] │  ← 40–48px chrome
 ├─────────────────────────────┤
 │                             │
 │         CANVAS / MEDIA      │  ← hero

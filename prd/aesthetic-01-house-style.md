@@ -41,6 +41,7 @@ Cormorant + Geist + grain is already Mimi, but token usage drifts into warm crea
 
 ### Typography discipline
 
+- **Wordmark**: **`Mimi`** in Cormorant — title case only. Do not render the brand as all-caps `MIMI` on public plates, entry compositions, Signature/Stand, or share cards. Micro labels may still use tracked uppercase for *system* chrome (e.g. `COLOPHON`, `ISSUE`) but never for the product name.
 - **Serif (Cormorant)**: brand, theses, Signature names, essay titles, colophon italics.
 - **Sans (Geist)**: UI labels, tracked uppercase microcopy, buttons default.
 - **Mono (JetBrains)**: provenance IDs, folio numbers, atom IDs — sparingly.
@@ -56,6 +57,7 @@ Cormorant + Geist + grain is already Mimi, but token usage drifts into warm crea
 ### Anti-drift checklist (acceptance)
 
 - [ ] First viewport without nav still reads as Mimi (brand test).
+- [ ] Product wordmark renders as **`Mimi`**, never all-caps `MIMI`.
 - [ ] No large warm-cream panel as the primary field on Front Page / Share / Signature / Stand.
 - [ ] No terracotta / purple / glow accents on public face.
 - [ ] Olive appears only as mark/folio/colophon accent, not as fill theme.

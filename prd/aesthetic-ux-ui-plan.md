@@ -61,7 +61,7 @@ flowchart TB
 
 ## 3. Design principles (operational)
 
-1. **Brand first** — Wordmark/name is hero-level on public and entry plates.
+1. **Brand first** — Wordmark/name is hero-level on public and entry plates; product name is **`Mimi`** (title case), not all-caps `MIMI`.
 2. **One job per viewport** — No chamber dashboards at entry.
 3. **Artifact > chrome** — If chrome can live in a sheet, it should.
 4. **Provenance is UI** — Colophon is not footer fine print; it is a press mark.

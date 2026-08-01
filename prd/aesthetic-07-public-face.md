@@ -30,7 +30,7 @@ Front Page, Share Card, Signature, and Stand currently feel related in spirit bu
 | Element | Spec |
 |---------|------|
 | Field | White `#FFFFFF`, cool grain ≤12% |
-| Name | Cormorant, black, generous size |
+| Name / wordmark | Cormorant, black, generous size — product name as **`Mimi`** (title case), never `MIMI` |
 | Rules | 1px hairline column/section rules |
 | Meta | Geist uppercase tracked 0.2–0.35em |
 | Accent | Olive press mark / folio only |

@@ -17,3 +17,5 @@ These are **direction boards**, not production pixel specs. Implementation shoul
 | `07-public-face-family.jpg` | Public face consistency |
 
 Visual language target: high-contrast black/white, olive/stone accents, Cormorant + Geist, column rules, print-shop discipline — not cream/lifestyle editorial cliché.
+
+**Wordmark:** title-case **Mimi** (not all-caps MIMI). Proofs regenerated to match.
