@@ -471,7 +471,10 @@ export const useLiveSession = (
         if (i === retries - 1) {
           setError(e.message || "Failed to establish link.");
           setIsConnecting(false);
-          // Full cleanup only on final failure of the active attempt
+          // Full cleanup only on final failure of the active attempt.
+          // If onopen never fired, the eagerly-granted mic stream was never
+          // assigned to streamRef, so cleanup() can't stop it — stop it here.
+          micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
           cleanup();
         } else {
           await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
