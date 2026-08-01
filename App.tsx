@@ -232,6 +232,9 @@ const ThePressChamber = lazy(() =>
 const ChamberMapView = lazy(() =>
   import("./components/chambers/ChamberMapView").then((m) => ({ default: m.ChamberMapView })),
 );
+const AtelierChamber = lazy(() =>
+  import("./components/chambers/AtelierChamber").then((m) => ({ default: m.AtelierChamber })),
+);
 const TheOracle = lazy(() =>
   import("./components/TheOracle").then((m) => ({ default: m.TheOracle })),
 );
@@ -824,6 +827,7 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "action-board",
   "archival",
   "architecture",
+  "atelier",
   "aesthetic-tokens",
   "brand-intake",
   "brand-voice",
@@ -2161,6 +2165,7 @@ export const App: React.FC = () => {
     "taste-discovery": "Taste Discovery",
     architecture: "System Architecture",
     "chamber-map": "Chamber Registry",
+    atelier: "Atelier",
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
@@ -2181,7 +2186,11 @@ export const App: React.FC = () => {
       return "reflect";
     if (["tailor", "loom", "action-board", "the-edit", "the-press", "wardrobe", "mimi-drop"].includes(mode))
       return "refine";
-    if (["signature", "ward", "profile", "taste-graph", "pocket", "scribe", "mimi-dolls"].includes(mode))
+    if (
+      ["signature", "ward", "profile", "taste-graph", "pocket", "scribe", "mimi-dolls", "atelier"].includes(
+        mode,
+      )
+    )
       return "signature";
     if (["nebula", "proscenium"].includes(mode)) return "observe";
     return "system";
@@ -2588,6 +2597,7 @@ export const App: React.FC = () => {
                         {viewMode === "chamber-map" && (
                           <ChamberMapView onNavigate={setViewMode} />
                         )}
+                        {viewMode === "atelier" && <AtelierChamber />}
                         {viewMode === "geo_engine" && (
                           <div className="h-full w-full overflow-y-auto">
                             <TheGEOEngine />
