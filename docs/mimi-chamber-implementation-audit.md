@@ -28,6 +28,7 @@ All 18 canonical modules are registered. Chamber shells live under `components/c
 | The Ward | `/ward` | `TheWard` | Live |
 | Private Studio | `/private-studio` | `PrivateStudioChamber` | Live |
 | Mimi Dolls | `/mimi-dolls` | `MimiDollsChamber` | Live |
+| Atelier | `/atelier` | `AtelierChamber` | Live |
 
 ## Legacy Route Aliases (preserved)
 
@@ -41,8 +42,11 @@ All 18 canonical modules are registered. Chamber shells live under `components/c
 | `/case-study` | `private-studio` |
 | `/stand`, `/registry` | `pocket` |
 | `/mimi-you` | `mimi-dolls` |
+| `/objects`, `/taste-objects` | `atelier` |
 
 Public doll cards remain at `/u/:handle` (infrastructure route, not chamber replacement).
+
+Atelier is distinct from the Atelier membership plan: it archives taste-signal objects pinned from zine commerce touchpoints.
 
 ## Chamber Map
 
@@ -53,6 +57,7 @@ Navigate to `/chamber-map` or **Intelligence → Chamber Map** to inspect the li
 ```bash
 npm run validate:canon
 npm run verify:used-context
+npm run verify:atelier
 npm run build
 ```
 

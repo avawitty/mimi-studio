@@ -679,6 +679,33 @@ export interface SemioticSignal {
   product_id?: string;
 }
 
+/**
+ * Durable taste-signal object pinned from a zine touchpoint (Atelier).
+ * Speaks to desires / buyer orientation — not a wishlist or cart line.
+ */
+export interface AtelierObject {
+  id: string;
+  ownerUid: string;
+  motif: string;
+  context?: string;
+  targeting_rationale?: string;
+  semantic_trigger?: string;
+  image_url?: string;
+  vendor?: string;
+  price?: string;
+  link?: string;
+  commerce_source?: 'shopify' | 'editorial';
+  product_id?: string;
+  signal_type?: 'acquisition' | 'conceptual' | 'lexical';
+  zineId?: string;
+  zineTitle?: string;
+  signalIndex?: number;
+  /** Soft intent: how the pin should be read as taste evidence */
+  intent?: 'desire' | 'reference' | 'acquisition_signal';
+  tags?: string[];
+  savedAt: number;
+}
+
 export interface AestheticTouchpoint {
   type: 'visual' | 'lexical' | 'sonic';
   motif: string;

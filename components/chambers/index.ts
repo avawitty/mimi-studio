@@ -10,5 +10,6 @@ export { MoodBoardChamber } from "./MoodBoardChamber";
 export { PrivateStudioChamber } from "./PrivateStudioChamber";
 export { TheEditChamber } from "./TheEditChamber";
 export { ThePressChamber } from "./ThePressChamber";
+export { AtelierChamber } from "./AtelierChamber";
 export { ChamberMapView } from "./ChamberMapView";
 export { AestheticIntelligenceChamber } from "./AestheticIntelligenceChamber";

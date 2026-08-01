@@ -57,6 +57,9 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   "style-scryer": "tailor",
   "aesthetic-intelligence": "tailor",
   "style-diagnostics": "tailor",
+  atelier: "atelier",
+  objects: "atelier",
+  "taste-objects": "atelier",
 };
 
 export const canonicalizeMimiRoute = (segment: string): string => {
@@ -408,6 +411,23 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["Art Style Signature Card", "custom model prompts", "palette configurations"],
     userFlow: "Open Tailor Style Lab, upload references, inspect extracted patterns, and approve reusable style evidence for the active profile.",
     notes: "Compatibility route opens /tailor/style-lab. Style evidence remains linked instead of being embedded into every profile payload."
+  },
+  {
+    id: "atelier",
+    name: "Atelier",
+    layer: "chamber",
+    engine: "Taste Object Archive",
+    priority: 19,
+    status: "live",
+    canonicalRoute: "/atelier",
+    implementedMode: "atelier",
+    component: "AtelierChamber",
+    aliases: ["Objects", "Taste Objects"],
+    inputs: ["zine commerce touchpoints", "Shopify-verified product metadata", "semiotic rationale"],
+    generations: ["taste-signal persistence", "cross-issue object clustering"],
+    outputs: ["pinned taste objects", "desire / buyer-orientation evidence"],
+    userFlow: "Pin semiotic commerce objects from a zine as taste signals, then revisit them here across issues. Not a wishlist or cart.",
+    notes: "Distinct from the Atelier membership plan. Local-first archive under mimi_atelier_objects::{uid}.",
   }
 ];
 

@@ -234,6 +234,22 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         keywords: ["shopping", "sourcing", "buy", "items", "clothes", "thimble", "procure"],
       },
       {
+        mode: "atelier",
+        label: "Atelier",
+        note: "taste-signal objects from zines",
+        keywords: [
+          "atelier",
+          "objects",
+          "taste objects",
+          "saved products",
+          "semiotic",
+          "touchpoints",
+          "shopify",
+          "desire",
+          "pin",
+        ],
+      },
+      {
         mode: "threads",
         label: "Threads",
         note: "semantic/narrative mapping",
