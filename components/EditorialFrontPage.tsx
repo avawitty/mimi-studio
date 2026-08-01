@@ -51,6 +51,7 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
   const [zines, setZines] = useState<ZineMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const [emailInput, setEmailInput] = useState('');
 
   useEffect(() => {
@@ -59,7 +60,10 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
     setLoadError(null);
     fetchFeaturedPublicZines(18)
       .then((rows) => {
-        if (!cancelled) setZines(rows);
+        if (!cancelled) {
+          setZines(rows);
+          setLoadError(null);
+        }
       })
       .catch((err: unknown) => {
         console.warn('MIMI // Editorial front page load failed', err);
@@ -74,7 +78,7 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadToken]);
 
   const contributors = useMemo(() => {
     const seen = new Map<string, { handle: string; avatar?: string | null; count: number }>();
@@ -201,7 +205,7 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
               <p className="font-serif text-lg text-stone-900 dark:text-stone-100">{loadError}</p>
               <button
                 type="button"
-                onClick={() => window.location.reload()}
+                onClick={() => setReloadToken((n) => n + 1)}
                 className="font-mono text-[9px] uppercase tracking-widest border border-stone-400 px-3 py-1.5"
               >
                 Retry
