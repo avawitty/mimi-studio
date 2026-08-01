@@ -84,20 +84,45 @@ try {
   }
 }
 
-export const db = dbInstance;
+export let db: Firestore = dbInstance;
+
+const isMissingDatabaseError = (error: unknown) => {
+  const msg = error instanceof Error ? error.message : String(error);
+  return (
+    (msg.includes('not-found') && msg.includes('Database')) ||
+    msg.includes('does not exist in project')
+  );
+};
 
 // Test connection on boot (Required Constraint)
 async function testConnection() {
   if (typeof window === 'undefined') return;
   try {
-    await getDocFromServer(doc(dbInstance, 'system', 'connection_test'));
+    await getDocFromServer(doc(db, 'system', 'connection_test'));
   } catch (error) {
+    if (isMissingDatabaseError(error) && TARGET_DB_ID !== '(default)') {
+      try {
+        db = getFirestore(app);
+        await getDocFromServer(doc(db, 'system', 'connection_test'));
+        window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+          detail: {
+            type: 'error',
+            message: `Configured Firestore database "${TARGET_DB_ID}" was not found. Falling back to default database.`
+          }
+        }));
+        console.warn(`MIMI // Missing Firestore database "${TARGET_DB_ID}". Using "(default)" instead.`);
+        return;
+      } catch (fallbackError) {
+        console.error("MIMI // Default database fallback failed:", fallbackError);
+      }
+    }
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.error("Please check your Firebase configuration.");
     }
   }
 }
 testConnection();
+
 
 export const storage: FirebaseStorage = getStorage(app);
 

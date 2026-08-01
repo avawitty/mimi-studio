@@ -1390,7 +1390,13 @@ async function startServer() {
       }
 
       const normalizedCode = code.trim().toUpperCase().replace(/\s+/g, '');
-      if (normalizedCode === 'MIMIMUSE' || code === 'AQ.Ab8RN6Lb2tRMQaHqr8ew4UEKcGRZCTOfrhXjJ6FyiJNtSdIokA' || code === 'AQ.Ab8RN6IyzxKcsBHawVk9iETDEseYnhnPb7yjfXuvYGiUbZLTqw') {
+      const envPromoBypassCodes = (process.env.PROMO_BYPASS_CODES || '')
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .map((entry) => entry.toUpperCase());
+      const allowedBypassCodes = new Set(['MIMIMUSE', ...envPromoBypassCodes]);
+      if (allowedBypassCodes.has(normalizedCode)) {
         const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
         
         // Update user profile

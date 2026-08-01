@@ -1182,6 +1182,7 @@ export const App: React.FC = () => {
     systemStatus,
     activePersona,
     isDatabaseMissing,
+    isSimulatedMode,
     canGenerate,
     incrementGeneration,
     recordSession,
@@ -1336,6 +1337,12 @@ export const App: React.FC = () => {
     [navigate, profile?.handle, user?.uid],
   );
   const [pocketStashOpen, setPocketStashOpen] = useState(false);
+  const isStandalonePwaShell = React.useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const inStandaloneDisplayMode = window.matchMedia?.("(display-mode: standalone)")?.matches;
+    const isLegacyIosStandalone = (window.navigator as any)?.standalone === true;
+    return Boolean(inStandaloneDisplayMode || isLegacyIosStandalone);
+  }, []);
   const pocketDragDepth = useRef(0);
 
   useEffect(() => {
@@ -2258,6 +2265,11 @@ export const App: React.FC = () => {
       <ApiKeyShield isOpen={!memoizedHasApiKey} onClose={() => {}} />
 
       <RegistryAlert />
+      {isSimulatedMode && (
+        <div className="px-4 py-2 border-b border-amber-400/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-center">
+          Automatic Fallback to Simulated Mode active due to billing/limit. Limiting functions in the Tailor.
+        </div>
+      )}
       {viewMode !== "studio" && import.meta.env.DEV && <ClinicalAuditDrawer />}
       <AnimatePresence>
         {showPatronModal && (
@@ -2397,9 +2409,9 @@ export const App: React.FC = () => {
               className={`flex-1 w-full relative ${
                 viewMode === "studio" ? "h-full min-h-0" : "h-full min-h-0 overflow-y-auto"
               }`}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: isStandalonePwaShell ? 0 : 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
+              exit={{ opacity: 0, y: isStandalonePwaShell ? 0 : -8 }}
               transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
               <ChamberOverlay chamber={chamber} />
