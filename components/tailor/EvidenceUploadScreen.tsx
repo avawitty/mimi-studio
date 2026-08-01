@@ -108,6 +108,10 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importWarning, setImportWarning] = useState<string | null>(null);
+  const [lastImportAttempt, setLastImportAttempt] = useState<{
+    raw: string;
+    preferProvider?: 'letterboxd' | 'pinterest';
+  } | null>(null);
   const [staged, setStaged] = useState<TailorEvidenceItem[]>([]);
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
   const [localCuriosity, setLocalCuriosity] = useState<CuriosityPromptId[]>([]);
@@ -198,17 +202,21 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
   const runImport = useCallback(
     async (raw: string, preferProvider?: 'letterboxd' | 'pinterest') => {
       if (!raw.trim()) return false;
+      setLastImportAttempt({ raw, preferProvider });
       setImporting(true);
       setImportError(null);
       setImportWarning(null);
       try {
         const result = await importFromLink(raw, preferProvider ? { preferProvider } : undefined);
         if (!result.items.length) {
-          setImportError('No public taste signals found. Try another source or upload a screenshot.');
+          setImportError(
+            'No public taste signals found. Confirm the board or diary is public, try another URL, or upload a screenshot.',
+          );
           return false;
         }
         addStagedItems(result.items);
         if (result.warning) setImportWarning(result.warning);
+        setLastImportAttempt(null);
         return true;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Could not read that source.';
@@ -480,6 +488,13 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
         importing={importing}
         importError={importError}
         importWarning={importWarning}
+        onRetryImport={
+          lastImportAttempt
+            ? () => {
+                void runImport(lastImportAttempt.raw, lastImportAttempt.preferProvider);
+              }
+            : undefined
+        }
         completedSources={completedSources}
       />
 

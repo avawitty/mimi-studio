@@ -30,8 +30,11 @@ export const fetchFeaturedPublicZines = async (count = 24): Promise<ZineMetadata
       .sort((a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0))
       .slice(0, count);
   } catch (error) {
+    // Re-throw so callers can distinguish a failed query from a real empty archive.
     console.warn("MIMI // fetchFeaturedPublicZines failed:", error);
-    return [];
+    throw error instanceof Error
+      ? error
+      : new Error("Failed to load featured public zines");
   }
 };
 

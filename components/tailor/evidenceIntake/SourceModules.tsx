@@ -24,6 +24,7 @@ interface SourceModulesProps {
   importing?: boolean;
   importError?: string | null;
   importWarning?: string | null;
+  onRetryImport?: () => void;
   completedSources: Set<SourceKey>;
 }
 
@@ -116,6 +117,7 @@ export const SourceModules: React.FC<SourceModulesProps> = ({
   importing,
   importError,
   importWarning,
+  onRetryImport,
   completedSources,
 }) => {
   const lbId = useId();
@@ -312,9 +314,35 @@ export const SourceModules: React.FC<SourceModulesProps> = ({
       </SourceShell>
 
       {importError && (
-        <p className="text-[12px] text-red-700 dark:text-red-400 leading-relaxed" role="alert">
-          {importError}
-        </p>
+        <div
+          className="border border-red-700/40 bg-red-950/10 dark:bg-red-950/20 px-4 py-3 space-y-2"
+          role="alert"
+        >
+          <p className="text-[12px] text-red-700 dark:text-red-400 leading-relaxed">{importError}</p>
+          <p className="text-[11px] text-nous-subtle leading-relaxed">
+            Public Letterboxd RSS and Pinterest board previews only — private or empty boards return
+            nothing. Instagram is screenshot-only (no live scrape).
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {onRetryImport && (
+              <button
+                type="button"
+                onClick={onRetryImport}
+                disabled={importing}
+                className="font-mono text-[9px] uppercase tracking-widest px-3 py-1.5 border border-red-700/50 text-red-700 dark:text-red-300 hover:bg-red-950/20 disabled:opacity-40"
+              >
+                Retry import
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => igRef.current?.click()}
+              className="font-mono text-[9px] uppercase tracking-widest px-3 py-1.5 border border-nous-border text-nous-text hover:border-nous-text/50"
+            >
+              Upload screenshot instead
+            </button>
+          </div>
+        </div>
       )}
       {importWarning && !importError && (
         <p className="text-[12px] text-nous-subtle leading-relaxed" role="status">
