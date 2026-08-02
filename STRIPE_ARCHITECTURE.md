@@ -29,9 +29,15 @@ for account `acct_1T0fAo9AUz0q2nVC` and can be overridden with `STRIPE_PRICE_*` 
 | The Atelier | `prod_UfGndT7RktzUlE` | `price_1TgVQC9AUz0q2nVC5POSYpI7` | `price_1Tznti9AUz0q2nVCo7L96nzL` |
 | The Lab | `prod_UfGsM5PmAimbKy` | `price_1TfwLC9AUz0q2nVCxNzPtunX` | `price_1Tzntj9AUz0q2nVCsBYJKVze` |
 
-**Customer Portal (Dashboard):** allow subscription updates across the four products above
-(both monthly + annual prices), with proration on upgrades (`create_prorations`) and
-period-end scheduling for downgrades. Cancel at period end is already enabled.
+**Customer Portal:** run once with a live secret key:
+
+```bash
+STRIPE_SECRET_KEY=sk_live_... node scripts/configure-stripe-portal.mjs
+```
+
+That pins the four products (monthly + annual), sets upgrade proration to
+`create_prorations`, schedules downgrades at period end, and points return/privacy/terms
+at mimizine.app. Cancel at period end is already enabled.
 
 ## Checkout (new subscribers)
 

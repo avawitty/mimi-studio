@@ -34,6 +34,7 @@ import { verifyMimiSession } from "./lib/serverFirebaseAdmin";
 import { handleCreatorFeedRequest } from "./api/feed";
 import youSearchHandler from "./api/you-search";
 import liveTokenHandler from "./api/live/token";
+import { isPaidPatronPlan } from "./constants";
 
 loadEnv({ path: ".env.local", override: false, quiet: true });
 loadEnv({ path: ".env.firebase.local", override: false, quiet: true });
@@ -309,8 +310,8 @@ async function startServer() {
         try {
           const decoded = await getAuth().verifyIdToken(userToken);
           const userDoc = await db.collection("users").doc(decoded.uid).get();
-          const planStatus = userDoc.data()?.planStatus;
-          if (planStatus === 'pro' || planStatus === 'lab') {
+          const userData = userDoc.data() || {};
+          if (isPaidPatronPlan(userData.planStatus || userData.mimiPlan || userData.plan)) {
             apiKey = process.env.ANTHROPIC_API_KEY || '';
           }
         } catch (authErr) {
@@ -382,8 +383,8 @@ async function startServer() {
             try {
               const decoded = await getAuth().verifyIdToken(userToken.split('Bearer ')[1]);
               const userDoc = await db.collection("users").doc(decoded.uid).get();
-              const planStatus = userDoc.data()?.planStatus;
-              if (planStatus === 'pro' || planStatus === 'lab') {
+              const userData = userDoc.data() || {};
+              if (isPaidPatronPlan(userData.planStatus || userData.mimiPlan || userData.plan)) {
                 authHeader = `Bearer ${process.env.OPENAI_API_KEY}`;
               }
             } catch (e) {
