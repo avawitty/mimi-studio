@@ -78,7 +78,7 @@ const firebaseUtils = readFileSync(
   resolve(process.cwd(), "services/firebaseUtils.ts"),
   "utf8",
 );
-assert.match(firebaseUtils, /collection\(db,\s*"zine_working"\)/);
+assert.match(firebaseUtils, /doc\(db,\s*"zine_working"/);
 assert.match(firebaseUtils, /deleteDoc\(doc\(db,\s*"zine_working"/);
 assert.match(firebaseUtils, /Lazy migration for pre-split owner archives/);
 assert.match(
