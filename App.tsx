@@ -2373,9 +2373,29 @@ export const App: React.FC = () => {
         <MobileProfileModal
           isOpen={isMobileProfileOpen}
           onClose={() => setIsMobileProfileOpen(false)}
-          onOpenSettings={() => {
+          onOpenShare={() => {
+            try {
+              sessionStorage.setItem("mimi:profile_pane", "share");
+            } catch {
+              /* ignore */
+            }
             setIsMobileProfileOpen(false);
             setViewMode("profile");
+            window.dispatchEvent(
+              new CustomEvent("mimi:profile_pane", { detail: "share" }),
+            );
+          }}
+          onOpenSettings={() => {
+            try {
+              sessionStorage.setItem("mimi:profile_pane", "settings");
+            } catch {
+              /* ignore */
+            }
+            setIsMobileProfileOpen(false);
+            setViewMode("profile");
+            window.dispatchEvent(
+              new CustomEvent("mimi:profile_pane", { detail: "settings" }),
+            );
           }}
         />
       </Suspense>
@@ -2453,7 +2473,7 @@ export const App: React.FC = () => {
         {/* Main Content Area */}
         <main
           className={`flex-1 flex flex-col relative ${
-            ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio"].includes(viewMode)
+            ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio", "brand-intake"].includes(viewMode)
               ? "overflow-hidden min-h-0 pb-0 h-full"
               : viewMode === "mimi-rip"
                 ? "overflow-hidden min-h-0 pb-0 h-full bg-[#050506]"
