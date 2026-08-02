@@ -1,5 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { CANON_MODULES, type CanonModuleStatus } from "../../lib/productCanon";
+import {
+  CANON_INFRASTRUCTURE,
+  CANON_MODULES,
+  type CanonInfrastructure,
+  type CanonModuleMaturity,
+  type CanonModuleStatus,
+} from "../../lib/productCanon";
 
 const STATUS_LABEL: Record<CanonModuleStatus, string> = {
   live: "Live",
@@ -8,12 +14,38 @@ const STATUS_LABEL: Record<CanonModuleStatus, string> = {
   missing: "Missing",
 };
 
+const MATURITY_LABEL: Record<CanonModuleMaturity, string> = {
+  prototype: "Prototype",
+  evolving: "Evolving",
+  established: "Established",
+};
+
+const INFRA_STATUS_LABEL: Record<CanonInfrastructure["status"], string> = {
+  live: "Live",
+  hardening: "Hardening",
+  proposed: "Proposed",
+};
+
 interface ChamberMapViewProps {
   onNavigate?: (mode: string) => void;
 }
 
 export const ChamberMapView: React.FC<ChamberMapViewProps> = ({ onNavigate }) => {
   const [filter, setFilter] = useState<CanonModuleStatus | "all">("all");
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<CanonModuleStatus | "all", number> = {
+      all: CANON_MODULES.length,
+      live: 0,
+      aliased: 0,
+      stub: 0,
+      missing: 0,
+    };
+    for (const module of CANON_MODULES) {
+      counts[module.status] += 1;
+    }
+    return counts;
+  }, []);
 
   const modules = useMemo(() => {
     const list = [...CANON_MODULES].sort((a, b) => a.priority - b.priority);
@@ -27,15 +59,21 @@ export const ChamberMapView: React.FC<ChamberMapViewProps> = ({ onNavigate }) =>
     onNavigate(segment);
   };
 
+  const summaryLine = `${statusCounts.all} modules · ${statusCounts.live} live · ${statusCounts.aliased} aliased · ${CANON_INFRASTRUCTURE.length} substrates`;
+
   return (
     <div className="min-h-full bg-nous-base text-nous-text p-6 md:p-10 max-w-5xl mx-auto">
       <header className="mb-8 border-b border-nous-border pb-6">
         <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle font-black">
-          Milestone 1 · Architectural Map
+          Canon Registry · Architecture Map
         </p>
         <h1 className="font-serif italic text-3xl md:text-4xl mt-2">Chamber Registry</h1>
         <p className="font-sans text-sm text-nous-subtle mt-2 max-w-2xl">
           Every canonical chamber registered as route, component, and CanonModule entry.
+        </p>
+        <p className="font-mono text-[9px] text-nous-subtle mt-3 tracking-wide">{summaryLine}</p>
+        <p className="font-sans text-[11px] text-nous-subtle/90 mt-2 max-w-2xl leading-relaxed">
+          Live = route + component registered. It is not a product-completeness claim.
         </p>
       </header>
 
@@ -49,7 +87,7 @@ export const ChamberMapView: React.FC<ChamberMapViewProps> = ({ onNavigate }) =>
               filter === key ? "bg-nous-text text-nous-base border-nous-text" : "border-nous-border text-nous-subtle"
             }`}
           >
-            {key}
+            {key} {statusCounts[key]}
           </button>
         ))}
       </div>
@@ -66,6 +104,11 @@ export const ChamberMapView: React.FC<ChamberMapViewProps> = ({ onNavigate }) =>
                 <span className="font-mono text-[7px] uppercase tracking-widest px-2 py-0.5 border border-nous-border text-nous-subtle">
                   {STATUS_LABEL[module.status]}
                 </span>
+                {module.maturity && (
+                  <span className="font-mono text-[7px] uppercase tracking-widest px-2 py-0.5 border border-nous-border text-nous-subtle">
+                    {MATURITY_LABEL[module.maturity]}
+                  </span>
+                )}
                 <span className="font-mono text-[7px] uppercase tracking-widest text-nous-subtle">
                   {module.layer}
                 </span>
@@ -74,6 +117,7 @@ export const ChamberMapView: React.FC<ChamberMapViewProps> = ({ onNavigate }) =>
                 {module.canonicalRoute} → {module.implementedMode} · {module.component}
               </p>
               <p className="font-sans text-[11px] text-nous-subtle leading-relaxed">{module.engine}</p>
+              <p className="font-sans text-[11px] text-nous-text/80 leading-relaxed">{module.userFlow}</p>
               {module.notes && (
                 <p className="font-serif italic text-[11px] text-nous-subtle/80">{module.notes}</p>
               )}
@@ -90,6 +134,40 @@ export const ChamberMapView: React.FC<ChamberMapViewProps> = ({ onNavigate }) =>
           </article>
         ))}
       </div>
+
+      <section className="mt-12 border-t border-nous-border pt-8">
+        <header className="mb-6">
+          <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle font-black">
+            Platform · Shared substrate
+          </p>
+          <h2 className="font-serif italic text-2xl mt-2">Substrates</h2>
+          <p className="font-sans text-[11px] text-nous-subtle mt-2 max-w-2xl leading-relaxed">
+            Infrastructure behind chambers. Not filtered with module status counts.
+          </p>
+        </header>
+        <div className="grid gap-3">
+          {CANON_INFRASTRUCTURE.map((infra) => (
+            <article
+              key={infra.id}
+              className="border border-nous-border p-4 md:p-5 bg-white/50 dark:bg-stone-950/40 space-y-1"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-serif italic text-lg">{infra.name}</h3>
+                <span className="font-mono text-[7px] uppercase tracking-widest px-2 py-0.5 border border-nous-border text-nous-subtle">
+                  {INFRA_STATUS_LABEL[infra.status]}
+                </span>
+              </div>
+              <p className="font-sans text-[11px] text-nous-subtle leading-relaxed">{infra.purpose}</p>
+              <p className="font-mono text-[9px] text-nous-subtle tracking-wide">
+                Owns: {infra.owns.join(", ")}
+              </p>
+              {infra.notes && (
+                <p className="font-serif italic text-[11px] text-nous-subtle/80">{infra.notes}</p>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };
