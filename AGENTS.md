@@ -23,6 +23,15 @@ starts everything on one port.
   AI), `STRIPE_SECRET_KEY`, and the `FIREBASE_*` client vars (inlined at build time via
   `vite.config.ts` `define`). Never commit secrets.
 
+### AI Gateway models
+- When calling Vercel AI Gateway for **text, image, audio (TTS), or video** generation,
+  use `modelFor(role, "gateway")` or `suggestedGatewayModel(role)` from
+  `services/modelConfig.ts` / `lib/models.ts`. Do not hardcode outdated provider model
+  strings — defaults track the newest curated catalog IDs (env-overridable via
+  `AI_GATEWAY_*_MODEL` in `.env.example`).
+- Re-verify IDs against `https://ai-gateway.vercel.sh/v1/models` when bumping
+  `GATEWAY_DEFAULT_MODELS`.
+
 ### Tests
 - E2E is Playwright (`npm run test:e2e`). The Playwright config auto-starts `npm run dev`
   and reuses an already-running server on port 3000, so no manual server start is needed.

@@ -1932,6 +1932,13 @@ ${finalInput}`;
     });
   }, [currentUser?.uid]);
 
+  useEffect(() => {
+    const openUsedContext = () => setActivePanel("orchestrator");
+    window.addEventListener("mimi:open_used_context", openUsedContext);
+    return () =>
+      window.removeEventListener("mimi:open_used_context", openUsedContext);
+  }, []);
+
   const togglePanel = (
     mode:
       | "signal"
@@ -3640,7 +3647,7 @@ ${finalInput}`;
 
       </div>
 
-      {/* BOTTOM CONTROL/TABS NAVIGATION (5-Column Grid Layout) — desktop only */}
+      {/* BOTTOM CONTROL/TABS NAVIGATION — desktop only */}
       <div className="hidden md:grid md:grid-cols-5 md:overflow-hidden w-full border-t studio-border studio-bg-tab py-2 text-left px-4 absolute bottom-0 left-0 right-0 h-14 z-30 select-none shrink-0">
         
         {/* Tab 1: ANCHORS */}
@@ -3660,20 +3667,32 @@ ${finalInput}`;
           </span>
         </button>
 
-        {/* Tab 2: TREATMENTS */}
+        {/* Tab 2: CONTEXT — approve Scribe atoms before generate */}
         <button
-          onClick={() => togglePanel("treatments")}
+          onClick={() => togglePanel("orchestrator")}
           className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
-            activePanel === "treatments" ? "is-active" : ""
+            activePanel === "orchestrator" ? "is-active" : ""
           }`}
         >
-          <span className={`font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors ${
-            activePanel === "treatments" ? "font-extrabold" : ""
+          <span className={`font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors inline-flex items-center gap-1.5 ${
+            activePanel === "orchestrator" ? "font-extrabold" : ""
           }`}>
-            TREATMENTS
+            CONTEXT
+            {usedContextQueue.length > 0 && (
+              <span
+                className={`min-w-[1.1rem] h-[1.1rem] px-1 inline-flex items-center justify-center font-mono text-[8px] font-bold ${
+                  usedContextQueue.some((e) => !e.approved)
+                    ? "bg-amber-500 text-black"
+                    : "bg-emerald-700 text-white"
+                }`}
+              >
+                {usedContextQueue.filter((e) => !e.approved).length ||
+                  usedContextQueue.length}
+              </span>
+            )}
           </span>
           <span className="font-sans text-[7px] uppercase tracking-wider studio-text-muted block leading-tight truncate w-full">
-            Saved presets · apply
+            Approve Used Context
           </span>
         </button>
 
@@ -3710,20 +3729,20 @@ ${finalInput}`;
           </span>
         </button>
 
-        {/* Tab 5: TELEMETRY */}
+        {/* Tab 5: TREATMENTS */}
         <button
-          onClick={() => togglePanel("telemetry")}
+          onClick={() => togglePanel("treatments")}
           className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 px-4 group transition-colors cursor-pointer ${
-            activePanel === "telemetry" ? "is-active" : ""
+            activePanel === "treatments" ? "is-active" : ""
           }`}
         >
           <span className={`font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors ${
-            activePanel === "telemetry" ? "font-extrabold" : ""
+            activePanel === "treatments" ? "font-extrabold" : ""
           }`}>
-            TELEMETRY
+            TREATMENTS
           </span>
           <span className="font-sans text-[7px] uppercase tracking-wider studio-text-muted block leading-tight truncate w-full">
-            Aesthetic readings
+            Saved presets · apply
           </span>
         </button>
 
@@ -4052,22 +4071,25 @@ ${finalInput}`;
                       },
                     },
                     {
+                      key: "context",
+                      label: "Used Context",
+                      note:
+                        usedContextQueue.length > 0
+                          ? `${usedContextQueue.filter((e) => !e.approved).length} awaiting approval`
+                          : "Approve Scribe atoms for this issue",
+                      icon: <BookOpen size={17} strokeWidth={1.6} />,
+                      onClick: () => {
+                        togglePanel("orchestrator");
+                        setMoreSheetOpen(false);
+                      },
+                    },
+                    {
                       key: "continuum",
                       label: "Continuum",
                       note: "Link recent zines",
                       icon: <GitMerge size={17} strokeWidth={1.6} />,
                       onClick: () => {
                         togglePanel("continuum");
-                        setMoreSheetOpen(false);
-                      },
-                    },
-                    {
-                      key: "telemetry",
-                      label: "Telemetry",
-                      note: "Aesthetic readings",
-                      icon: <Radar size={17} strokeWidth={1.6} />,
-                      onClick: () => {
-                        togglePanel("telemetry");
                         setMoreSheetOpen(false);
                       },
                     },
@@ -4699,7 +4721,7 @@ ${finalInput}`;
                         }}
                       />
                       {/* Tailor Draft Section */}
-                      <div className="space-y-2 border-b border-stone-850 pb-4">
+                      <div className="space-y-2 border-b border-stone-850 pb-4 pt-2">
                         <div className="flex items-center justify-between gap-2">
                           <span className="block font-mono text-[8.5px] uppercase tracking-widest text-stone-400 font-bold">
                             ACTIVE TAILOR DRAFT

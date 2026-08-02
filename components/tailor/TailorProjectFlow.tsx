@@ -140,6 +140,23 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
       await refreshProjectData(project.id);
       const updated = await listEvidenceNodes(uid, project.id);
       setEvidence(updated);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: {
+            message: `${files.length} evidence item${files.length === 1 ? "" : "s"} staged for reading.`,
+            type: "success",
+          },
+        }),
+      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Could not stage evidence. Try again or upload a screenshot.";
+      console.error("MIMI // Tailor evidence upload failed", err);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message, type: "error" },
+        }),
+      );
     } finally {
       setUploading(false);
     }
@@ -198,6 +215,18 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
       setArtQueries(result.artHistorySearchQueries);
       await refreshProjectData(project.id);
       setStep('patterns');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Reading failed. Check your evidence sources and try again.";
+      console.error("MIMI // Tailor analyze failed", err);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message, type: "error" },
+        }),
+      );
+      setStep("upload");
     } finally {
       setLoading(false);
     }
