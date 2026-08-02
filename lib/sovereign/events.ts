@@ -14,6 +14,8 @@ export type SovereignEvent =
       /** True when the deleted row was public (Floor-visible). */
       wasPublic: boolean;
     }
+  /** Quiet batch import/replace finished — Floor clients should refetch. */
+  | { type: "floor_refresh" }
   | { type: "profile_upsert"; uid: string }
   | { type: "pocket_upsert"; id: string; userId: string }
   | { type: "pocket_delete"; id: string; userId: string };
@@ -66,6 +68,9 @@ export const publicFloorSsePayload = (
         return { type: "zine_delete", id: event.id };
       }
       return null;
+    case "floor_refresh":
+      // Clients treat any `zine` SSE as “refetch Floor”; payload is a nudge only.
+      return { type: "floor_refresh" };
     case "profile_upsert":
     case "pocket_upsert":
     case "pocket_delete":

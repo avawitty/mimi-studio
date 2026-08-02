@@ -86,5 +86,9 @@ describe("sovereign events", () => {
         wasPublic: true,
       }),
     ).toEqual({ type: "zine_delete", id: "was-pub" });
+
+    expect(publicFloorSsePayload({ type: "floor_refresh" })).toEqual({
+      type: "floor_refresh",
+    });
   });
 });

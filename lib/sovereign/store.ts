@@ -477,6 +477,10 @@ export const replaceAllZines = async (
   });
 
   cacheInvalidatePrefix("floor:");
+  // Quiet upserts skip per-row SSE — one nudge so Stand refetches the shelf.
+  if (outcome.cleared > 0 || outcome.imported > 0) {
+    emitSovereignEvent({ type: "floor_refresh" });
+  }
   return outcome;
 };
 
@@ -638,6 +642,10 @@ export const importZines = async (
   });
 
   cacheInvalidatePrefix("floor:");
+  // Quiet upserts skip per-row SSE — one nudge so Stand refetches the shelf.
+  if (imported > 0) {
+    emitSovereignEvent({ type: "floor_refresh" });
+  }
   return { imported, skipped, truncated };
 };
 

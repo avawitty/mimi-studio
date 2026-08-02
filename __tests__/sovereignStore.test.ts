@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cacheClear } from "../lib/sovereign/cache";
 import { resetSovereignDbForTests } from "../lib/sovereign/db";
+import { subscribeSovereignEvents } from "../lib/sovereign/events";
 import {
   deletePocketItem,
   deleteZine,
@@ -181,6 +182,17 @@ describe("sovereign store", () => {
     expect(result.cleared).toBe(2);
     expect(result.imported).toBe(2);
     expect((await listPublicZines(10)).map((z) => z.id).sort()).toEqual(["new1", "new2"]);
+  });
+
+  it("importZines emits a floor_refresh after quiet batch", async () => {
+    const seen: string[] = [];
+    const unsub = subscribeSovereignEvents((event) => {
+      seen.push(event.type);
+    });
+    await importZines([sampleZine({ id: "batch1" }), sampleZine({ id: "batch2" })]);
+    unsub();
+    expect(seen.filter((t) => t === "zine_upsert")).toHaveLength(0);
+    expect(seen.filter((t) => t === "floor_refresh")).toHaveLength(1);
   });
 
   it("deletes zines from the archive", async () => {
