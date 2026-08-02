@@ -393,7 +393,7 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["identity consistency tracking", "art-historical reinterpretation", "editorial portrait generation"],
     outputs: ["editorial portraits", "badges", "profile cards", "report covers"],
     userFlow: "Use a stable editorial figure to visualize how your taste evolves across contexts.",
-    notes: "Public profile cards remain at /u/:handle.",
+    notes: "Public profile cards remain at /u/:handle. Engine: services/dollEngine (procedural aesthetic + identity pack + masks + companion injection).",
   },
   {
     id: "art-style",

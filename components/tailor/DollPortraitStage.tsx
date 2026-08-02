@@ -32,9 +32,9 @@ export const DollPortraitStage: React.FC<DollPortraitStageProps> = ({ doll, clas
       >
         <DollPortraitScene accent={accent} secondary={secondary} seed={seed} />
       </Suspense>
-      {doll.generatedImageUrl ? (
+      {(doll.identityReferences?.portraitUrl || doll.generatedImageUrl) ? (
         <img
-          src={doll.generatedImageUrl}
+          src={doll.identityReferences?.portraitUrl || doll.generatedImageUrl}
           alt=""
           className="absolute inset-0 w-full h-full object-cover mix-blend-lighten opacity-70 pointer-events-none"
           referrerPolicy="no-referrer"

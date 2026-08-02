@@ -425,6 +425,32 @@
         "suggestedExperiments": { "type": "array", "items": { "type": "string" } },
         "sourceEvidenceIds": { "type": "array", "items": { "type": "string" } },
         "generatedImageUrl": { "type": "string" },
+        "identityReferences": {
+          "type": "object",
+          "properties": {
+            "portraitUrl": { "type": "string" },
+            "fullBodyUrl": { "type": "string" },
+            "profileUrl": { "type": "string" },
+            "lastGeneratedView": { "type": "string" },
+            "calibratedAt": { "type": "number" }
+          }
+        },
+        "proceduralAesthetic": {
+          "type": "object",
+          "properties": {
+            "pattern": { "type": "string" },
+            "primaryColor": { "type": "string" },
+            "secondaryColor": { "type": "string" },
+            "complexity": { "type": "number" },
+            "warpSpeed": { "type": "number" },
+            "warpIntensity": { "type": "number" },
+            "glossiness": { "type": "number" },
+            "accessoryMode": { "type": "string" },
+            "userLocked": { "type": "boolean" },
+            "updatedAt": { "type": "number" }
+          }
+        },
+        "activeMaskId": { "type": "string" },
         "maskIds": { "type": "array", "items": { "type": "string" } },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" }

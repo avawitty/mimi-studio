@@ -1882,6 +1882,29 @@ export interface DollMask {
   createdAt: number;
 }
 
+/** Calibrated multi-view identity pack for stable-face generation. */
+export interface DollIdentityReferences {
+  portraitUrl?: string;
+  fullBodyUrl?: string;
+  profileUrl?: string;
+  lastGeneratedView?: "portrait" | "full_body" | "profile";
+  calibratedAt?: number;
+}
+
+/** Procedural dresser params derived from (or locked over) Doll projection fields. */
+export interface ProceduralDollAesthetic {
+  pattern: "ripples" | "grid" | "marble" | "halftone";
+  primaryColor: string;
+  secondaryColor: string;
+  complexity: number;
+  warpSpeed: number;
+  warpIntensity: number;
+  glossiness: number;
+  accessoryMode: "none" | "halo" | "crown";
+  userLocked?: boolean;
+  updatedAt?: number;
+}
+
 export interface Doll {
   id: string;
   userId: string;
@@ -1906,7 +1929,14 @@ export interface Doll {
   signatureMotifs: string[];
   suggestedExperiments: string[];
   sourceEvidenceIds: string[];
+  /** @deprecated Prefer identityReferences.portraitUrl — kept for back-compat. */
   generatedImageUrl?: string;
+  /** Multi-view identity pack (portrait / full body / profile). */
+  identityReferences?: DollIdentityReferences;
+  /** Shader dresser aesthetic bound to this Doll record. */
+  proceduralAesthetic?: ProceduralDollAesthetic;
+  /** Currently preferred mask role for companion injection. */
+  activeMaskId?: string;
   maskIds: string[];
   createdAt: number;
   updatedAt: number;
@@ -2125,6 +2155,9 @@ export interface PublicShowcaseSnapshot {
   paperWarmth?: PaperWarmth;
   voiceAdjectives: string[];
   motifCandidates: string[];
+  /** Optional link to a real Doll projection for portrait coherence. */
+  sourceDollId?: string;
+  dollPortraitUrl?: string;
   updatedAt: number;
 }
 

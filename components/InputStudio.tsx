@@ -2205,13 +2205,19 @@ ${finalInput}`;
                 enabled={studioDoll.enabled}
                 loading={studioDoll.loading}
                 dolls={studioDoll.dolls}
+                masks={studioDoll.masks}
                 activeDollId={studioDoll.activeDollId}
+                activeMaskId={studioDoll.activeMaskId}
                 onToggle={(next) => {
                   studioDoll.toggleDollInjection(next);
                   playClick();
                 }}
                 onSelectDoll={(id) => {
                   studioDoll.setActiveDollId(id);
+                  playClick();
+                }}
+                onSelectMask={(id) => {
+                  studioDoll.setActiveMaskId(id);
                   playClick();
                 }}
               />

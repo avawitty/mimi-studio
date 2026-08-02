@@ -22,6 +22,7 @@
     "verify:used-context": "tsx scripts/verifyUsedContextFlow.ts",
     "verify:atelier": "tsx scripts/verifyAtelierService.ts",
     "verify:residue": "tsx scripts/verifyResidueEngine.ts",
+    "verify:doll-engine": "tsx scripts/verifyDollEngine.ts",
     "verify:rss-feed": "tsx scripts/verifyCreatorRssFeed.ts",
     "cursor:prompt": "tsx scripts/cursorAgentPrompt.ts",
     "cursor:cloud-review": "tsx scripts/cursorCloudReview.ts",

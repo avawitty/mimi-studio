@@ -5,12 +5,22 @@ import {
   Star, Crosshair, ArrowLeft, Layers, Cpu, Eye, Palette, 
   HelpCircle, Volume2, Info, BookOpen, AlertTriangle
 } from "lucide-react";
-import type { Doll } from '../../types';
+import type { Doll, DollMask } from '../../types';
 import { DollPortraitStage } from "./DollPortraitStage";
 import { getAIProvider } from '../../services/aiProvider';
 import { DollHouseDressingRoom } from "./DollHouseDressingRoom";
 import { useUser } from '../../contexts/UserContext';
-import { updateDoll } from '../../services/tailorService';
+import {
+  ensureDefaultDollMasks,
+  listDollMasks,
+  updateDoll,
+} from '../../services/tailorService';
+import {
+  buildIdentityViewPrompt,
+  identityPackCompleteness,
+  mergeIdentityReference,
+  type DollIdentityView,
+} from '../../services/dollEngine';
 
 interface DollProfileScreenProps {
   doll: Doll;
@@ -88,10 +98,26 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   const { user } = useUser();
   const [currentDoll, setCurrentDoll] = useState<Doll>(doll);
   const [isGeneratingPortrait, setIsGeneratingPortrait] = useState(false);
+  const [identityView, setIdentityView] = useState<DollIdentityView>('portrait');
+  const [masks, setMasks] = useState<DollMask[]>([]);
+  const [activeMaskId, setActiveMaskId] = useState<string | null>(doll.activeMaskId || null);
 
   useEffect(() => {
     setCurrentDoll(doll);
+    setActiveMaskId(doll.activeMaskId || null);
   }, [doll]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    void (async () => {
+      let next = await listDollMasks(user.uid, doll.id);
+      if (next.length === 0) {
+        next = await ensureDefaultDollMasks(user.uid, doll);
+      }
+      setMasks(next);
+      if (!activeMaskId && next[0]) setActiveMaskId(next[0].id);
+    })();
+  }, [user?.uid, doll.id]);
 
   const [activeTab, setActiveTab] = useState<'conditioning' | 'wardrobe' | 'blueprint'>('conditioning');
   const [isDollState, setIsDollState] = useState<boolean>(() => {
@@ -127,16 +153,20 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  const handleRegeneratePortrait = async () => {
+  const handleRegeneratePortrait = async (view: DollIdentityView = identityView) => {
     if (isGeneratingPortrait) return;
     setIsGeneratingPortrait(true);
     triggerSound('transition');
-    
-    const visualTraits = currentDoll.visualLanguage?.join(', ') || 'exquisite avant-garde high-fashion';
-    const materialTraits = currentDoll.materials?.join(', ') || 'smooth vinyl and metallic hardware';
-    
-    const imagePrompt = `An exquisite high-fashion BJD (Ball Jointed Doll) art toy portrait representing a digital cult aesthetic. The doll has smooth polished vinyl skin, highly detailed large glassy lifelike crystal eyes with intricate iris patterns, a neat and sleek chin-length bobby-bob haircut, ball joints visible at the neck, shoulders, and wrists. Elegant and minimalist composition with cinematic dramatic lighting, highlighting a unique visual style of ${visualTraits}. Styled with clothing matching ${materialTraits}. High contrast, clean editorial fashion photograph, luxury toy design.`;
-    
+
+    const imagePrompt = buildIdentityViewPrompt(currentDoll, view);
+    const aspectRatio = view === 'full_body' ? '2:3' : '3:4';
+
+    // Pass existing portrait as stable-face ref when generating other views
+    const portraitLock =
+      view !== 'portrait'
+        ? currentDoll.identityReferences?.portraitUrl || currentDoll.generatedImageUrl
+        : undefined;
+
     try {
       const response = await fetch('/api/mimi-image', {
         method: 'POST',
@@ -145,8 +175,18 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         },
         body: JSON.stringify({
           prompt: imagePrompt,
-          aspectRatio: '3:4',
-          // Omit provider — /api/mimi-image prefers AI Gateway when configured
+          aspectRatio,
+          allowFaces: true,
+          references: portraitLock
+            ? [
+                {
+                  name: 'Doll Portrait',
+                  description: `Calibrated identity lock for ${currentDoll.name}`,
+                  url: portraitLock,
+                  tags: ['doll', 'portrait', 'identity-lock'],
+                },
+              ]
+            : undefined,
         }),
       });
       
@@ -158,16 +198,28 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         throw new Error(data?.warnings?.[0] || 'Image provider returned simulated plate');
       }
       if (data?.imageUrl) {
-        setCurrentDoll(prev => ({ ...prev, generatedImageUrl: data.imageUrl }));
+        const identityReferences = mergeIdentityReference(
+          currentDoll.identityReferences,
+          view,
+          data.imageUrl,
+        );
+        const updates: Partial<Doll> = {
+          identityReferences,
+          ...(view === 'portrait' ? { generatedImageUrl: data.imageUrl } : {}),
+        };
+        setCurrentDoll((prev) => ({ ...prev, ...updates }));
         
         if (user?.uid) {
-          await updateDoll(user.uid, currentDoll.id, { generatedImageUrl: data.imageUrl });
+          await updateDoll(user.uid, currentDoll.id, updates);
         }
         
         triggerSound('click');
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
-            detail: { message: `Portrait generated successfully for ${currentDoll.name}`, type: "success" },
+            detail: {
+              message: `${view.replace('_', ' ')} calibrated for ${currentDoll.name}`,
+              type: "success",
+            },
           })
         );
       } else {
@@ -182,8 +234,8 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         new CustomEvent("mimi:registry_alert", {
           detail: {
             message: isQuota
-              ? `Portrait paused — provider quota/billing. ${errMsg.slice(0, 100)}`
-              : `Portrait generation failed: ${errMsg.slice(0, 140)}`,
+              ? `Identity pack paused — provider quota/billing. ${errMsg.slice(0, 100)}`
+              : `Identity pack failed: ${errMsg.slice(0, 140)}`,
             type: isQuota ? "warning" : "error",
           },
         })
@@ -193,6 +245,16 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
       setIsGeneratingPortrait(false);
     }
   };
+
+  const handleSelectMask = async (maskId: string) => {
+    setActiveMaskId(maskId);
+    setCurrentDoll((prev) => ({ ...prev, activeMaskId: maskId }));
+    if (user?.uid) {
+      await updateDoll(user.uid, currentDoll.id, { activeMaskId: maskId });
+    }
+  };
+
+  const packStatus = identityPackCompleteness(currentDoll);
 
   useEffect(() => {
     localStorage.setItem(`mimi_doll_equipped_${doll.id}`, JSON.stringify(equippedIds));
@@ -599,24 +661,68 @@ GUIDELINES FOR THE RESPONSE:
               </div>
             </motion.div>
             
-            <div className="mt-3">
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-1">
+                {([
+                  ['portrait', 'Portrait'],
+                  ['full_body', 'Full Body'],
+                  ['profile', 'Profile'],
+                ] as const).map(([view, label]) => (
+                  <button
+                    key={view}
+                    type="button"
+                    onClick={() => setIdentityView(view)}
+                    className={`flex-1 py-1.5 border font-mono text-[7px] uppercase tracking-widest ${
+                      identityView === view
+                        ? 'border-amber-500/60 bg-amber-500/10 text-amber-500'
+                        : 'border-stone-800 text-stone-500 hover:border-stone-600'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="font-mono text-[7px] uppercase tracking-widest text-stone-500">
+                Identity pack {packStatus.filled}/{packStatus.total}
+                {packStatus.missing.length
+                  ? ` · missing ${packStatus.missing.join(', ')}`
+                  : ' · calibrated'}
+              </p>
               <button
-                onClick={handleRegeneratePortrait}
+                onClick={() => handleRegeneratePortrait(identityView)}
                 disabled={isGeneratingPortrait}
                 className="w-full py-2.5 border border-stone-200 dark:border-stone-800 hover:border-amber-500/50 bg-[#12110F] text-[8px] uppercase tracking-[0.25em] font-black text-amber-600 dark:text-amber-500 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isGeneratingPortrait ? (
                   <>
                     <RefreshCw size={10} className="animate-spin text-amber-500" />
-                    GENERATING ART DOLL likeness...
+                    CALIBRATING {identityView.replace('_', ' ').toUpperCase()}…
                   </>
                 ) : (
                   <>
                     <Sparkles size={10} className="text-amber-500 animate-pulse" />
-                    [ RE-GENERATE ART STYLE DEFINER PORTRAIT ]
+                    [ CALIBRATE {identityView.replace('_', ' ').toUpperCase()} REFERENCE ]
                   </>
                 )}
               </button>
+              {masks.length > 0 && (
+                <div className="pt-1">
+                  <label className="font-mono text-[7px] uppercase tracking-widest text-stone-500 block mb-1">
+                    Active Mask (companion role)
+                  </label>
+                  <select
+                    value={activeMaskId ?? ''}
+                    onChange={(e) => void handleSelectMask(e.target.value)}
+                    className="w-full border border-stone-800 bg-[#12110F] font-mono text-[9px] uppercase tracking-wider px-2 py-1.5 text-stone-300"
+                  >
+                    {masks.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} · {m.role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 

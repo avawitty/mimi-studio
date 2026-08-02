@@ -32,6 +32,7 @@ import {
   getTailorProject,
   createGenerationJob,
   updateGenerationJob,
+  ensureDefaultDollMasks,
 } from './tailorService';
 
 const TAILOR_ANALYSIS_CONSTITUTION = `${ORACLE_PERSONA}
@@ -517,7 +518,9 @@ Return JSON: name, description, visualLanguage[], palette[], materials[], silhou
     return response.text ? JSON.parse(response.text) : {};
   });
 
-  return saveDoll(userId, {
+  const { deriveProceduralAesthetic } = await import('./dollEngine');
+
+  const draftFields = {
     projectId,
     tasteGraphId: project.tasteGraphId,
     name: dollData.name ?? seed?.name ?? 'Unnamed Doll',
@@ -539,8 +542,26 @@ Return JSON: name, description, visualLanguage[], palette[], materials[], silhou
     signatureMotifs: dollData.signatureMotifs ?? [],
     suggestedExperiments: dollData.suggestedExperiments ?? [],
     sourceEvidenceIds: evidence.map((e) => e.id),
-    maskIds: [],
+    maskIds: [] as string[],
+  };
+
+  // Seed procedural aesthetic from projection fields before persist
+  const aesthetic = deriveProceduralAesthetic({
+    ...draftFields,
+    id: 'pending',
+    userId,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   });
+
+  const doll = await saveDoll(userId, {
+    ...draftFields,
+    proceduralAesthetic: aesthetic,
+    identityReferences: {},
+  });
+
+  await ensureDefaultDollMasks(userId, doll);
+  return doll;
 }
 
 export async function generateMarketingAsset(

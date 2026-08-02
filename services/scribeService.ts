@@ -9,8 +9,14 @@ import {
   listCreativeLaws, 
   listEvidenceNodes, 
   listObservations, 
+  listDolls,
+  listDollMasks,
   saveCreativeLaws 
 } from './tailorService';
+import {
+  ACTIVE_DOLL_STORAGE_KEY,
+  buildDollCompanionBundle,
+} from './dollEngine';
 
 export type ScribeContextKind = 
   | 'taste_signal'       // Taste Graph node
@@ -18,7 +24,8 @@ export type ScribeContextKind =
   | 'memory_atom'        // Approved Memory Atom
   | 'specimen'           // Active/Unprocessed Specimen (Pocket item)
   | 'tailor_intake'      // Tailor Intake (Project configuration)
-  | 'approved_decision';   // Approved Strategic Decision (CreativeLaw)
+  | 'approved_decision'  // Approved Strategic Decision (CreativeLaw)
+  | 'doll_identity';     // Active Doll companion projection
 
 export interface ScribeContextItem {
   id: string;
@@ -55,7 +62,17 @@ const AUTHORITY_MODIFIERS: Record<ScribeContextKind, number> = {
   specimen: 0.4,
   taste_signal: 0.3,
   research_record: 0.1,
+  doll_identity: 0.55,
 };
+
+function readClientActiveDollId(): string | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage.getItem(ACTIVE_DOLL_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
 
 export async function retrieveScribeContext(
   userId: string, 
@@ -67,7 +84,7 @@ export async function retrieveScribeContext(
 
   const queryWords = words(question);
 
-  // Fetch from all 6 sources in parallel
+  // Fetch from all sources in parallel (incl. Doll companion projections)
   const [
     projects,
     atoms,
@@ -75,7 +92,8 @@ export async function retrieveScribeContext(
     activeProject,
     creativeLaws,
     evidenceNodes,
-    observations
+    observations,
+    dolls,
   ] = await Promise.all([
     listTailorProjects(userId).catch(() => [] as TailorProject[]),
     fetchMemoryAtoms(userId).catch(() => [] as MemoryAtom[]),
@@ -83,10 +101,40 @@ export async function retrieveScribeContext(
     projectId ? getTailorProject(userId, projectId).catch((): null => null) : Promise.resolve(null),
     projectId ? listCreativeLaws(userId, projectId).catch(() => [] as CreativeLaw[]) : Promise.resolve([] as CreativeLaw[]),
     projectId ? listEvidenceNodes(userId, projectId).catch(() => [] as EvidenceNode[]) : Promise.resolve([] as EvidenceNode[]),
-    projectId ? listObservations(userId, projectId).catch(() => [] as Observation[]) : Promise.resolve([] as Observation[])
+    projectId ? listObservations(userId, projectId).catch(() => [] as Observation[]) : Promise.resolve([] as Observation[]),
+    listDolls(userId).catch((): Awaited<ReturnType<typeof listDolls>> => []),
   ]);
 
   const candidates: ScribeContextItem[] = [];
+
+  // 0. Active Doll companion (Phase 3 identity injection)
+  if (dolls.length > 0) {
+    const preferredId = readClientActiveDollId();
+    const activeDoll =
+      (preferredId && dolls.find((d) => d.id === preferredId)) ||
+      (projectId && dolls.find((d) => d.projectId === projectId)) ||
+      dolls[0];
+    if (activeDoll) {
+      const masks = await listDollMasks(userId, activeDoll.id).catch(
+        (): Awaited<ReturnType<typeof listDollMasks>> => [],
+      );
+      const bundle = buildDollCompanionBundle(activeDoll, masks, activeDoll.activeMaskId);
+      const dollText = `${activeDoll.name} ${activeDoll.creativePhilosophy} ${activeDoll.visualLanguage.join(' ')} ${bundle.activeMaskRole || ''}`;
+      const bScore = matchScore(queryWords, dollText);
+      candidates.push({
+        id: `doll-${activeDoll.id}`,
+        kind: 'doll_identity',
+        title: `Doll: ${activeDoll.name}`,
+        excerpt: bundle.scribeExcerpt,
+        approvalStatus: 'approved',
+        relevance: Math.max(0.72, bScore * 0.4 + AUTHORITY_MODIFIERS.doll_identity),
+        retrievalReason:
+          'Active Doll companion — symbolic Taste Graph projection for identity-consistent counsel.',
+        sourceUrl:
+          activeDoll.identityReferences?.portraitUrl || activeDoll.generatedImageUrl,
+      });
+    }
+  }
 
   // 1. Tailor Intakes
   if (activeProject) {
