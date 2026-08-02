@@ -24,6 +24,7 @@
     "verify:used-context": "tsx scripts/verifyUsedContextFlow.ts",
     "verify:atelier": "tsx scripts/verifyAtelierService.ts",
     "verify:gateway-generate-text": "tsx scripts/verifyGatewayGenerateText.ts",
+    "verify:gateway-generate-image": "tsx scripts/verifyGatewayGenerateImage.ts",
     "verify:embeddings": "tsx scripts/verifyEmbeddingPipeline.ts",
     "verify:residue": "tsx scripts/verifyResidueEngine.ts",
     "verify:doll-engine": "tsx scripts/verifyDollEngine.ts",
