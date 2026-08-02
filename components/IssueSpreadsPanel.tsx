@@ -18,6 +18,7 @@ import {
   createArtifactRevision,
   withCanonicalZinePages,
 } from "../lib/zine/zineMigrations";
+import { reconcileZineReadingOrder } from "../lib/zine/zineReadingOrder";
 
 function openIssue(zineId: string): void {
   window.dispatchEvent(
@@ -108,9 +109,10 @@ export const IssueSpreadsPanel: React.FC = () => {
         layoutRevision: (current.layoutRevision || 0) + 1,
         customLayout: {
           elements,
-          readingOrder:
-            current.customLayout?.readingOrder ||
-            elements.map((element) => element.id),
+          readingOrder: reconcileZineReadingOrder(
+            current.customLayout?.readingOrder,
+            elements,
+          ),
           editTrace: trace || current.customLayout?.editTrace || [],
         },
       };

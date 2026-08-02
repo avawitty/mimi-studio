@@ -11,6 +11,7 @@ import {
   listUserZines,
   upsertZine,
 } from "../../lib/sovereign/store.js";
+import { sanitizeZineForPublicView } from "../../lib/privacyUtils.js";
 import type { ZineMetadata } from "../../types";
 
 const zineBodySchema = {
@@ -58,7 +59,11 @@ export default async function handler(req: any, res: any) {
           ? "public, s-maxage=120, stale-while-revalidate=600"
           : "private, no-store");
         res.setHeader("X-Mimi-Archive", "sovereign");
-        return sendJson(res, 200, { zine });
+        const responseZine =
+          zine.isPublic && requester?.uid !== zine.userId
+            ? sanitizeZineForPublicView(zine)
+            : zine;
+        return sendJson(res, 200, { zine: responseZine });
       }
 
       if (userId) {
@@ -69,8 +74,15 @@ export default async function handler(req: any, res: any) {
           publicOnly: !includePrivate,
           limit: Number(req.query?.limit || 100),
         });
+        const responseZines =
+          requester?.uid === userId
+            ? zines
+            : zines.map(sanitizeZineForPublicView);
         res.setHeader("X-Mimi-Archive", "sovereign");
-        return sendJson(res, 200, { zines, count: zines.length });
+        return sendJson(res, 200, {
+          zines: responseZines,
+          count: responseZines.length,
+        });
       }
 
       return sendError(res, 400, "zine id or userId required", "MISSING_ID");

@@ -1,4 +1,5 @@
 import type {
+  MimiZineArtifact,
   ZineIssueStructure,
   ZinePageGrammar,
   ZinePageSpec,
@@ -261,4 +262,150 @@ export function buildDefaultIssueStructure(
     navigationStyle: options.existing?.navigationStyle || "sectioned",
     totalPages: options.pages.length + derivedPageCount,
   };
+}
+
+function derivedProofPage(
+  artifact: MimiZineArtifact,
+  section: ZineSectionSpec,
+  pageNumber: number,
+): ZinePageSpec | null {
+  const common = {
+    id: `${section.id}:derived`,
+    pageNumber,
+    sectionId: section.id,
+    sectionType: section.type,
+    revision: artifact.revision,
+    assetRevision: 0,
+    layoutRevision: 0,
+  };
+
+  switch (section.type) {
+    case "cover":
+      return {
+        ...common,
+        headline: artifact.identity.title,
+        bodyCopy: `@${artifact.authorship.creatorHandle} · ${artifact.identity.mode} · ${new Date(artifact.createdAt).toLocaleDateString()}`,
+        imagePrompt: "",
+        image_url: artifact.cover.imageUrl,
+        originalMediaUrl: artifact.cover.originalImageUrl,
+        altText: `Cover for ${artifact.identity.title}`,
+        grammar: "specimen",
+      };
+    case "opening":
+      return artifact.sourcePacket.originalInput
+        ? {
+            ...common,
+            headline: "It began with",
+            bodyCopy: artifact.sourcePacket.originalInput,
+            imagePrompt: "",
+            grammar: "editorial-split",
+          }
+        : null;
+    case "reading":
+      return artifact.reading.centralObservation
+        ? {
+            ...common,
+            headline: "The Reading",
+            bodyCopy: artifact.reading.centralObservation,
+            supportingText: artifact.reading.strategicHypothesis,
+            imagePrompt: "",
+            grammar: "reading",
+          }
+        : null;
+    case "signal-index":
+      return artifact.reading.signals.length > 0
+        ? {
+            ...common,
+            headline: "Signal Index",
+            bodyCopy: `${artifact.reading.signals.length} signal${artifact.reading.signals.length === 1 ? "" : "s"} retained.`,
+            imagePrompt: "",
+            sourceIds: artifact.reading.signals.flatMap(
+              (signal) => signal.sourceIds || [],
+            ),
+            grammar: "evidence-ledger",
+          }
+        : null;
+    case "roadmap":
+      return artifact.direction.intensity ||
+        artifact.direction.entropyLevel != null ||
+        (artifact.direction.materialDirection?.length || 0) > 0
+        ? {
+            ...common,
+            headline: "Application",
+            bodyCopy: [artifact.direction.thesis, artifact.direction.purpose]
+              .filter(Boolean)
+              .join("\n\n"),
+            imagePrompt: "",
+            grammar: "editorial-split",
+          }
+        : null;
+    case "debris":
+      return artifact.sourcePacket.originalInput
+        ? {
+            ...common,
+            headline: "Debris / 00",
+            bodyCopy: artifact.sourcePacket.originalInput,
+            imagePrompt: "",
+            grammar: "debris",
+          }
+        : null;
+    case "colophon":
+      return {
+        ...common,
+        headline: "Colophon",
+        bodyCopy: [
+          `Created by @${artifact.authorship.creatorHandle}.`,
+          `Generated with Mimi · revision ${String(artifact.revision).padStart(2, "0")}.`,
+          `${artifact.colophon.sourceCount} source reference${artifact.colophon.sourceCount === 1 ? "" : "s"} retained.`,
+        ].join("\n\n"),
+        imagePrompt: "",
+        sourceIds: artifact.colophon.publicSourceIds,
+        grammar: "editorial-split",
+      };
+    case "essay":
+    case "visual-plate":
+    case "evidence":
+    case "interlude":
+      return null;
+    default: {
+      const exhaustive: never = section.type;
+      return exhaustive;
+    }
+  }
+}
+
+/** Materialize the complete section plan for proof without changing persisted pages. */
+export function buildZineProofSequence(
+  artifact: MimiZineArtifact,
+): ZinePageSpec[] {
+  const pagesById = new Map(
+    artifact.pages
+      .filter((page) => Boolean(page.id))
+      .map((page) => [page.id as string, page]),
+  );
+  const sequence: ZinePageSpec[] = [];
+
+  artifact.issueStructure.sections.forEach((section) => {
+    const sectionPages = section.pageIds
+      .map((id) => pagesById.get(id))
+      .filter((page): page is ZinePageSpec => Boolean(page));
+    if (sectionPages.length > 0) {
+      sectionPages.forEach((page) => {
+        sequence.push({
+          ...page,
+          pageNumber: sequence.length + 1,
+        });
+      });
+      return;
+    }
+
+    const derived = derivedProofPage(
+      artifact,
+      section,
+      sequence.length + 1,
+    );
+    if (derived) sequence.push(derived);
+  });
+
+  return sequence;
 }

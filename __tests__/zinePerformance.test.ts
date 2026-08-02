@@ -25,6 +25,7 @@ describe("zine performance budgets", () => {
 
   it("bounds plate concurrency and total work", () => {
     expect(resolvePlateConcurrency(99)).toBe(DESKTOP_PLATE_CONCURRENCY);
+    expect(resolvePlateConcurrency(99, true)).toBe(2);
     expect(resolvePlateConcurrency(0)).toBe(1);
     expect(resolvePlateConcurrency(undefined, true)).toBe(2);
     expect(MAX_BAKE_PLATES).toBe(24);

@@ -45,6 +45,31 @@ assert.doesNotMatch(
   "asset ZIP must not write raw context snapshots",
 );
 
+const sovereignApi = readFileSync(
+  resolve(process.cwd(), "api/sovereign/zine.ts"),
+  "utf8",
+);
+assert.match(
+  sovereignApi,
+  /sanitizeZineForPublicView/,
+  "public sovereign reads must enforce public context visibility",
+);
+
+const shopifyExport = readFileSync(
+  resolve(process.cwd(), "services/shopifyExportService.ts"),
+  "utf8",
+);
+assert.match(shopifyExport, /sanitizeUsedContextForExport/);
+const shopifyAdmin = readFileSync(
+  resolve(process.cwd(), "lib/shopifyAdmin.ts"),
+  "utf8",
+);
+assert.match(
+  shopifyAdmin,
+  /sanitizeShopifyProvenance/,
+  "server-side Shopify publishing must whitelist provenance",
+);
+
 console.log("✓ Mimi zine private context verified");
 console.log("  - export visibility filtering and body redaction");
-console.log("  - compile ownership and asset ZIP privacy");
+console.log("  - public API, Shopify, compile ownership, and ZIP privacy");

@@ -1,5 +1,6 @@
 import JSZip from "jszip";
-import { ZineMetadata } from "../types";
+import type { UsedContextSnapshot, ZineMetadata } from "../types";
+import { sanitizeUsedContextForExport } from "../lib/privacyUtils";
 
 export interface ShopifyDropSource {
   id: string;
@@ -37,7 +38,7 @@ export interface ShopifyProductDraft {
     tone?: string;
     creatorHandle?: string;
     fragmentsUsed?: string[];
-    usedContextSnapshots?: import("../types").UsedContextSnapshot[];
+    usedContextSnapshots?: UsedContextSnapshot[];
   };
 }
 
@@ -214,6 +215,17 @@ export const buildShopifyProductFromZine = (
     brand: metadata.userHandle,
     sku: metadata.id,
   });
+  const safeContext = sanitizeUsedContextForExport(
+    metadata.usedContextSnapshots ||
+      (metadata.fragmentsUsed || []).map((atomId) => ({
+        atomId,
+        title: "Fragment",
+        content: "",
+      })),
+  );
+  const safeContextIds = new Set(
+    safeContext.map((snapshot) => snapshot.atomId),
+  );
 
   return {
     handle,
@@ -235,8 +247,10 @@ export const buildShopifyProductFromZine = (
       artifactId: metadata.id,
       tone: metadata.tone,
       creatorHandle: metadata.userHandle,
-      fragmentsUsed: metadata.fragmentsUsed,
-      usedContextSnapshots: metadata.usedContextSnapshots,
+      fragmentsUsed: (metadata.fragmentsUsed || []).filter((id) =>
+        safeContextIds.has(id),
+      ),
+      usedContextSnapshots: safeContext,
     },
   };
 };

@@ -2010,10 +2010,14 @@ export const App: React.FC = () => {
           opts.selectedComponents,
           opts.zineOptions,
         );
+        result.content.meta = result.content.meta || {
+          mode: "editorial",
+          intent: text,
+          timestamp: Date.now(),
+        };
 
         // Inject theme from options
         if (opts.zineOptions?.theme) {
-          result.content.meta = result.content.meta || {};
           result.content.meta.theme = opts.zineOptions.theme;
         }
 
@@ -2030,7 +2034,6 @@ export const App: React.FC = () => {
         }
 
         if (opts.studioCoverOverlays?.length) {
-          result.content.meta = result.content.meta || {};
           result.content.meta.studioCoverOverlays = opts.studioCoverOverlays;
         }
 

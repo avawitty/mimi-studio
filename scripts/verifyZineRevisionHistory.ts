@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { normalizeZineArtifact } from "../lib/zine/normalizeZineArtifact";
 import {
   createArtifactRevision,
@@ -30,6 +32,25 @@ assert.deepEqual(
   "direction restage must not destroy custom layouts",
 );
 
+const analysisDisplay = readFileSync(
+  resolve(process.cwd(), "components/AnalysisDisplay.tsx"),
+  "utf8",
+);
+[
+  "Issue copy revised",
+  "Cover image revised",
+  "Plate image revised",
+  "Hypothesis image revised",
+  "Issue page order revised",
+].forEach((reason) => {
+  assert.match(
+    analysisDisplay,
+    new RegExp(reason),
+    `${reason} must use the revision-aware mutation path`,
+  );
+});
+
 console.log("✓ Mimi zine revision history verified");
 console.log("  - approved edits create a child proof revision");
 console.log("  - direction restage preserves custom layouts");
+console.log("  - copy, media, spread, and order edits are revision-aware");

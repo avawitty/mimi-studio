@@ -3,6 +3,9 @@ import {
   buildExportManifest,
   validateExportManifest,
 } from "../services/exportManifestService";
+import { buildShopifyProductFromZine } from "../services/shopifyExportService";
+import { sanitizeShopifyProvenance } from "../lib/shopifyAdmin";
+import { sanitizeZineForPublicView } from "../lib/privacyUtils";
 import type { ZineMetadata } from "../types";
 import { makeLegacyZineMetadata } from "./fixtures/zineMetadata";
 
@@ -36,6 +39,46 @@ describe("zine export privacy and ownership", () => {
     expect(manifest.editorialCompileMarkdown).toBeUndefined();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it("exposes only explicitly public context on public zine reads", () => {
+    const metadata = makeLegacyZineMetadata();
+    metadata.usedContextSnapshots![1].visibility = {
+      working: true,
+      export: true,
+      public: true,
+    };
+    const publicZine = sanitizeZineForPublicView(metadata);
+
+    expect(publicZine.fragmentsUsed).toEqual(["atom-export"]);
+    expect(publicZine.usedContextSnapshots).toHaveLength(1);
+    expect(publicZine.usedContextSnapshots?.[0].content).toBe(
+      "Source body must still be redacted.",
+    );
+  });
+
+  it("redacts Shopify provenance on both client and server boundaries", () => {
+    const metadata = makeLegacyZineMetadata();
+    const product = buildShopifyProductFromZine(metadata);
+    expect(product.provenance.fragmentsUsed).toEqual(["atom-export"]);
+    expect(product.provenance.usedContextSnapshots).toHaveLength(1);
+    expect(product.provenance.usedContextSnapshots?.[0].content).toBe("");
+
+    const serverSafe = sanitizeShopifyProvenance(
+      {
+        artifactId: metadata.id,
+        source: "mimi-zine",
+        fragmentsUsed: ["atom-export", "atom-private"],
+        usedContextSnapshots: metadata.usedContextSnapshots,
+        secretWorkingNote: "must not survive",
+      },
+      metadata.id,
+    );
+    expect(serverSafe.fragmentsUsed).toEqual(["atom-export"]);
+    expect(
+      (serverSafe.usedContextSnapshots as Array<{ content: string }>)[0].content,
+    ).toBe("");
+    expect(serverSafe).not.toHaveProperty("secretWorkingNote");
   });
 
   it("keeps cover and compile optional while blocking core identity failures", () => {

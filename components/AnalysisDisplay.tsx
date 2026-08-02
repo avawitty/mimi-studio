@@ -57,6 +57,8 @@ import {
   withCanonicalZinePages,
 } from '../lib/zine/zineMigrations';
 import { ZineProofMode } from './zine/ZineProofMode';
+import { selectPublicUsedContext } from '../lib/privacyUtils';
+import { reconcileZineReadingOrder } from '../lib/zine/zineReadingOrder';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -225,6 +227,20 @@ export const AnalysisDisplay: React.FC<{
  const normalizedArtifact = useMemo(
    () => normalizeZineArtifact(metadata),
    [metadata],
+ );
+ const visibleUsedContextSnapshots = useMemo(
+   () =>
+     isOwner
+       ? metadata.usedContextSnapshots || []
+       : selectPublicUsedContext(metadata.usedContextSnapshots || []),
+   [isOwner, metadata.usedContextSnapshots],
+ );
+ const visibleFragmentIds = useMemo(
+   () =>
+     isOwner
+       ? metadata.fragmentsUsed || []
+       : visibleUsedContextSnapshots.map((snapshot) => snapshot.atomId),
+   [isOwner, metadata.fragmentsUsed, visibleUsedContextSnapshots],
  );
 
  useEffect(() => {
@@ -548,9 +564,9 @@ export const AnalysisDisplay: React.FC<{
  }, [isPlaying]);
 
  useEffect(() => {
- if (metadata.usedContextSnapshots?.length) {
+ if (visibleUsedContextSnapshots.length) {
  setScribeFragments(
- metadata.usedContextSnapshots.map((snap) => ({
+ visibleUsedContextSnapshots.map((snap) => ({
  id: snap.atomId,
  projectId: '',
  content: snap.content,
@@ -561,7 +577,7 @@ export const AnalysisDisplay: React.FC<{
  );
  return;
  }
- const ids = metadata.fragmentsUsed;
+ const ids = visibleFragmentIds;
  if (!ids?.length || !user?.uid) {
  setScribeFragments([]);
  return;
@@ -578,7 +594,7 @@ export const AnalysisDisplay: React.FC<{
  return () => {
  cancelled = true;
  };
- }, [metadata.fragmentsUsed, metadata.usedContextSnapshots, user?.uid]);
+ }, [visibleFragmentIds, visibleUsedContextSnapshots, user?.uid]);
  
  const handleResonanceFlip = async () => {
  try {
@@ -819,16 +835,38 @@ export const AnalysisDisplay: React.FC<{
  const [noteContent, setNoteContent] = useState(originalDebris);
  const [vocalSummary, setVocalSummary] = useState(metadata.content.vocal_summary_blurb || '');
  const [poeticInterpretation, setPoeticInterpretation] = useState(metadata.content.poetic_interpretation || '');
+
+ const beginArtifactMutation = (
+   reason: string,
+   changedPageIds: string[] = [],
+ ) => {
+   const artifact = artifactRequiresRevision(normalizedArtifact.status)
+     ? createArtifactRevision(normalizedArtifact, {
+         reason,
+         changedPageIds,
+       })
+     : normalizedArtifact;
+   const baseMetadata: ZineMetadata = {
+     ...metadata,
+     artifactSchemaVersion: artifact.schemaVersion,
+     lifecycleStatus: artifact.status,
+     revision: artifact.revision,
+     revisions: artifact.revisions,
+     updatedAt: Date.now(),
+   };
+   return { artifact, baseMetadata };
+ };
  
  const handleSaveMetadata = () => {
- const updatedMetadata = {
- ...metadata,
+ const mutation = beginArtifactMutation('Issue copy revised');
+ const updatedMetadata = withCanonicalZinePages({
+ ...mutation.baseMetadata,
  content: {
- ...metadata.content,
+ ...mutation.baseMetadata.content,
  vocal_summary_blurb: vocalSummary,
  poetic_interpretation: poeticInterpretation
  }
- };
+ }, mutation.artifact.pages);
  onUpdateMetadata(updatedMetadata);
  setIsEditing(false);
  };
@@ -838,14 +876,15 @@ export const AnalysisDisplay: React.FC<{
  try {
  const { archiveManager } = await import('../services/archiveManager');
  const url = await archiveManager.uploadMedia(user.uid, base64, `zines/${metadata.id}/hero`);
- const updatedMetadata = {
- ...metadata,
+ const mutation = beginArtifactMutation('Cover image revised');
+ const updatedMetadata = withCanonicalZinePages({
+ ...mutation.baseMetadata,
  coverImageUrl: url,
  content: {
- ...metadata.content,
+ ...mutation.baseMetadata.content,
  hero_image_url: url
  }
- };
+ }, mutation.artifact.pages);
  onUpdateMetadata(updatedMetadata);
  } catch (e) {
  console.error("Failed to upload hero image", e);
@@ -853,22 +892,24 @@ export const AnalysisDisplay: React.FC<{
  };
 
  const handlePageImageGenerated = async (base64: string, pageIndex: number) => {
- if (!user?.uid || !metadata.content.pages) return;
+ if (!user?.uid) return;
  try {
  const { archiveManager } = await import('../services/archiveManager');
  const url = await archiveManager.uploadMedia(user.uid, base64, `zines/${metadata.id}/page_${pageIndex}`);
- const updatedPages = [...metadata.content.pages];
+ const changedPageId =
+   normalizedArtifact.pages[pageIndex]?.id ||
+   `${metadata.id}:page:${pageIndex + 1}`;
+ const mutation = beginArtifactMutation('Plate image revised', [changedPageId]);
+ const updatedPages = [...mutation.artifact.pages];
  updatedPages[pageIndex] = {
  ...updatedPages[pageIndex],
- image_url: url
+ image_url: url,
+ assetRevision: (updatedPages[pageIndex].assetRevision || 0) + 1,
  };
- const updatedMetadata = {
- ...metadata,
- content: {
- ...metadata.content,
- pages: updatedPages
- }
- };
+ const updatedMetadata = withCanonicalZinePages(
+   mutation.baseMetadata,
+   updatedPages,
+ );
  onUpdateMetadata(updatedMetadata);
  } catch (e) {
  console.error("Failed to upload page image", e);
@@ -882,42 +923,34 @@ export const AnalysisDisplay: React.FC<{
    elements: EditorElement[],
    trace?: { timestamp: number; note: string }[],
  ) => {
-   if (composingPageIndex == null || !metadata.content.pages) return;
+   if (composingPageIndex == null) return;
    setIsSavingSpread(true);
    try {
-     const revisionRequired = artifactRequiresRevision(normalizedArtifact.status);
-     const revisedArtifact = revisionRequired
-       ? createArtifactRevision(normalizedArtifact, {
-           reason: `Spread ${composingPageIndex + 1} revised after approval`,
-           changedPageIds: [
-             normalizedArtifact.pages[composingPageIndex]?.id ||
-               `${metadata.id}:page:${composingPageIndex + 1}`,
-           ],
-         })
-       : normalizedArtifact;
-     const updatedPages = [...revisedArtifact.pages];
+     const changedPageId =
+       normalizedArtifact.pages[composingPageIndex]?.id ||
+       `${metadata.id}:page:${composingPageIndex + 1}`;
+     const mutation = beginArtifactMutation(
+       `Spread ${composingPageIndex + 1} revised`,
+       [changedPageId],
+     );
+     const updatedPages = [...mutation.artifact.pages];
      const current = updatedPages[composingPageIndex];
      updatedPages[composingPageIndex] = {
        ...current,
-       revision: revisedArtifact.revision,
+       revision: mutation.artifact.revision,
        layoutRevision: (current.layoutRevision || 0) + 1,
        customLayout: {
          elements,
-         readingOrder:
-           current.customLayout?.readingOrder ||
-           elements.map((element) => element.id),
+         readingOrder: reconcileZineReadingOrder(
+           current.customLayout?.readingOrder,
+           elements,
+         ),
          editTrace: trace || current.customLayout?.editTrace || [],
        },
      };
      onUpdateMetadata(
        withCanonicalZinePages(
-         {
-           ...metadata,
-           artifactSchemaVersion: revisedArtifact.schemaVersion,
-           lifecycleStatus: revisedArtifact.status,
-           revision: revisedArtifact.revision,
-           revisions: revisedArtifact.revisions,
-         },
+         mutation.baseMetadata,
          updatedPages,
        ),
      );
@@ -972,13 +1005,14 @@ export const AnalysisDisplay: React.FC<{
  try {
  const { archiveManager } = await import('../services/archiveManager');
  const url = await archiveManager.uploadMedia(user.uid, base64, `zines/${metadata.id}/hypothesis`);
- const updatedMetadata = {
- ...metadata,
+ const mutation = beginArtifactMutation('Hypothesis image revised');
+ const updatedMetadata = withCanonicalZinePages({
+ ...mutation.baseMetadata,
  content: {
- ...metadata.content,
+ ...mutation.baseMetadata.content,
  hypothesis_image_url: url
  }
- };
+ }, mutation.artifact.pages);
  onUpdateMetadata(updatedMetadata);
  } catch (e) {
  console.error("Failed to upload hypothesis image", e);
@@ -1026,19 +1060,31 @@ export const AnalysisDisplay: React.FC<{
 
  const handleSavePageOrder = () => {
    if (!metadata.content) return;
-   
-   const updatedPages = reorderPagesList.map((page, idx) => ({
-     ...page,
-     pageNumber: idx + 1
-   }));
+   const changedPageIds = normalizedArtifact.pages
+     .map((page) => page.id)
+     .filter((id): id is string => Boolean(id));
+   const mutation = beginArtifactMutation(
+     'Issue page order revised',
+     changedPageIds,
+   );
+   const updatedPages = reorderPagesList.map((page, idx) => {
+     const canonical =
+       mutation.artifact.pages.find((candidate) => candidate.id === page.id) ||
+       mutation.artifact.pages.find(
+         (candidate) => candidate.pageNumber === page.pageNumber,
+       );
+     return {
+       ...canonical,
+       ...page,
+       pageNumber: idx + 1,
+       revision: mutation.artifact.revision,
+     };
+   });
 
-   const updatedMetadata = {
-     ...metadata,
-     content: {
-       ...metadata.content,
-       pages: updatedPages
-     }
-   };
+   const updatedMetadata = withCanonicalZinePages(
+     mutation.baseMetadata,
+     updatedPages,
+   );
 
    onUpdateMetadata(updatedMetadata);
    setShowReorderModal(false);
@@ -2299,7 +2345,7 @@ export const AnalysisDisplay: React.FC<{
  )}
 
  {/* 9b. USED CONTEXT — colophon: what approved knowledge shaped this issue */}
- {(scribeFragments.length > 0 || (metadata.fragmentsUsed?.length ?? 0) > 0) && (
+ {(scribeFragments.length > 0 || visibleFragmentIds.length > 0) && (
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center px-6 md:px-24 snap-start bg-nous-base text-nous-text print:min-h-0 print:py-12">
  <div className="max-w-3xl w-full space-y-12">
  <div className="space-y-4 border-b border-nous-border pb-8">
@@ -2311,7 +2357,7 @@ export const AnalysisDisplay: React.FC<{
  Memory the creator approved before this issue was composed — not chat history, not silent inference.
  </p>
  <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-nous-subtle">
- {(scribeFragments.length || metadata.fragmentsUsed?.length || 0)} approved atom{(scribeFragments.length || metadata.fragmentsUsed?.length || 0) === 1 ? '' : 's'}
+ {(scribeFragments.length || visibleFragmentIds.length)} approved atom{(scribeFragments.length || visibleFragmentIds.length) === 1 ? '' : 's'}
  </p>
  </div>
  <ol className="space-y-0 divide-y divide-nous-border border-t border-b border-nous-border">
@@ -2334,7 +2380,7 @@ export const AnalysisDisplay: React.FC<{
  </p>
  </div>
  </li>
- )) : metadata.fragmentsUsed?.map((id, index) => (
+ )) : visibleFragmentIds.map((id, index) => (
  <li key={id} className="py-4 flex gap-5 font-mono text-[10px] text-nous-subtle">
  <span className="tabular-nums w-8 shrink-0">{String(index + 1).padStart(2, '0')}</span>
  <span>Fragment {id.split('_').pop()}</span>

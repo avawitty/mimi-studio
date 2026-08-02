@@ -626,7 +626,42 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
 
 export const generateSimulatedZine = (text: string, opts: any, profile: any) => {
     const title = opts?.customTitle || (text ? (text.length > 30 ? text.slice(0, 30) + "..." : text) : "Resonant Debris");
+    const timestamp = Date.now();
+    const pages = [
+        {
+            pageNumber: 1,
+            headline: "CHAPTER I: THE DIRECTIVE",
+            bodyCopy: `Your intent to manifest "${text || 'aesthetic resonance'}" has been captured and compiled. In this local chapter, we look at the raw materiality of negative space and structural integrity. All visual structures are rendered cleanly on the canvas below.`,
+            supportingText: "Simulated Semiotic Layer // Active Draft",
+            imagePrompt: "Stark, concrete monolith with subtle shafts of dawn light, high contrast."
+        },
+        {
+            pageNumber: 2,
+            headline: "CHAPTER II: THE RECONSTRUCTION",
+            bodyCopy: "To construct a zine is to gather fragments of debris and bind them into a single, cohesive thread. When the oracle is quiet, the editor's hand remains steady. Material, texture, rhythm, and typography form the sovereign foundation of the work.",
+            supportingText: "Archival Memory Vault",
+            imagePrompt: "Close-up of highly textured, raw linen being folded by an invisible force, soft directional shadows."
+        }
+    ];
     return {
+        meta: {
+            mode: "editorial" as const,
+            intent: text || title,
+            timestamp
+        },
+        taste_context: {
+            active_archetype: "Archivist",
+            active_palette: ["#FFFFFF", "#111110"]
+        },
+        structure: {
+            hero_prompt: `A clear visual study of ${title}.`,
+            pages
+        },
+        visual_guidance: {
+            strict_palette: ["#FFFFFF", "#111110"],
+            negative_prompt: "generic template, equal card grid, decorative clutter",
+            composition_density: 0.45
+        },
         title: title,
         headlines: [title, "Simulated Semantic Mirror", "The Void Responds"],
         vocal_summary_blurb: "A localized structural projection simulating your aesthetic coordinates in offline/safe mode.",
@@ -659,20 +694,7 @@ export const generateSimulatedZine = (text: string, opts: any, profile: any) => 
         },
         originalThought: "Sovereignty is the capacity to function in isolation as a self-contained universe.",
         poetic_provocation: "If the mirror is dark on the other side, do you still search for your gaze?",
-        pages: [
-            {
-                headline: "CHAPTER I: THE DIRECTIVE",
-                bodyCopy: `Your intent to manifest "${text || 'aesthetic resonance'}" has been captured and compiled. In this local chapter, we look at the raw materiality of negative space and structural integrity. All visual structures are rendered cleanly on the canvas below.`,
-                supportingText: "Simulated Semiotic Layer // Active Draft",
-                imagePrompt: "Stark, concrete monolith with subtle shafts of dawn light, high contrast."
-            },
-            {
-                headline: "CHAPTER II: THE RECONSTRUCTION",
-                bodyCopy: "To construct a zine is to gather fragments of debris and bind them into a single, cohesive thread. When the oracle is quiet, the editor's hand remains steady. Material, texture, rhythm, and typography form the sovereign foundation of the work.",
-                supportingText: "Archival Memory Vault",
-                imagePrompt: "Close-up of highly textured, raw linen being folded by an invisible force, soft directional shadows."
-            }
-        ],
+        pages,
         sonic_layer: "Deep, microtonal sub-bass humming at 60Hz, punctuated by slow, warm tape-hiss cycles.",
         archetype_weights: {
             Architect: 0.40,

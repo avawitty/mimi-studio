@@ -16,6 +16,7 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 assert.deepEqual([...fullFidelityPageIndexes(4, 10)], [3, 4, 5]);
 assert.equal(resolvePlateConcurrency(99), DESKTOP_PLATE_CONCURRENCY);
 assert.equal(resolvePlateConcurrency(undefined, true), 2);
+assert.equal(resolvePlateConcurrency(99, true), 2);
 
 const page = makeLegacyPages()[0];
 assert.equal(editorAssetUrl(page), "https://cdn.example.test/preview.jpg");

@@ -12,7 +12,10 @@ export function resolvePlateConcurrency(
     ? MOBILE_PLATE_CONCURRENCY
     : DESKTOP_PLATE_CONCURRENCY;
   if (!Number.isFinite(requested)) return fallback;
-  return Math.max(1, Math.min(DESKTOP_PLATE_CONCURRENCY, Math.floor(requested!)));
+  const maximum = isMobile
+    ? MOBILE_PLATE_CONCURRENCY
+    : DESKTOP_PLATE_CONCURRENCY;
+  return Math.max(1, Math.min(maximum, Math.floor(requested!)));
 }
 
 export function fullFidelityPageIndexes(

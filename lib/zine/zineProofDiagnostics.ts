@@ -94,12 +94,13 @@ function pushPageDiagnostics(
   diagnostics: ZineProofDiagnostic[],
   page: ZinePageSpec,
   index: number,
+  sourceVisibility: Map<string, { exists: boolean; public: boolean }>,
+  publicIssue: boolean,
 ): void {
   const id = pageId(page, index);
   const pageImages = imageUrls(page);
   const mediaRequired =
     page.grammar === "specimen" ||
-    page.grammar === "editorial-split" ||
     page.grammar === "dark-plate" ||
     page.sectionType === "visual-plate";
 
@@ -150,6 +151,32 @@ function pushPageDiagnostics(
       pageId: id,
       message: `Evidence page ${page.pageNumber} has no source references.`,
       correction: "Attach source IDs or reclassify the page as interpretation.",
+    });
+  }
+  const unresolvedSourceIds = (page.sourceIds || []).filter(
+    (sourceId) => !sourceVisibility.get(sourceId)?.exists,
+  );
+  if (unresolvedSourceIds.length > 0) {
+    diagnostics.push({
+      id: "absent-provenance",
+      severity: "warning",
+      pageId: id,
+      message: `Page ${page.pageNumber} references ${unresolvedSourceIds.length} unavailable source${unresolvedSourceIds.length === 1 ? "" : "s"}.`,
+      correction: "Restore the source record or remove the dangling reference.",
+    });
+  }
+  const privateSourceIds = publicIssue
+    ? (page.sourceIds || []).filter(
+        (sourceId) => sourceVisibility.get(sourceId)?.public === false,
+      )
+    : [];
+  if (privateSourceIds.length > 0) {
+    diagnostics.push({
+      id: "private-context-exposure",
+      severity: "blocking",
+      pageId: id,
+      message: `Page ${page.pageNumber} exposes ${privateSourceIds.length} private source reference${privateSourceIds.length === 1 ? "" : "s"}.`,
+      correction: "Remove private references from the public page or approve them for public use.",
     });
   }
 
@@ -271,8 +298,34 @@ export function buildZineProofDiagnostics(
     });
   }
 
+  const sourceVisibility = new Map<
+    string,
+    { exists: boolean; public: boolean }
+  >();
+  artifact.sourcePacket.usedContextSnapshots.forEach((snapshot) => {
+    sourceVisibility.set(snapshot.atomId, {
+      exists: true,
+      public: snapshot.visibility?.public === true,
+    });
+  });
+  artifact.sourcePacket.attachedAssets.forEach((asset) => {
+    sourceVisibility.set(asset.id, {
+      exists: true,
+      public: asset.visibility?.public === true,
+    });
+  });
+  (artifact.sourcePacket.linkedBoards || []).forEach((board) => {
+    sourceVisibility.set(board.id, { exists: true, public: false });
+  });
+
   artifact.pages.forEach((page, index) => {
-    pushPageDiagnostics(diagnostics, page, index);
+    pushPageDiagnostics(
+      diagnostics,
+      page,
+      index,
+      sourceVisibility,
+      artifact.publication.visibility === "public",
+    );
   });
 
   return diagnostics;

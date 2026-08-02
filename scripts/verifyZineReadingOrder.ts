@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { normalizeZineArtifact } from "../lib/zine/normalizeZineArtifact";
 import {
+  reconcileZineReadingOrder,
   resolveZineReadingOrder,
   validateZineReadingOrder,
 } from "../lib/zine/zineReadingOrder";
@@ -24,7 +25,14 @@ assert.equal(result.valid, false);
 assert.deepEqual(result.duplicateIds, ["headline"]);
 assert.deepEqual(result.missingElementIds, ["missing"]);
 assert.deepEqual(result.omittedElementIds, ["body"]);
+assert.deepEqual(
+  reconcileZineReadingOrder(
+    ["deleted", "headline"],
+    composed.customLayout!.elements,
+  ),
+  ["headline", "body"],
+);
 
 console.log("✓ Mimi zine reading order verified");
 console.log("  - explicit order validation");
-console.log("  - duplicate, missing, and omitted element detection");
+console.log("  - duplicate, missing, omitted, added, and deleted element handling");

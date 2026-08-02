@@ -21,6 +21,18 @@ export interface StudioCoverExportMeta {
   studioCoverOverlays?: StudioCoverOverlayLayer[];
 }
 
+export function zineCoverOverlayIsBaked(metadata: ZineMetadata): boolean {
+  if (metadata.coverSpec?.overlayBaked) return true;
+  const overlays = readStudioCoverOverlays(metadata);
+  const originalImageUrl = metadata.content.meta?.originalCoverImageUrl;
+  return Boolean(
+    overlays?.length &&
+      originalImageUrl &&
+      metadata.coverImageUrl &&
+      metadata.coverImageUrl !== originalImageUrl,
+  );
+}
+
 export function buildStudioCoverExportMeta(
   media: MediaFile[],
   overlayLayers: StudioCoverOverlayLayer[],
@@ -51,6 +63,17 @@ export async function resolveExportCoverUrl(
 export async function resolveZineExportCoverUrl(
   metadata: ZineMetadata,
 ): Promise<string | null | undefined> {
+  if (zineCoverOverlayIsBaked(metadata)) {
+    return (
+      metadata.coverSpec?.bakedImageUrl ||
+      metadata.coverSpec?.imageUrl ||
+      metadata.coverImageUrl
+    );
+  }
   const overlays = readStudioCoverOverlays(metadata);
-  return resolveExportCoverUrl(metadata.coverImageUrl, overlays);
+  const originalImageUrl = metadata.content.meta?.originalCoverImageUrl;
+  return resolveExportCoverUrl(
+    originalImageUrl || metadata.coverImageUrl,
+    overlays,
+  );
 }

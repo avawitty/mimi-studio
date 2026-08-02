@@ -13,6 +13,46 @@ export function EditorialSplitPage({
 }: ZineGrammarPageProps) {
   const imageUrl = editorAssetUrl(page);
   const imageFirst = pageIndex % 2 === 0;
+  const textOnly = Boolean(
+    !imageUrl &&
+      page.sectionType &&
+      ["opening", "essay", "interlude", "roadmap", "colophon"].includes(
+        page.sectionType,
+      ),
+  );
+
+  if (textOnly) {
+    return (
+      <GrammarPageFrame
+        artifact={artifact}
+        page={page}
+        className={className}
+        label={`${page.sectionType} page ${page.pageNumber}: ${page.headline}`}
+      >
+        <div className="absolute inset-[8%] flex flex-col">
+          <header className="flex items-center justify-between border-b border-[var(--mimi-hairline,#d4d4d4)] pb-3">
+            <p className="font-mono text-[7px] uppercase tracking-[0.28em] text-[var(--mimi-stone,#78716c)]">
+              {page.sectionType}
+            </p>
+            <GrammarPageNumber page={page} />
+          </header>
+          <div className="flex flex-1 flex-col justify-center">
+            <h2 className="max-w-[86%] font-serif text-[clamp(1.8rem,5vw,4rem)] italic leading-[1.02] tracking-[-0.025em]">
+              {page.headline}
+            </h2>
+            <p className="mt-8 max-w-[72%] whitespace-pre-wrap font-serif text-[clamp(0.8rem,1.5vw,1.1rem)] leading-[1.65]">
+              {page.bodyCopy}
+            </p>
+          </div>
+          <footer className="border-t border-[var(--mimi-hairline,#d4d4d4)] pt-3 font-mono text-[6px] uppercase tracking-[0.2em] text-[var(--mimi-stone,#78716c)]">
+            {page.sourceIds?.length
+              ? `${page.sourceIds.length} public source reference${page.sourceIds.length === 1 ? "" : "s"}`
+              : "Mimi editorial archive"}
+          </footer>
+        </div>
+      </GrammarPageFrame>
+    );
+  }
 
   const imagePanel = (
     <div className="relative min-h-0 overflow-hidden bg-[#f4f4f1]">

@@ -7,6 +7,8 @@ import {
   hydrateLegacyZineMetadata,
   withCanonicalZinePages,
 } from "../lib/zine/zineMigrations";
+import { zineCoverOverlayIsBaked } from "../lib/studioCoverExport";
+import { buildZineProofSequence } from "../lib/zine/zineIssuePlanner";
 import type { ZineMetadata } from "../types";
 import { makeLegacyZineMetadata } from "./fixtures/zineMetadata";
 
@@ -45,6 +47,7 @@ describe("Mimi zine artifact normalization", () => {
       type: "text",
       content: "The Handled Archive",
     });
+    expect(zineCoverOverlayIsBaked(makeLegacyZineMetadata())).toBe(true);
   });
 
   it("normalizes sovereign legacy records that omit content.meta", () => {
@@ -120,6 +123,19 @@ describe("Mimi zine artifact normalization", () => {
     expect(artifact.issueStructure.totalPages).toBeGreaterThanOrEqual(
       artifact.pages.length,
     );
+    const proofSequence = buildZineProofSequence(artifact);
+    expect(proofSequence).toHaveLength(artifact.issueStructure.totalPages);
+    expect(proofSequence.map((page) => page.sectionType)).toEqual([
+      "cover",
+      "opening",
+      "reading",
+      "signal-index",
+      "visual-plate",
+      "evidence",
+      "roadmap",
+      "debris",
+      "colophon",
+    ]);
     expect(metadata.content.pages).toEqual([]);
   });
 

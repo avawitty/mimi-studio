@@ -12,6 +12,7 @@ import {
   summarizeZineProof,
 } from "../../lib/zine/zineProofDiagnostics";
 import { fullFidelityPageIndexes } from "../../lib/zine/zinePerformance";
+import { buildZineProofSequence } from "../../lib/zine/zineIssuePlanner";
 import type { MimiZineArtifact } from "../../types";
 import { ZinePageRenderer } from "./ZinePageRenderer";
 
@@ -28,17 +29,25 @@ export function ZineProofMode({
 }: ZineProofModeProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(true);
-  const diagnostics = useMemo(
-    () => buildZineProofDiagnostics(artifact),
+  const proofPages = useMemo(
+    () => buildZineProofSequence(artifact),
     [artifact],
+  );
+  const proofArtifact = useMemo(
+    () => ({ ...artifact, pages: proofPages }),
+    [artifact, proofPages],
+  );
+  const diagnostics = useMemo(
+    () => buildZineProofDiagnostics(proofArtifact),
+    [proofArtifact],
   );
   const summary = useMemo(
     () => summarizeZineProof(diagnostics),
     [diagnostics],
   );
   const fullFidelityIndexes = useMemo(
-    () => fullFidelityPageIndexes(activeIndex, artifact.pages.length),
-    [activeIndex, artifact.pages.length],
+    () => fullFidelityPageIndexes(activeIndex, proofPages.length),
+    [activeIndex, proofPages.length],
   );
 
   useEffect(() => {
@@ -51,17 +60,17 @@ export function ZineProofMode({
         setActiveIndex((index) => Math.max(0, index - 1));
       }
       if (event.key === "ArrowRight") {
-        if (artifact.pages.length === 0) return;
+        if (proofPages.length === 0) return;
         setActiveIndex((index) =>
-          Math.min(artifact.pages.length - 1, index + 1),
+          Math.min(proofPages.length - 1, index + 1),
         );
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [artifact.pages.length, onClose]);
+  }, [proofPages.length, onClose]);
 
-  const activePage = artifact.pages[activeIndex];
+  const activePage = proofPages[activeIndex];
 
   return (
     <div
@@ -119,7 +128,7 @@ export function ZineProofMode({
           {activePage ? (
             <div className="relative h-full max-h-[calc(100dvh-10rem)] w-full max-w-[min(72vw,70vh)]">
               {[...fullFidelityIndexes].map((index) => {
-                const page = artifact.pages[index];
+                const page = proofPages[index];
                 const active = index === activeIndex;
                 return (
                   <div
@@ -150,7 +159,7 @@ export function ZineProofMode({
             </div>
           )}
 
-          {artifact.pages.length > 1 ? (
+          {proofPages.length > 1 ? (
             <>
               <button
                 type="button"
@@ -165,10 +174,10 @@ export function ZineProofMode({
                 type="button"
                 onClick={() =>
                   setActiveIndex((index) =>
-                    Math.min(artifact.pages.length - 1, index + 1),
+                    Math.min(proofPages.length - 1, index + 1)
                   )
                 }
-                disabled={activeIndex === artifact.pages.length - 1}
+                disabled={activeIndex === proofPages.length - 1}
                 className="absolute right-3 flex min-h-11 min-w-11 items-center justify-center border border-[var(--mimi-hairline,#d4d4d4)] bg-white disabled:opacity-25 md:right-6"
                 aria-label="Next proof page"
               >
@@ -205,7 +214,7 @@ export function ZineProofMode({
                       type="button"
                       onClick={() => {
                         if (!diagnostic.pageId) return;
-                        const pageIndex = artifact.pages.findIndex(
+                        const pageIndex = proofPages.findIndex(
                           (page) => page.id === diagnostic.pageId,
                         );
                         if (pageIndex >= 0) setActiveIndex(pageIndex);
@@ -246,7 +255,7 @@ export function ZineProofMode({
         className="flex h-20 shrink-0 items-center gap-2 overflow-x-auto border-t border-[var(--mimi-hairline,#d4d4d4)] bg-white px-4"
         aria-label="Proof pages"
       >
-        {artifact.pages.map((page, index) => (
+        {proofPages.map((page, index) => (
           <button
             key={page.id || `${page.pageNumber}-${index}`}
             type="button"

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { normalizeZineArtifact } from "../lib/zine/normalizeZineArtifact";
 import { zinePageGrammarSchema } from "../lib/zine/zineArtifactSchema";
+import { buildZineProofSequence } from "../lib/zine/zineIssuePlanner";
 import { makeLegacyZineMetadata } from "./fixtures/zineArtifactFixture";
 
 const artifact = normalizeZineArtifact(makeLegacyZineMetadata());
@@ -33,7 +34,12 @@ artifact.pages.forEach((page) => {
   assert.equal(zinePageGrammarSchema.safeParse(page.grammar).success, true);
 });
 assert.ok(artifact.issueStructure.totalPages >= artifact.pages.length);
+assert.equal(
+  buildZineProofSequence(artifact).length,
+  artifact.issueStructure.totalPages,
+  "proof must materialize the complete issue structure",
+);
 
 console.log("✓ Mimi zine issue plan verified");
 console.log("  - complete section vocabulary and stable page IDs");
-console.log("  - valid six-grammar assignment");
+console.log("  - valid six-grammar assignment and complete proof sequence");

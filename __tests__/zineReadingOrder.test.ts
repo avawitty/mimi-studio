@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   elementsInReadingOrder,
+  reconcileZineReadingOrder,
   resolveZineReadingOrder,
   validateZineReadingOrder,
 } from "../lib/zine/zineReadingOrder";
@@ -55,5 +56,12 @@ describe("zine custom-layout reading order", () => {
 
   it("falls back to deterministic visual order", () => {
     expect(resolveZineReadingOrder(page())).toEqual(["upper", "lower"]);
+  });
+
+  it("drops deleted IDs and appends newly added elements", () => {
+    const elements = page().customLayout!.elements;
+    expect(
+      reconcileZineReadingOrder(["deleted", "lower"], elements),
+    ).toEqual(["lower", "upper"]);
   });
 });

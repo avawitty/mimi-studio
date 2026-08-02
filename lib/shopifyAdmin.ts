@@ -1,3 +1,6 @@
+import { sanitizeUsedContextForExport } from "./privacyUtils.js";
+import type { UsedContextSnapshot } from "../types";
+
 const DEFAULT_SHOPIFY_API_VERSION = "2026-07";
 
 type FetchLike = typeof fetch;
@@ -182,6 +185,56 @@ const acquireShopifyAccess = async (
 const text = (value: unknown, max: number): string =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
+export function sanitizeShopifyProvenance(
+  value: ShopifyPublishProductInput["provenance"] | undefined,
+  artifactId: string,
+): ShopifyPublishProductInput["provenance"] {
+  const candidate = value || { artifactId };
+  const rawSnapshots = Array.isArray(candidate.usedContextSnapshots)
+    ? candidate.usedContextSnapshots
+    : [];
+  const snapshots: UsedContextSnapshot[] = rawSnapshots
+    .map((raw) => {
+      const snapshot = raw as Partial<UsedContextSnapshot>;
+      const atomId = text(snapshot.atomId, 255);
+      if (!atomId) return null;
+      return {
+        atomId,
+        title: text(snapshot.title, 500) || "Fragment",
+        content: text(snapshot.content, 20_000),
+        source: text(snapshot.source, 500) || undefined,
+        capturedAt:
+          typeof snapshot.capturedAt === "number"
+            ? snapshot.capturedAt
+            : undefined,
+        visibility: snapshot.visibility
+          ? {
+              working: snapshot.visibility.working === true,
+              export: snapshot.visibility.export !== false,
+              public: snapshot.visibility.public === true,
+            }
+          : undefined,
+      } satisfies UsedContextSnapshot;
+    })
+    .filter((snapshot): snapshot is UsedContextSnapshot => Boolean(snapshot));
+  const safeSnapshots = sanitizeUsedContextForExport(snapshots);
+  const safeIds = new Set(safeSnapshots.map((snapshot) => snapshot.atomId));
+  const fragmentsUsed = Array.isArray(candidate.fragmentsUsed)
+    ? candidate.fragmentsUsed
+        .map((id) => text(id, 255))
+        .filter((id) => id && safeIds.has(id))
+    : [];
+
+  return {
+    artifactId,
+    source: text(candidate.source, 100) || "mimi-zine",
+    tone: text(candidate.tone, 100) || undefined,
+    creatorHandle: text(candidate.creatorHandle, 255) || undefined,
+    fragmentsUsed,
+    usedContextSnapshots: safeSnapshots,
+  };
+}
+
 const validateProduct = (value: unknown): ShopifyPublishProductInput => {
   if (!value || typeof value !== "object") {
     throw shopifyError("A Shopify product draft is required.", 400, "SHOPIFY_PRODUCT_INVALID");
@@ -221,10 +274,7 @@ const validateProduct = (value: unknown): ShopifyPublishProductInput => {
     price: price.toFixed(2),
     requiresShipping: candidate.requiresShipping === true,
     taxable: candidate.taxable !== false,
-    provenance: {
-      ...(candidate.provenance || {}),
-      artifactId,
-    },
+    provenance: sanitizeShopifyProvenance(candidate.provenance, artifactId),
   };
 };
 

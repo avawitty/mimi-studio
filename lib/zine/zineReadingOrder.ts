@@ -88,3 +88,25 @@ export function elementsInReadingOrder(page: ZinePageSpec): EditorElement[] {
     .map((id) => byId.get(id))
     .filter((element): element is EditorElement => Boolean(element));
 }
+
+export function reconcileZineReadingOrder(
+  previousOrder: string[] | undefined,
+  elements: EditorElement[],
+): string[] {
+  const currentIds = new Set(elements.map((element) => element.id));
+  const seen = new Set<string>();
+  const next: string[] = [];
+
+  (previousOrder || []).forEach((id) => {
+    if (!currentIds.has(id) || seen.has(id)) return;
+    seen.add(id);
+    next.push(id);
+  });
+  elements.forEach((element) => {
+    if (seen.has(element.id)) return;
+    seen.add(element.id);
+    next.push(element.id);
+  });
+
+  return next;
+}
