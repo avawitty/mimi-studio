@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "validate:canon": "tsx scripts/validateCanonRoutes.ts",
+    "verify:api-lazy-graphs": "tsx scripts/verifyApiLazyGraphs.ts",
     "verify:tailor-contract": "tsx scripts/verifyTailorProfileContract.ts",
     "verify:tailor-intake": "tsx scripts/verifyTailorEvidenceIntake.ts",
     "verify:shopify-pack": "tsx scripts/verifyShopifyProductPack.ts",

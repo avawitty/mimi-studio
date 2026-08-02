@@ -10,7 +10,7 @@ This document defines Mimi's durable product architecture. It is intentionally n
 
 For the current chamber-to-route implementation, see the [Mimi Chamber Implementation Audit](./mimi-chamber-implementation-audit.md). For current infrastructure and Used Context verification, see the [Functions Admin Proxy Audit](./wo-1-functions-admin-proxy-audit.md) and [Used Context end-to-end test](./wo-2-used-context-test.md).
 
-**Latest reconciliation:** [Architecture Update 20 — Sovereign Data Plane, Evidence Lanes, and Production Hardening](./architecture-update-20.md) (2026-08-02). Operational sovereign store detail: [Sovereign archive](./sovereign-archive.md).
+**Latest reconciliation:** [Architecture Update 20](./architecture-update-20.md) (implementation status) + [Architecture Update 21](./architecture-update-21.md) (decisions closing Update 20 open questions). Operational sovereign store detail: [Sovereign archive](./sovereign-archive.md).
 
 ## 1. Product Philosophy
 
@@ -428,18 +428,18 @@ These decisions remain unresolved and should be settled through architecture dec
 | Should object relationships become first-class? | First-class typed relationships enable graph retrieval and impact analysis but require governance and migrations. | Query value, relationship ownership, validation complexity |
 | Should workflow sessions support branching? | Branching enables creative alternatives without overwriting a path but complicates merge and approval semantics. | Creator mental model, comparison UX, ownership of merged outputs |
 | Should every exported artifact include a machine-readable provenance manifest? | A manifest improves portability and verification but may expose sensitive context or increase package complexity. | Privacy, interoperability, destination support, minimum manifest schema |
-| Which objects remain owned by Firestore vs the Sovereign Data Plane? | Dual persistence without ownership rules creates drift and delete races. | Public-read cost, identity coupling, migration risk, offline guest paths |
-| Is Sovereign a publication projection, full app store, or expanding hybrid? | Determines whether Neon/SQLite become the primary write plane. | Scale path, SSE needs, Firestore compatibility, ops complexity |
-| Should Memory Atoms / Context Runs ever live in Sovereign Postgres? | Moves knowledge substrate off Firebase free-tier limits. | Privacy, auth model, retrieval latency, existing atom APIs |
-| Should Scry archive retrieval query Firestore, Sovereign, or a unified service? | Scry integrity depends on honest empty lanes and stable ranking. | Coverage honesty, embedding compatibility, latency |
-| One shared embedding compatibility/migration contract for all vectors? | Model and dimension drift already affects Shadow Memory and Sovereign search. | Reindex UX, credit cost, auth ownership, orphan vectors |
-| Does The Edit need Signal Edit vs Issue Edit modes? | Chamber now governs both interpretive approval and spread composition. | Creator mental model, route clarity, mobile primary promise |
-| Observatory → Taste Graph input, or collective context only? | Consent scope differs from personal taste approval. | Disclosure version, revoke semantics, individual vs aggregate use |
-| How is Observatory consent revoked after contribution? | Aggregate stats may already include a contributor’s signals. | Recompute windows, tombstones, disclosure versioning |
-| Stand vs Floor vs Mine vs The Press distinctions? | Surfaces increasingly share Sovereign projections. | Ownership, public vs private, export vs browse |
-| Enforce serverless dynamic-import invariants in CI? | Static Node graphs have crashed Vercel isolates at load time. | Bundle size budgets, route smoke tests, lazy-load lint rules |
+| ~~Firestore vs Sovereign ownership~~ | **Decided (Update 21):** Firebase Auth = identity; Firestore = private canonical state (atoms, Tailor, Shadow, billing); Sovereign = public publication/discovery + Pocket mirrors; IndexedDB = ghost buffer. |
+| ~~Sovereign store kind~~ | **Decided:** gradually expanding hybrid (publication/discovery first). |
+| ~~Atoms on Sovereign Postgres~~ | **Decided for now: no** — revisit with private-read auth. |
+| ~~Scry archive source~~ | **Decided:** Sovereign-first for public archive lane; personal lanes stay local/Firestore/Shadow; unified service later. |
+| ~~Shared embedding contract~~ | **Decided + encoded:** `schemas/embeddingContracts.ts`. |
+| ~~The Edit Signal vs Issue~~ | **Decided + encoded:** one `/the-edit` with Signal / Issue / Forecast panels. |
+| ~~Observatory → Taste Graph~~ | **Decided: no** — collective context only. |
+| ~~Consent revoke~~ | **Decided + encoded:** withdraw future live windows via `mmmContributionStatus`; frozen reports may retain anonymized aggregates. |
+| ~~Stand / Floor / Mine / Press~~ | **Decided:** Stand = shell; Floor = community; Mine = creator shelf; Press = export packaging. |
+| ~~Dynamic-import CI~~ | **Decided + encoded:** `npm run verify:api-lazy-graphs` in UI Cohesion workflow. |
 
-Full Update 20 question list: [architecture-update-20.md §16](./architecture-update-20.md#16-open-questions).
+Full decision text: [architecture-update-21.md](./architecture-update-21.md). Prior question list: [architecture-update-20.md §16](./architecture-update-20.md#16-open-questions).
 
 ## Current Implementation Baseline
 
@@ -546,33 +546,35 @@ The current creator-facing interfaces are projections onto the architecture, not
 
 `/chamber-map` is the registry inspector. `/u/:handle`, `/showcase`, `/zine/:id`, and `/api/*` are infrastructure or published-artifact routes rather than chambers.
 
-### Accepted architecture decisions (Update 20)
+### Accepted architecture decisions (Updates 20–21)
 
-See [architecture-update-20.md §15](./architecture-update-20.md#15-architecture-decisions) for the full list. Highlights now treated as canon:
+See [architecture-update-20.md §15](./architecture-update-20.md#15-architecture-decisions) and [architecture-update-21.md](./architecture-update-21.md). Highlights now treated as canon:
 
-- Sovereign archive is a first-class owned data plane; Firestore remains for identity and selected compatibility state.
+- Sovereign archive is a first-class owned data plane; Firestore remains for identity and private canonical state; Sovereign owns public publication/discovery projections.
 - Scry lanes must report empty/failed/unavailable honestly; no padded “complete” coverage.
 - Shadow Memory reindex requires a real Firebase UID; ghost identities cannot bulk-operate embeddings.
-- AI Gateway embeddings are shared infrastructure with executed-model provenance.
-- Residue is offline-first; live Apify acquisition is optional server enrichment.
-- Observatory is distinct from Residue and requires explicit collective-contribution consent.
+- AI Gateway embeddings are shared infrastructure with executed-model provenance (`EmbeddingSpaceId`).
+- Residue is offline-first; live Apify acquisition is optional server enrichment with honest coverage states.
+- Observatory is distinct from Residue, requires explicit consent, and does **not** feed the personal Taste Graph.
+- Unpublish withdraws future MMM live windows (`mmmContributionStatus: withdrawn`); frozen reports may retain anonymized aggregates.
+- The Edit is one chamber with **Signal / Issue / Forecast** panels (default Signal).
 - Funded plans use Mimi-managed Gateway access; BYOK is not the recovery prompt for Gateway failure.
 - Identity changes must cancel or invalidate in-flight Floor/Pocket/Shadow/subscription work.
-- Serverless routes must dynamically load heavy or optional Node graphs after cheap request checks.
-- Mobile chambers remove duplicate chrome and foreground the primary promise.
+- Speed Ghost → new UID does not auto-migrate Pocket; Firebase anonymous link (same UID) continues.
+- Serverless routes must dynamically load heavy graphs; CI enforces `verify:api-lazy-graphs`.
+- Mobile chambers remove duplicate chrome and foreground the primary promise; experimental modes use named lab tabs.
 
 ### Additional implementation questions
 
-These branch-level questions sit beneath the canonical open questions and should remain visible during implementation planning:
+Still open for later implementation (decisions already made where noted):
 
 - Should Used Context remain a local queue or become a synchronized, project-scoped object?
-- Should The Edit retain commerce as a secondary tab now that `TheEditCompile` is primary, or split into Signal Edit / Issue Edit?
 - Should cover overlay state remain ephemeral or become part of the versioned artifact composition specification?
 - What are the canonical renderers and schemas for every Pocket object type?
 - Where is the privacy boundary between user-global, project-scoped, and Sanctuary-local knowledge?
 - What automated end-to-end evidence is required before the creator spine is considered complete?
-- Should anonymous Pocket data migrate automatically after account creation?
-- Should dynamic-import invariants become part of CI?
+- Cross-plane Pocket tombstone store with retry queue (policy decided; store not built)
+- Explicit “Bring local Pocket” opt-in after Speed Ghost upgrade (auto-migrate declined)
 
 ## 13. Superintelligence Scalability Layer (SSL)
 

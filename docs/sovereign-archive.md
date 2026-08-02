@@ -2,6 +2,19 @@
 
 Owned Stand data plane behind Express. Prefer this over Firestore free-tier reads for Floor, feeds, OG, and Mine.
 
+## Ownership map (Architecture Update 21)
+
+| Plane | Owns |
+| --- | --- |
+| Firebase Auth | Identity (UID, `__session`) |
+| Firestore | Memory Atoms, Context Runs, Tailor/Shadow sources, billing mirrors, private prefs, transmissions |
+| Sovereign | Public Floor/Mine projections, feeds, OG, hybrid search vectors, Pocket **mirrors** |
+| IndexedDB | Ghost/anonymous working set; registered local merge buffer |
+
+Sovereign is a gradually expanding **hybrid** — today primarily publication/discovery/resilience, not a complete private application store. Memory Atoms stay on Firestore until a private Sovereign auth model exists.
+
+**Surface names:** The Stand = browse chamber shell · Floor = community shelf · Mine = creator’s issues · The Press = export/publish packaging (not a shelf).
+
 ## Backends
 
 | Host | Default | Notes |

@@ -251,6 +251,15 @@ function testConsent() {
     }),
     "disclosure + contribute → yes",
   );
+  assert(
+    !mayContributeToMeanMedianMode({
+      disclosedAt: Date.now(),
+      disclosureVersion: MMM_CONSENT_DISCLOSURE_VERSION,
+      contributeToMeanMedianMode: true,
+      mmmContributionStatus: "withdrawn",
+    }),
+    "withdrawn status → no live contribution",
+  );
 
   const consent = buildPublishConsent({
     artifactId: "z1",
@@ -263,9 +272,12 @@ function testConsent() {
   const fields = consentFieldsForZine(consent);
   assert(fields.isPublic === true, "consent fields stage public");
   assert(fields.contributeToMeanMedianMode === true, "consent fields contribute");
+  assert(fields.mmmContributionStatus === "active", "publish sets mmmContributionStatus active");
 
   const unpub = unpublishFieldsForZine();
   assert(unpub.isPublic === false && unpub.contributeToMeanMedianMode === false, "unpublish stops");
+  assert(unpub.mmmContributionStatus === "withdrawn", "unpublish marks withdrawn");
+  assert(typeof unpub.mmmWithdrawnAt === "number", "unpublish records withdrawnAt");
 }
 
 function testContributePipeline() {
@@ -278,7 +290,10 @@ function testContributePipeline() {
     disclosureVersion: MMM_CONSENT_DISCLOSURE_VERSION,
   });
   assert(denied.signals.length === 0, "opt-out produces no signals");
-  assert(denied.receipt?.exclusionReasons.includes("no_consent_or_opt_out"), "receipt exclusion");
+  assert(
+    denied.receipt?.exclusionReasons.includes("no_consent_or_opt_out_or_withdrawn"),
+    "receipt exclusion",
+  );
 
   const noDisclosure = contributePublicZineToMeanMedianMode({
     id: "silent-1",

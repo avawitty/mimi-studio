@@ -22,6 +22,8 @@ export interface ExtractablePublicZine {
   disclosedAt?: number;
   /** Disclosure copy version (e.g. mmm-consent-v1). */
   disclosureVersion?: string;
+  /** Live-window eligibility after revoke (Architecture Update 21). */
+  mmmContributionStatus?: "active" | "withdrawn" | "never" | string;
   /** Owner uid — hashed into opaqueContributorKey; never stored raw on the signal. */
   userId?: string;
 }
@@ -48,6 +50,7 @@ export function extractSignalsFromPublicZine(
       disclosedAt: zine.disclosedAt,
       disclosureVersion: zine.disclosureVersion,
       contributeToMeanMedianMode: zine.contributeToMeanMedianMode,
+      mmmContributionStatus: zine.mmmContributionStatus,
     })
   ) {
     return [];

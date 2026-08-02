@@ -11,7 +11,15 @@
  */
 import assert from "node:assert/strict";
 import { cosineSimilarity, embeddingsCompatible, meanEmbedding } from "../lib/embeddingMath.js";
-import { auditShadowEmbeddings, selectDocsForReindex } from "../lib/shadowMemoryIndex.js";
+import {
+  auditShadowEmbeddings,
+  selectDocsForReindex,
+  shadowAuditToEmbeddingCompat,
+} from "../lib/shadowMemoryIndex.js";
+import {
+  embeddingSpaceId,
+  embeddingSpacesCompatible,
+} from "../schemas/embeddingContracts.js";
 import { MODELS, modelFor } from "../services/modelConfig.js";
 import { GATEWAY_DEFAULT_MODELS } from "../lib/models.js";
 
@@ -61,13 +69,22 @@ function assertOffline() {
       embed_text: "gateway vector",
     },
   ];
-  const audit = auditShadowEmbeddings(mixed, 1536);
+  const audit = auditShadowEmbeddings(mixed, 1536, gatewayModel);
   assert.equal(audit.needsReindex, true);
   assert.equal(audit.incompatible, 1);
   assert.deepEqual(
     selectDocsForReindex(mixed, 1536).map((d) => d.id),
     ["legacy"],
   );
+
+  const spaceA = embeddingSpaceId({ model: gatewayModel, dims: 1536 });
+  const spaceB = embeddingSpaceId({ model: gatewayModel, dims: 768 });
+  assert.equal(embeddingSpacesCompatible(spaceA, spaceA), true);
+  assert.equal(embeddingSpacesCompatible(spaceA, spaceB), false);
+  const sharedAudit = shadowAuditToEmbeddingCompat(audit);
+  assert.equal(sharedAudit.needsReindex, true);
+  assert.equal(sharedAudit.reference?.dims, 1536);
+  assert.equal(sharedAudit.reference?.model, gatewayModel);
 
   console.log(
     JSON.stringify(

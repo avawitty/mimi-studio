@@ -3,6 +3,11 @@
  * Detects legacy / cross-provider width + model mismatches and selects docs to re-embed.
  */
 
+import {
+  toEmbeddingCompatAudit,
+  type EmbeddingCompatAudit,
+} from "../schemas/embeddingContracts";
+
 export type ShadowMemoryDoc = {
   id: string;
   kind?: string;
@@ -120,6 +125,22 @@ export function auditShadowEmbeddings(
     widthHistogram,
     needsReindex: reindexable > 0,
   };
+}
+
+/** Shared EmbeddingSpaceId audit view (Architecture Update 21). */
+export function shadowAuditToEmbeddingCompat(
+  audit: ShadowEmbeddingAudit,
+): EmbeddingCompatAudit {
+  return toEmbeddingCompatAudit({
+    referenceModel: audit.referenceModel,
+    referenceDims: audit.referenceDims,
+    total: audit.shadowDocs,
+    searchable: audit.searchable,
+    incompatible: audit.incompatible,
+    missingVector: audit.missingVector,
+    reindexable: audit.reindexable,
+    needsReindex: audit.needsReindex,
+  });
 }
 
 /** Docs that should be rewritten into the current embedding space. */

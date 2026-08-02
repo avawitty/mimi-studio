@@ -56,6 +56,18 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Validate product canon
+        run: npm run validate:canon
+
+      - name: Verify api lazy-load graphs
+        run: npm run verify:api-lazy-graphs
+
+      - name: Verify collective intelligence contracts
+        run: npm run verify:collective
+
+      - name: Verify embeddings contracts (offline)
+        run: npm run verify:embeddings
+
       - name: Build frontend
         run: npm run build:vercel
 
