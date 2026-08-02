@@ -12,6 +12,10 @@
           "https://www.mimi.you/__/auth/handler",
           "https://mimi.you",
           "https://mimi.you/__/auth/handler",
+          "https://www.mimi.rip",
+          "https://www.mimi.rip/__/auth/handler",
+          "https://mimi.rip",
+          "https://mimi.rip/__/auth/handler",
           "http://localhost"
         ]
       }

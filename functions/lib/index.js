@@ -51,6 +51,8 @@ app.use((0, cookie_parser_1.default)());
 const ALLOWED_ORIGIN_PATTERNS = [
     'https://www.mimi.you',
     'https://mimi.you',
+    'https://www.mimi.rip',
+    'https://mimi.rip',
     'https://avainlife.com',
     'https://www.avainlife.com',
     /^https:\/\/[\w-]+\.vercel\.app$/,
