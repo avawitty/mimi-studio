@@ -87,19 +87,13 @@ export const openPostgresDriver = async (connectionString: string): Promise<Sove
     allowExitOnIdle: Boolean(process.env.VERCEL),
     application_name: process.env.MIMI_SOVEREIGN_APP_NAME || "mimi-sovereign",
     ssl: { rejectUnauthorized: true },
+    // Apply to every new connection (pool.query SET only touches one).
+    options: "-c statement_timeout=12000",
   });
 
   pool.on("error", (error) => {
     console.warn("MIMI // Sovereign pg pool error:", error);
   });
-
-  // Best-effort statement timeout after open (avoid SET inside connect handler —
-  // that races other queries and trips pg@9 deprecation).
-  void pool
-    .query("SET statement_timeout = 12000")
-    .catch(() => {
-      // ignore — pooler / role may reject session GUCs
-    });
 
   // Neon/pg often reject multi-statement queries — run one at a time.
   for (const statement of SCHEMA_SQL.split(";")

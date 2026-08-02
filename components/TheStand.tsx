@@ -1,8 +1,12 @@
 // @ts-nocheck
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { subscribeToUserZines, fetchCommunityZines, subscribeToCommunityZines } from '../services/firebaseUtils';
-import { fetchSovereignStatus, type SovereignArchiveStatus } from '../services/sovereignClient';
+import {
+  fetchSovereignCommunityZines,
+  fetchSovereignStatus,
+  type SovereignArchiveStatus,
+} from '../services/sovereignClient';
 import { getLocalZines } from '../services/localArchive';
 import { ZineMetadata } from '../types';
 import { useUser } from '../contexts/UserContext';
@@ -26,6 +30,9 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   const { user, profile } = useUser();
   const [localZines, setLocalZines] = useState<ZineMetadata[]>([]);
   const [cloudZines, setCloudZines] = useState<ZineMetadata[]>([]);
+  /** Last known unfiltered Floor shelf (live SSE / empty-query). */
+  const [floorBrowseZines, setFloorBrowseZines] = useState<ZineMetadata[]>([]);
+  /** Active Floor search hit list (may be hybrid/semantic). */
   const [communityZines, setCommunityZines] = useState<ZineMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [floorLoading, setFloorLoading] = useState(false);
@@ -36,11 +43,17 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   /** Query string last applied by sovereign Floor search; null while pending or on failure. */
   const [floorSearchApplied, setFloorSearchApplied] = useState<string | null>(null);
   const [commentZineId, setCommentZineId] = useState<string | null>(null);
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
+  const floorBrowseRef = useRef(floorBrowseZines);
+  floorBrowseRef.current = floorBrowseZines;
 
   // Identity change must resettle Floor — don't keep another account's shelf / empty quota state.
   useEffect(() => {
     setFloorLoaded(false);
+    setFloorBrowseZines([]);
     setCommunityZines([]);
+    setFloorSearchApplied(null);
     setCloudZines([]);
   }, [user?.uid, user?.isAnonymous]);
 
@@ -89,7 +102,8 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     };
   }, [user]);
 
-  // Lazy-load Floor once, then keep live via SSE / poll (subscribeToCommunityZines).
+  // Lazy-load Floor once, then keep live via SSE / poll — including while searching
+  // so unpublished/deleted issues leave the shelf (and active search) promptly.
   useEffect(() => {
     if (mode !== 'floor') return;
     let cancelled = false;
@@ -103,7 +117,12 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
         try {
           const community = await fetchCommunityZines(40);
           if (!cancelled) {
-            setCommunityZines(community || []);
+            const list = community || [];
+            setFloorBrowseZines(list);
+            if (!searchQueryRef.current.trim()) {
+              setCommunityZines(list);
+              setFloorSearchApplied('');
+            }
             const status = await fetchSovereignStatus(true);
             if (status) setArchive(status);
           }
@@ -117,9 +136,28 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
         }
       }
 
-      if (cancelled || searchQuery.trim()) return;
+      if (cancelled) return;
       unsubLive = subscribeToCommunityZines((docs) => {
-        if (!cancelled) setCommunityZines(docs || []);
+        if (cancelled) return;
+        const list = docs || [];
+        setFloorBrowseZines(list);
+        const q = searchQueryRef.current.trim();
+        if (!q) {
+          setCommunityZines(list);
+          setFloorSearchApplied('');
+          return;
+        }
+        // Search is active — refresh hybrid results so deletes/unpublishes drop out.
+        void fetchSovereignCommunityZines(40, q)
+          .then((results) => {
+            if (!cancelled && results) {
+              setCommunityZines(results);
+              setFloorSearchApplied(q);
+            }
+          })
+          .catch(() => {
+            // keep current search hits; browse shelf already updated
+          });
       });
     })();
 
@@ -127,17 +165,24 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
       cancelled = true;
       unsubLive();
     };
-  }, [mode, floorLoaded, searchQuery]);
+  }, [mode, floorLoaded]);
 
-  // Server-side Floor search when sovereign is ready; restore full shelf when cleared.
+  // Server-side Floor search when sovereign is ready; restore browse shelf when cleared.
   useEffect(() => {
     if (mode !== 'floor' || !floorLoaded || !archive?.ready) return;
     const q = searchQuery.trim();
     let cancelled = false;
+
+    // Clearing search: sync communityZines to browse (display already uses floorBrowseZines).
+    if (!q) {
+      setCommunityZines(floorBrowseRef.current);
+      setFloorSearchApplied('');
+      return;
+    }
+
     setFloorSearchApplied(null);
     const handle = setTimeout(async () => {
       try {
-        const { fetchSovereignCommunityZines } = await import('../services/sovereignClient');
         const results = await fetchSovereignCommunityZines(40, q);
         if (!cancelled && results) {
           setCommunityZines(results);
@@ -148,7 +193,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
         // fall through to client filter via filteredZines
       }
       if (!cancelled) setFloorSearchApplied(null);
-    }, q ? 220 : 0);
+    }, 220);
     return () => {
       cancelled = true;
       clearTimeout(handle);
@@ -163,12 +208,24 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   }, [localZines, cloudZines]);
 
   const filteredZines = useMemo(() => {
-    const source = mode === 'mine' ? myZines : communityZines;
     const qTrim = searchQuery.trim();
-    if (!qTrim) return source;
+    if (mode === 'mine') {
+      if (!qTrim) return myZines;
+      const q = qTrim.toLowerCase();
+      return myZines.filter(
+        (z) =>
+          z.title?.toLowerCase().includes(q) ||
+          z.tone?.toLowerCase().includes(q) ||
+          z.userHandle?.toLowerCase().includes(q) ||
+          z.content?.headlines?.[0]?.toLowerCase().includes(q),
+      );
+    }
+    // Floor: empty query always uses browse shelf (not a lingering search snapshot).
+    if (!qTrim) return floorBrowseZines;
     // Trust sovereign hybrid search results (including semantic-only matches).
-    if (mode === 'floor' && archive?.ready && floorSearchApplied === qTrim) return source;
+    if (archive?.ready && floorSearchApplied === qTrim) return communityZines;
     const q = qTrim.toLowerCase();
+    const source = floorBrowseZines.length ? floorBrowseZines : communityZines;
     return source.filter(
       (z) =>
         z.title?.toLowerCase().includes(q) ||
@@ -176,14 +233,23 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
         z.userHandle?.toLowerCase().includes(q) ||
         z.content?.headlines?.[0]?.toLowerCase().includes(q),
     );
-  }, [mode, myZines, communityZines, searchQuery, archive?.ready, floorSearchApplied]);
+  }, [
+    mode,
+    myZines,
+    floorBrowseZines,
+    communityZines,
+    searchQuery,
+    archive?.ready,
+    floorSearchApplied,
+  ]);
 
   const handle = profile?.handle ? `@${profile.handle}` : null;
   const displayName = profile?.displayName || profile?.handle || 'The Stand';
   const showFullLoader = loading && mode === 'mine' && myZines.length === 0;
+  const floorCount = searchQuery.trim() ? filteredZines.length : floorBrowseZines.length;
   const floorMark = archive?.ready
-    ? `House archive · ${communityZines.length}`
-    : `Floor · ${communityZines.length}`;
+    ? `House archive · ${floorCount}`
+    : `Floor · ${floorCount}`;
 
   return (
     <>

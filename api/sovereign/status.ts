@@ -1,9 +1,23 @@
 import { cors, requireMethod, sendJson } from "../../lib/apiUtils.js";
-import { isSovereignEnabled, resolveSovereignDbPath } from "../../lib/sovereign/db.js";
+import {
+  isSovereignEnabled,
+  resolvePostgresUrl,
+  resolveSovereignDbPath,
+} from "../../lib/sovereign/db.js";
 import { isSovereignGatewayEmbedEnabled } from "../../lib/sovereign/embeddings.js";
 import { neonAuthStatusSnippet } from "../../lib/sovereign/neonAuth.js";
 
 const STATUS_BUDGET_MS = 12_000;
+
+/** Path hint for degraded status — never claim SQLite on Postgres/Neon hosts. */
+const statusPathHint = (): string | null => {
+  if (!isSovereignEnabled()) return null;
+  const pg = resolvePostgresUrl();
+  if (pg) return pg.replace(/:[^:@/]+@/, ":***@");
+  // Vercel is Postgres-only; avoid advertising a local sqlite path.
+  if (process.env.VERCEL) return null;
+  return resolveSovereignDbPath();
+};
 
 /** GET /api/sovereign/status — archive health for ops + client degraded mode. */
 export default async function handler(req: any, res: any) {
@@ -14,7 +28,7 @@ export default async function handler(req: any, res: any) {
     enabled: isSovereignEnabled(),
     ready: false,
     backend: null as "sqlite" | "postgres" | null,
-    path: isSovereignEnabled() ? resolveSovereignDbPath() : null,
+    path: statusPathHint(),
     zineCount: 0,
     publicCount: 0,
     profileCount: 0,
@@ -37,7 +51,7 @@ export default async function handler(req: any, res: any) {
     return sendJson(res, 200, {
       ...status,
       enabledFlag: isSovereignEnabled(),
-      path: status.path ?? (isSovereignEnabled() ? resolveSovereignDbPath() : null),
+      path: status.path ?? statusPathHint(),
       message: status.ready
         ? `Sovereign archive online (${status.backend || "unknown"})`
         : "Sovereign archive offline — Floor may fall back to Firestore",

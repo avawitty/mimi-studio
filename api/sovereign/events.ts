@@ -44,9 +44,18 @@ export default async function handler(req: any, res: any) {
 
     const unsubscribe = subscribeSovereignEvents((event) => {
       if (scope === "public") {
-        // Include unpublish (isPublic:false) so Floor clients refetch and drop it.
-        if (event.type === "zine_upsert" || event.type === "zine_delete") {
+        // Public SSE is unauthenticated — never leak private upsert metadata (userId).
+        // Public publishes go through; unpublish/delete only nudge with id so Floor refetches.
+        if (event.type === "zine_upsert" && event.isPublic) {
           res.write(`event: zine\ndata: ${JSON.stringify(event)}\n\n`);
+        } else if (event.type === "zine_upsert" && !event.isPublic) {
+          res.write(
+            `event: zine\ndata: ${JSON.stringify({ type: "zine_delete", id: event.id })}\n\n`,
+          );
+        } else if (event.type === "zine_delete") {
+          res.write(
+            `event: zine\ndata: ${JSON.stringify({ type: "zine_delete", id: event.id })}\n\n`,
+          );
         }
         return;
       }
