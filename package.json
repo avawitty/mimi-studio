@@ -25,6 +25,7 @@
     "verify:residue": "tsx scripts/verifyResidueEngine.ts",
     "verify:rip": "tsx scripts/verifyRipEngine.ts",
     "verify:fish": "tsx scripts/verifyFishShare.ts",
+    "verify:doll-staple": "tsx scripts/verifyDollStaplePrompt.ts",
     "verify:rss-feed": "tsx scripts/verifyCreatorRssFeed.ts",
     "cursor:prompt": "tsx scripts/cursorAgentPrompt.ts",
     "cursor:cloud-review": "tsx scripts/cursorCloudReview.ts",

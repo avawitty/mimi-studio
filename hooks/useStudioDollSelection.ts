@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Doll } from "../types";
 import { listDolls } from "../services/tailorService";
+import { buildMimiShellCompanionContext } from "../services/dollEngine";
 
 const STORAGE_KEY = "mimi_studio_active_doll_id";
 export const STUDIO_DOLL_CHANGED = "mimi:studio-doll-changed";
@@ -23,16 +24,7 @@ function writeStoredDollId(dollId: string | null): void {
 }
 
 export function buildDollPromptContext(doll: Doll): string {
-  return `[DOLL IDENTITY ACTIVE — "${doll.name}"]
-Visual Language: ${doll.visualLanguage.join(", ") || "editorial minimalism"}
-Palette: ${doll.palette.join(", ") || "muted neutrals"}
-Materials: ${doll.materials.join(", ") || "tactile natural fibers"}
-Silhouette: ${doll.silhouette}
-Motifs: ${[...doll.motifs, ...doll.signatureMotifs].slice(0, 8).join(", ") || "structural geometry"}
-Emotional Register: ${doll.emotionalRegister}
-Creative Philosophy: ${doll.creativePhilosophy}
-${doll.eyeTreatment ? `Eye Treatment: ${doll.eyeTreatment}` : ""}
-CRITICAL: Preserve this doll as a stable character proxy across all visual prompts (header_image_prompt, visual_plates, pages.imagePrompt). Lock face structure and identity while varying wardrobe and setting.`;
+  return buildMimiShellCompanionContext(doll);
 }
 
 export function useStudioDollSelection(userId?: string | null) {

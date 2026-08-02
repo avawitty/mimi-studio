@@ -11,6 +11,7 @@ import { getAIProvider } from '../../services/aiProvider';
 import { DollHouseDressingRoom } from "./DollHouseDressingRoom";
 import { useUser } from '../../contexts/UserContext';
 import { updateDoll } from '../../services/tailorService';
+import { buildMimiShellImagePrompt } from '../../services/dollEngine';
 
 interface DollProfileScreenProps {
   doll: Doll;
@@ -131,11 +132,9 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
     if (isGeneratingPortrait) return;
     setIsGeneratingPortrait(true);
     triggerSound('transition');
-    
-    const visualTraits = currentDoll.visualLanguage?.join(', ') || 'exquisite avant-garde high-fashion';
-    const materialTraits = currentDoll.materials?.join(', ') || 'smooth vinyl and metallic hardware';
-    
-    const imagePrompt = `An exquisite high-fashion BJD (Ball Jointed Doll) art toy portrait representing a digital cult aesthetic. The doll has smooth polished vinyl skin, highly detailed large glassy lifelike crystal eyes with intricate iris patterns, a neat and sleek chin-length bobby-bob haircut, ball joints visible at the neck, shoulders, and wrists. Elegant and minimalist composition with cinematic dramatic lighting, highlighting a unique visual style of ${visualTraits}. Styled with clothing matching ${materialTraits}. High contrast, clean editorial fashion photograph, luxury toy design.`;
+
+    // House Mimi Shell staple — porcelain BJD species lock; taste only accents wardrobe.
+    const imagePrompt = buildMimiShellImagePrompt(currentDoll, { view: "portrait" });
     
     try {
       const response = await fetch('/api/mimi-image', {
@@ -146,6 +145,7 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         body: JSON.stringify({
           prompt: imagePrompt,
           aspectRatio: '3:4',
+          allowFaces: true,
           // Omit provider — /api/mimi-image prefers AI Gateway when configured
         }),
       });
@@ -608,12 +608,12 @@ GUIDELINES FOR THE RESPONSE:
                 {isGeneratingPortrait ? (
                   <>
                     <RefreshCw size={10} className="animate-spin text-amber-500" />
-                    GENERATING ART DOLL likeness...
+                    PROJECTING MIMI SHELL…
                   </>
                 ) : (
                   <>
                     <Sparkles size={10} className="text-amber-500 animate-pulse" />
-                    [ RE-GENERATE ART STYLE DEFINER PORTRAIT ]
+                    [ RUN SHELL PROJECTION ]
                   </>
                 )}
               </button>
