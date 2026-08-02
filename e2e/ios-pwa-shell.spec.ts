@@ -198,19 +198,31 @@ test.describe("Keyboard avoidance", () => {
       .getAttribute("content");
     // A11y policy (#169): keep pinch-zoom available — do not lock scale.
     expect(content).toContain("viewport-fit=cover");
-    expect(content ?? "").not.toMatch(/user-scalable\s*=\s*no/i);
-    expect(content ?? "").not.toMatch(/maximum-scale\s*=\s*1(\.0)?(\s|,|$)/i);
+    // Reject equivalent spellings that still disable pinch-zoom on iOS
+    // (`user-scalable=0` / `false`, `maximum-scale=1` / `1.0` / `1.00`).
+    expect(content ?? "").not.toMatch(/user-scalable\s*=\s*(no|0|false)/i);
+    expect(content ?? "").not.toMatch(/maximum-scale\s*=\s*1(\.0+)?(\s|,|$)/i);
 
     // iOS focus-zoom is prevented by ≥16px form controls on narrow viewports.
-    const inputFontSize = await page.evaluate(() => {
-      const el = document.createElement("input");
-      el.type = "text";
-      document.body.appendChild(el);
-      const size = Number.parseFloat(getComputedStyle(el).fontSize);
-      el.remove();
-      return size;
+    // Probe input, textarea, and select — each has its own CSS rule.
+    const formControlFontSizes = await page.evaluate(() => {
+      const measure = (el: HTMLElement) => {
+        document.body.appendChild(el);
+        const size = Number.parseFloat(getComputedStyle(el).fontSize);
+        el.remove();
+        return size;
+      };
+      const input = document.createElement("input");
+      input.type = "text";
+      return [
+        { tag: "input" as const, size: measure(input) },
+        { tag: "textarea" as const, size: measure(document.createElement("textarea")) },
+        { tag: "select" as const, size: measure(document.createElement("select")) },
+      ];
     });
-    expect(inputFontSize).toBeGreaterThanOrEqual(16);
+    for (const { tag, size } of formControlFontSizes) {
+      expect(size, `${tag} font-size`).toBeGreaterThanOrEqual(16);
+    }
   });
 });
 
