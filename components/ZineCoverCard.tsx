@@ -25,7 +25,7 @@ export const ZineCoverCard: React.FC<ZineCoverCardProps> = ({ zine, onClick, onC
  <link href={fontUrl} rel="stylesheet"/>
  <div 
  onClick={onClick}
- className="group relative w-full aspect-[3/4] rounded-none rounded-none overflow-hidden flex flex-col cursor-pointer hover:scale-[1.02] transition-transform duration-500"
+ className="group relative w-full aspect-[3/4] rounded-none overflow-hidden flex flex-col cursor-pointer transition-opacity duration-300 hover:opacity-95"
  style={{ 
  fontFamily: `'${fontFamily}', sans-serif`,
  '--zine-base-color': baseHex,

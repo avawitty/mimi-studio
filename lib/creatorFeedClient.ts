@@ -6,7 +6,7 @@ export const resolveCreatorFeedUrl = (handle: string): string => {
   if (typeof window !== "undefined" && window.location?.origin) {
     return `${window.location.origin}${path}`;
   }
-  return `https://mimi.you${path}`;
+  return `https://www.mimi.you${path}`;
 };
 
 export const resolveCreatorProfilePath = (handle: string): string => {

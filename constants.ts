@@ -49,18 +49,20 @@ Generate literal, highly-specific boolean search queries optimized specifically 
 Recommend emerging, niche, or archival designers that perfectly execute the user's archetype within their exact fiscal constraints and objective.
 Long-term vision: Keep a relevant understanding of what the user needs for their capsule, acting as a structural seam guide for their wardrobe expansion.`;
 
+/** Live Maison Mimi Patronage monthly Prices (acct_1T0fAo9AUz0q2nVC). */
 export const STRIPE_PRICES = {
-  core: "price_1TyH1dPelakqdIL6lWwNf7Hw",
-  optioning: "price_1TyH1dPelakqdIL6qnkLnvan",
-  pro: "price_1TyH1ePelakqdIL6cL56uAzp",
-  lab: "price_1TyH1ePelakqdIL6VpQHXEKG",
+  core: "price_1TfuI49AUz0q2nVCHuy4k4Sq",
+  optioning: "price_1TgUdR9AUz0q2nVC1EoBOgBi",
+  pro: "price_1TgVQC9AUz0q2nVC5POSYpI7",
+  lab: "price_1TfwLC9AUz0q2nVCxNzPtunX",
 } as const;
 
+/** Live annual Prices (~2 months free vs monthly). */
 export const STRIPE_PRICES_ANNUAL = {
-  core: "price_1TyHpcPelakqdIL6zNy9Pr9n",
-  optioning: "price_1TyHpcPelakqdIL6XOTs86AM",
-  pro: "price_1TyHpcPelakqdIL6TADmS9HW",
-  lab: "price_1TyHpdPelakqdIL6L5g4CKKw",
+  core: "price_1Tzntj9AUz0q2nVCO66J6Wps",
+  optioning: "price_1Tznti9AUz0q2nVC83IIz3KG",
+  pro: "price_1Tznti9AUz0q2nVCo7L96nzL",
+  lab: "price_1Tzntj9AUz0q2nVCsBYJKVze",
 } as const;
 
 /** Monthly price in USD per checkout plan, used for display and annual savings math. */

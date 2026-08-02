@@ -1630,7 +1630,7 @@ export const AnalysisDisplay: React.FC<{
  Release
  </button>
  {t.link && (
- <a href={t.link} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text">
+ <a href={t.link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text">
  Open source <ExternalLink size={12} />
  </a>
  )}

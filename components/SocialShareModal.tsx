@@ -55,16 +55,18 @@ export const SocialShareModal: React.FC<SocialShareModalProps> = ({ metadata, on
  initial={{ scale: 0.9, y: 20 }}
  animate={{ scale: 1, y: 0 }}
  exit={{ opacity: 0, scale: 0.9, y: 20 }}
- className="relative w-full max-w-md bg-white rounded-none border border-nous-border overflow-hidden"
+ data-surface="public"
+ className="relative w-full max-w-md bg-[var(--mimi-field,#ffffff)] rounded-none border border-[var(--mimi-ink,#0a0a0a)] overflow-hidden"
  >
  <div className="p-8 md:p-10 space-y-8">
  <div className="flex justify-between items-start">
  <div className="space-y-2">
- <div className="flex items-center gap-3 text-nous-subtle">
+ <div className="flex items-center gap-3 text-[var(--mimi-stone,#78716c)]">
  <Share2 size={16} />
- <span className="font-sans text-[9px] uppercase tracking-[0.5em] font-black">Distribution Interface</span>
+ <span className="font-sans text-[9px] uppercase tracking-[0.28em] font-semibold">Share</span>
  </div>
- <h2 className="font-serif text-3xl italic tracking-tighter">Share Manifest.</h2>
+ <h2 className="font-serif text-3xl italic tracking-tight text-[var(--mimi-ink,#0a0a0a)]">Mimi</h2>
+ <p className="font-serif italic text-lg text-[var(--mimi-stone,#78716c)]">Share this plate.</p>
  </div>
  <button onClick={onClose} className="p-2 text-nous-subtle hover:text-nous-text hover:text-nous-text transition-all"><X size={20}/></button>
  </div>

@@ -4,6 +4,15 @@ import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
 
+/** Routes that should read as editorial plates — quieter chrome, less icon density */
+const PUBLIC_FACE_MODES = new Set([
+  "editorial-home",
+  "stand",
+  "signature",
+  "showcase",
+  "archival",
+]);
+
 export const StudioChrome: React.FC<{
   theme: StudioTheme;
   onToggleTheme: () => void;
@@ -33,6 +42,7 @@ export const StudioChrome: React.FC<{
 }) => {
   const { user, profile } = useUser();
   const isDark = theme === "dark";
+  const isPublicFace = PUBLIC_FACE_MODES.has(viewMode);
   const [stashOpen, setStashOpen] = React.useState(pocketStashOpen);
 
   React.useEffect(() => {
@@ -136,8 +146,11 @@ export const StudioChrome: React.FC<{
 
   return (
     <header
-      className="studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 pb-3.5 flex items-center justify-between gap-3 z-20 studio-chrome--mobile-safe"
+      className={`studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 flex items-center justify-between gap-3 z-20 studio-chrome--mobile-safe ${
+        isPublicFace ? "pb-2.5" : "pb-3.5"
+      }`}
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.875rem)" }}
+      data-chrome={isPublicFace ? "public-face" : "worktable"}
     >
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (
@@ -222,9 +235,8 @@ export const StudioChrome: React.FC<{
         </nav>
       )}
 
-      {/* Controls & Navigation Identity */}
+      {/* Controls — public faces keep Menu + identity only so the plate can breathe */}
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Mobile: full-menu trigger (desktop uses the App spine sidebar) */}
         {onOpenMenu ? (
           <button
             type="button"
@@ -236,63 +248,64 @@ export const StudioChrome: React.FC<{
           </button>
         ) : null}
 
-        {/* Minimalist running clock */}
-        {timeString && (
+        {!isPublicFace && timeString && (
           <span className="font-mono text-[9px] uppercase tracking-widest studio-text-muted hidden sm:inline-block border studio-border px-2.5 py-1.5 select-none bg-black/[0.02] dark:bg-white/[0.02] font-semibold transition-all hover:bg-black/[0.04] dark:hover:bg-white/[0.04]">
             {timeString}
           </span>
         )}
 
-        {/* Messy Pocket stash — desk drawer overlay */}
-        <button
-          type="button"
-          aria-label={stashOpen ? "Close pocket stash" : "Open pocket stash"}
-          title="Pocket stash"
-          aria-pressed={stashOpen}
-          disabled={isGenerating}
-          onClick={() =>
-            window.dispatchEvent(new CustomEvent(POCKET_STASH_TOGGLE_EVENT))
-          }
-          className={`w-9 h-9 border studio-border flex items-center justify-center transition-all duration-300 ${
-            stashOpen
-              ? "bg-black text-[#f3f1ea] border-black dark:bg-[#f3f1ea] dark:text-black dark:border-[#f3f1ea]"
-              : isGenerating
-                ? "opacity-60 cursor-not-allowed studio-text-muted"
-                : "studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 hover:scale-105"
-          }`}
-        >
-          <Layers size={14} strokeWidth={1.5} />
-        </button>
+        {!isPublicFace && (
+          <button
+            type="button"
+            aria-label={stashOpen ? "Close pocket stash" : "Open pocket stash"}
+            title="Pocket stash"
+            aria-pressed={stashOpen}
+            disabled={isGenerating}
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent(POCKET_STASH_TOGGLE_EVENT))
+            }
+            className={`w-9 h-9 border studio-border flex items-center justify-center transition-all duration-300 ${
+              stashOpen
+                ? "bg-black text-[#f3f1ea] border-black dark:bg-[#f3f1ea] dark:text-black dark:border-[#f3f1ea]"
+                : isGenerating
+                  ? "opacity-60 cursor-not-allowed studio-text-muted"
+                  : "studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 hover:scale-105"
+            }`}
+          >
+            <Layers size={14} strokeWidth={1.5} />
+          </button>
+        )}
 
-        {/* Oracle quick-access: opens Mimi vocal session from anywhere */}
-        <button
-          type="button"
-          aria-label="Commune with the Oracle"
-          title="Commune with the Oracle"
-          disabled={isGenerating}
-          onClick={() =>
-            window.dispatchEvent(new CustomEvent("mimi:open_scribe", { detail: "mimi" }))
-          }
-          className={`w-9 h-9 border studio-border flex items-center justify-center studio-text-muted transition-all duration-300 ${
-            isGenerating
-              ? "opacity-60 cursor-not-allowed"
-              : "hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 hover:scale-105"
-          }`}
-        >
-          <Sparkles size={14} strokeWidth={1.5} />
-        </button>
+        {!isPublicFace && (
+          <button
+            type="button"
+            aria-label="Commune with the Oracle"
+            title="Commune with the Oracle"
+            disabled={isGenerating}
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("mimi:open_scribe", { detail: "mimi" }))
+            }
+            className={`w-9 h-9 border studio-border flex items-center justify-center studio-text-muted transition-all duration-300 ${
+              isGenerating
+                ? "opacity-60 cursor-not-allowed"
+                : "hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 hover:scale-105"
+            }`}
+          >
+            <Sparkles size={14} strokeWidth={1.5} />
+          </button>
+        )}
 
-        {/* Theme Switcher Button */}
         <button
           type="button"
           title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           onClick={onToggleTheme}
-          className="w-9 h-9 border studio-border flex items-center justify-center studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 transition-all hover:scale-105 duration-300"
+          className={`${
+            isPublicFace ? "hidden sm:flex" : "flex"
+          } w-9 h-9 border studio-border items-center justify-center studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 transition-all hover:scale-105 duration-300`}
         >
           {isDark ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />}
         </button>
 
-        {/* User Handle / Sign-On Identity Button */}
         {isLoading ? (
           <div className="w-24 h-9 bg-stone-200 dark:bg-stone-800 animate-pulse border studio-border" />
         ) : user && !user.isAnonymous ? (

@@ -314,6 +314,10 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
           navigate?.(`/u/${handle}`);
           break;
         }
+        case 'mimi_rip': {
+          navigate?.('/rip');
+          break;
+        }
         case 'field_notes':
         case 'marketing_asset':
           setStep('outputs');

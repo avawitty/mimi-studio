@@ -13,6 +13,7 @@ import { registerTailorRoutes } from './server/tailorRoutes';
 import { buildSessionCookieHeader, clearSessionCookieHeader, SESSION_EXPIRES_MS } from './lib/sessionCookie';
 import { proxySessionLogin } from './lib/proxySessionToFunctions';
 import mimiImageHandler from "./api/mimi-image";
+import generateTextHandler from "./api/mimi/generate-text";
 import createCheckoutSessionHandler from "./api/create-checkout-session";
 import createBillingPortalSessionHandler from "./api/create-billing-portal-session";
 import stripeWebhookHandler from "./api/stripe-webhook";
@@ -84,9 +85,11 @@ try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     initializeApp({ credential: cert(serviceAccount) });
-    db = process.env.FIREBASE_FIRESTORE_DATABASE_ID
-      ? getFirestore(process.env.FIREBASE_FIRESTORE_DATABASE_ID)
-      : getFirestore();
+    // Named DB matches firebase-applet-config; `(default)` does not exist on mimistudios.
+    const databaseId =
+      process.env.FIREBASE_FIRESTORE_DATABASE_ID ||
+      'ai-studio-mimi-4c383b50-c596-4b43-8a2e-61d0645e590a';
+    db = getFirestore(databaseId);
     console.log('Firebase Admin initialized successfully.');
   } else {
     console.log('FIREBASE_SERVICE_ACCOUNT not provided. Firebase Admin will not be initialized.');
@@ -1597,6 +1600,17 @@ async function startServer() {
       await mimiImageHandler(req, res);
     } catch (error: any) {
       console.error("MIMI // Route error in /api/mimi-image:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/generate-text", async (req, res) => {
+    try {
+      await generateTextHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/generate-text:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }

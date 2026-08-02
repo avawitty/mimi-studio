@@ -9,9 +9,13 @@ import { Share2, Download, Fingerprint, Activity, GitCommit, Layers, Hexagon, Tr
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, ScatterChart, Scatter, ZAxis } from 'recharts';
 import * as htmlToImage from 'html-to-image';
 import { truncateUid } from '../lib/privacyUtils';
+import { SignaturePlate } from './signature/SignaturePlate';
+import { PublicField, PublicCTA } from './public-face';
+import { PressReveal } from './motion/PressReveal';
+import { getApprovedUsedContext } from '../services/usedContextService';
 
 const SignatureSkeleton = () => (
- <div className="flex-1 overflow-y-auto bg dark:bg text-nous-text font-serif pb-32 custom-scrollbar">
+ <div className="flex-1 overflow-y-auto bg dark:bg text-nous-text font-serif pb-20 md:pb-28 custom-scrollbar">
  <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-16 animate-pulse">
  
  {/* Header Skeleton */}
@@ -145,10 +149,10 @@ export const SignatureView: React.FC = () => {
  canvas.height = H;
  const ctx = canvas.getContext('2d');
  if (!ctx) return;
- ctx.fillStyle = '#FDFBF7';
+ ctx.fillStyle = '#FFFFFF';
  ctx.fillRect(0, 0, W, H);
  // Column rules for share-card language
- ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+ ctx.strokeStyle = 'rgba(10,10,10,0.08)';
  ctx.lineWidth = 1;
  for (let i = 1; i < 8; i++) {
  const x = (W / 8) * i;
@@ -165,14 +169,14 @@ export const SignatureView: React.FC = () => {
  const dx = (W - dw) / 2;
  const dy = H * 0.22;
  ctx.drawImage(img, dx, dy, dw, dh);
- ctx.fillStyle = '#1A1A1A';
- ctx.font = 'italic 42px Georgia, serif';
+ ctx.fillStyle = '#0A0A0A';
+ ctx.font = 'italic 42px "Cormorant Garamond", Georgia, serif';
  ctx.textAlign = 'center';
- ctx.fillText('Signature', W / 2, dy - 48);
- ctx.font = '11px monospace';
+ ctx.fillText('Mimi', W / 2, dy - 48);
+ ctx.font = '11px "Geist Variable", sans-serif';
  ctx.fillStyle = '#78716c';
- const handleLabel = profile?.handle ? `@${profile.handle}` : 'mimi.you';
- ctx.fillText(handleLabel.toUpperCase(), W / 2, dy + dh + 56);
+ const handleLabel = profile?.handle ? `@${profile.handle}` : 'Signature';
+ ctx.fillText(handleLabel, W / 2, dy + dh + 56);
  const storyUrl = canvas.toDataURL('image/png');
  const link = document.createElement('a');
  link.download = 'mimi-signature-story.png';
@@ -244,22 +248,23 @@ export const SignatureView: React.FC = () => {
  }
 
  return (
- <div className="flex-1 overflow-y-auto bg dark:bg text-nous-text font-serif selection:bg-nous-base0/20 pb-32 custom-scrollbar">
- <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-16">
+ <PublicField className="flex-1 overflow-y-auto font-serif selection:bg-black/5 pb-16 md:pb-24 custom-scrollbar">
+ <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-12 md:space-y-16">
  
- {/* Header */}
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-nous-border pb-8">
- <div>
- <h1 className="text-5xl md:text-7xl font-light italic tracking-tight">Signature</h1>
- <p className="font-sans text-[10px] uppercase tracking-[0.3em] text-nous-subtle mt-4">Aesthetic Fingerprint & Lineage</p>
+ <PressReveal>
+ <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-[var(--mimi-hairline)] pb-8">
+ <div className="space-y-3">
+ <h1 className="text-4xl md:text-7xl font-light italic tracking-tight text-[var(--mimi-ink)]">Signature</h1>
+ <p className="font-sans text-[10px] uppercase tracking-[0.3em] text-[var(--mimi-stone)]">Collectible aesthetic plate</p>
  {activePersona?.tailorDraft && (
- <p className="font-sans text-[10px] uppercase tracking-widest text-nous-subtle mt-2 flex items-center gap-1">
- <Sparkles size={10} /> Signature influenced by active Tailor Directives
+ <p className="font-sans text-[10px] uppercase tracking-widest text-[var(--mimi-stone)] mt-2 flex items-center gap-1">
+ <Sparkles size={10} /> Influenced by active Tailor directives
  </p>
  )}
  </div>
  <div className="flex items-center gap-3 flex-wrap">
- <button 
+ <PublicCTA
+ variant="ghost"
  onClick={async () => {
  if (!user) return;
  setLoading(true);
@@ -281,264 +286,40 @@ export const SignatureView: React.FC = () => {
  alert("You need to create at least one zine first.");
  }
  } catch (error) {
- console.error("MIMI // SignatureView: Error generating signature:", error);
+ console.error("Mimi // SignatureView: Error generating signature:", error);
  } finally {
  setLoading(false);
  }
  }}
- className="px-4 py-2 bg-nous-base text-nous-text font-mono text-[9px] uppercase tracking-widest font-bold hover:bg-nous-base dark:hover:bg-stone-200 transition-colors"
  >
- [ EXECUTE RE-SYNC ]
- </button>
+ Re-sync
+ </PublicCTA>
+ <PublicCTA variant="ghost" onClick={() => handleExport('plate')}>
+ <Download size={14} /> Plate PNG
+ </PublicCTA>
+ <PublicCTA onClick={() => handleExport('story')}>
+ <Share2 size={14} /> Story 9:16
+ </PublicCTA>
  <button
- onClick={() => handleExport('plate')}
- className="flex items-center gap-2 px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest font-bold hover:bg-stone-200 transition-colors"
- >
- <Download size={14} />
- Plate PNG
- </button>
- <button
- onClick={() => handleExport('story')}
- className="flex items-center gap-2 px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest font-bold hover:bg-stone-200 transition-colors"
- >
- <Share2 size={14} />
- Story 9:16
- </button>
- <button
+ type="button"
  onClick={() => void handleCopyShareLink()}
- className="flex items-center gap-2 px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest font-bold hover:bg-stone-200 transition-colors"
+ className="font-sans text-[10px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] hover:text-[var(--mimi-ink)]"
  >
  Link
  </button>
  </div>
  </div>
+ </PressReveal>
 
- {/* Top Section: DNA Card & Image Gen */}
+ {/* Collectible plate first — DNA/charts remain back matter */}
  <div className="grid md:grid-cols-12 gap-8 mt-12">
- 
- {/* Aesthetic DNA Card (Exportable) */}
  <div className="md:col-span-5 relative group">
- <div 
+ <SignaturePlate
  ref={dnaCardRef}
- className="bg-nous-base border border-nous-border p-8 relative overflow-hidden"
- >
- {/* Card Background Texture */}
- <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none"style={{ backgroundImage:"url('https://www.transparenttextures.com/patterns/noise.png')"}} />
- 
- <div className="flex justify-between items-start mb-12 relative z-10">
- <div>
- <h2 className="text-3xl italic font-light">Aesthetic DNA</h2>
- <p className="font-sans text-[8px] uppercase tracking-[0.2em] text-nous-subtle mt-1">Mimi Intelligence Output</p>
- </div>
- <Fingerprint className="text-nous-subtle/50"size={32} />
- </div>
-
- <div className="space-y-8 relative z-10">
-  {profile?.aestheticDNA ? (
-   <div className="space-y-6">
-    <div>
-     <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-1">DNA Statement</p>
-     <p className="text-xl italic text-white">{profile.aestheticDNA.dnaStatement}</p>
-    </div>
-
-    {profile.aestheticDNA.axisBreakdown && (
-     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-      {Object.entries(profile.aestheticDNA.axisBreakdown).map(([key, value]) => (
-       <div key={key} className="flex justify-between border-b border-white/5 pb-1">
-        <span className="font-mono text-[8px] uppercase text-nous-subtle">{key}</span>
-        <span className="font-serif italic text-[10px] text-white/80">{value}</span>
-       </div>
-      ))}
-     </div>
-    )}
-
-    <div>
-     <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-2">Archetypes</p>
-     <div className="flex flex-wrap gap-1">
-      {profile.aestheticDNA.archetypes.map((arch, i) => (
-       <span key={i} className="px-1.5 py-0.5 border border-white/10 text-white font-mono text-[8px] uppercase">
-        {arch}
-       </span>
-      ))}
-     </div>
-    </div>
-
-    <div className="pt-4 border-t border-white/5">
-     <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-2">Poetic Expansion</p>
-     <p className="font-serif text-[11px] italic text-white/70 leading-relaxed">
-      {profile.aestheticDNA.poeticExpansion}
-     </p>
-    </div>
-   </div>
-  ) : (
-   <>
-    <div className="grid grid-cols-2 gap-4">
-     <div>
-      <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-1">Primary Axis</p>
-      <p className="text-lg italic text-nous-subtle">{signature.primaryAxis}</p>
-     </div>
-     <div>
-      <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-1">Secondary Axis</p>
-      <p className="text-lg italic text-indigo-600 dark:text-indigo-400">{signature.secondaryAxis}</p>
-     </div>
-    </div>
-
-    <div>
-     <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-2">Core Motifs</p>
-     <div className="flex flex-wrap gap-2">
-      {signature.motifs.map((m, i) => (
-       <span key={i} className="px-2 py-1 bg-nous-base border border-nous-border font-mono text-[9px] uppercase text-nous-subtle">
-        {m}
-       </span>
-      ))}
-     </div>
-    </div>
-
-    <div>
-     <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-1">Mood Cluster</p>
-     <p className="text-xl italic text-nous-text">{signature.moodCluster}</p>
-    </div>
-   </>
-  )}
-
- {/* Material & Semantic Blueprint */}
- <div className="pt-6 border-t border-nous-border">
- <h3 className="font-sans text-[10px] uppercase tracking-[0.2em] text-nous-subtle mb-4">Material & Semantic Blueprint</h3>
- 
- <div className="space-y-4">
- <div>
- <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-2">Palette Extraction</p>
- <div className="flex flex-wrap gap-4">
- {signature.paletteExtraction?.map((hex, i) => (
- <div key={i} className="flex items-center gap-3 border border-nous-border p-2 bg-nous-base ">
- <div className="w-8 h-8 border border-nous-border"style={{ backgroundColor: hex }} />
- <div className="flex flex-col">
- <span className="font-mono text-[10px] uppercase tracking-widest text-nous-text font-bold">{hex}</span>
- <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">Swatch {i + 1}</span>
- </div>
- </div>
- )) || (
- <span className="font-mono text-[9px] text-nous-subtle">Awaiting Extraction...</span>
- )}
- </div>
- </div>
-
- <div className="grid grid-cols-2 gap-4">
- <div>
- <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-2">Tactile Bias</p>
- <div className="border border-nous-border p-3 bg-nous-base  h-full flex flex-col gap-2">
- {signature.tactileBias ? (
- <>
- <div>
- <span className="font-mono text-[8px] text-nous-subtle block mb-0.5">DOMINANT</span>
- <span className="font-mono text-[10px] text-nous-subtle uppercase">{signature.tactileBias.dominant}</span>
- </div>
- <div>
- <span className="font-mono text-[8px] text-nous-subtle block mb-0.5">SECONDARY</span>
- <span className="font-mono text-[10px] text-nous-subtle uppercase">{signature.tactileBias.secondary}</span>
- </div>
- </>
- ) : (
- <p className="font-mono text-[10px] text-nous-subtle uppercase leading-relaxed">Awaiting...</p>
- )}
- </div>
- </div>
- <div>
- <p className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mb-2">Typographic Pairing</p>
- <div className="border border-nous-border p-3 bg-nous-base  h-full flex flex-col gap-2">
- {signature.typographicPairing ? (
- <>
- <div>
- <span className="font-mono text-[8px] text-nous-subtle block mb-0.5">SERIF</span>
- <span className="font-mono text-[10px] text-nous-subtle uppercase">{signature.typographicPairing.serif}</span>
- </div>
- <div>
- <span className="font-mono text-[8px] text-nous-subtle block mb-0.5">SANS</span>
- <span className="font-mono text-[10px] text-nous-subtle uppercase">{signature.typographicPairing.sans}</span>
- </div>
- </>
- ) : (
- <p className="font-mono text-[10px] text-nous-subtle uppercase leading-relaxed">Awaiting...</p>
- )}
- </div>
- </div>
- </div>
- </div>
- </div>
-
- <div className="pt-6 border-t border-nous-border flex justify-between items-center">
- <div className="font-mono text-[8px] text-nous-subtle">
- ID: {truncateUid(user?.uid).toUpperCase()}
- </div>
- <div className="font-mono text-[8px] text-nous-subtle">
- {new Date(signature.generatedAt).toLocaleDateString()}
- </div>
- </div>
- </div>
- </div>
-
- {/* Prompt Matrix */}
- <div className="mt-8 bg border border-nous-border p-6 text-nous-subtle">
- <div className="flex items-center gap-2 mb-4">
- <Sparkles size={14} className="text-indigo-400"/>
- <h3 className="font-mono text-[10px] uppercase tracking-[0.2em] text-nous-subtle">Algorithmic Translation (Prompt Matrix)</h3>
- </div>
- <div className="bg-black border border-nous-border p-4 relative group">
- <pre className="font-mono text-[10px] whitespace-pre-wrap leading-relaxed text-nous-subtle">
- {signature.promptMatrix ? (
- signature.promptMatrix.map((prompt, i) => (
- <div key={i} className="mb-4 last:mb-0">
- <span className="text-indigo-400 font-bold">[{i + 1}]</span> {prompt}
- </div>
- ))
- ) : (
- 'Awaiting Synthesis...'
- )}
- </pre>
- <button 
- onClick={() => {
- navigator.clipboard.writeText(signature.promptMatrix?.join('\n\n') || '').catch(e => console.error("MIMI // Clipboard error", e));
- // Optional: add a toast here
- }}
- className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-nous-base text-nous-text px-2 py-1 font-mono text-[8px] uppercase tracking-widest border border-nous-border hover:bg-stone-700"
- >
- Copy
- </button>
- </div>
- </div>
-
- {/* Influence Lineage (Moved here) */}
- <div className="mt-8 space-y-6 pt-8 border-t border-nous-border">
- <div className="flex items-center gap-3 mb-6">
- <GitCommit className="text-indigo-500"size={20} />
- <h3 className="text-2xl italic">Influence Lineage</h3>
- </div>
- 
- <div className="grid gap-4">
- {signature.influenceLineage.map((item, idx) => (
- <div key={idx} className="bg-white/50 /50 border border-nous-border p-4 flex items-center justify-between group hover:border-indigo-500/50 transition-colors">
- <div>
- <h4 className="font-serif text-lg text-nous-text">{item.artist}</h4>
- <p className="font-sans text-[10px] uppercase tracking-widest text-nous-subtle">{item.movement}</p>
- </div>
- <div className="flex items-center gap-4">
- <div className="w-32 h-1 bg-stone-200 relative overflow-hidden">
- <motion.div 
- initial={{ width: 0 }}
- animate={{ width: `${item.connectionStrength * 100}%` }}
- transition={{ duration: 1, delay: idx * 0.2 }}
- className="absolute top-0 left-0 h-full bg-indigo-500"
+ signature={signature}
+ handle={profile?.handle}
+ approvedAtomCount={getApprovedUsedContext(undefined, user?.uid || profile?.uid).length}
  />
- </div>
- <span className="font-mono text-xs text-nous-subtle w-8 text-right">
- {isNaN(item.connectionStrength) ? 0 : Math.round(item.connectionStrength * 100)}%
- </span>
- </div>
- </div>
- ))}
- </div>
- </div>
-
  </div>
 
  {/* Image Generation */}
@@ -644,6 +425,6 @@ export const SignatureView: React.FC = () => {
  </div>
  </div>
  </div>
- </div>
+ </PublicField>
  );
 };
