@@ -36,10 +36,9 @@ export const isSovereignEnabled = (): boolean => {
     return false;
   }
   const hasPostgres = Boolean(resolvePostgresUrl());
-  const hasSqlitePath = Boolean(process.env.MIMI_SOVEREIGN_DB?.trim());
-  // Vercel: require durable Postgres URL or explicit sqlite path/volume.
-  if (process.env.VERCEL && !hasPostgres && !hasSqlitePath) {
-    return false;
+  // Vercel: Neon/Postgres only — SQLite is not durable and crashes some runtimes.
+  if (process.env.VERCEL) {
+    return hasPostgres;
   }
   return true;
 };
@@ -80,10 +79,24 @@ const openDriver = async (): Promise<SovereignDriver | null> => {
     return driver;
   }
 
-  // Local/Fly only — dynamic import keeps node:sqlite out of serverless bundles.
+  // Vercel serverless: SQLite is not durable and `node:sqlite` often crashes the
+  // lambda if the bundler pulls it in. Require Neon/Postgres instead.
+  if (process.env.VERCEL) {
+    console.warn(
+      "MIMI // Sovereign archive: set DATABASE_URL (Neon) or MIMI_SOVEREIGN_DATABASE_URL on Vercel",
+    );
+    return null;
+  }
+
+  // Local/Fly only. Non-literal specifier so esbuild/nft do not pack sqlite into
+  // API lambdas that import this module for status/health.
   const dbPath = resolveSovereignDbPath();
-  const { openSqliteDriver } = await import("./sqliteDriver");
-  const driver = await openSqliteDriver(dbPath);
+  // Non-literal specifier keeps node:sqlite out of Vercel/API bundles.
+  const sqliteSpecifier = `./${"sqlite"}Driver`;
+  const sqliteModule = (await import(sqliteSpecifier)) as {
+    openSqliteDriver: (path: string) => Promise<SovereignDriver>;
+  };
+  const driver = await sqliteModule.openSqliteDriver(dbPath);
   console.info(`MIMI // Sovereign archive ready (sqlite): ${dbPath}`);
   return driver;
 };

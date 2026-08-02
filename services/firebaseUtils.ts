@@ -2152,6 +2152,12 @@ export const deleteZine = async (zineId: string): Promise<void> => {
     } catch (e: any) {
       handleFirestoreError(e, OperationType.DELETE, `zines/${zineId}`);
     }
+    try {
+      const { deleteZineFromSovereign } = await import("./sovereignClient");
+      void deleteZineFromSovereign(zineId, auth.currentUser?.uid || undefined);
+    } catch {
+      // sovereign offline — Firestore delete already applied
+    }
   }
 };
 

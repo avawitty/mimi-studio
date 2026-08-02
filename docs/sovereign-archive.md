@@ -9,7 +9,7 @@ Owned Stand data plane behind Express. Prefer this over Firestore free-tier read
 | Local `npm run dev` | SQLite `.data/sovereign.sqlite` | On unless `MIMI_SOVEREIGN_ENABLED=0` |
 | Docker / Fly | SQLite `/data/sovereign.sqlite` | Volume mount; see `Dockerfile`, `fly.toml` |
 | Postgres / Neon | `MIMI_SOVEREIGN_DATABASE_URL` | Or `DATABASE_URL` when it is a `neon.tech` URI (auto). Force any Postgres URL with `MIMI_SOVEREIGN_USE_DATABASE_URL=1`. |
-| Vercel | Off unless Neon/Postgres URL | Attach Neon project **mimineon** (`sweet-dust-78322246`) and set `DATABASE_URL` or `MIMI_SOVEREIGN_DATABASE_URL` (pooled + `sslmode=require`). |
+| Vercel | Neon required | Attach Neon project **mimineon** (`sweet-dust-78322246`). Expose `DATABASE_URL` (or `MIMI_SOVEREIGN_DATABASE_URL`) to **Preview + Production**. Neon uses `@neondatabase/serverless` HTTP; SQLite is never loaded on Vercel. |
 
 ## HTTP surface
 

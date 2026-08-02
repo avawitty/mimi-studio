@@ -1,14 +1,12 @@
-import type { Pool, QueryResult } from "pg";
-import {
-  INDEX_SQL,
-  SCHEMA_SQL,
-  type SovereignDriver,
-  type SovereignRunResult,
-  type SovereignStatement,
+import type {
+  SovereignDriver,
+  SovereignRunResult,
+  SovereignStatement,
 } from "./driver";
+import { INDEX_SQL, SCHEMA_STATEMENTS } from "./driver";
 
 /** Convert `?` placeholders to Postgres `$1`, `$2`, … */
-const toPg = (sql: string): string => {
+export const toPgPlaceholders = (sql: string): string => {
   let i = 0;
   return sql.replace(/\?/g, () => {
     i += 1;
@@ -16,46 +14,109 @@ const toPg = (sql: string): string => {
   });
 };
 
-const withSslMode = (connectionString: string): string => {
-  // Neon requires TLS. Prefer libpq-compatible sslmode=require to avoid
-  // node-pg's upcoming verify-full alias change (and noisy warnings).
-  let url = connectionString;
-  if (!/[?&]sslmode=/i.test(url)) {
-    const join = url.includes("?") ? "&" : "?";
-    url = `${url}${join}sslmode=require`;
+/**
+ * Strip sslmode / uselibpqcompat so node-pg's connection-string parser cannot
+ * override an explicit `ssl: { rejectUnauthorized: true }` (sslmode=require
+ * resolves to rejectUnauthorized:false under uselibpqcompat).
+ */
+export const stripPgSslQueryParams = (connectionString: string): string => {
+  try {
+    const url = new URL(connectionString);
+    url.searchParams.delete("sslmode");
+    url.searchParams.delete("uselibpqcompat");
+    url.searchParams.delete("ssl");
+    return url.toString();
+  } catch {
+    return connectionString
+      .replace(/([?&])sslmode=[^&]*/gi, "$1")
+      .replace(/([?&])uselibpqcompat=[^&]*/gi, "$1")
+      .replace(/[?&]$/, "")
+      .replace(/\?&/, "?");
   }
-  if (/neon\.tech/i.test(url) && !/[?&]uselibpqcompat=/i.test(url)) {
-    url += (url.includes("?") ? "&" : "?") + "uselibpqcompat=true";
-  }
-  return url;
 };
 
-export const openPostgresDriver = async (connectionString: string): Promise<SovereignDriver> => {
-  const { default: pg } = await import("pg");
-  const isNeon = /neon\.tech/i.test(connectionString);
-  const pool: Pool = new pg.Pool({
-    connectionString: withSslMode(connectionString),
-    // Serverless / Neon pooler: keep the pool tiny.
-    max: isNeon ? 3 : 5,
-    idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: isNeon ? 15_000 : 10_000,
-    ssl: isNeon ? { rejectUnauthorized: true } : undefined,
-  });
+const redactUrl = (connectionString: string): string =>
+  connectionString.replace(/:[^:@/]+@/, ":***@");
 
-  await pool.query(SCHEMA_SQL);
+const applySchema = async (exec: (sql: string) => Promise<void>): Promise<void> => {
+  for (const sql of SCHEMA_STATEMENTS) {
+    await exec(sql);
+  }
   for (const sql of INDEX_SQL) {
     try {
-      await pool.query(sql);
+      await exec(sql);
     } catch {
       // index may already exist / DESC nuance — ignore
     }
   }
+};
 
-  const prepare = (sql: string): SovereignStatement => {
-    const text = toPg(sql);
+/** Neon HTTP driver — preferred on Vercel (no node:sqlite, no pg SSL quirks). */
+const openNeonHttpDriver = async (connectionString: string): Promise<SovereignDriver> => {
+  const { neon } = await import("@neondatabase/serverless");
+  // neon() manages TLS to Neon; do not inject sslmode=require overrides.
+  const sql = neon(stripPgSslQueryParams(connectionString), {
+    fullResults: true,
+  });
+
+  await applySchema(async (statement) => {
+    await sql.query(statement, []);
+  });
+
+  const prepare = (rawSql: string): SovereignStatement => {
+    const text = toPgPlaceholders(rawSql);
     return {
       run: async (...params: unknown[]): Promise<SovereignRunResult> => {
-        const result: QueryResult = await pool.query(text, params);
+        const result = await sql.query(text, params as unknown[]);
+        return { changes: Number(result.rowCount || 0) };
+      },
+      get: async <T = Record<string, unknown>>(...params: unknown[]) => {
+        const result = await sql.query(text, params as unknown[]);
+        return (result.rows[0] as T | undefined) ?? undefined;
+      },
+      all: async <T = Record<string, unknown>>(...params: unknown[]) => {
+        const result = await sql.query(text, params as unknown[]);
+        return result.rows as T[];
+      },
+    };
+  };
+
+  return {
+    backend: "postgres",
+    pathOrUrl: redactUrl(connectionString),
+    exec: async (statement: string) => {
+      await sql.query(statement, []);
+    },
+    prepare,
+    close: async () => {
+      // HTTP driver is stateless
+    },
+  };
+};
+
+/** Generic Postgres via node-pg (local / non-Neon hosts). */
+const openNodePgDriver = async (connectionString: string): Promise<SovereignDriver> => {
+  const { default: pg } = await import("pg");
+  const pool = new pg.Pool({
+    connectionString: stripPgSslQueryParams(connectionString),
+    max: 5,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+    // Verify TLS when the host speaks TLS (remote URLs). Localhost stays plain.
+    ssl: /localhost|127\.0\.0\.1/i.test(connectionString)
+      ? undefined
+      : { rejectUnauthorized: true },
+  });
+
+  await applySchema(async (statement) => {
+    await pool.query(statement);
+  });
+
+  const prepare = (rawSql: string): SovereignStatement => {
+    const text = toPgPlaceholders(rawSql);
+    return {
+      run: async (...params: unknown[]): Promise<SovereignRunResult> => {
+        const result = await pool.query(text, params);
         return { changes: result.rowCount || 0 };
       },
       get: async <T = Record<string, unknown>>(...params: unknown[]) => {
@@ -71,13 +132,20 @@ export const openPostgresDriver = async (connectionString: string): Promise<Sove
 
   return {
     backend: "postgres",
-    pathOrUrl: connectionString.replace(/:[^:@/]+@/, ":***@"),
-    exec: async (sql: string) => {
-      await pool.query(sql);
+    pathOrUrl: redactUrl(connectionString),
+    exec: async (statement: string) => {
+      await pool.query(statement);
     },
     prepare,
     close: async () => {
       await pool.end();
     },
   };
+};
+
+export const openPostgresDriver = async (connectionString: string): Promise<SovereignDriver> => {
+  if (/neon\.tech/i.test(connectionString)) {
+    return openNeonHttpDriver(connectionString);
+  }
+  return openNodePgDriver(connectionString);
 };

@@ -5,6 +5,7 @@ import {
   looksLikePostgresUrl,
   resolvePostgresUrl,
 } from "../lib/sovereign/db";
+import { stripPgSslQueryParams, toPgPlaceholders } from "../lib/sovereign/postgresDriver";
 
 const keys = [
   "MIMI_SOVEREIGN_DATABASE_URL",
@@ -41,5 +42,20 @@ describe("sovereign db url resolution", () => {
     process.env.MIMI_SOVEREIGN_DATABASE_URL =
       "postgresql://u:p@ep-b.neon.tech/mimi";
     expect(resolvePostgresUrl()).toContain("ep-b");
+  });
+
+  it("strips sslmode/uselibpqcompat so explicit TLS verify is not overridden", () => {
+    const raw =
+      "postgresql://u:p@ep-x.neon.tech/neondb?sslmode=require&uselibpqcompat=true&channel_binding=require";
+    const cleaned = stripPgSslQueryParams(raw);
+    expect(cleaned).not.toMatch(/sslmode=/i);
+    expect(cleaned).not.toMatch(/uselibpqcompat=/i);
+    expect(cleaned).toContain("channel_binding=require");
+  });
+
+  it("converts sqlite-style placeholders to postgres", () => {
+    expect(toPgPlaceholders("SELECT * FROM zines WHERE id = ? AND user_id = ?")).toBe(
+      "SELECT * FROM zines WHERE id = $1 AND user_id = $2",
+    );
   });
 });

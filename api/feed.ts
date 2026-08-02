@@ -1,7 +1,6 @@
 import { cors, requireMethod, sendError } from "../lib/apiUtils.js";
 import { getPublicBaseUrl } from "../lib/publicBaseUrl.js";
 import { buildCreatorRssFeed, normalizeFeedHandle } from "../lib/publicFeedQuery.js";
-import { buildCreatorRssFeedFromSovereign } from "../lib/sovereign/feed.js";
 import { getServerFirebaseAdmin } from "../lib/serverFirebaseAdmin.js";
 
 /**
@@ -21,15 +20,20 @@ export default async function handler(req: any, res: any) {
     }
 
     const baseUrl = getPublicBaseUrl(req);
-    const sovereignFeed = await buildCreatorRssFeedFromSovereign(handle, baseUrl);
-    if (sovereignFeed) {
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
-      res.setHeader("X-Mimi-Feed-Items", String(sovereignFeed.itemCount));
-      res.setHeader("X-Mimi-Archive", "sovereign");
-      res.end(sovereignFeed.xml);
-      return;
+    try {
+      const { buildCreatorRssFeedFromSovereign } = await import("../lib/sovereign/feed.js");
+      const sovereignFeed = await buildCreatorRssFeedFromSovereign(handle, baseUrl);
+      if (sovereignFeed) {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+        res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+        res.setHeader("X-Mimi-Feed-Items", String(sovereignFeed.itemCount));
+        res.setHeader("X-Mimi-Archive", "sovereign");
+        res.end(sovereignFeed.xml);
+        return;
+      }
+    } catch (error: unknown) {
+      console.warn("MIMI // feed: sovereign path failed, trying Firestore", error);
     }
 
     const { db } = getServerFirebaseAdmin();

@@ -111,6 +111,29 @@ export const mirrorZineToSovereign = async (zine: ZineMetadata): Promise<boolean
   }
 };
 
+/** Remove a zine from the sovereign archive (Mine + Floor). */
+export const deleteZineFromSovereign = async (
+  zineId: string,
+  userId?: string,
+): Promise<boolean> => {
+  if (!zineId) return false;
+  try {
+    const uid = userId || auth.currentUser?.uid || "";
+    const params = new URLSearchParams({ id: zineId });
+    if (uid) params.set("userId", uid);
+    const res = await fetch(`/api/sovereign/zines/${encodeURIComponent(zineId)}?${params}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+      headers: await authHeaders(uid || undefined),
+    });
+    if (res.ok) cachedStatus = { at: 0, value: null };
+    return res.ok;
+  } catch (error) {
+    console.warn("MIMI // Sovereign delete failed:", error);
+    return false;
+  }
+};
+
 export const fetchSovereignZineById = async (id: string): Promise<ZineMetadata | null> => {
   if (!id) return null;
   try {

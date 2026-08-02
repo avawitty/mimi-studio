@@ -16,17 +16,17 @@ export type SovereignDriver = {
   close: () => Promise<void>;
 };
 
-export const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS profiles (
+/** One statement per entry — Neon HTTP and many pg configs reject multi-statement queries. */
+export const SCHEMA_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS profiles (
   uid TEXT PRIMARY KEY,
   handle TEXT UNIQUE,
   display_name TEXT,
   photo_url TEXT,
   data TEXT NOT NULL,
   updated_at BIGINT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS zines (
+)`,
+  `CREATE TABLE IF NOT EXISTS zines (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   user_handle TEXT NOT NULL DEFAULT '',
@@ -39,16 +39,18 @@ CREATE TABLE IF NOT EXISTS zines (
   likes INTEGER NOT NULL DEFAULT 0,
   data TEXT NOT NULL,
   updated_at BIGINT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS pocket_items (
+)`,
+  `CREATE TABLE IF NOT EXISTS pocket_items (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   type TEXT NOT NULL,
   saved_at BIGINT NOT NULL,
   data TEXT NOT NULL
-);
-`;
+)`,
+] as const;
+
+/** Joined form for SQLite `exec` convenience. */
+export const SCHEMA_SQL = `${SCHEMA_STATEMENTS.join(";\n")};`;
 
 export const INDEX_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_zines_public_ts ON zines (is_public, timestamp DESC)`,
