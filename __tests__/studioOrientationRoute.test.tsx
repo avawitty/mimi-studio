@@ -85,7 +85,7 @@ describe("/studio orientation entry route", () => {
       screen.getByRole("button", { name: /Begin with this/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Legacy worktable \(experimental\)/i }),
+      screen.getByRole("link", { name: /Legacy worktable \(experimental\)/i }),
     ).toBeInTheDocument();
 
     const bodyText = document.body.textContent || "";
