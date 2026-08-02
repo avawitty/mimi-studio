@@ -1,11 +1,10 @@
 /**
  * Mimi Residue Engine — provenance + Used Context builders.
  * Distinguishes observed evidence from model inference.
- *
- * Hashing must stay browser-safe: ResidueChamber pulls this module into the
- * Vite client bundle, so `node:crypto` cannot be imported here.
  */
 
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import {
   RESIDUE_ENGINE_ID,
   RESIDUE_PROMPT_VERSION,
@@ -21,25 +20,10 @@ import type {
   SourceReference,
 } from "./validation";
 
-/** Deterministic 32-hex digest (FNV-1a 32-bit × 4 lanes). Not for security. */
-function fingerprintHex32(payload: string): string {
-  let h0 = 0x811c9dc5;
-  let h1 = 0x811c9dc5 ^ 0x9e3779b9;
-  let h2 = 0x811c9dc5 ^ 0x85ebca6b;
-  let h3 = 0x811c9dc5 ^ 0xc2b2ae35;
-  const prime = 0x01000193;
-  for (let i = 0; i < payload.length; i++) {
-    const c = payload.charCodeAt(i);
-    h0 = Math.imul(h0 ^ c, prime) >>> 0;
-    h1 = Math.imul(h1 ^ (c + i), prime) >>> 0;
-    h2 = Math.imul(h2 ^ ((c << 1) ^ i), prime) >>> 0;
-    h3 = Math.imul(h3 ^ ((c << 2) ^ (i * 3)), prime) >>> 0;
-  }
-  return [h0, h1, h2, h3].map((h) => h.toString(16).padStart(8, "0")).join("");
-}
-
+/** Browser-safe SHA-256 — avoid `node:crypto` (breaks Vite client builds). */
 export function hashResidueInput(parts: unknown[]): string {
-  return fingerprintHex32(JSON.stringify(parts));
+  const payload = JSON.stringify(parts);
+  return bytesToHex(sha256(new TextEncoder().encode(payload))).slice(0, 32);
 }
 
 export function createRunMetadata(input: {

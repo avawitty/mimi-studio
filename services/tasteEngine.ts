@@ -1,6 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PocketItem, UserProfile, TasteReflection, TailorLogicDraft } from "../types";
-import { getClient } from './geminiService';
+import { getClient, getEmbedding } from './geminiService';
+import { cosineSimilarity, meanEmbedding } from '../lib/embeddingMath';
+
+export { cosineSimilarity };
 
 // --- TASTE FIELD GEOMETRY (EMBEDDINGS & CLUSTERS) ---
 
@@ -70,7 +73,7 @@ Return a JSON object:
 
 /**
  * Step 2: Embed the Manifest.
- * We convert the dense aesthetic string into a 768-dimensional vector.
+ * Shared getEmbedding path (Gemini role model, or Gateway-substituted via proxy).
  */
 export const embedTasteSignal = async (manifest: string, apiKey?: string): Promise<number[]> => {
   const { ai } = getClient(apiKey);
@@ -82,11 +85,8 @@ export const embedTasteSignal = async (manifest: string, apiKey?: string): Promi
   }
 
   try {
-    const result = await ai.models.embedContent({
-      model: 'text-embedding-004',
-      contents: [safeManifest],
-    });
-    return result.embeddings?.[0]?.values || [];
+    const values = await getEmbedding([{ text: safeManifest }], apiKey);
+    return values || [];
   } catch (e) {
     console.error("MIMI // Embedding Failed:", e);
     return [];
@@ -98,39 +98,7 @@ export const embedTasteSignal = async (manifest: string, apiKey?: string): Promi
  * The user's taste identity is simply the mean of all their signal embeddings.
  */
 export const calculateCenterOfGravity = (embeddings: number[][]): number[] => {
-  if (!embeddings.length) return [];
-  const dimensions = embeddings[0].length;
-  const center = new Array(dimensions).fill(0);
-  
-  for (const vec of embeddings) {
-    for (let i = 0; i < dimensions; i++) {
-      center[i] += vec[i];
-    }
-  }
-  
-  for (let i = 0; i < dimensions; i++) {
-    center[i] /= embeddings.length;
-  }
-  
-  return center;
-};
-
-/**
- * Math: Cosine Similarity
- * Measures how closely aligned two vectors are (1 = identical, -1 = opposite).
- */
-export const cosineSimilarity = (vecA: number[], vecB: number[]): number => {
-  if (!vecA.length || !vecB.length || vecA.length !== vecB.length) return 0;
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+  return meanEmbedding(embeddings);
 };
 
 /**

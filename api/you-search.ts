@@ -1,5 +1,5 @@
 import { cors, readJsonBody, requireMethod, sendError, sendJson } from "../lib/apiUtils.js";
-import { extractMimiSessionToken, verifyMimiSession } from "../lib/serverFirebaseAdmin.js";
+import { extractMimiSessionToken } from "../lib/mimiSessionToken.js";
 import { runYouSearch } from "../lib/youSearch.js";
 
 export default async function handler(req: any, res: any) {
@@ -17,6 +17,7 @@ export default async function handler(req: any, res: any) {
     const sessionToken = extractMimiSessionToken(req.headers || {});
     if (sessionToken) {
       try {
+        const { verifyMimiSession } = await import("../lib/serverFirebaseAdmin.js");
         const decoded = await verifyMimiSession(req.headers);
         authenticatedUid = decoded.uid || null;
       } catch (sessionError: any) {

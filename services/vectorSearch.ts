@@ -1,9 +1,9 @@
-
 import { Product } from '../types';
 import { auth, db } from "./firebaseInit";
 import { signInAnonymously } from "firebase/auth";
-import { collection, doc, setDoc, getDocs, deleteDoc, query } from "firebase/firestore";
-import { getClient, getEmbedding } from "./geminiService";
+import { collection, doc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
+import { getClient, getEmbedding, getEmbeddingWithMeta } from "./geminiService";
+import { cosineSimilarity, embeddingsCompatible } from "../lib/embeddingMath";
 
 const getAiClient = () => {
     try {
@@ -14,24 +14,13 @@ const getAiClient = () => {
     }
 };
 
-const cosineSimilarity = (vecA: number[], vecB: number[]): number => {
-  let dotProduct = 0, magA = 0, magB = 0;
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    magA += vecA[i] * vecA[i];
-    magB += vecB[i] * vecB[i];
-  }
-  magA = Math.sqrt(magA); magB = Math.sqrt(magB);
-  if (magA === 0 || magB === 0) return 0;
-  return dotProduct / (magA * magB);
-};
-
 export const findSimilarProducts = async (tasteVector: number[], limit: number = 2): Promise<Product[]> => {
   try {
     const productsSnapshot = await getDocs(collection(db, 'products'));
     const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
     
     return products
+      .filter(product => embeddingsCompatible(tasteVector, product.embedding))
       .map(product => ({
         product,
         similarity: cosineSimilarity(tasteVector, product.embedding)
@@ -89,8 +78,8 @@ export const syncToShadowMemory = async (item: any) => {
     // 2000 chars is safe for almost all embedding models
     if (textToEmbed.length > 2000) textToEmbed = textToEmbed.slice(0, 2000);
 
-    const embedding = await getEmbedding([{ text: textToEmbed }]);
-    if (embedding) {
+    const { values: embedding, model: embeddingModel } = await getEmbeddingWithMeta([{ text: textToEmbed }]);
+    if (embedding?.length) {
       await setDoc(doc(db, `users/${uid}/memory`, item.id), {
         kind: 'embedding_shadow',
         originalId: item.id,
@@ -99,6 +88,8 @@ export const syncToShadowMemory = async (item: any) => {
         display_image: item.coverImageUrl || item.content?.imageUrl || null,
         synced_at: Date.now(),
         embedding_field: embedding,
+        embedding_dims: embedding.length,
+        embedding_model: embeddingModel,
         tone: item.tone || null
       }, { merge: true });
     }
@@ -149,13 +140,21 @@ export const scryShadowMemory = async (userQuery: string, options: { filterType?
 
     const results = snapshot.docs.map(d => {
         const data = d.data() as any;
+        const field = data.embedding_field as number[] | undefined;
+        // Skip legacy / cross-provider vectors whose width does not match the query space.
+        if (!embeddingsCompatible(queryVector, field)) {
+          return { ...data, id: d.id, similarity: 0, _incompatible: true };
+        }
         return { 
           ...data, 
           id: d.id, 
-          similarity: cosineSimilarity(queryVector, data.embedding_field) 
+          similarity: cosineSimilarity(queryVector, field),
+          _incompatible: false,
         };
     })
     .filter(r => {
+        if (r._incompatible) return false;
+
         // 1. Minimum relevance threshold
         if (r.similarity < 0.3) return false;
 

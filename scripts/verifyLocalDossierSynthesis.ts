@@ -94,8 +94,8 @@ const blueprintOnly = synthesizeLocalCreativeDossier({
 });
 assert(
   blueprintOnly.likenessManifest.accentHex === "#445566" ||
-    blueprintOnly.references.some((r) =>
-      r.colorSystem.palette.includes("#112233"),
+    blueprintOnly.references.some((reference) =>
+      reference.colorSystem.palette.includes("#112233"),
     ),
   "declared blueprint hex colors must feed hexPalette / likeness",
 );

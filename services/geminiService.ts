@@ -12,6 +12,7 @@ import { fetchUserZines, fetchLatestLineageEntry } from "./firebaseUtils";
 import { getClient, withResilience, tryModels, ORACLE_PERSONA as CLIENT_PERSONA } from "./geminiClient";
 import { coerceToString } from "../lib/utils";
 import { isPaidPatronPlan } from "../constants";
+import { modelFor } from "./modelConfig";
 
 export { getClient, withResilience, tryModels };
 
@@ -614,10 +615,10 @@ Do not be poetic unless it improves clarity. Prioritize clarity, structure, and 
 
     const data = JSON.parse(response.text || "{}");
     
-    // Embed the structured text
+    // Embed the structured text (role-resolved; env-overridable via GEMINI_EMBEDDING_MODEL)
     const structuredText = JSON.stringify(data);
     const embeddingResponse = await ai.models.embedContent({
-      model: 'text-embedding-004',
+      model: modelFor("embedding", "gemini"),
       contents: [structuredText],
     });
     const embedding = embeddingResponse.embeddings?.[0]?.values || [];
@@ -857,14 +858,43 @@ function cleanAndParse(text: string | undefined): any {
   }
 }
 
+/** Resolve the Gemini embedding model id (env-overridable via GEMINI_EMBEDDING_MODEL). */
+export const embeddingModelId = (): string => modelFor("embedding", "gemini");
+
+/**
+ * Embed text parts via the Gemini client (proxied). When the server has an AI Gateway
+ * key, `/api/proxy/gemini` remaps embedContent through `embedGeminiContentViaGateway`
+ * and uses `modelFor("embedding", "gateway")` instead — so stored vectors may be
+ * OpenAI-width even though this call requests the Gemini role model. Callers that
+ * persist vectors should store `embedding_dims` and skip dim-mismatched compares.
+ */
+export interface EmbeddingResult {
+  values: number[] | undefined;
+  model: string;
+}
+
+export const getEmbeddingWithMeta = async (content: Part[], apiKey?: string): Promise<EmbeddingResult> => {
+  return await withResilience(async (ai) => {
+    const response = await ai.models.embedContent({
+      model: embeddingModelId(),
+      contents: content,
+    });
+    const fromResponse =
+      (response as { modelVersion?: string }).modelVersion ||
+      (response as { model?: string }).model;
+    // When the Gemini proxy remaps to Gateway, prefer the actual gateway embedding id
+    // over the requested Gemini role label (text-embedding-004).
+    const fallback =
+      (response as { provider?: string }).provider === "vercel-ai-gateway"
+        ? modelFor("embedding", "gateway")
+        : embeddingModelId();
+    return { values: response.embeddings?.[0]?.values, model: fromResponse || fallback };
+  }, apiKey);
+};
+
 export const getEmbedding = async (content: Part[], apiKey?: string) => {
-    return await withResilience(async (ai) => {
-        const response = await ai.models.embedContent({
-            model: "gemini-embedding-2-preview",
-            contents: content,
-        });
-        return response.embeddings?.[0]?.values;
-    }, apiKey);
+  const { values } = await getEmbeddingWithMeta(content, apiKey);
+  return values;
 };
 
 export const compressImage = async (base64: string, quality = 0.7, maxWidth = 1024): Promise<string> => {
