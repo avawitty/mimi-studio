@@ -26,7 +26,7 @@ export type GatewayModelRole =
  */
 export const GATEWAY_DEFAULT_MODELS: Record<GatewayModelRole, string> = {
   textFast: "google/gemini-3.6-flash",
-  textDeep: "anthropic/claude-sonnet-5",
+  textDeep: "moonshotai/kimi-k3",
   // GA image model (supersedes gemini-3.1-flash-image-preview)
   image: "google/gemini-3.1-flash-image",
   imageEdit: "google/gemini-3.1-flash-image",
