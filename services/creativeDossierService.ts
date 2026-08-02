@@ -584,6 +584,14 @@ function buildPriorMemoryDigest(prior?: PriorTasteContext): string | undefined {
     lines.push('— SAVED STYLE EVIDENCE —');
     lines.push(...prior.styleEvidenceSummary.slice(0, 8));
   }
+  if (prior.atelierDesireSignals?.length) {
+    lines.push('— ATELIER DESIRE / BUYER ORIENTATION (not a shopping list) —');
+    lines.push(...prior.atelierDesireSignals.slice(0, 8));
+  }
+  if (prior.atelierReferenceSignals?.length) {
+    lines.push('— ATELIER REFERENCE ONLY (lower weight) —');
+    lines.push(...prior.atelierReferenceSignals.slice(0, 3));
+  }
   return lines.length ? lines.join('\n') : undefined;
 }
 

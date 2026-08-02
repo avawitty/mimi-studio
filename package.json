@@ -25,6 +25,7 @@
     "verify:residue": "tsx scripts/verifyResidueEngine.ts",
     "verify:doll-engine": "tsx scripts/verifyDollEngine.ts",
     "verify:rip": "tsx scripts/verifyRipEngine.ts",
+    "verify:fish": "tsx scripts/verifyFishShare.ts",
     "verify:rss-feed": "tsx scripts/verifyCreatorRssFeed.ts",
     "cursor:prompt": "tsx scripts/cursorAgentPrompt.ts",
     "cursor:cloud-review": "tsx scripts/cursorCloudReview.ts",
@@ -33,7 +34,8 @@
     "start": "node dist/server.cjs",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "setup:mimi-rip-domains": "node scripts/setupMimiRipDomains.mjs"
+    "setup:mimi-rip-domains": "node scripts/setupMimiRipDomains.mjs",
+    "setup:mimi-fish-domains": "node scripts/setupMimiFishDomains.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

@@ -7,11 +7,40 @@ import { fetchUserZines, fetchLatestLineageEntry } from "./firebaseUtils";
 import { fetchFragmentsByStackId } from "./firebase";
 import { scryShadowMemory } from "./vectorSearch";
 import { devLog } from "../lib/devLog";
-import { readIntelHubPressHandoff } from "../lib/intelHubWorkflow";
+import {
+  readIntelHubPressHandoff,
+  resolveSelectedCandidates,
+  type IntelCatalogCandidate,
+} from "../lib/intelHubWorkflow";
+import { formatAtelierTasteContextForPrompt } from "./atelierService";
 import {
   fetchDollImageReferencesAsMedia,
   type DollImageReference,
 } from "./dollEngine";
+
+function groundAcquisitionSignal(
+  currentSignal: Record<string, unknown>,
+  candidate: IntelCatalogCandidate,
+) {
+  return {
+    ...currentSignal,
+    motif: candidate.title,
+    context:
+      currentSignal.context ||
+      `An optional product reference selected in Intel Hub for its relationship to this issue's visual language.`,
+    type: "acquisition",
+    link: candidate.url || currentSignal.link || "",
+    semantic_trigger: currentSignal.semantic_trigger || "Approved commerce context",
+    targeting_rationale:
+      currentSignal.targeting_rationale ||
+      "Included as an editorial object whose materials, silhouette, or cultural associations support the issue—not as a purchase directive.",
+    image_url: candidate.imageUrl || currentSignal.image_url || "",
+    vendor: candidate.vendor || currentSignal.vendor || "",
+    price: candidate.price || currentSignal.price || "",
+    commerce_source: "shopify",
+    product_id: candidate.id,
+  };
+}
 
 function sanitizeProfile(profile: UserProfile | null): string {
     if (!profile) return "No user profile available.";
@@ -135,6 +164,10 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                 ? `\nSCRIBE ATOMS (Explicit User-Approved Context — MUST influence synthesis, narrative, and visual logic):\n${opts.usedContext.map((a: { title: string; source?: string; content: string; tags?: string[] }) => `- [${a.title}] (${a.source || 'Scribe'}${a.tags?.length ? ` · ${a.tags.join(', ')}` : ''}): ${a.content}`).join('\n')}`
                 : '';
 
+            const atelierTasteContext = formatAtelierTasteContextForPrompt(
+                profile?.uid || opts.atelierOwnerUid,
+            );
+
             const dollContext = opts.dollPromptContext
                 ? `\n${opts.dollPromptContext}`
                 : '';
@@ -205,10 +238,11 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             ${artifactInstruction}
             ${memoryContext}
             ${scribeUsedContext}
+            ${atelierTasteContext}
             ${dollContext}
             
             CORE DIRECTIVE:
-            - BLANK-SLATE VISUAL BASELINE: Do not impose a default palette, color treatment, camera, lens, lighting, film stock, medium, era, genre, mood, art movement, composition, or editorial style. Visual constraints may come only from the current user input, explicit zine brief/options, approved Used Context, uploaded artifacts, a confirmed Tailor profile, or an explicitly selected treatment. The current user input has highest priority. When a dimension is unspecified, leave it open rather than defaulting to monochrome, noir, desaturated, brutalist, cinematic, or high-fashion styling.
+            - BLANK-SLATE VISUAL BASELINE: Do not impose a default palette, color treatment, camera, lens, lighting, film stock, medium, era, genre, mood, art movement, composition, or editorial style. Visual constraints may come only from the current user input, explicit zine brief/options, approved Used Context, Atelier desire signals, uploaded artifacts, a confirmed Tailor profile, or an explicitly selected treatment. The current user input has highest priority. When a dimension is unspecified, leave it open rather than defaulting to monochrome, noir, desaturated, brutalist, cinematic, or high-fashion styling.
             - FORM & PRESENTATION: ${profileToUse?.tailorDraft?.positioningCore?.aestheticCore?.presentation || 'Unspecified — do not infer or constrain presentation.'}
             - PRIORITIZE GROUNDING: If 'useSearch' is enabled, you MUST utilize Google Search to anchor your insights in real-world cultural history, emerging movements, and verified facts. Move beyond the user's immediate profile to provide external perspective.
             - EDUCATIONAL DEPTH: Your responses must be insightful and informative. Do not just repeat the user's preferences; explain the *why* behind the aesthetic connections.
@@ -467,30 +501,20 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                 content.visual_plates = [content.header_image_prompt];
             }
 
-            // A Press-reviewed Shopify candidate is authoritative commerce data.
-            // Hydrate one acquisition signal without asking the model to invent a thumbnail or price.
-            const approvedCommerceCandidate = readIntelHubPressHandoff()?.selectedCandidate;
-            if (approvedCommerceCandidate) {
+            // Press-reviewed Shopify candidates are authoritative commerce data.
+            // Hydrate up to three acquisition signals without inventing thumbnails or prices.
+            const approvedCommerceCandidates = resolveSelectedCandidates(
+              readIntelHubPressHandoff(),
+            );
+            if (approvedCommerceCandidates.length > 0) {
                 const signals = Array.isArray(content.semiotic_signals) ? [...content.semiotic_signals] : [];
-                const acquisitionIndex = signals.findIndex((signal: any) => signal?.type === 'acquisition');
-                const currentSignal = acquisitionIndex >= 0 ? signals[acquisitionIndex] : {};
-                const groundedSignal = {
-                    ...currentSignal,
-                    motif: approvedCommerceCandidate.title,
-                    context: currentSignal.context || `An optional product reference selected in Intel Hub for its relationship to this issue's visual language.`,
-                    type: 'acquisition',
-                    link: approvedCommerceCandidate.url || currentSignal.link || '',
-                    semantic_trigger: currentSignal.semantic_trigger || 'Approved commerce context',
-                    targeting_rationale: currentSignal.targeting_rationale || 'Included as an editorial object whose materials, silhouette, or cultural associations support the issue—not as a purchase directive.',
-                    image_url: approvedCommerceCandidate.imageUrl || currentSignal.image_url || '',
-                    vendor: approvedCommerceCandidate.vendor || currentSignal.vendor || '',
-                    price: approvedCommerceCandidate.price || currentSignal.price || '',
-                    commerce_source: 'shopify',
-                    product_id: approvedCommerceCandidate.id,
-                };
-                if (acquisitionIndex >= 0) signals[acquisitionIndex] = groundedSignal;
-                else signals.unshift(groundedSignal);
-                content.semiotic_signals = signals.slice(0, 5);
+                const existingAcquisition = signals.filter((signal: any) => signal?.type === "acquisition");
+                const nonAcquisition = signals.filter((signal: any) => signal?.type !== "acquisition");
+                const grounded = approvedCommerceCandidates.map((candidate, offset) =>
+                  groundAcquisitionSignal(existingAcquisition[offset] || {}, candidate),
+                );
+                // Prefer verified Shopify objects; keep conceptual/lexical motifs around them.
+                content.semiotic_signals = [...grounded, ...nonAcquisition].slice(0, 5);
             }
             
             if (!content.roadmap) {

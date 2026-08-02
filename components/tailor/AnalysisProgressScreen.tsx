@@ -1,6 +1,6 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import type { Observation } from '../../types';
+import { ReflectiveEye } from './ReflectiveEye';
 
 const CATEGORIES = [
   'visual', 'language', 'material', 'historical', 'emotional', 'compositional',
@@ -26,10 +26,12 @@ export const AnalysisProgressScreen: React.FC<AnalysisProgressScreenProps> = ({
 
   return (
     <div className="max-w-xl mx-auto px-6 py-16 text-center">
-      {loading && <Loader2 className="mx-auto animate-spin text-nous-subtle mb-6" size={32} />}
+      <ReflectiveEye className="mb-8" />
       <p className="text-[10px] uppercase tracking-[0.3em] text-nous-subtle mb-2">Observed</p>
       <h2 className="font-serif text-3xl text-nous-text mb-2">{total || '—'} Signals</h2>
-      <p className="text-sm text-nous-subtle mb-10">{message}</p>
+      <p className="text-sm text-nous-subtle mb-10" role="status" aria-live="polite">
+        {loading ? message : 'Your references are reflecting something.'}
+      </p>
 
       <div className="border border-nous-border/30 text-left divide-y divide-nous-border/20">
         {CATEGORIES.map((cat) => (
@@ -39,10 +41,6 @@ export const AnalysisProgressScreen: React.FC<AnalysisProgressScreenProps> = ({
           </div>
         ))}
       </div>
-
-      <p className="text-[10px] text-nous-subtle mt-8 italic">
-        Look again. Your references are reflecting something.
-      </p>
     </div>
   );
 };
