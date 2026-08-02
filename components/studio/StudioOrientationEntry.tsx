@@ -119,11 +119,13 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
   const handlePrimary = () => {
     if (!canSubmit || isThinking) return;
     const payload = input.trim() || "Compose from the attached references.";
-    onRefine?.(payload, mediaFiles, "EDITORIAL", {
-      ...zineOptions,
+    onRefine?.(payload, mediaFiles, "editorial", {
+      deepThinking: false,
+      isPublic: false,
+      isLite: false,
       isHighFidelity: initialHighFidelity,
       useSearch: false,
-      deepThinking: false,
+      zineOptions: { ...zineOptions },
     });
   };
 

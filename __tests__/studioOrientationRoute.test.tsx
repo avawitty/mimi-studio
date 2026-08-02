@@ -1,6 +1,6 @@
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { StudioOrientationEntry } from "../components/studio/StudioOrientationEntry";
@@ -96,5 +96,26 @@ describe("/studio orientation entry route", () => {
     // Six-folder mobile nav labels must not appear as a set
     expect(screen.queryByLabelText(/Dossier folders/i)).toBeNull();
     expect(screen.queryByLabelText(/Explore chambers/i)).toBeNull();
+  });
+
+  it("submits nested zineOptions with lowercase editorial tone", () => {
+    const onRefine = vi.fn();
+    render(<StudioOrientationEntry onRefine={onRefine} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Write freely/i), {
+      target: { value: "A soft cobalt wash over archival grain" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Begin with this/i }));
+
+    expect(onRefine).toHaveBeenCalledTimes(1);
+    const [, , tone, opts] = onRefine.mock.calls[0];
+    expect(tone).toBe("editorial");
+    expect(opts).toMatchObject({
+      zineOptions: expect.objectContaining({
+        style: "balanced",
+        theme: "organic",
+      }),
+    });
+    expect(opts).not.toHaveProperty("style");
   });
 });

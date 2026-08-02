@@ -123,6 +123,9 @@ test.describe('Mimi E2E Experience', () => {
       window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'tailor' }));
     });
     await waitForStableUI(page);
+    await expect(
+      page.getByRole('navigation', { name: /Tailor profile workflow/i }),
+    ).toBeVisible({ timeout: 20000 });
     await expect(page).toHaveScreenshot('tailor-shell.png', {
       fullPage: true,
       animations: 'disabled',
@@ -133,6 +136,9 @@ test.describe('Mimi E2E Experience', () => {
       window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'darkroom' }));
     });
     await waitForStableUI(page);
+    await expect(
+      page.getByRole('heading', { name: /The Darkroom/i }),
+    ).toBeVisible({ timeout: 20000 });
     await expect(page).toHaveScreenshot('darkroom-shell.png', {
       fullPage: true,
       animations: 'disabled',
@@ -140,3 +146,4 @@ test.describe('Mimi E2E Experience', () => {
     });
   });
 });
+
