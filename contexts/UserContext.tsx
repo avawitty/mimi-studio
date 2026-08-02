@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { UserProfile, UserPreferences, Persona, TailorLogicDraft, NarrativeThread } from '../types';
-import { getLocalProfile, saveProfileLocally } from '../services/localArchive';
+import { getLocalProfile, getLocalPocket, saveProfileLocally } from '../services/localArchive';
 import { 
   bootstrapAuth, ensureAuth, getUserProfile, saveUserProfile, commitGlobalHandshake,
   anchorIdentity, linkIdentity, handleAuthRedirect, startGhostSession, 
@@ -437,10 +437,31 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const initStarted = useRef(false);
   const reconciliationInProgress = useRef<string | null>(null);
+  const pocketSyncGeneration = useRef(0);
 
   const refreshHasApiKey = useCallback(async () => {
     // Sovereign Gating Disabled as per user request
     setHasApiKey(true);
+  }, []);
+
+  const attachLocalPocketSync = useCallback(() => {
+    if (unsubscribePocket.current) unsubscribePocket.current();
+    const gen = ++pocketSyncGeneration.current;
+
+    const hydrateLocalPocket = async () => {
+      const items = await getLocalPocket();
+      if (pocketSyncGeneration.current !== gen) return;
+      setPocket(items || []);
+    };
+
+    void hydrateLocalPocket();
+    const onLocalPocketUpdate = () => {
+      void hydrateLocalPocket();
+    };
+    window.addEventListener("mimi:pocket_updated", onLocalPocketUpdate);
+    unsubscribePocket.current = () => {
+      window.removeEventListener("mimi:pocket_updated", onLocalPocketUpdate);
+    };
   }, []);
 
   const setOracleStatus = (status: SystemStatus['oracle']) => {
@@ -571,12 +592,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
+    // Key includes anon/registered so linking the same uid re-runs listeners.
+    const reconcileKey = `${uid}:${fbUser.isAnonymous ? "a" : "r"}`;
     console.info("MIMI // Reconciling Profile for:", uid, fbUser.isAnonymous ? "(Ghost)" : "(Swan)");
-    if (reconciliationInProgress.current === uid) {
-      console.info("MIMI // Reconciliation already in progress for this UID. Skipping.");
+    if (reconciliationInProgress.current === reconcileKey) {
+      console.info("MIMI // Reconciliation already in progress for this identity. Skipping.");
       return;
     }
-    reconciliationInProgress.current = uid;
+    reconciliationInProgress.current = reconcileKey;
     setSystemStatus(prev => ({ ...prev, auth: 'syncing' }));
 
     // Clear existing listeners to prevent duplication
@@ -646,22 +669,36 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       [cloudProfileSnap, cloudPrefsSnap] = await Promise.race([cloudSyncPromise, timeoutPromise]) as any;
       
-      if (reconciliationInProgress.current !== uid) {
+      if (reconciliationInProgress.current !== reconcileKey) {
           console.info("MIMI // User changed during reconciliation. Aborting.");
           return;
       }
 
-      // Fetch subscription data with a race to prevent hanging
-      const subPromise = fetchUserSubscription(uid);
-      const subTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 4000));
-      const subscription = await Promise.race([subPromise, subTimeout]) as any;
+      // Prefer live auth identity — fbUser can be stale if account was linked mid-flight.
+      const liveIsAnonymous = () => auth.currentUser?.isAnonymous ?? !!fbUser.isAnonymous;
+
+      // Fetch subscription data with a race to prevent hanging.
+      // Anonymous ghosts don't have billing docs — skip the read.
+      let subscription: any = null;
+      if (!liveIsAnonymous()) {
+        const subPromise = fetchUserSubscription(uid);
+        const subTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 4000));
+        subscription = await Promise.race([subPromise, subTimeout]) as any;
+      }
       
       // 2. Setup Real-time Listeners
       unsubscribeProfile.current = subscribeToUserProfile(uid, async (pData) => {
          try {
-             const subscription = await fetchUserSubscription(uid);
+             // Ghosts never carry billing — clear explicitly (null ?? prev would keep stale sub).
+             const isGhost = liveIsAnonymous();
+             const nextSub = isGhost ? null : await fetchUserSubscription(uid);
              setProfile(prev => {
-                 const merged = { ...(prev || {}), ...pData, uid: uid, subscription } as UserProfile;
+                 const merged = {
+                   ...(prev || {}),
+                   ...pData,
+                   uid: uid,
+                   subscription: isGhost ? null : (nextSub ?? prev?.subscription ?? null),
+                 } as UserProfile;
                  return ensurePersonas(merged);
              });
          } catch (e) {
@@ -671,9 +708,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       unsubscribePrefs.current = subscribeToUserPreferences(uid, async (prefsData) => {
          try {
-             const subscription = await fetchUserSubscription(uid);
+             const isGhost = liveIsAnonymous();
+             const nextSub = isGhost ? null : await fetchUserSubscription(uid);
              setProfile(prev => {
-                 const merged = { ...(prev || {}), ...prefsData, subscription } as UserProfile;
+                 const merged = {
+                   ...(prev || {}),
+                   ...prefsData,
+                   subscription: isGhost ? null : (nextSub ?? prev?.subscription ?? null),
+                 } as UserProfile;
                  return ensurePersonas(merged);
              });
          } catch (e) {
@@ -681,9 +723,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
          }
       });
 
-      unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
-        setPocket(items);
-      });
+      // Pocket live sync is for registered sessions; ghosts stay on local pocket.
+      // Re-check live auth in case identity upgraded during cloud fetch.
+      if (!liveIsAnonymous()) {
+        pocketSyncGeneration.current += 1;
+        unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
+          setPocket(items);
+        });
+      } else {
+        attachLocalPocketSync();
+      }
       
       // Construct initial state from one-time fetch to unblock UI immediately
       // (Listeners will follow up with updates)
@@ -808,8 +857,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (local) setProfile(ensurePersonas(local));
       }
     } finally {
-      setLoading(false);
-      reconciliationInProgress.current = null;
+      // Only clear the guard if this invocation still owns it — an aborted
+      // mid-flight reconcile must not wipe a newer reconcile's in-progress key.
+      if (reconciliationInProgress.current === reconcileKey) {
+        reconciliationInProgress.current = null;
+        setLoading(false);
+      }
       document.body.classList.add('hydrated');
     }
   }, [isEnvironmentRestricted]);
@@ -844,10 +897,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await saveProfileLocally(safeSpeedProfile);
     setProfile(safeSpeedProfile);
     setUser({ uid: ghostUid, isAnonymous: true });
+    attachLocalPocketSync();
     setLoading(false);
     setSystemStatus(prev => ({ ...prev, auth: 'offline' }));
     document.body.classList.add('hydrated');
-  }, []);
+  }, [attachLocalPocketSync]);
 
   const ghostLogin = useCallback(async () => {
     setElevatorLoading(true);
