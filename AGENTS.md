@@ -38,3 +38,10 @@ starts everything on one port.
 - Playwright browsers must be installed once per fresh VM: `npx playwright install --with-deps chromium webkit`
   (the suite uses both a `chromium` project and a WebKit-based `ios-pwa` project).
 - Visual snapshot baselines live in `e2e/*.spec.ts-snapshots/`.
+
+### Bot review autofix
+- When asked to check Cursor / Codex / Vercel bot PR comments, follow
+  `.cursor/skills/fix-bot-pr-comments/SKILL.md`.
+- Recurring setup (Cursor Automation + optional GitHub Action):
+  `docs/automations/fix-bot-pr-comments.md`.
+- Manual / CI launch: `npm run cursor:fix-bot-comments` (needs `CURSOR_API_KEY`).
