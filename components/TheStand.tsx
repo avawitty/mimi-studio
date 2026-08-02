@@ -33,6 +33,8 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   const [archive, setArchive] = useState<SovereignArchiveStatus | null>(null);
   const [mode, setMode] = useState<'mine' | 'floor'>('mine');
   const [searchQuery, setSearchQuery] = useState('');
+  /** Query string last applied by sovereign Floor search; null while pending or on failure. */
+  const [floorSearchApplied, setFloorSearchApplied] = useState<string | null>(null);
   const [commentZineId, setCommentZineId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -120,17 +122,20 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     if (mode !== 'floor' || !floorLoaded || !archive?.ready) return;
     const q = searchQuery.trim();
     let cancelled = false;
+    setFloorSearchApplied(null);
     const handle = setTimeout(async () => {
       try {
         const { fetchSovereignCommunityZines } = await import('../services/sovereignClient');
         const results = await fetchSovereignCommunityZines(40, q);
         if (!cancelled && results) {
           setCommunityZines(results);
+          setFloorSearchApplied(q);
           return;
         }
       } catch {
         // fall through to client filter via filteredZines
       }
+      if (!cancelled) setFloorSearchApplied(null);
     }, q ? 220 : 0);
     return () => {
       cancelled = true;
@@ -147,23 +152,11 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
 
   const filteredZines = useMemo(() => {
     const source = mode === 'mine' ? myZines : communityZines;
-    if (!searchQuery.trim()) return source;
-    // When sovereign search succeeds it already filtered communityZines.
-    // If it failed (stale full shelf + non-empty q), still filter client-side.
-    if (mode === 'floor' && archive?.ready) {
-      const q = searchQuery.toLowerCase();
-      const looksUnfiltered =
-        communityZines.length > 0 &&
-        !communityZines.every(
-          (z) =>
-            z.title?.toLowerCase().includes(q) ||
-            z.tone?.toLowerCase().includes(q) ||
-            z.userHandle?.toLowerCase().includes(q) ||
-            z.content?.headlines?.[0]?.toLowerCase().includes(q),
-        );
-      if (!looksUnfiltered) return source;
-    }
-    const q = searchQuery.toLowerCase();
+    const qTrim = searchQuery.trim();
+    if (!qTrim) return source;
+    // Trust sovereign hybrid search results (including semantic-only matches).
+    if (mode === 'floor' && archive?.ready && floorSearchApplied === qTrim) return source;
+    const q = qTrim.toLowerCase();
     return source.filter(
       (z) =>
         z.title?.toLowerCase().includes(q) ||
@@ -171,7 +164,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
         z.userHandle?.toLowerCase().includes(q) ||
         z.content?.headlines?.[0]?.toLowerCase().includes(q),
     );
-  }, [mode, myZines, communityZines, searchQuery, archive?.ready]);
+  }, [mode, myZines, communityZines, searchQuery, archive?.ready, floorSearchApplied]);
 
   const handle = profile?.handle ? `@${profile.handle}` : null;
   const displayName = profile?.displayName || profile?.handle || 'The Stand';
