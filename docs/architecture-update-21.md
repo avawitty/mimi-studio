@@ -4,6 +4,11 @@
 **Date:** 2026-08-02  
 **Parent:** [Architecture Update 20](./architecture-update-20.md), [Mimi System Architecture](./mimi-system-architecture.md)
 
+> Historical record: ADR 001 supersedes this document's Firestore/Sovereign
+> ownership decision. Neon Postgres is now canonical relational storage;
+> Firebase remains authentication; object storage owns binaries. See
+> [`adr-001-neon-operational-database.md`](./adr-001-neon-operational-database.md).
+
 These are the accepted answers. Implementation lands incrementally; status notes mark what is encoded in this change set versus deferred.
 
 ---

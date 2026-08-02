@@ -1,8 +1,9 @@
 # Stripe Integration Architecture
 
 Maison Mimi Patronage uses **Stripe Billing + Checkout Sessions + Customer Portal**, with
-entitlements written to Firestore by our Express webhook handlers. This is the live path;
-the older “Stripe Firebase Extension only” sketch below is historical.
+canonical memberships and recurring credit grants reconciled into Neon Postgres by
+server webhook handlers. Firestore writes are a compatibility fallback only when the
+canonical operational database is not configured.
 
 ## Product catalog (best practice)
 
@@ -48,7 +49,15 @@ at mimizine.app. Cancel at period end is already enabled.
    - `allow_promotion_codes: true`
    - `billing_address_collection: 'auto'`
    - **no** `payment_method_types` (dynamic payment methods from Dashboard)
-3. Webhooks (`/api/stripe-webhook`) grant entitlements via `lib/stripeMembership.ts`.
+3. Webhooks (`/api/stripe-webhook`) verify the Stripe signature, claim the event in
+   Neon, map the Stripe price to a canonical Mimi plan, update membership, and issue
+   the period grant exactly once.
+
+Neon reconciliation is a controlled cutover:
+`MIMI_NEON_STRIPE_RECONCILIATION=1` is enabled only after migrations and
+reconciliation checks pass. Subscription checkout establishes identity and
+membership; `invoice.payment_succeeded` issues the exact SKU/cadence allowance,
+so checkout and invoice events cannot double-mint.
 
 ## Plan changes (existing subscribers)
 
@@ -73,32 +82,34 @@ Handled events:
 - `customer.subscription.deleted`
 - `invoice.payment_succeeded`
 
-Idempotency: events are tracked in `stripe_webhook_events/{event.id}` before processing.
+Idempotency: events are claimed by Stripe event ID in
+`mimi.stripe_webhook_events` before membership or grant writes.
 
-Writes (merge) to:
-- `users/{uid}` — `planStatus`, `mimiPlan`, credits, `stripeCustomerId`, interval
-- `profiles_public/{uid}`
-- `memberships/{uid}`
-- `users/{uid}/billing/subscription`
+Transactional writes:
+- `mimi.memberships`
+- `mimi.credit_accounts`
+- `mimi.credit_grant_buckets`
+- append-only `mimi.credit_ledger_entries`
+- `mimi.stripe_webhook_events`
 
 Generation credits are an **in-app allowance** refreshed on successful invoice/period
-boundaries — not Stripe Billing Meters / Metronome. Keep prepaid credit burndown in
-Firestore until you need true usage-based overage billing.
+boundaries. Credit reservation/commit/release is server-authoritative in Neon. If Mimi
+later sells true usage-based overage billing, evaluate Stripe Metronome separately;
+do not make Stripe subscription state the real-time in-app balance.
 
 ### Entitlement helper contract
 
-Client and server feature gates should go through `lib/mimiEntitlements.ts` rather than
-re-deriving plan → credits/features ad hoc:
+New server feature gates use the canonical plan and entitlement service. Existing
+catalog helpers remain boundary adapters while legacy labels are migrated:
 
 | Export | Role |
 | --- | --- |
 | `MIMI_PRICE_ID_PLAN_MAP` | Stripe Price ID → plan (live + legacy/sandbox IDs) |
-| `getEntitlementForPlan(plan)` | Credits, rollover, `serverAiAccess`, feature flags |
-| `normalizeMimiPlan(...)` | Coerce Firestore / checkout plan strings |
+| `canonicalPlanFromLegacy(...)` | Map legacy checkout labels to `free | trial | creator | studio | team` |
+| `CreditService` | Effective entitlement, account, and period grant |
 
-`lib/stripeMembership.ts` writes the webhook payload; `mimiEntitlements` is the read-side
-contract used by UI gates and AI credit checks. Keep price IDs in sync with `constants.ts`
-(`STRIPE_PRICES` / `STRIPE_PRICES_ANNUAL`).
+Keep price IDs in sync with `constants.ts` and Stripe Price metadata. Do not persist
+legacy plan labels into new Neon membership records.
 
 ## Tax
 
@@ -111,6 +122,7 @@ relevant jurisdictions. Enabling the flag without a registration silently collec
 | --- | --- |
 | `STRIPE_SECRET_KEY` | Server secret (prefer restricted key `rk_` in production) |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `MIMI_NEON_STRIPE_RECONCILIATION` | Explicit `1` after Neon cutover readiness |
 | `STRIPE_PRICE_*` / `*_ANNUAL` | Optional price ID overrides |
 | `MIMI_PUBLIC_BASE_URL` | Success / cancel / portal return URLs |
 
