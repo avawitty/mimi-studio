@@ -1,6 +1,6 @@
 /**
  * Doll Engine public API — Persistent Identity Visualization.
- * Taste Graph remains source of truth; dolls are projections.
+ * Taste Graph remains source of truth; dolls are projections (Mimi Shell species).
  */
 
 export type {
@@ -12,6 +12,15 @@ export type {
   ProceduralDollAesthetic,
   ProceduralPattern,
 } from "./types";
+
+export {
+  MIMI_SHELL_STAPLE,
+  MIMI_SHELL_STAPLE_VERSION,
+  buildMimiShellCompanionContext,
+  buildMimiShellImagePrompt,
+  type BuildShellPromptOptions,
+  type DollShellView,
+} from "./staplePrompt";
 
 export { resolveColorToken, pickPalettePair } from "./colorResolve";
 export {

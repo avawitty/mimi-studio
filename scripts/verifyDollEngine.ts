@@ -143,6 +143,9 @@ check("identity view prompts include lock language", () => {
   const prompt = buildIdentityViewPrompt(fixtureDoll, "profile");
   assert(/Doll Profile/i.test(prompt) || /profile/i.test(prompt), "profile framing");
   assert(prompt.includes(fixtureDoll.name), "name lock");
+  assert(/shell-v1|Mimi Shell/i.test(prompt), "shell staple version");
+  assert(/elongated slender neck/i.test(prompt), "shell proportions");
+  assert(/porcelain/i.test(prompt), "porcelain medium");
 });
 
 check("default masks + companion bundle", () => {
@@ -156,8 +159,12 @@ check("default masks + companion bundle", () => {
   const active = pickActiveMask(masks, masks[1].id);
   assert(active?.id === masks[1].id, "active mask pick");
   const ctx = buildDollPromptContext(fixtureDoll, active);
-  assert(ctx.includes("DOLL IDENTITY ACTIVE"), "prompt header");
+  assert(
+    ctx.includes("MIMI SHELL") || ctx.includes("DOLL IDENTITY ACTIVE"),
+    "prompt header",
+  );
   assert(ctx.includes("ACTIVE MASK"), "mask block");
+  assert(/elongated slender neck/i.test(ctx), "shell species lock in companion");
   const bundle = buildDollCompanionBundle(fixtureDoll, masks, masks[1].id);
   assert(bundle.activeMaskRole === masks[1].role, "bundle role");
   assert(bundle.scribeExcerpt.includes(fixtureDoll.name), "scribe excerpt");

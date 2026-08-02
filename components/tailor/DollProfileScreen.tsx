@@ -94,16 +94,30 @@ interface ChatMessage {
   timestamp: string;
 }
 
+function dollHasShellPortrait(d: Doll): boolean {
+  return Boolean(d.generatedImageUrl || d.identityReferences?.portraitUrl);
+}
+
+function mergeDollFromProp(d: Doll): Doll {
+  const portraitUrl = d.identityReferences?.portraitUrl;
+  if (portraitUrl && !d.generatedImageUrl) {
+    return { ...d, generatedImageUrl: portraitUrl };
+  }
+  return d;
+}
+
 export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBack, onContinue }) => {
   const { user } = useUser();
-  const [currentDoll, setCurrentDoll] = useState<Doll>(doll);
+  const [currentDoll, setCurrentDoll] = useState<Doll>(() => mergeDollFromProp(doll));
   const [isGeneratingPortrait, setIsGeneratingPortrait] = useState(false);
   const [identityView, setIdentityView] = useState<DollIdentityView>('portrait');
+  /** One-shot cultish onboarding: first open without a portrait auto-runs shell projection. */
+  const autoShellProjectedRef = useRef(false);
   const [masks, setMasks] = useState<DollMask[]>([]);
   const [activeMaskId, setActiveMaskId] = useState<string | null>(doll.activeMaskId || null);
 
   useEffect(() => {
-    setCurrentDoll(doll);
+    setCurrentDoll(mergeDollFromProp(doll));
     setActiveMaskId(doll.activeMaskId || null);
   }, [doll]);
 
@@ -133,10 +147,13 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
     const saved = localStorage.getItem(`mimi_doll_chat_${doll.id}`);
     if (saved) return JSON.parse(saved);
+    const awakening = doll.generatedImageUrl
+      ? `Shell online. Creator, I am ${doll.name}. Ego partitioned, cognitive lace taut — ready for conditioning.`
+      : `Shell dormant. Creator, I am ${doll.name}. Projecting the Mimi Shell onto your graph — porcelain species lock, then conditioning.`;
     return [
       {
         role: 'assistant',
-        content: `Neural system active. Creator, I am ${doll.name}. My ego is partitioned, my cognitive lace is taut, and I am ready for conditioning. Select an outfit implant or input a direct stimulus.`,
+        content: awakening,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ];
@@ -217,11 +234,21 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
             detail: {
-              message: `${view.replace('_', ' ')} calibrated for ${currentDoll.name}`,
+              message: `Mimi Shell ${view.replace('_', ' ')} projected for ${currentDoll.name}`,
               type: "success",
             },
           })
         );
+        if (view === 'portrait') {
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              role: "system",
+              content: "Shell projection complete. Species locked. Begin conditioning.",
+              timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            },
+          ]);
+        }
       } else {
         throw new Error(data?.error?.message || 'Empty image response');
       }
@@ -234,8 +261,8 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         new CustomEvent("mimi:registry_alert", {
           detail: {
             message: isQuota
-              ? `Identity pack paused — provider quota/billing. ${errMsg.slice(0, 100)}`
-              : `Identity pack failed: ${errMsg.slice(0, 140)}`,
+              ? `Shell projection paused — provider quota/billing. ${errMsg.slice(0, 100)}`
+              : `Shell projection failed: ${errMsg.slice(0, 140)}`,
             type: isQuota ? "warning" : "error",
           },
         })
@@ -255,6 +282,21 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   };
 
   const packStatus = identityPackCompleteness(currentDoll);
+
+  // Cultish onboarding beat: first visit without a portrait auto-projects the house shell.
+  useEffect(() => {
+    if (autoShellProjectedRef.current) return;
+    if (dollHasShellPortrait(currentDoll)) return;
+    if (isGeneratingPortrait) return;
+    autoShellProjectedRef.current = true;
+    void handleRegeneratePortrait('portrait');
+    // Intentionally one-shot per mount when shell image is missing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onboarding auto-project
+  }, [
+    currentDoll.id,
+    currentDoll.generatedImageUrl,
+    currentDoll.identityReferences?.portraitUrl,
+  ]);
 
   useEffect(() => {
     localStorage.setItem(`mimi_doll_equipped_${doll.id}`, JSON.stringify(equippedIds));
@@ -700,12 +742,12 @@ GUIDELINES FOR THE RESPONSE:
                 {isGeneratingPortrait ? (
                   <>
                     <RefreshCw size={10} className="animate-spin text-amber-500" />
-                    CALIBRATING {identityView.replace('_', ' ').toUpperCase()}…
+                    PROJECTING MIMI SHELL…
                   </>
                 ) : (
                   <>
                     <Sparkles size={10} className="text-amber-500 animate-pulse" />
-                    [ CALIBRATE {identityView.replace('_', ' ').toUpperCase()} REFERENCE ]
+                    [ RUN SHELL PROJECTION ]
                   </>
                 )}
               </button>
