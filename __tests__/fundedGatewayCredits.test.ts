@@ -34,6 +34,16 @@ describe("needsMembershipPeriodReload", () => {
     ).toBe(false);
   });
 
+  it("does not reload zero-allowance grants (malformed / client-spoofed)", () => {
+    const now = Date.now();
+    expect(
+      needsMembershipPeriodReload(
+        { allowance: 0, remaining: 0, periodEndsAt: now - 1000 },
+        now,
+      ),
+    ).toBe(false);
+  });
+
   it("does not reload a missing grant (mint is separate + must be trusted)", () => {
     expect(needsMembershipPeriodReload(undefined)).toBe(false);
     expect(needsMembershipPeriodReload({})).toBe(false);
@@ -77,7 +87,7 @@ describe("needsMembershipCreditHeal (compat)", () => {
 });
 
 describe("hasTrustedPaidBillingSignal", () => {
-  it("requires Stripe or patron activation — not a bare plan field", () => {
+  it("requires Stripe billing doc or server patron activation — not client fields", () => {
     expect(hasTrustedPaidBillingSignal({ plan: "lab", mimiPlan: "lab" })).toBe(false);
     expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "promo_code" })).toBe(false);
     expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "cus_123" })).toBe(true);
@@ -87,6 +97,12 @@ describe("hasTrustedPaidBillingSignal", () => {
         patronActivatedAt: Date.now(),
       }),
     ).toBe(true);
+    expect(
+      hasTrustedPaidBillingSignal({
+        isPatron: true,
+        patronKey: "self-set-key",
+      }),
+    ).toBe(false);
     expect(
       hasTrustedPaidBillingSignal({
         membershipCredits: { allowance: 10000, remaining: 0 },

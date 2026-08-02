@@ -19,11 +19,10 @@ export const RegistryAlert: React.FC = () => {
    setTimeout(() => {
      setAlerts((current) => current.filter((a) => a.id !== id));
    }, 5000);
+   const soundType = e.detail.type === 'error' ? 'error' : 'success';
+   window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: soundType } }));
    return [...prev, newAlert];
  });
-
- const soundType = e.detail.type === 'error' ? 'error' : 'success';
- window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: soundType } }));
  };
 
  window.addEventListener('mimi:registry_alert', handleAlert);

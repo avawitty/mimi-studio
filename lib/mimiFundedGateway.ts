@@ -17,7 +17,8 @@ export function needsMembershipPeriodReload(
   now = Date.now(),
 ): boolean {
   if (grant == null || typeof grant !== "object") return false;
-  const hasAllowance = grant.allowance != null && Number.isFinite(Number(grant.allowance));
+  const allowance = Number(grant.allowance);
+  const hasAllowance = Number.isFinite(allowance) && allowance > 0;
   if (!hasAllowance) return false;
   const periodEndsAt = Number(grant.periodEndsAt ?? 0);
   return Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
@@ -51,18 +52,18 @@ export function isPaidSubscriptionActive(subscriptionStatus: unknown): boolean {
 }
 
 /**
- * Trusted signals for minting paid credits. Prefer Stripe; also accept
- * patron activation (promo/lab seats) which write credits via membershipPipeline.
- * Never trust a bare client-writable `plan: "lab"` alone.
+ * Trusted signals for minting paid credits. Only Stripe customer ids from
+ * billing/subscription (webhook writes) and server-set patron activation count.
+ * Never trust client-writable user-root plan, stripeCustomerId, or patronKey.
  */
 export function hasTrustedPaidBillingSignal(data: Record<string, unknown>): boolean {
-  const stripeCustomerId = String(
-    data.stripeCustomerId || (data as any).subscription?.stripeCustomerId || "",
-  ).trim();
-  if (stripeCustomerId && !stripeCustomerId.startsWith("promo_")) return true;
+  const stripeCustomerId = String(data.stripeCustomerId || "").trim();
+  if (stripeCustomerId.startsWith("cus_")) return true;
 
-  // Patron / promo lab seats — membershipPipeline sets these on activation.
-  if (data.isPatron === true && (data.patronActivatedAt || data.patronKey)) return true;
+  const patronActivatedAt = Number(data.patronActivatedAt ?? 0);
+  if (data.isPatron === true && Number.isFinite(patronActivatedAt) && patronActivatedAt > 0) {
+    return true;
+  }
 
   return false;
 }
@@ -222,7 +223,9 @@ export const resolveMimiFundedGatewayAccess = async (
       const [userDoc, profileDoc] = await Promise.all([userRef.get(), profileRef.get()]);
       const data = { ...(profileDoc.data() || {}), ...(userDoc.data() || {}) };
 
-      const plan = normalizeMimiPlan(data.plan || data.planStatus || data.mimiPlan);
+      const plan = normalizeMimiPlan(
+        data.plan || data.planStatus || data.mimiPlan || data.membershipPlan,
+      );
       const isPaid = isPaidMimiPlan(plan);
       let remaining = 0;
 
@@ -248,21 +251,18 @@ export const resolveMimiFundedGatewayAccess = async (
           data.subscription?.credits ||
           billingData.credits;
         const trustedBilling = hasTrustedPaidBillingSignal({
-          ...(data as Record<string, unknown>),
-          ...billingData,
-          stripeCustomerId:
-            data.stripeCustomerId || billingData.stripeCustomerId,
+          stripeCustomerId: billingData.stripeCustomerId,
+          isPatron: data.isPatron,
+          patronActivatedAt: data.patronActivatedAt,
         });
         const shouldReloadPeriod = needsMembershipPeriodReload(grant);
         const shouldMintMissing = needsMembershipCreditMint(grant) && trustedBilling;
 
-        if (shouldReloadPeriod || shouldMintMissing) {
+        if ((shouldReloadPeriod && trustedBilling) || shouldMintMissing) {
           const interval = (data.subscriptionInterval || "month") as MimiBillingInterval;
           const existingPeriodEnd = Number(grant?.periodEndsAt ?? 0);
           const credits = shouldReloadPeriod
-            ? trustedBilling
-              ? buildCreditGrant({ plan, interval }).credits
-              : rollForwardMembershipGrant(grant, interval)
+            ? buildCreditGrant({ plan, interval }).credits
             : buildCreditGrant({
                 plan,
                 interval,
