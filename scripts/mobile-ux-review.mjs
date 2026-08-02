@@ -153,45 +153,69 @@ if ((await floor.count()) > 0) {
   note("fail", "stand", "Floor tab missing");
 }
 
-// Studio tools + treatments
+// Studio orientation entry — not the archival worktable / Tools console
 await page.goto(`${base}/studio`, { waitUntil: "domcontentloaded" });
 await dismiss(page);
-const tools = page.getByRole("button", { name: /open tools/i });
-if ((await tools.count()) === 0) {
-  note("fail", "studio", "Tools control missing on mobile editor");
+const studioBody = await page.locator("body").innerText().catch(() => "");
+const hasOrientation =
+  /Start with a thought/i.test(studioBody) &&
+  /Begin with this/i.test(studioBody);
+const hasArchivalChrome =
+  /FIG\.\s*01/i.test(studioBody) ||
+  /SPARK\s*·\s*GENERATE/i.test(studioBody) ||
+  (/DESK/.test(studioBody) &&
+    /SCRY/.test(studioBody) &&
+    /FILE/.test(studioBody) &&
+    /CUT/.test(studioBody) &&
+    /DEV/.test(studioBody) &&
+    /ISSUE/.test(studioBody));
+if (!hasOrientation) {
+  note("fail", "studio", "Orientation intake missing on /studio");
+} else if (hasArchivalChrome) {
+  note("fail", "studio", "Archival desk chrome still present on /studio");
 } else {
-  await tools.click({ force: true });
-  await page.waitForTimeout(600);
-  await shot(page, "05-tools");
-  note("pass", "studio", "Tools sheet opens");
-  await page.evaluate(() => {
-    document.querySelectorAll('[aria-label="Close tools"]').forEach((el) => {
-      if (el instanceof HTMLElement) el.click();
-    });
-  });
-  await page.waitForTimeout(300);
+  note("pass", "studio", "Orientation intake; archival desk chrome absent");
 }
 
-await dismiss(page);
-const treatments = page.locator("nav[aria-label='Studio navigation'] button[aria-label='Treatments']");
-if ((await treatments.count()) > 0) {
-  await treatments.click({ force: true });
-  await page.waitForTimeout(700);
-  await shot(page, "06-treatments");
-  const panelOpen = await page.evaluate(() => {
-    const h = [...document.querySelectorAll("h2")].find((el) =>
-      /treatments/i.test(el.textContent || ""),
-    );
-    const close = document.querySelector('[aria-label="Close panel"]');
-    return { hasTitle: !!h, hasClose: !!close };
-  });
-  note(
-    panelOpen.hasTitle && panelOpen.hasClose ? "pass" : panelOpen.hasTitle ? "warn" : "fail",
-    "studio",
-    panelOpen.hasTitle && panelOpen.hasClose
-      ? "Treatments panel + close present"
-      : `Treatments panel incomplete: ${JSON.stringify(panelOpen)}`,
-  );
+const legacyLink = page.getByRole("link", {
+  name: /Legacy worktable \(experimental\)/i,
+});
+if ((await legacyLink.count()) === 0) {
+  note("warn", "studio", "Legacy worktable link missing below the fold");
+} else {
+  await legacyLink.scrollIntoViewIfNeeded();
+  await legacyLink.click();
+  await page
+    .waitForURL(/\/studio\/worktable-legacy/, { timeout: 5000 })
+    .catch(() => null);
+  await page.waitForTimeout(500);
+  await shot(page, "05-worktable-legacy");
+  const onLegacy = /\/studio\/worktable-legacy/.test(page.url());
+  const legacyBody = await page.locator("body").innerText().catch(() => "");
+  if (!onLegacy) {
+    // Direct route check — click navigation can race History API in headless
+    await page.goto(`${base}/studio/worktable-legacy`, {
+      waitUntil: "domcontentloaded",
+    });
+    await dismiss(page);
+    await page.waitForTimeout(400);
+    const legacyDirect = await page.locator("body").innerText().catch(() => "");
+    if (!/Legacy worktable/i.test(legacyDirect)) {
+      note("fail", "studio", "Legacy route missing experimental banner");
+    } else {
+      note(
+        "pass",
+        "studio",
+        "Legacy worktable available at /studio/worktable-legacy",
+      );
+    }
+  } else if (!/Legacy worktable/i.test(legacyBody)) {
+    note("fail", "studio", "Legacy route missing experimental banner");
+  } else {
+    note("pass", "studio", "Legacy worktable available at /studio/worktable-legacy");
+  }
+  await page.goto(`${base}/studio`, { waitUntil: "domcontentloaded" });
+  await dismiss(page);
 }
 
 const fabs = await page.evaluate(() => {
