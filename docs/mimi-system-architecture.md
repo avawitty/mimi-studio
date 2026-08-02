@@ -4,11 +4,13 @@ Status: Canonical living architecture
 
 Scope: Product domains, workflows, objects, engines, capabilities, and system contracts
 
-Last updated: 2026-07-11
+Last updated: 2026-08-02
 
 This document defines Mimi's durable product architecture. It is intentionally not a screen map. Screens and chamber names may evolve, but the domains, objects, engines, capabilities, and contracts described here should remain stable unless an explicit architecture decision changes them.
 
 For the current chamber-to-route implementation, see the [Mimi Chamber Implementation Audit](./mimi-chamber-implementation-audit.md). For current infrastructure and Used Context verification, see the [Functions Admin Proxy Audit](./wo-1-functions-admin-proxy-audit.md) and [Used Context end-to-end test](./wo-2-used-context-test.md).
+
+**Latest reconciliation:** [Architecture Update 20 — Sovereign Data Plane, Evidence Lanes, and Production Hardening](./architecture-update-20.md) (2026-08-02). Operational sovereign store detail: [Sovereign archive](./sovereign-archive.md).
 
 ## 1. Product Philosophy
 
@@ -89,15 +91,22 @@ This is the practical bridge from research and taste to production. Collection d
 
 | Layer | Responsibility | Examples |
 | --- | --- | --- |
-| Creator Interfaces | Present workflows, decisions, object state, and provenance to the creator | Scribe, Tailor, Pocket, Studio, The Edit, The Press |
-| Domain Workflows | Coordinate domain-specific steps and enforce ownership boundaries | Research intake, taste reading, editorial direction, product briefing, publishing |
-| Capabilities | Provide reusable user-facing operations shared across workflows | Capture, Interpretation, Highlight, Approval, Retrieval, Composition, Export |
-| Knowledge Objects | Hold durable, typed, versioned product state | Source Object, Evidence, Approval, Memory Atom, Context Packet, Build Brief |
-| Platform Services | Persist, index, authorize, relate, validate, and synchronize objects | Object registry, identity, storage, search, permissions, event log |
-| Generation / Composition | Assemble explicit context and produce or arrange candidates | Prompt assembly, model generation, layout composition, rendering |
+| Creator Interfaces | Present workflows, decisions, object state, and provenance to the creator | Scribe, Scry, Residue, Observatory, Tailor, Pocket, Studio, The Edit, The Press, Mimi Dolls |
+| Domain Workflows | Coordinate domain-specific steps and enforce ownership boundaries | Research intake, evidence-lane retrieval, taste reading, collective statistics, editorial direction, product briefing, publishing |
+| Capabilities | Provide reusable user-facing operations shared across workflows | Capture, Interpretation, Highlight, Approval, Retrieval, Composition, Export, Consent |
+| Knowledge Objects | Hold durable, typed, versioned product state | Source Object, Evidence, Approval, Memory Atom, Context Packet, Build Brief, CentralTendencyProfile |
+| Shared Intelligence Infrastructure | Route models, embeddings, entitlements, and provenance across chambers | AI Gateway, Gateway embeddings, provider adapters, entitlement verification, model provenance |
+| Platform Services | Persist, index, authorize, relate, validate, and synchronize objects | Object registry, identity, Sovereign Data Plane, Firestore, IndexedDB, search, SSE, permissions, event log |
+| Generation / Composition | Assemble explicit context and produce or arrange candidates | Prompt assembly, model generation, layout composition, hi-fi plate baking, rendering |
 | Published Artifacts | Represent validated outputs and their handoff or publication state | Zine, Report, export bundle, provenance manifest |
 
 Dependencies flow downward through contracts: interfaces invoke domain workflows; workflows compose capabilities; capabilities read and write canonical objects through platform services; generation consumes declared context; exports produce traceable artifacts.
+
+### Dual spine (creator + infrastructure)
+
+Creator-facing work still follows the knowledge grammar above. Operational execution now also follows an infrastructural spine confirmed in Update 20:
+
+> **Authenticate → Resolve Entitlement → Select Capability → Load Only Required Services → Execute Through Gateway or Local Engine → Persist to the Appropriate Data Plane → Expose Honest State and Provenance**
 
 **User-flow benefit:** The creator can switch from one interface to another without losing the project, approvals, or creative rationale because those belong to durable objects rather than a specific screen.
 
@@ -129,14 +138,19 @@ Engines are headless system responsibilities. A chamber may expose one or more e
 | Approval Engine | Record explicit creator decisions at object or field level | Candidate object/version, actor decision | Approval record, approval state transition |
 | Memory Engine | Persist and lifecycle-manage approved reusable knowledge | Approved candidate, provenance, relationships | Memory Atom/version, lifecycle events |
 | Retrieval Engine | Find relevant approved atoms and source material under a declared scope | Query, project, filters, permissions | Ranked retrieval result with reasons |
+| Evidence Lane Engine | Run typed research lanes (archive, web, reading, shadow) with honest coverage states | Scry query, permissions, provider availability | Lane results, coverage assessment, narrative synthesis inputs |
 | Context Engine | Convert retrieval results and explicit selections into bounded task context | Retrieval result, selections, task intent | Context Run, Context Packet, Used Context view |
 | Prompt Assembly Engine | Translate task instructions and Context Packets into model-ready requests | Context Packet, template, constraints | Prompt payload and assembly record |
 | Generation Engine | Produce candidate content from an assembled prompt | Prompt payload, model configuration | Generated candidate, usage metadata |
-| Composition Engine | Arrange creator-selected and generated material into structured artifacts | Content blocks, assets, direction, layout rules | Composed artifact draft |
+| Embedding Engine | Produce and validate Gateway embeddings with model/dimension provenance | Text, clustering, Shadow Memory, Sovereign search inputs | Vectors, embedding metadata, compatibility audit |
+| Composition Engine | Arrange creator-selected and generated material into structured artifacts | Content blocks, assets, direction, layout rules | Composed artifact draft, spread composition metadata |
+| Residue Engine | Offline-first cultural/emotional analysis with optional live acquisition | Query or experience text, optional sources | Residue reports, per-run M/M/M, proposed handoffs |
+| Collective Statistics Engine | Aggregate consented public signals into central-tendency profiles | Consented Proscenium contributions, disclosure version | Observatory Mean Median Mode reports |
 | Export Engine | Render and package an approved artifact for a destination | Artifact draft, destination profile | Exported files, publication record, manifest |
 | Provenance Engine | Maintain traceability from outputs to objects, versions, evidence, and transformations | Object events, context usage, generation records | Provenance graph, Used Context, manifest entries |
 | Relationship Engine | Create, validate, and traverse typed links among canonical objects | Object identifiers, relationship type | Relationship records, dependency graph |
 | Validation Engine | Enforce schemas, ownership, approval gates, completeness, and destination rules | Objects, contracts, artifact draft | Validation results, blocking errors, warnings |
+| Sovereign Persistence Engine | Own publication, discovery, and resilience persistence independent of Firestore quota | Public zines, profiles, Pocket mirrors, search projections | Sovereign store records, SSE events, hybrid search results |
 
 ## 6. Core Objects
 
@@ -414,43 +428,84 @@ These decisions remain unresolved and should be settled through architecture dec
 | Should object relationships become first-class? | First-class typed relationships enable graph retrieval and impact analysis but require governance and migrations. | Query value, relationship ownership, validation complexity |
 | Should workflow sessions support branching? | Branching enables creative alternatives without overwriting a path but complicates merge and approval semantics. | Creator mental model, comparison UX, ownership of merged outputs |
 | Should every exported artifact include a machine-readable provenance manifest? | A manifest improves portability and verification but may expose sensitive context or increase package complexity. | Privacy, interoperability, destination support, minimum manifest schema |
+| Which objects remain owned by Firestore vs the Sovereign Data Plane? | Dual persistence without ownership rules creates drift and delete races. | Public-read cost, identity coupling, migration risk, offline guest paths |
+| Is Sovereign a publication projection, full app store, or expanding hybrid? | Determines whether Neon/SQLite become the primary write plane. | Scale path, SSE needs, Firestore compatibility, ops complexity |
+| Should Memory Atoms / Context Runs ever live in Sovereign Postgres? | Moves knowledge substrate off Firebase free-tier limits. | Privacy, auth model, retrieval latency, existing atom APIs |
+| Should Scry archive retrieval query Firestore, Sovereign, or a unified service? | Scry integrity depends on honest empty lanes and stable ranking. | Coverage honesty, embedding compatibility, latency |
+| One shared embedding compatibility/migration contract for all vectors? | Model and dimension drift already affects Shadow Memory and Sovereign search. | Reindex UX, credit cost, auth ownership, orphan vectors |
+| Does The Edit need Signal Edit vs Issue Edit modes? | Chamber now governs both interpretive approval and spread composition. | Creator mental model, route clarity, mobile primary promise |
+| Observatory → Taste Graph input, or collective context only? | Consent scope differs from personal taste approval. | Disclosure version, revoke semantics, individual vs aggregate use |
+| How is Observatory consent revoked after contribution? | Aggregate stats may already include a contributor’s signals. | Recompute windows, tombstones, disclosure versioning |
+| Stand vs Floor vs Mine vs The Press distinctions? | Surfaces increasingly share Sovereign projections. | Ownership, public vs private, export vs browse |
+| Enforce serverless dynamic-import invariants in CI? | Static Node graphs have crashed Vercel isolates at load time. | Bundle size budgets, route smoke tests, lazy-load lint rules |
+
+Full Update 20 question list: [architecture-update-20.md §16](./architecture-update-20.md#16-open-questions).
 
 ## Current Implementation Baseline
 
-This section records the current branch implementation without redefining the canonical architecture above. A routed chamber is an interface milestone, not proof that its domain contract is complete.
+This section records the current branch implementation without redefining the canonical architecture above. A routed chamber is an interface milestone, not proof that its domain contract is complete. Statuses below reconcile [Architecture Update 20](./architecture-update-20.md).
 
 ### Current creator spine
 
+> **Capture → Tailor → Govern → Structure → Apply → Publish**
+
+Practical loop still demonstrated as:
+
 > **Scribe → Pocket mirror → Studio (approve and apply) → Zine → The Edit → The Press**
+
+### Current infrastructural spine
+
+> **Authenticate → Resolve Entitlement → Select Capability → Load Only Required Services → Execute Through Gateway or Local Engine → Persist to the Appropriate Data Plane → Expose Honest State and Provenance**
 
 | Canonical concern | Current implementation | Architecture status |
 | --- | --- | --- |
-| Capture and research | `ScribeChamber`, embedded `ResearchMemory`, global selection capture | Implemented in part |
+| Capture and research | `ScribeChamber`, embedded `ResearchMemory`, global selection capture | Implemented in part; mobile grammar polished |
+| Evidence-lane research | `ScryView` archive / web / reading / shadow lanes + Gateway synthesis | Implemented with honest coverage states |
+| Residue analysis | `ResidueChamber` Cultural/Emotional modes, offline engine, optional Apify acquire | Implemented vertical slice |
+| Collective intelligence | `ObservatoryChamber` / Mean Median Mode + Proscenium consent | Implemented vertical slice |
 | Atom persistence | `memoryService` and Firestore `memory_atoms` | Implemented; explicit approval-before-memory remains the canonical target |
-| Registry mirror | `mirrorAtomToPocket`, Pocket archive | Partial; object types do not yet share one complete registry contract |
+| Shadow Memory migration | Dimension/model audit + authenticated reindex | Implemented |
+| Registry mirror | `mirrorAtomToPocket`, Pocket archive, ghost local path | Partial; delete/identity races hardened; dual-plane ownership still open |
+| Sovereign publication plane | SQLite / Postgres / Neon drivers, search, SSE, import/export | Implemented; production hardening ongoing |
 | Context approval | `UsedContextTray`, `setUsedContextApproved` | Implemented for Studio and The Edit queues |
 | Context application | `InputStudio`, `zineGenerator`, `fragmentsUsed` | Implemented for the Studio generation path |
 | Context provenance | `UsedContextSnapshot`, reveal Used Context, export manifest snapshots | Implemented in the current zine/export path |
-| Editorial validation | `TheEditCompile` (primary), `TheEditChamber` spine tabs, export diagnostics | Implemented for compile path; commerce remains secondary tab; Edit → Press auto-handoff not wired |
+| Editorial + composition | `TheEditCompile`, hi-fi plate baking, in-chamber spread composition | Implemented; Signal vs Issue Edit canon split still open |
 | Studio cover export | `lib/studioCoverExport.ts`, `coverImageUrl`, `content.meta.studioCoverOverlays` | Implemented; overlay rasterization into export image remains open |
-| Export | `ThePressChamber`, `exportManifestService`, `validateExportManifest` | Implemented in part; universal artifact manifests and Edit compile attachment remain open |
+| Gateway-funded AI | Entitlement checks, Stripe verification, no BYOK nag on funded path | Implemented and security-hardened |
+| Export | `ThePressChamber`, `exportManifestService`, `validateExportManifest` | Implemented in part; universal artifact manifests remain open |
+| Mimi Dolls | Porcelain shell-first chamber; Shader Lab secondary | Implemented shell-first interface |
+| Firestore quota resilience | Capped reads, ghost Pocket, listener suppression | Implemented |
+| Serverless module boundary | Lazy/dynamic import of Admin, Apify, SQLite, heavy graphs | Implemented for known crash paths; CI invariant still proposed |
 
 Preview E2E checklist: `docs/DEMO_SCRIPT.md`. Service verification: `npm run verify:used-context`.
 
 Current implementation uses `UsedContextEntry.approved` as the generation gate. Any path that saves a proposed atom directly as retrievable memory without a separate creator approval is architecture drift against Sections 2, 7, and 11 and should be migrated deliberately rather than normalized as canon.
 
+### Canonical data-plane rule (Update 20)
+
+```text
+Firebase  = identity, selected canonical state, and compatibility
+Sovereign = owned publication, discovery, and resilience data plane
+```
+
+Firestore should not carry every public shelf interaction. Neon Postgres is the preferred Vercel sovereign path; SQLite remains for local and durable-host execution.
+
 ### Current platform services
 
-These are implementation examples of the Platform Services layer. Chambers should consume them through shared contracts rather than create local alternatives.
+These are implementation examples of the Platform Services and Shared Intelligence layers. Chambers should consume them through shared contracts rather than create local alternatives.
 
 | Service | Current responsibility | Representative paths |
 | --- | --- | --- |
 | Auth and session | Firebase Auth and HTTP-only session handling | `api/sessionLogin.ts`, `UserContext` |
-| Firestore persistence | Users, atoms, zines, and Pocket records | `services/firebaseUtils.ts`, `memoryService` |
-| Local archive | Offline or guest references and drafts | `services/localArchive.ts` |
-| AI provider routing | Select funded, personal-key, or simulated provider paths | `lib/mimiProvider.ts`, `services/geminiClient.ts` |
+| Firestore persistence | Users, atoms, selected zines/Pocket compatibility | `services/firebaseUtils.ts`, `memoryService` |
+| Sovereign Data Plane | Owned publication, Floor/Mine, search, SSE, import/export | `docs/sovereign-archive.md`, `/api/sovereign/*`, `services/sovereignClient.ts` |
+| Local / ghost archive | Offline or guest references and drafts (IndexedDB) | `services/localArchive.ts`, Pocket ghost path |
+| AI Gateway + embeddings | Funded model routing, shared embeddings, provenance metadata | `lib/ai/generate.ts`, `services/modelConfig.ts`, `lib/models.ts` |
+| AI provider routing | Select funded Gateway, personal-key, or simulated paths | `lib/mimiProvider.ts`, `services/geminiClient.ts` |
+| Entitlement verification | Trusted server-side plan/credit checks (incl. Stripe) | membership / Stripe verification routes |
 | Image generation | Server-side cover and visual generation | `/api/mimi-image`, `lib/serverMimiImage.ts` |
-| Functions admin proxy | Keep Firebase Admin operations out of Vercel | `lib/proxyToFunctions.ts`, `functions/src/index.ts` |
+| Functions admin proxy | Keep Firebase Admin operations out of Vercel where needed | `lib/proxyToFunctions.ts`, `functions/src/index.ts` |
 | Funded gateway | Authorize and account for platform-funded AI use | `lib/mimiFundedGateway.ts` |
 | Used Context bus | Stage and approve task-specific client context | `services/usedContextService.ts` |
 | Export and privacy | Build manifests and sanitize exported snapshots | `services/exportManifestService.ts`, `lib/privacyUtils.ts` |
@@ -465,12 +520,18 @@ The current creator-facing interfaces are projections onto the architecture, not
 | --- | --- | --- |
 | Studio | `/studio` | `InputStudio` |
 | Scribe | `/scribe` | `ScribeChamber` |
+| Scry | `/scry` | `ScryView` |
+| Residue | `/residue` | `ResidueChamber` |
+| The Observatory | `/observatory` | `ObservatoryChamber` |
+| Mean Median Mode | `/mean-median-mode` | `ObservatoryChamber` |
 | Tailor | `/tailor` | `TailorHub` |
 | Taste Signature | `/signature` | `SignatureView` |
 | Taste Graph | `/taste-graph` | `TasteGraph` |
 | The Edit | `/the-edit` | `TheEditChamber` + `TheEditCompile` (primary) |
 | The Press | `/the-press` | `ThePressChamber` |
 | Pocket | `/pocket` | `Pocket` |
+| The Stand | `/stand` | `TheStand` |
+| The Proscenium | `/proscenium` | `ProsceniumView` |
 | Mood Board | `/moodboard` | `MoodBoardChamber` |
 | IntelHub | `/intelhub` | `IntelHub` |
 | GeoEngine | `/geoengine` | `TheGEOEngine` |
@@ -481,19 +542,37 @@ The current creator-facing interfaces are projections onto the architecture, not
 | The Ward | `/ward` | `TheWard` |
 | Private Studio | `/private-studio` | `PrivateStudioChamber` |
 | Mimi Dolls | `/mimi-dolls` | `MimiDollsChamber` |
+| mimi.rip | `/rip` | `RipChamber` |
 
 `/chamber-map` is the registry inspector. `/u/:handle`, `/showcase`, `/zine/:id`, and `/api/*` are infrastructure or published-artifact routes rather than chambers.
+
+### Accepted architecture decisions (Update 20)
+
+See [architecture-update-20.md §15](./architecture-update-20.md#15-architecture-decisions) for the full list. Highlights now treated as canon:
+
+- Sovereign archive is a first-class owned data plane; Firestore remains for identity and selected compatibility state.
+- Scry lanes must report empty/failed/unavailable honestly; no padded “complete” coverage.
+- Shadow Memory reindex requires a real Firebase UID; ghost identities cannot bulk-operate embeddings.
+- AI Gateway embeddings are shared infrastructure with executed-model provenance.
+- Residue is offline-first; live Apify acquisition is optional server enrichment.
+- Observatory is distinct from Residue and requires explicit collective-contribution consent.
+- Funded plans use Mimi-managed Gateway access; BYOK is not the recovery prompt for Gateway failure.
+- Identity changes must cancel or invalidate in-flight Floor/Pocket/Shadow/subscription work.
+- Serverless routes must dynamically load heavy or optional Node graphs after cheap request checks.
+- Mobile chambers remove duplicate chrome and foreground the primary promise.
 
 ### Additional implementation questions
 
 These branch-level questions sit beneath the canonical open questions and should remain visible during implementation planning:
 
 - Should Used Context remain a local queue or become a synchronized, project-scoped object?
-- Should The Edit retain commerce as a secondary tab now that `TheEditCompile` is primary, or split into separate routes?
+- Should The Edit retain commerce as a secondary tab now that `TheEditCompile` is primary, or split into Signal Edit / Issue Edit?
 - Should cover overlay state remain ephemeral or become part of the versioned artifact composition specification?
 - What are the canonical renderers and schemas for every Pocket object type?
 - Where is the privacy boundary between user-global, project-scoped, and Sanctuary-local knowledge?
 - What automated end-to-end evidence is required before the creator spine is considered complete?
+- Should anonymous Pocket data migrate automatically after account creation?
+- Should dynamic-import invariants become part of CI?
 
 ## 13. Superintelligence Scalability Layer (SSL)
 

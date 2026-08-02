@@ -17,6 +17,7 @@ import {
   fetchDollImageReferencesAsMedia,
   type DollImageReference,
 } from "./dollEngine";
+import { celestialTimingForGeneration } from "../lib/celestial/compileCelestialReadout";
 
 function groundAcquisitionSignal(
   currentSignal: Record<string, unknown>,
@@ -45,6 +46,7 @@ function groundAcquisitionSignal(
 function sanitizeProfile(profile: UserProfile | null): string {
     if (!profile) return "No user profile available.";
     const tailor = profile.tailorDraft;
+    const celestialTiming = celestialTimingForGeneration(tailor?.celestialCalibration);
     return JSON.stringify({
         positioningCore: tailor?.positioningCore,
         expressionEngine: tailor?.expressionEngine,
@@ -56,7 +58,19 @@ function sanitizeProfile(profile: UserProfile | null): string {
         archetype: profile.tasteProfile?.dominant_archetypes,
         directives: profile.lastAuditReport?.aestheticDirectives,
         strategicOpportunity: profile.lastAuditReport?.strategicOpportunity,
-        lastAuditSummary: profile.tasteProfile?.semantic_signature || profile.lastAuditReport?.profileManifesto
+        lastAuditSummary: profile.tasteProfile?.semantic_signature || profile.lastAuditReport?.profileManifesto,
+        // Structured celestial timing when the creator opted in via Celestial Calibration chamber.
+        // Distinct from the poetic zine field `celestial_calibration`.
+        ...(celestialTiming
+            ? {
+                celestialCalibration: {
+                    enabled: true,
+                    timing: celestialTiming,
+                    zodiac: tailor?.celestialCalibration?.zodiac,
+                    seasonalAlignment: tailor?.celestialCalibration?.seasonalAlignment,
+                },
+            }
+            : {}),
     });
 }
 
