@@ -78,7 +78,7 @@
       "destination": "/api/og/zine?id=:id"
     },
     {
-      "source": "/((?!api/|\\.well-known/).*)",
+      "source": "/((?!api/|assets/|\\.well-known/).*)",
       "destination": "/index.html"
     }
   ]
