@@ -257,6 +257,11 @@ const ObservatoryChamber = lazy(() =>
     default: m.ObservatoryChamber,
   })),
 );
+const CelestialCalibrationChamber = lazy(() =>
+  import("./components/chambers/CelestialCalibrationChamber").then((m) => ({
+    default: m.CelestialCalibrationChamber,
+  })),
+);
 const TheOracle = lazy(() =>
   import("./components/TheOracle").then((m) => ({ default: m.TheOracle })),
 );
@@ -881,6 +886,7 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "residue",
   "observatory",
   "mean-median-mode",
+  "celestial-calibration",
   "sanctuary",
   "scribe",
   "scry",
@@ -2291,6 +2297,7 @@ export const App: React.FC = () => {
     residue: "Residue",
     observatory: "The Observatory",
     "mean-median-mode": "Mean Median Mode",
+    "celestial-calibration": "Celestial Calibration",
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
@@ -2312,7 +2319,18 @@ export const App: React.FC = () => {
       ].includes(mode)
     )
       return "reflect";
-    if (["tailor", "loom", "action-board", "the-edit", "the-press", "wardrobe", "mimi-drop"].includes(mode))
+    if (
+      [
+        "tailor",
+        "celestial-calibration",
+        "loom",
+        "action-board",
+        "the-edit",
+        "the-press",
+        "wardrobe",
+        "mimi-drop",
+      ].includes(mode)
+    )
       return "refine";
     if (
       [
@@ -2790,6 +2808,9 @@ export const App: React.FC = () => {
                         )}
                         {viewMode === "mean-median-mode" && (
                           <ObservatoryChamber navigate={navigate} focus="mmm" />
+                        )}
+                        {viewMode === "celestial-calibration" && (
+                          <CelestialCalibrationChamber navigate={navigate} />
                         )}
                         {viewMode === "geo_engine" && (
                           <div className="h-full w-full overflow-y-auto">
