@@ -10,13 +10,24 @@ import {
   ChamberMapView,
   getCanonStatusCounts,
 } from "../components/chambers/ChamberMapView";
-import { DossierProvider } from "../components/studio-os/DossierContext";
+import {
+  DossierProvider,
+  type StudioContextState,
+} from "../components/studio-os/DossierContext";
+import {
+  CHAMBER_INTENT_EVENT,
+  type ChamberIntent,
+} from "../lib/chamberIntents";
 
 const renderMap = (
   initialMode: "studio-map" | "architecture-registry" = "studio-map",
+  initialState?: StudioContextState,
 ) =>
   render(
-    <DossierProvider storageKey="test:mimi:chamber-map">
+    <DossierProvider
+      storageKey="test:mimi:chamber-map"
+      initialState={initialState}
+    >
       <ChamberMapView initialMode={initialMode} />
     </DossierProvider>,
   );
@@ -52,6 +63,42 @@ describe("ChamberMapView", () => {
 
     expect(screen.getByText("Codex")).toBeInTheDocument();
     expect(screen.getAllByText("Registry").length).toBeGreaterThan(0);
+  });
+
+  it("keeps the approve phase in approval instead of publishing", () => {
+    let dispatchedIntent: ChamberIntent | null = null;
+    const onIntent = (event: Event) => {
+      dispatchedIntent = (
+        event as CustomEvent<{ intent: ChamberIntent }>
+      ).detail.intent;
+    };
+    window.addEventListener(CHAMBER_INTENT_EVENT, onIntent);
+
+    renderMap("studio-map", {
+      activeDossier: {
+        id: "dossier-proof",
+        title: "Studio OS proof",
+        phase: "approve",
+        fragmentCount: 5,
+        sourceCount: 3,
+        directionStatus: "approved",
+        updatedAt: Date.now(),
+      },
+      recentMaterials: [],
+      lastIntent: null,
+      updatedAt: Date.now(),
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Review the final proof/i }),
+    );
+
+    expect(dispatchedIntent).toEqual({
+      type: "approve",
+      dossierId: "dossier-proof",
+      decisionId: "dossier-proof:final-proof",
+    });
+    window.removeEventListener(CHAMBER_INTENT_EVENT, onIntent);
   });
 
   it("retains Architecture Registry status counts", () => {

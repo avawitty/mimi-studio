@@ -124,7 +124,11 @@ function actionForDossier(
       return {
         label: "Review the final proof",
         sentence: "The composition is ready for a deliberate release decision.",
-        intent: { type: "publish", artifactId: dossier.id },
+        intent: {
+          type: "approve",
+          dossierId: dossier.id,
+          decisionId: `${dossier.id}:final-proof`,
+        },
       };
     case "publish":
       return {
