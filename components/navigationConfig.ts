@@ -50,7 +50,7 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         mode: "scribe",
         label: "Scribe",
         note: "project context and atoms",
-        keywords: ["memory", "project", "atoms", "cite", "save", "persistence", "research", "knowledge", "scribe", "semantic portal"],
+        keywords: ["memory", "project", "atoms", "cite", "save", "persistence", "research", "knowledge", "scribe", "semantic portal", "threads", "narrative"],
       },
       {
         mode: "darkroom",
@@ -67,7 +67,7 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         mode: "pocket",
         label: "Pocket",
         note: "registry and saved context",
-        keywords: ["exhibit", "stand", "show", "display", "zines", "archive", "shards", "registry", "pocket"],
+        keywords: ["exhibit", "show", "display", "zines", "archive", "shards", "registry", "pocket", "saved"],
       },
       {
         mode: "wardrobe",
@@ -84,7 +84,7 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         mode: "the-edit",
         label: "The Edit",
         note: "editorial compile and diagnose",
-        keywords: ["news", "culture", "edit", "press", "intelligence", "curation", "the edit"],
+        keywords: ["news", "culture", "edit", "intelligence", "curation", "the edit", "compile", "diagnose"],
       }
     ]
   },
@@ -214,19 +214,8 @@ export const MENU_STRUCTURE: NavigationSection[] = [
           "circles",
           "inner circle",
           "correspondents",
+          "stage",
         ],
-      },
-      {
-        mode: "proscenium/correspondents",
-        label: "Correspondents",
-        note: "follows & connections (Proscenium)",
-        keywords: ["connections", "friends", "follow", "correspondents", "resonators", "people"],
-      },
-      {
-        mode: "proscenium/cliques",
-        label: "Cliques",
-        note: "inner circles on the Proscenium",
-        keywords: ["cliques", "groups", "circles", "inner circle", "squad", "invite"],
       },
       {
         mode: "private-studio",
@@ -255,8 +244,9 @@ export const MENU_STRUCTURE: NavigationSection[] = [
           "patronage",
           "initiation",
           "optioning",
-          "atelier",
           "maison",
+          "plan",
+          "access",
         ],
       },
       {
@@ -286,12 +276,6 @@ export const MENU_STRUCTURE: NavigationSection[] = [
           "desire",
           "pin",
         ],
-      },
-      {
-        mode: "threads",
-        label: "Threads",
-        note: "semantic/narrative mapping",
-        keywords: ["threads", "semantic", "ideas", "intelligence", "narrative", "mapping"],
       },
       {
         mode: "geo_engine",
