@@ -1497,7 +1497,7 @@ export const App: React.FC = () => {
   const [threadValue, setThreadValue] = useState<string>("");
   const [threadMedia, setThreadMedia] = useState<MediaFile[]>([]);
   const [threadHighFidelity, setThreadHighFidelity] = useState(false);
-  /** Escape hatch: dense InputStudio console under archival worktable desk */
+  /** Escape hatch: dense InputStudio console under Hub worktable */
   const [studioConsoleOpen, setStudioConsoleOpen] = useState(false);
 
   useEffect(() => {
