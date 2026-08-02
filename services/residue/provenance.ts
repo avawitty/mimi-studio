@@ -3,6 +3,8 @@
  * Distinguishes observed evidence from model inference.
  */
 
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import {
   RESIDUE_ENGINE_ID,
   RESIDUE_PROMPT_VERSION,
@@ -18,29 +20,10 @@ import type {
   SourceReference,
 } from "./validation";
 
-/** Browser-safe digest — avoid `node:crypto` (breaks Vite client builds on CI). */
-function fnv1aHex(input: string): string {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  // Expand to 32 hex chars with a second pass over a salt of the first hash.
-  const salt = `${input}#${(hash >>> 0).toString(16)}`;
-  let hash2 = 0x811c9dc5;
-  for (let i = 0; i < salt.length; i++) {
-    hash2 ^= salt.charCodeAt(i);
-    hash2 = Math.imul(hash2, 0x01000193);
-  }
-  const a = (hash >>> 0).toString(16).padStart(8, "0");
-  const b = (hash2 >>> 0).toString(16).padStart(8, "0");
-  const c = ((hash ^ hash2) >>> 0).toString(16).padStart(8, "0");
-  const d = ((hash + hash2) >>> 0).toString(16).padStart(8, "0");
-  return `${a}${b}${c}${d}`.slice(0, 32);
-}
-
+/** Browser-safe SHA-256 — avoid `node:crypto` (breaks Vite client builds). */
 export function hashResidueInput(parts: unknown[]): string {
-  return fnv1aHex(JSON.stringify(parts));
+  const payload = JSON.stringify(parts);
+  return bytesToHex(sha256(new TextEncoder().encode(payload))).slice(0, 32);
 }
 
 export function createRunMetadata(input: {
