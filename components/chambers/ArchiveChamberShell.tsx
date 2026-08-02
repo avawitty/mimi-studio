@@ -31,6 +31,8 @@ export interface ArchiveChamberShellProps {
   actions?: React.ReactNode;
   headerNote?: string;
   compactHeader?: boolean;
+  /** On narrow screens, hide chamber title (app chrome already names the mode) and keep guide control only. */
+  mobileGuideOnly?: boolean;
   /** Extra classes on the chamber root (e.g. mobile ink surface for Scry). */
   surfaceClassName?: string;
 }
@@ -84,6 +86,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   actions,
   headerNote,
   compactHeader = false,
+  mobileGuideOnly = false,
   surfaceClassName,
 }) => {
   const module = getCanonModule(moduleId);
@@ -122,6 +125,25 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   const activeIndex = workflowSteps.indexOf(activeWorkflowStep);
   // Short chamber name on mobile (drop alias after slash)
   const displayName = isNarrow ? module.name.split(" / ")[0] : module.name;
+  // CSS-only hide — do not gate on useIsNarrow (starts false and flashes the header).
+  const hideHeaderOnMobile = mobileGuideOnly && Boolean(contextDrawer);
+
+  const guideToggleButton = contextDrawer ? (
+    <button
+      type="button"
+      onClick={toggleDrawer}
+      title={drawerOpen ? "Hide guide" : "Show guide"}
+      aria-label={drawerOpen ? "Hide guide" : "Show guide"}
+      aria-expanded={drawerOpen}
+      className="archive-icon-btn w-9 h-9 border archive-border flex items-center justify-center"
+    >
+      {drawerOpen ? (
+        <PanelRightClose size={15} strokeWidth={1.25} />
+      ) : (
+        <PanelRightOpen size={15} strokeWidth={1.25} />
+      )}
+    </button>
+  ) : null;
 
   return (
     <div
@@ -129,10 +151,11 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
         surfaceClassName ? ` ${surfaceClassName}` : ""
       }`}
     >
+      {/* Desktop / non-guide-only header. Mobile guide-only chambers hide this entirely. */}
       <header
         className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${
           useCompactChrome ? "py-2" : "py-3 md:py-4"
-        }`}
+        } ${hideHeaderOnMobile ? "hidden md:block" : ""}`}
       >
         <div className="flex items-end justify-between gap-2 md:gap-4">
           <div className="min-w-0">
@@ -155,22 +178,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
             ) : null}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {contextDrawer ? (
-              <button
-                type="button"
-                onClick={toggleDrawer}
-                title={drawerOpen ? "Hide context drawer" : "Show context drawer"}
-                aria-label={drawerOpen ? "Hide context" : "Show context"}
-                aria-expanded={drawerOpen}
-                className="archive-icon-btn w-9 h-9 border archive-border flex items-center justify-center"
-              >
-                {drawerOpen ? (
-                  <PanelRightClose size={15} strokeWidth={1.25} />
-                ) : (
-                  <PanelRightOpen size={15} strokeWidth={1.25} />
-                )}
-              </button>
-            ) : null}
+            {guideToggleButton}
             {actions}
           </div>
         </div>
