@@ -1,6 +1,6 @@
 /**
  * Shadow-memory embedding index helpers.
- * Detects legacy / cross-provider width mismatches and selects docs to re-embed.
+ * Detects legacy / cross-provider width + model mismatches and selects docs to re-embed.
  */
 
 export type ShadowMemoryDoc = {
@@ -14,6 +14,7 @@ export type ShadowMemoryDoc = {
   embed_text?: string | null;
   type?: string | null;
   synced_at?: number | null;
+  reindexed_at?: number | null;
 };
 
 export type ShadowEmbeddingAudit = {
@@ -23,8 +24,10 @@ export type ShadowEmbeddingAudit = {
   missingVector: number;
   searchable: number;
   incompatible: number;
+  /** Docs that need rewrite and have embeddable text (actionable CTA). */
   reindexable: number;
   referenceDims: number | null;
+  referenceModel: string | null;
   widthHistogram: Record<string, number>;
   needsReindex: boolean;
 };
@@ -41,18 +44,33 @@ export function isShadowEmbeddingDoc(doc: ShadowMemoryDoc): boolean {
   return Array.isArray(doc.embedding_field) || Boolean(textForShadowEmbed(doc));
 }
 
+function docNeedsRewrite(
+  doc: ShadowMemoryDoc,
+  referenceDims: number | null,
+  referenceModel: string | null,
+): { missing: boolean; incompatible: boolean; broken: boolean } {
+  const dims = doc.embedding_field?.length || 0;
+  const missing = !dims;
+  const widthMismatch = Boolean(referenceDims != null && dims > 0 && dims !== referenceDims);
+  const docModel = String(doc.embedding_model || "").trim();
+  const modelMismatch = Boolean(referenceModel && docModel && docModel !== referenceModel);
+  const incompatible = widthMismatch || modelMismatch;
+  return { missing, incompatible, broken: missing || incompatible };
+}
+
 /**
- * Audit shadow docs against a query vector width (or majority width when unset).
+ * Audit shadow docs against a query vector width/model (or majority width when unset).
  */
 export function auditShadowEmbeddings(
   docs: ShadowMemoryDoc[],
   referenceDims?: number | null,
+  referenceModel?: string | null,
 ): ShadowEmbeddingAudit {
   const shadowDocs = docs.filter(isShadowEmbeddingDoc);
   const widthHistogram: Record<string, number> = {};
   let withVector = 0;
   let missingVector = 0;
-  let reindexable = 0;
+  const refModel = String(referenceModel || "").trim() || null;
 
   for (const doc of shadowDocs) {
     const dims = doc.embedding_field?.length || 0;
@@ -63,7 +81,6 @@ export function auditShadowEmbeddings(
     } else {
       missingVector += 1;
     }
-    if (textForShadowEmbed(doc)) reindexable += 1;
   }
 
   let resolvedRef = referenceDims && referenceDims > 0 ? referenceDims : null;
@@ -81,15 +98,14 @@ export function auditShadowEmbeddings(
 
   let searchable = 0;
   let incompatible = 0;
+  let reindexable = 0;
   for (const doc of shadowDocs) {
-    const dims = doc.embedding_field?.length || 0;
-    if (!dims) continue;
-    if (resolvedRef == null || dims === resolvedRef) searchable += 1;
-    else incompatible += 1;
+    const { missing, incompatible: incompat, broken } = docNeedsRewrite(doc, resolvedRef, refModel);
+    if (!missing && !incompat) searchable += 1;
+    else if (incompat) incompatible += 1;
+    // needsReindex only when a broken doc can actually be rewritten
+    if (broken && textForShadowEmbed(doc)) reindexable += 1;
   }
-
-  const needsReindex =
-    reindexable > 0 && (incompatible > 0 || missingVector > 0 || Object.keys(widthHistogram).length > 1);
 
   return {
     total: docs.length,
@@ -100,8 +116,9 @@ export function auditShadowEmbeddings(
     incompatible,
     reindexable,
     referenceDims: resolvedRef,
+    referenceModel: refModel,
     widthHistogram,
-    needsReindex,
+    needsReindex: reindexable > 0,
   };
 }
 
@@ -109,19 +126,15 @@ export function auditShadowEmbeddings(
 export function selectDocsForReindex(
   docs: ShadowMemoryDoc[],
   referenceDims?: number | null,
+  referenceModel?: string | null,
 ): ShadowMemoryDoc[] {
-  const audit = auditShadowEmbeddings(docs, referenceDims);
+  const audit = auditShadowEmbeddings(docs, referenceDims, referenceModel);
   const targetDims = audit.referenceDims;
+  const targetModel = audit.referenceModel;
   return docs.filter((doc) => {
     if (!isShadowEmbeddingDoc(doc)) return false;
     if (!textForShadowEmbed(doc)) return false;
-    const dims = doc.embedding_field?.length || 0;
-    if (!dims) return true;
-    if (targetDims != null && dims !== targetDims) return true;
-    // Mixed-width corpus: rewrite minority widths even when no reference provided.
-    if (Object.keys(audit.widthHistogram).length > 1 && targetDims != null && dims !== targetDims) {
-      return true;
-    }
-    return false;
+    const { broken } = docNeedsRewrite(doc, targetDims, targetModel);
+    return broken;
   });
 }

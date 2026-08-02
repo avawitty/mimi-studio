@@ -303,6 +303,8 @@ export const ScryView: React.FC = () => {
   const [isScrying, setIsScrying] = useState(false);
   const [isReindexingShadow, setIsReindexingShadow] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  /** Monotonic id so a late reindex/scry cannot overwrite a newer run. */
+  const scryRequestIdRef = useRef(0);
 
   const [trendQuery, setTrendQuery] = useState("Saturation Chic");
   const [isTrendScrying, setIsTrendScrying] = useState(false);
@@ -327,41 +329,121 @@ export const ScryView: React.FC = () => {
     window.setTimeout(() => setNotification(null), 2800);
   }, []);
 
+  const handleScry = useCallback(
+    async (q?: string) => {
+      const queryToUse = (q ?? query).trim();
+      if (!queryToUse || isScrying || isReindexingShadow) return;
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const requestId = ++scryRequestIdRef.current;
+
+      setIsScrying(true);
+      setRun(null);
+      if (q) setQuery(q);
+
+      try {
+        const next = await runSpecimenScry({
+          query: queryToUse,
+          profile,
+          geminiKey: apiKeys?.gemini,
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
+          setRun(next);
+          showNotification(describeScryOutcome(next));
+        }
+      } catch (err) {
+        console.error("MIMI // Scrying failed", err);
+        showNotification("Scry failed — see lane statuses.");
+      } finally {
+        if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
+          setIsScrying(false);
+        }
+      }
+    },
+    [apiKeys?.gemini, isReindexingShadow, isScrying, profile, query, showNotification],
+  );
+
   const handleReindexShadow = useCallback(async () => {
     if (isReindexingShadow || isScrying) return;
     setIsReindexingShadow(true);
     try {
       const result = await reindexShadowMemoryEmbeddings({
         referenceDims: run?.shadowIndexHint?.referenceDims ?? null,
+        referenceModel: run?.shadowIndexHint?.referenceModel ?? null,
         limit: 80,
       });
+
+      if (result.aborted) {
+        showNotification(
+          result.abortReason === "auth_required"
+            ? "Sign in required to re-index shadow memory."
+            : "AI unavailable — can't re-index yet.",
+        );
+        // Leave shadowIndexHint intact (aborted audits must not clear the CTA).
+        return;
+      }
+
       showNotification(
         result.updated > 0
-          ? `Re-indexed ${result.updated} shadow vector${result.updated === 1 ? "" : "s"}${result.dims ? ` → ${result.dims}d` : ""}. Run Scry again.`
+          ? `Re-indexed ${result.updated} shadow vector${result.updated === 1 ? "" : "s"}${result.dims ? ` → ${result.dims}d` : ""}. Running Scry…`
           : result.attempted === 0
             ? "No shadow vectors needed re-index."
             : `Re-index finished with ${result.failed} failure${result.failed === 1 ? "" : "s"}.`,
       );
-      if (result.updated > 0 && query.trim()) {
-        const next = await runSpecimenScry({
-          query: query.trim(),
-          profile,
-          geminiKey: apiKeys?.gemini,
-        });
-        setRun(next);
-      } else if (run?.shadowIndexHint) {
-        setRun({
-          ...run,
+
+      // Drop stale "needs re-index" Guide failures from the prior empty-hit run.
+      setRun((prev) => {
+        if (!prev) return prev;
+        const failures = (prev.failures || []).filter(
+          (f) => !(f.lane === "shadowMemory" && /re-index/i.test(f.message)),
+        );
+        if (!result.auditAfter.needsReindex) {
+          return { ...prev, failures, shadowIndexHint: undefined };
+        }
+        return {
+          ...prev,
+          failures,
           shadowIndexHint: {
-            ...run.shadowIndexHint,
-            needsReindex: result.auditAfter.needsReindex,
+            needsReindex: true,
             incompatible: result.auditAfter.incompatible,
             missingVector: result.auditAfter.missingVector,
             searchable: result.auditAfter.searchable,
             shadowDocs: result.auditAfter.shadowDocs,
             referenceDims: result.auditAfter.referenceDims,
+            referenceModel: result.auditAfter.referenceModel,
           },
-        });
+        };
+      });
+
+      if (result.updated > 0 && query.trim()) {
+        // Guarded post-reindex scry (same abort + request-id path as Run).
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+        const requestId = ++scryRequestIdRef.current;
+        setIsScrying(true);
+        try {
+          const next = await runSpecimenScry({
+            query: query.trim(),
+            profile,
+            geminiKey: apiKeys?.gemini,
+            signal: controller.signal,
+          });
+          if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
+            setRun(next);
+            showNotification(describeScryOutcome(next));
+          }
+        } catch (scryErr) {
+          console.error("MIMI // Post-reindex Scry failed", scryErr);
+          showNotification("Re-index done — Run Scry again.");
+        } finally {
+          if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
+            setIsScrying(false);
+          }
+        }
       }
     } catch (err) {
       console.error("MIMI // Shadow reindex failed", err);
@@ -375,43 +457,10 @@ export const ScryView: React.FC = () => {
     isScrying,
     profile,
     query,
-    run,
+    run?.shadowIndexHint?.referenceDims,
+    run?.shadowIndexHint?.referenceModel,
     showNotification,
   ]);
-
-  const handleScry = useCallback(
-    async (q?: string) => {
-      const queryToUse = (q ?? query).trim();
-      if (!queryToUse || isScrying) return;
-
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      setIsScrying(true);
-      setRun(null);
-      if (q) setQuery(q);
-
-      try {
-        const next = await runSpecimenScry({
-          query: queryToUse,
-          profile,
-          geminiKey: apiKeys?.gemini,
-          signal: controller.signal,
-        });
-        if (!controller.signal.aborted) {
-          setRun(next);
-          showNotification(describeScryOutcome(next));
-        }
-      } catch (err) {
-        console.error("MIMI // Scrying failed", err);
-        showNotification("Scry failed — see lane statuses.");
-      } finally {
-        if (!controller.signal.aborted) setIsScrying(false);
-      }
-    },
-    [apiKeys?.gemini, isScrying, profile, query, showNotification],
-  );
 
   useEffect(() => {
     const onSearch = (e: Event) => {
@@ -764,7 +813,7 @@ export const ScryView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => void handleScry()}
-                      disabled={isScrying || !query.trim()}
+                      disabled={isScrying || isReindexingShadow || !query.trim()}
                       aria-label="Run scry"
                       className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#f3f1ea] disabled:opacity-35"
                     >
@@ -921,7 +970,7 @@ export const ScryView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => void handleScry()}
-                      disabled={isScrying || !query.trim()}
+                      disabled={isScrying || isReindexingShadow || !query.trim()}
                       aria-label="Run scry"
                       className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-black text-white disabled:opacity-40"
                     >

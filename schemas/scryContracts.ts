@@ -85,6 +85,7 @@ export interface ScryRun {
     searchable: number;
     shadowDocs: number;
     referenceDims: number | null;
+    referenceModel?: string | null;
   };
 }
 

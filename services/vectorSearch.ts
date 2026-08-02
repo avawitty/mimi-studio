@@ -2,7 +2,7 @@ import { Product } from '../types';
 import { auth, db } from "./firebaseInit";
 import { signInAnonymously } from "firebase/auth";
 import { collection, doc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
-import { getClient, getEmbedding, getEmbeddingWithMeta } from "./geminiService";
+import { getClient, getEmbeddingWithMeta } from "./geminiService";
 import { cosineSimilarity, embeddingsCompatible } from "../lib/embeddingMath";
 import {
   auditShadowEmbeddings,
@@ -61,6 +61,24 @@ const ensureAnonymousAuth = async () => {
     } catch (e) {}
     // If no local profile found, fall back to a generic/stable local visitor ID or 'ghost'
     return 'ghost';
+  }
+};
+
+/**
+ * Bulk shadow writes must use a real Firebase uid — never the shared `ghost`
+ * / local-profile fallback (cross-client overwrite risk).
+ */
+const requireFirebaseUidForShadowWrite = async (): Promise<string | null> => {
+  if (auth.currentUser) return auth.currentUser.uid;
+  try {
+    const res = await signInAnonymously(auth);
+    return res.user.uid;
+  } catch (error: any) {
+    console.warn(
+      "MIMI // Shadow write refused: Firebase auth unavailable (no shared ghost namespace)",
+      error?.message || error,
+    );
+    return null;
   }
 };
 
@@ -143,6 +161,9 @@ export type ShadowReindexResult = {
   auditAfter: ShadowEmbeddingAudit;
   model?: string;
   dims?: number;
+  /** True when reindex did not run (AI/auth missing) — keep prior needsReindex hint. */
+  aborted?: boolean;
+  abortReason?: "ai_unavailable" | "auth_required";
 };
 
 /**
@@ -151,29 +172,63 @@ export type ShadowReindexResult = {
  */
 export const reindexShadowMemoryEmbeddings = async (options: {
   referenceDims?: number | null;
+  referenceModel?: string | null;
   limit?: number;
   onProgress?: (done: number, total: number) => void;
 } = {}): Promise<ShadowReindexResult> => {
+  const docsForAudit = async () => getAllShadowMemory();
+
   const ai = getAiClient();
   if (!ai) {
-    const empty = auditShadowEmbeddings([]);
+    const docs = await docsForAudit();
+    const audit = auditShadowEmbeddings(
+      docs,
+      options.referenceDims,
+      options.referenceModel,
+    );
     return {
       attempted: 0,
       updated: 0,
       skipped: 0,
       failed: 0,
-      auditBefore: empty,
-      auditAfter: empty,
+      auditBefore: audit,
+      auditAfter: audit,
+      aborted: true,
+      abortReason: "ai_unavailable",
     };
   }
 
-  const uid = await ensureAnonymousAuth();
+  const uid = await requireFirebaseUidForShadowWrite();
+  if (!uid) {
+    const docs = await docsForAudit();
+    const audit = auditShadowEmbeddings(
+      docs,
+      options.referenceDims,
+      options.referenceModel,
+    );
+    return {
+      attempted: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      auditBefore: audit,
+      auditAfter: audit,
+      aborted: true,
+      abortReason: "auth_required",
+    };
+  }
+
   const docs = await getAllShadowMemory();
-  const auditBefore = auditShadowEmbeddings(docs, options.referenceDims);
-  const candidates = selectDocsForReindex(docs, options.referenceDims).slice(
-    0,
-    Math.max(1, options.limit ?? 80),
+  const auditBefore = auditShadowEmbeddings(
+    docs,
+    options.referenceDims,
+    options.referenceModel,
   );
+  const candidates = selectDocsForReindex(
+    docs,
+    options.referenceDims,
+    options.referenceModel,
+  ).slice(0, Math.max(1, options.limit ?? 80));
 
   let updated = 0;
   let skipped = 0;
@@ -198,6 +253,7 @@ export const reindexShadowMemoryEmbeddings = async (options: {
       }
       lastModel = model;
       lastDims = values.length;
+      // Preserve original synced_at for timeRange age; record reindex separately.
       await setDoc(
         doc(db, `users/${uid}/memory`, candidate.id),
         {
@@ -207,7 +263,7 @@ export const reindexShadowMemoryEmbeddings = async (options: {
           embedding_field: values,
           embedding_dims: values.length,
           embedding_model: model,
-          synced_at: Date.now(),
+          reindexed_at: Date.now(),
         },
         { merge: true },
       );
@@ -223,6 +279,7 @@ export const reindexShadowMemoryEmbeddings = async (options: {
   const auditAfter = auditShadowEmbeddings(
     docsAfter,
     lastDims ?? options.referenceDims ?? auditBefore.referenceDims,
+    lastModel ?? options.referenceModel ?? auditBefore.referenceModel,
   );
 
   return {
@@ -258,24 +315,33 @@ export const scryShadowMemoryLane = async (
     if (!ai) return { hits: [], audit: emptyAudit };
 
     const uid = await ensureAnonymousAuth();
-
-    const queryVector = await getEmbedding([{ text: userQuery.slice(0, 2000) }]);
-    if (!queryVector) return { hits: [], audit: emptyAudit };
-
     const memoryCollection = collection(db, `users/${uid}/memory`);
     const snapshot = await getDocs(memoryCollection);
     const docs = snapshot.docs.map((d) => ({ ...d.data(), id: d.id } as ShadowMemoryDoc));
-    const audit = auditShadowEmbeddings(docs, queryVector.length);
+
+    // Audit even when the query embed fails so width/model drift still surfaces.
+    const { values: queryVector, model: queryModel } = await getEmbeddingWithMeta([
+      { text: userQuery.slice(0, 2000) },
+    ]);
+    const audit = auditShadowEmbeddings(
+      docs,
+      queryVector?.length ?? null,
+      queryModel || null,
+    );
+    if (!queryVector) return { hits: [], audit };
 
     const now = Date.now();
     const oneWeek = 7 * 24 * 60 * 60 * 1000;
     const oneMonth = 30 * 24 * 60 * 60 * 1000;
+    const queryModelId = String(queryModel || "").trim();
 
     const hits = snapshot.docs
       .map((d) => {
         const data = d.data() as any;
         const field = data.embedding_field as number[] | undefined;
-        if (!embeddingsCompatible(queryVector, field)) {
+        const docModel = String(data.embedding_model || "").trim();
+        const modelMismatch = Boolean(queryModelId && docModel && docModel !== queryModelId);
+        if (!embeddingsCompatible(queryVector, field) || modelMismatch) {
           return { ...data, id: d.id, similarity: 0, _incompatible: true } as ShadowScryHit;
         }
         return {
