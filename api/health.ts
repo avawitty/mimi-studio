@@ -1,4 +1,46 @@
 import { cors, sendJson } from "../lib/apiUtils.js";
+import { isSovereignEnabled } from "../lib/sovereign/db.js";
+import { isSovereignGatewayEmbedEnabled } from "../lib/sovereign/embeddings.js";
+import { neonAuthStatusSnippet } from "../lib/sovereign/neonAuth.js";
+
+/** Keep /api/health under typical serverless wait budgets when Neon is slow. */
+const SOVEREIGN_HEALTH_BUDGET_MS = 9_000;
+
+const fallbackSovereignStatus = () => ({
+  enabled: isSovereignEnabled(),
+  ready: false,
+  backend: null as "sqlite" | "postgres" | null,
+  path: null as string | null,
+  zineCount: 0,
+  publicCount: 0,
+  profileCount: 0,
+  pocketCount: 0,
+  schemaVersion: null as number | null,
+  latencyMs: null as number | null,
+  gatewayEmbed: isSovereignGatewayEmbedEnabled(),
+  embeddedCount: 0,
+  ...neonAuthStatusSnippet(),
+});
+
+const sovereignStatusSafe = async () => {
+  const fallback = fallbackSovereignStatus();
+  try {
+    // Dynamic import keeps health bootable even if sovereign modules fail to load.
+    const { sovereignStatus } = await import("../lib/sovereign/store.js");
+    return await Promise.race([
+      sovereignStatus(),
+      new Promise<typeof fallback>((resolve) => {
+        setTimeout(() => resolve(fallback), SOVEREIGN_HEALTH_BUDGET_MS);
+      }),
+    ]);
+  } catch (error: unknown) {
+    console.warn("MIMI // health: sovereign status failed", error);
+    return {
+      ...fallback,
+      error: error instanceof Error ? error.message.slice(0, 200) : String(error).slice(0, 200),
+    };
+  }
+};
 
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
@@ -10,24 +52,14 @@ export default async function handler(req: any, res: any) {
     process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN,
   );
 
-  let sovereign: Record<string, unknown> = {
-    enabled: false,
-    ready: false,
-    backend: null,
-    path: null,
-    zineCount: 0,
-    publicCount: 0,
-    profileCount: 0,
-    pocketCount: 0,
-  };
+  let sovereign: Record<string, unknown> = fallbackSovereignStatus();
   try {
-    const { sovereignStatus } = await import("../lib/sovereign/store.js");
-    sovereign = await sovereignStatus();
+    sovereign = await sovereignStatusSafe();
   } catch (error: unknown) {
-    console.warn("MIMI // health: sovereign status failed", error);
+    console.warn("MIMI // health: sovereign probe crashed", error);
     sovereign = {
-      ...sovereign,
-      error: error instanceof Error ? error.message : String(error),
+      ...fallbackSovereignStatus(),
+      error: error instanceof Error ? error.message.slice(0, 200) : String(error).slice(0, 200),
     };
   }
 
@@ -38,7 +70,7 @@ export default async function handler(req: any, res: any) {
       serverAiEnabled,
       defaultProvider: aiGatewayAvailable ? "gateway" : "legacy",
       gemini: serverAiEnabled && Boolean(process.env.GEMINI_API_KEY || process.env.API_KEY),
-      openai: serverAiEnabled && Boolean(process.env['OPENAI_API_KEY']),
+      openai: serverAiEnabled && Boolean(process.env.OPENAI_API_KEY),
       anthropic: serverAiEnabled && Boolean(process.env.ANTHROPIC_API_KEY),
       openrouter: serverAiEnabled && Boolean(process.env.OPENROUTER_API_KEY),
       aiGateway: aiGatewayAvailable,
