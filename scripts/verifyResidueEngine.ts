@@ -29,12 +29,15 @@ import {
   literalMode,
   meanMedianModeResultSchema,
   redactSensitiveText,
+  adaptResidueToMeanMedianMode,
+  buildLiteralMeanMedianMode,
   runCulturalResidue,
   runEmotionalResidue,
   safeParseCulturalResidueResult,
   sanitizeEmotionalStatement,
   separateResearchFromCommunityReports,
   sourceQualityScore,
+  toMeanMedianMode,
 } from "../services/residue/index";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -570,7 +573,64 @@ async function main() {
     "offers alternatives / multiple neighborhoods",
   );
 
-  console.log("OK — Residue Phase 2–4 checks passed.");
+  // --- Phase 5: Mean / Median / Mode adapter ---
+  const culturalEngine = await runCulturalResidue(
+    {
+      query: "indie sleaze",
+      userNotes: [
+        "Indie sleaze revived on short-form feeds with flash photography codes.",
+        "Retail capsules absorbed thrifted partywear; fatigue and backlash appear in comments.",
+      ],
+      sourceUrls: ["https://example.com/indie-sleaze"],
+      retention: "temporary",
+      consentToStore: false,
+    },
+    { llm: { offline: true }, now },
+  );
+  const culturalMmm = adaptResidueToMeanMedianMode(culturalEngine.result, {
+    includeLiteralCompanion: true,
+  });
+  assert(culturalMmm.interpretive.analysisKind === "interpretive-metaphor", "cultural interpretive kind");
+  assert(
+    culturalMmm.interpretive.mean.caveats.some((c) => /not a literal/i.test(c)),
+    "interpretive mean labeled non-literal",
+  );
+  assert(culturalMmm.literal?.analysisKind === "literal-statistical", "cultural literal companion");
+  assert(
+    typeof culturalMmm.literal?.mean.numericValue === "number",
+    "literal mean has numericValue",
+  );
+  assert(culturalMmm.interpretive.counterMode.length >= 1, "cultural counter-mode present");
+  assert(toMeanMedianMode(culturalEngine.result).subject.includes("indie"), "toMeanMedianMode subject");
+
+  // Literal vs interpretive must not be blurred
+  const pureLiteral = buildLiteralMeanMedianMode({
+    subject: "confidence scores",
+    values: [0.2, 0.4, 0.4, 0.9],
+    signalIds: ["a", "b", "c", "d"],
+  });
+  assert(pureLiteral.analysisKind === "literal-statistical", "pure literal kind");
+  assert(pureLiteral.mean.numericValue !== undefined, "pure literal numeric");
+  assert(
+    pureLiteral.mean.caveats.some((c) => /literal statistical mean/i.test(c)),
+    "literal caveat",
+  );
+  assert(pureLiteral.analysisKind !== culturalMmm.interpretive.analysisKind, "kinds remain distinct");
+
+  const emotionalMmm = adaptResidueToMeanMedianMode(mindRead.result, {
+    includeLiteralCompanion: true,
+  });
+  assert(emotionalMmm.interpretive.analysisKind === "interpretive-metaphor", "emotional interpretive");
+  assert(
+    emotionalMmm.interpretive.confidence.summary.includes("not a diagnostic likelihood"),
+    "mmm confidence non-diagnostic",
+  );
+  assert(
+    emotionalMmm.interpretive.mode.dominantPattern.length > 0,
+    "emotional mode pattern",
+  );
+
+  console.log("OK — Residue Phase 2–5 checks passed.");
 }
 
 main().catch((err) => {

@@ -1,5 +1,5 @@
 /**
- * Mimi Residue Engine — public API (Phases 2–4).
+ * Mimi Residue Engine — public API (Phases 2–5).
  */
 
 export * from "./constants";
@@ -46,3 +46,14 @@ export {
 export { normalizeSources } from "./shared/normalizeSources";
 export { extractEvidenceOffline } from "./shared/extractEvidence";
 export { separateResearchFromCommunityReports } from "./emotional/separateResearchFromCommunityReports";
+
+export {
+  adaptResidueToMeanMedianMode,
+  adaptCulturalInterpretive,
+  adaptEmotionalInterpretive,
+  toMeanMedianMode,
+} from "./adapters/meanMedianModeAdapter";
+export {
+  buildInterpretiveMeanMedianMode,
+  buildLiteralMeanMedianMode,
+} from "./shared/meanMedianMode";
