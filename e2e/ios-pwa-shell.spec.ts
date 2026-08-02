@@ -206,19 +206,19 @@ test.describe("Keyboard avoidance", () => {
     // iOS focus-zoom is prevented by ≥16px form controls on narrow viewports.
     // Probe input, textarea, and select — each has its own CSS rule.
     const formControlFontSizes = await page.evaluate(() => {
-      const probes: Array<{ tag: "input" | "textarea" | "select"; size: number }> =
-        [];
-      for (const tag of ["input", "textarea", "select"] as const) {
-        const el = document.createElement(tag);
-        if (tag === "input") el.type = "text";
+      const measure = (el: HTMLElement) => {
         document.body.appendChild(el);
-        probes.push({
-          tag,
-          size: Number.parseFloat(getComputedStyle(el).fontSize),
-        });
+        const size = Number.parseFloat(getComputedStyle(el).fontSize);
         el.remove();
-      }
-      return probes;
+        return size;
+      };
+      const input = document.createElement("input");
+      input.type = "text";
+      return [
+        { tag: "input" as const, size: measure(input) },
+        { tag: "textarea" as const, size: measure(document.createElement("textarea")) },
+        { tag: "select" as const, size: measure(document.createElement("select")) },
+      ];
     });
     for (const { tag, size } of formControlFontSizes) {
       expect(size, `${tag} font-size`).toBeGreaterThanOrEqual(16);
