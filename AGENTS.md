@@ -24,11 +24,14 @@ starts everything on one port.
   `vite.config.ts` `define`). Never commit secrets.
 
 ### AI Gateway models
-- When calling Vercel AI Gateway for **text, image, audio (TTS), or video** generation,
+- When calling Vercel AI Gateway for **text, image, audio (TTS), video, or embeddings**,
   use `modelFor(role, "gateway")` or `suggestedGatewayModel(role)` from
   `services/modelConfig.ts` / `lib/models.ts`. Do not hardcode outdated provider model
   strings — defaults track the newest curated catalog IDs (env-overridable via
   `AI_GATEWAY_*_MODEL` in `.env.example`).
+- Embeddings: prefer `embedGatewayText` / `embedManyGatewayText` in `lib/ai/generate.ts`
+  (or `POST /api/mimi/embed`). Default model is `openai/text-embedding-3-small`. The
+  Gemini proxy also remaps `embedContent` through `embedGeminiContentViaGateway`.
 - Re-verify IDs against `https://ai-gateway.vercel.sh/v1/models` when bumping
   `GATEWAY_DEFAULT_MODELS`.
 

@@ -23,6 +23,7 @@ import type {
   SourceReference,
 } from "./validation";
 
+/** Browser-safe SHA-256 — avoid `node:crypto` (breaks Vite client builds). */
 export function hashResidueInput(parts: unknown[]): string {
   const payload = JSON.stringify(parts);
   return bytesToHex(sha256(new TextEncoder().encode(payload))).slice(0, 32);
