@@ -81,6 +81,28 @@ assert(dossier.nextExperiments.some((e) => /Reading|reference|strategic/i.test(e
 assert(dossier.creativeOperatingSystem.designLaws.length >= 3, "need design laws");
 assert(!/gemini/i.test(JSON.stringify(dossier)), "local dossier must not mention gemini");
 
+// Blueprint-only palette + exclusion-principles digest label (bugbot PR #85)
+const digestWithExclusionLabel = `
+Primary color: #112233
+Accent color: #445566
+Base neutral: #778899
+Exclusion principles (what they refuse): soft gradient pastels, trend mimicry
+`;
+const blueprintOnly = synthesizeLocalCreativeDossier({
+  imageCount: 0,
+  blueprintDigest: digestWithExclusionLabel,
+});
+assert(
+  blueprintOnly.likenessManifest.accentHex === "#445566" ||
+    blueprintOnly.references.some((r) => r.palette?.includes("#112233")),
+  "declared blueprint hex colors must feed hexPalette / likeness",
+);
+assert(
+  JSON.stringify(blueprintOnly).toLowerCase().includes("soft gradient") ||
+    JSON.stringify(blueprintOnly).toLowerCase().includes("trend mimicry"),
+  "exclusion principles digest label must feed refuse / anti-motifs",
+);
+
 const audit = synthesizeLocalTailorAudit(
   {
     positioningCore: {

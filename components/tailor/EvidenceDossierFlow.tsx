@@ -128,7 +128,9 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
     const providers: LLMProvider[] = ['openai', 'anthropic', 'gemini'];
     const keys: DossierProviderKey[] = [];
     for (const provider of providers) {
-      const { key } = resolveApiKey(provider, activePersona?.apiKey, profile?.planStatus);
+      // Persona apiKey is a legacy Gemini override — never broadcast it to OpenAI/Anthropic.
+      const personaOverride = provider === 'gemini' ? activePersona?.apiKey : undefined;
+      const { key } = resolveApiKey(provider, personaOverride, profile?.planStatus);
       if (key) keys.push({ provider, key });
     }
     return keys;
@@ -164,7 +166,8 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
         apiKey: providerKeys.find((k) => k.provider === 'gemini')?.key,
         blueprintDigest: blueprintDigest || undefined,
         priorContext,
-        preferFundedGateway: !providerKeys.length && canUseFundedPath,
+        // Prefer trial/funded path when available; stale BYOK must not skip it.
+        preferFundedGateway: canUseFundedPath,
         allowLocalFallback: true,
       });
       setDossier(result);
