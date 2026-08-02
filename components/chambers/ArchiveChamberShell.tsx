@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import { getCanonModule } from "./ChamberShell";
 import { ChamberHandoff } from "../ChamberHandoff";
@@ -56,6 +56,18 @@ export const ArchiveContextPanel: React.FC<{
   </div>
 );
 
+function useIsNarrow(query = "(max-width: 767px)") {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [query]);
+  return narrow;
+}
+
 export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   moduleId,
   spine,
@@ -72,13 +84,31 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   compactHeader = false,
 }) => {
   const module = getCanonModule(moduleId);
+  const isNarrow = useIsNarrow();
+  const isControlled = typeof onContextDrawerToggle === "function";
+  const preferOpenOnDesktop = controlledDrawerOpen === true;
+
   const [internalDrawerOpen, setInternalDrawerOpen] = useState(false);
-  const drawerOpen = onContextDrawerToggle ? (controlledDrawerOpen ?? internalDrawerOpen) : internalDrawerOpen;
+
+  // Uncontrolled: open context rail on desktop when callers pass contextDrawerOpen,
+  // keep mobile closed so the canvas is the first paint.
+  useEffect(() => {
+    if (isControlled) return;
+    setInternalDrawerOpen(!isNarrow && preferOpenOnDesktop);
+  }, [isControlled, isNarrow, preferOpenOnDesktop]);
+
+  const drawerOpen = isControlled
+    ? Boolean(controlledDrawerOpen)
+    : internalDrawerOpen;
+
   const toggleDrawer =
     onContextDrawerToggle ??
     (() => {
       setInternalDrawerOpen((open) => !open);
     });
+
+  // Mobile always uses compact chrome; desktop honors compactHeader prop.
+  const useCompactChrome = compactHeader || isNarrow;
 
   if (!module) {
     return (
@@ -87,21 +117,31 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   }
 
   const activeIndex = workflowSteps.indexOf(activeWorkflowStep);
+  // Short chamber name on mobile (drop alias after slash)
+  const displayName = isNarrow ? module.name.split(" / ")[0] : module.name;
 
   return (
     <div className="archive-chamber binder-portfolio relative flex flex-col h-full min-h-0">
-      <header className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${compactHeader ? "py-2" : "py-3 md:py-4"}`}>
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-2 md:gap-4">
+      <header
+        className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${
+          useCompactChrome ? "py-2" : "py-3 md:py-4"
+        }`}
+      >
+        <div className="flex items-end justify-between gap-2 md:gap-4">
           <div className="min-w-0">
-            {!compactHeader ? (
+            {!useCompactChrome ? (
               <p className="font-mono text-[8px] uppercase tracking-[0.35em] archive-text-muted font-black hidden md:block">
                 {module.engine}
               </p>
             ) : null}
-            <h1 className={`font-serif italic archive-text-ink tracking-tight ${compactHeader ? "text-lg" : "text-2xl md:text-[2rem] leading-none"}`}>
-              {module.name}
+            <h1
+              className={`font-serif italic archive-text-ink tracking-tight ${
+                useCompactChrome ? "text-lg leading-none" : "text-2xl md:text-[2rem] leading-none"
+              }`}
+            >
+              {displayName}
             </h1>
-            {!compactHeader ? (
+            {!useCompactChrome ? (
               <p className="font-sans text-[10px] archive-text-muted mt-2 max-w-xl leading-relaxed hidden md:block">
                 {headerNote ?? module.userFlow}
               </p>
@@ -113,6 +153,8 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
                 type="button"
                 onClick={toggleDrawer}
                 title={drawerOpen ? "Hide context drawer" : "Show context drawer"}
+                aria-label={drawerOpen ? "Hide context" : "Show context"}
+                aria-expanded={drawerOpen}
                 className="archive-icon-btn w-9 h-9 border archive-border flex items-center justify-center"
               >
                 {drawerOpen ? (
@@ -126,10 +168,10 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
           </div>
         </div>
 
-        {!compactHeader ? (
+        {!useCompactChrome ? (
           <nav
             aria-label="Workflow"
-            className="mt-3 md:mt-4 flex flex-wrap items-end gap-0 border-b border-archive-ink/80"
+            className="mt-3 md:mt-4 hidden md:flex flex-wrap items-end gap-0 border-b border-archive-ink/80"
           >
             {workflowSteps.map((step, index) => {
               const isActive = step === activeWorkflowStep;
@@ -189,14 +231,17 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
             />
             <aside
               className="archive-drawer overflow-hidden flex flex-col archive-border
-                fixed inset-x-0 bottom-0 top-14 z-[90] border-t shadow-2xl
-                md:static md:inset-auto md:top-auto md:z-auto md:shadow-none md:shrink-0 md:w-80 md:border-t-0 md:border-l"
+                fixed inset-x-0 bottom-0 z-[90] border-t shadow-2xl max-h-[min(72vh,560px)]
+                md:static md:inset-auto md:top-auto md:z-auto md:shadow-none md:shrink-0 md:w-80 md:max-h-none md:border-t-0 md:border-l md:h-full"
               aria-label={contextDrawerTitle}
             >
               <div className="md:hidden flex items-center justify-between px-4 py-3 border-b archive-border shrink-0">
-                <span className="font-mono text-[9px] uppercase tracking-[0.2em] archive-text-muted font-black">
-                  {contextDrawerTitle}
-                </span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <span aria-hidden className="block w-8 h-0.5 bg-stone-400 shrink-0" />
+                  <span className="font-mono text-[9px] uppercase tracking-[0.2em] archive-text-muted font-black truncate">
+                    {contextDrawerTitle}
+                  </span>
+                </div>
                 <button
                   type="button"
                   onClick={toggleDrawer}
@@ -206,7 +251,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
                   <X size={14} strokeWidth={1.5} />
                 </button>
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col pb-[env(safe-area-inset-bottom,0px)]">
                 {contextDrawer}
               </div>
             </aside>
