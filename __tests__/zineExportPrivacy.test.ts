@@ -39,7 +39,7 @@ describe("zine export privacy and ownership", () => {
   });
 
   it("keeps cover and compile optional while blocking core identity failures", () => {
-    const metadata = {
+    const metadata: ZineMetadata = {
       ...makeLegacyZineMetadata(),
       coverImageUrl: undefined,
       editorialCompileMarkdown: undefined,
