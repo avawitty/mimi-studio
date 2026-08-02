@@ -8,7 +8,12 @@ import {
   , ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
-import { getTasteGraph, saveTasteGraph } from '../services/tasteGraphService';
+import {
+  compileAndSaveTasteFootprint,
+  getTasteFootprint,
+  getTasteGraph,
+  saveTasteGraph,
+} from '../services/tasteGraphService';
 import { extractTasteGraphNodes } from '../services/geminiService';
 import { getAllShadowMemory } from '../services/vectorSearch';
 import { generateClusterAnchors } from '../services/clusteringService';
@@ -16,6 +21,14 @@ import { fetchPocketItems } from '../services/firebaseUtils';
 import { auth } from '../services/firebaseInit';
 import { TasteGraphNode, TasteGraphEdge } from '../types';
 import { useTasteGravity } from '../hooks/useTasteGravity';
+import {
+  compileTasteFootprint,
+  emptyTasteFootprint,
+  footprintCounts,
+  footprintSignalScore,
+  preferRicherFootprint,
+  type TasteFootprint,
+} from '../lib/tasteFootprint';
 import {
   ArchiveChamberShell,
   ArchiveContextPanel,
@@ -78,12 +91,40 @@ export const TasteGraph: React.FC = () => {
   const [calibrationProtocol, setCalibrationProtocol] = useState('Active');
   const [entropyMode, setEntropyMode] = useState('Unified');
   const [extractNotice, setExtractNotice] = useState<string | null>(null);
+  const [footprint, setFootprint] = useState<TasteFootprint>(() => emptyTasteFootprint());
+  const [footprintSection, setFootprintSection] = useState<
+    'anchors' | 'embeddings' | 'tags' | 'clusters' | null
+  >('anchors');
 
-  const retrievedTags = Array.from(
-    new Set(
-      nodes.flatMap((n) => (Array.isArray(n.tags) ? n.tags : [])).map((t) => String(t).trim()).filter(Boolean),
-    ),
-  ).slice(0, 36);
+  const liveFootprint = compileTasteFootprint({
+    nodes,
+    points: tasteGravity.points,
+    clusters: tasteGravity.clusters,
+    dimension: tasteGravity.dimension,
+    source: 'live',
+  });
+  const displayFootprint = preferRicherFootprint(liveFootprint, footprint);
+  const counts = footprintCounts(displayFootprint);
+  const retrievedTags = displayFootprint.retrievedTags;
+
+  const syncFootprint = async (
+    uid: string | null | undefined,
+    input: {
+      nodes: TasteGraphNode[];
+      points: typeof tasteGravity.points;
+      clusters: typeof tasteGravity.clusters;
+      dimension: number;
+    },
+  ) => {
+    const compiled = await compileAndSaveTasteFootprint(uid, {
+      nodes: input.nodes,
+      points: input.points,
+      clusters: input.clusters,
+      dimension: input.dimension,
+    });
+    setFootprint(compiled);
+    return compiled;
+  };
 
   const handleYouSearch = async () => {
     if (!youQuery.trim()) return;
@@ -191,24 +232,62 @@ export const TasteGraph: React.FC = () => {
     setLoading(true);
     try {
       if (user && !user.isAnonymous) {
-        const graph = await getTasteGraph(user.uid);
+        const [graph, storedFootprint, gravity] = await Promise.all([
+          getTasteGraph(user.uid),
+          getTasteFootprint(user.uid),
+          tasteGravity.refresh(),
+        ]);
         setNodes(graph.nodes);
         setEdges(graph.edges);
+
+        const live = compileTasteFootprint({
+          nodes: graph.nodes,
+          points: gravity.points,
+          clusters: gravity.clusters,
+          dimension: tasteGravity.dimension || gravity.points[0]?.vector?.length || 0,
+          source: 'live',
+        });
+        const next = storedFootprint
+          ? preferRicherFootprint(live, storedFootprint)
+          : live;
+        setFootprint(next);
+
+        // Persist only when live streams are strictly richer than the stored doc.
+        const liveScore = footprintSignalScore(live);
+        const storedScore = storedFootprint ? footprintSignalScore(storedFootprint) : -1;
+        if (liveScore > storedScore) {
+          void syncFootprint(user.uid, {
+            nodes: graph.nodes,
+            points: gravity.points,
+            clusters: gravity.clusters,
+            dimension: live.dimension,
+          });
+        }
       } else {
         // Fallback or demo nodes to make it beautiful even in local mode or anonymous preview
-        setNodes([
-          { id: 'n1', label: 'Neo-Brutalist', type: 'concept', weight: 3.2, explanation: 'Bold geometry, raw layout structures, and high-contrast space distribution.' },
-          { id: 'n2', label: 'Cormorant Serif', type: 'motif', weight: 2.4, explanation: 'Delicate editorial sophistry, precise hairline serifs and spacious letter trackings.' },
-          { id: 'n3', label: 'Post-Digital Archive', type: 'era', weight: 4.1, explanation: 'Immersive tactile scanlines, nostalgic dithered pixels, and historic catalogs.' },
-          { id: 'n4', label: 'Tactile Stone', type: 'motif', weight: 1.8, explanation: 'Porous organic paper textures, raw mineral minerals, and warm clay palettes.' },
-          { id: 'n5', label: 'Symmetric Balance', type: 'concept', weight: 2.8, explanation: 'Grid-driven classic balances, structured layouts, and quiet borders.' }
-        ]);
+        const demoNodes: TasteGraphNode[] = [
+          { id: 'n1', label: 'Neo-Brutalist', type: 'concept', weight: 3.2, explanation: 'Bold geometry, raw layout structures, and high-contrast space distribution.', tags: ['brutalism', 'grid', 'contrast'] },
+          { id: 'n2', label: 'Cormorant Serif', type: 'motif', weight: 2.4, explanation: 'Delicate editorial sophistry, precise hairline serifs and spacious letter trackings.', tags: ['editorial', 'serif', 'margin'] },
+          { id: 'n3', label: 'Post-Digital Archive', type: 'era', weight: 4.1, explanation: 'Immersive tactile scanlines, nostalgic dithered pixels, and historic catalogs.', tags: ['archive', 'scanline', 'dither'] },
+          { id: 'n4', label: 'Tactile Stone', type: 'motif', weight: 1.8, explanation: 'Porous organic paper textures, raw mineral minerals, and warm clay palettes.', tags: ['mineral', 'clay', 'tactile'] },
+          { id: 'n5', label: 'Symmetric Balance', type: 'concept', weight: 2.8, explanation: 'Grid-driven classic balances, structured layouts, and quiet borders.', tags: ['symmetry', 'classic', 'structure'] }
+        ];
+        setNodes(demoNodes);
         setEdges([
           { source: 'n1', target: 'n3', strength: 0.8, type: 'relates_to' },
           { source: 'n3', target: 'n2', strength: 0.4, type: 'contrasts_with' },
           { source: 'n1', target: 'n5', strength: 0.9, type: 'relates_to' },
           { source: 'n4', target: 'n1', strength: 0.5, type: 'relates_to' }
         ]);
+        setFootprint(
+          compileTasteFootprint({
+            nodes: demoNodes,
+            points: [],
+            clusters: [],
+            dimension: 0,
+            source: 'live',
+          }),
+        );
       }
     } catch (e) {
       console.error("MIMI // Failed to load taste graph:", e);
@@ -296,15 +375,18 @@ export const TasteGraph: React.FC = () => {
           console.warn("MIMI // Pattern synthesis clusters deferred:", clusterErr);
         }
         const gravity = await tasteGravity.refresh();
-        const tagCount = graph.nodes.reduce(
-          (acc, n) => acc + (Array.isArray(n.tags) ? n.tags.length : 0),
-          0,
-        );
-        const embeddingCount =
-          gravity.points.length ||
-          shadow.filter((m: any) => Array.isArray(m.embedding_field)).length;
+        const compiled = await syncFootprint(user?.uid, {
+          nodes: graph.nodes,
+          points: gravity.points,
+          clusters: gravity.clusters,
+          dimension:
+            gravity.points[0]?.vector?.length ||
+            shadow.find((m: any) => Array.isArray(m.embedding_field))?.embedding_field?.length ||
+            0,
+        });
+        const c = footprintCounts(compiled);
         setExtractNotice(
-          `Pattern synthesis complete · ${graph.nodes.length} nodes · ${tagCount} retrieved tags · ${embeddingCount} embeddings listed.`,
+          `Footprint compiled · ${c.plottedAnchors} anchors · ${c.retrievedTags} tags · ${c.listedEmbeddings} embeddings · ${c.patternClusters} clusters.`,
         );
       } else {
         setExtractNotice("Extraction returned an empty graph. Try adding more varied artifacts.");
@@ -734,7 +816,7 @@ export const TasteGraph: React.FC = () => {
       actions={
         <div className="flex items-center gap-2">
           <span className="hidden lg:inline font-mono text-[9px] uppercase tracking-widest archive-text-muted">
-            {nodes.length} nodes · {tasteGravity.points.length} embeddings
+            {counts.plottedAnchors} anchors · {counts.listedEmbeddings} embeddings · {counts.patternClusters} clusters
           </span>
           <button
             type="button"
@@ -838,36 +920,169 @@ export const TasteGraph: React.FC = () => {
                   {/* TAB I: VECTOR MAP */}
                   {activeTab === 'map' && (
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-8 h-full items-center">
-                      <div className="md:col-span-7 aspect-square max-h-[440px] bg-stone-50 dark:bg-[#0d0d0d] border border-stone-200/60 dark:border-stone-850/60 p-4 relative flex items-center justify-center shadow-xs">
+                      <div className="order-2 md:order-1 md:col-span-7 aspect-square max-h-[440px] bg-stone-50 dark:bg-[#0d0d0d] border border-stone-200/60 dark:border-stone-850/60 p-4 relative flex items-center justify-center shadow-xs">
                         {renderCoordinateMapSVG()}
                       </div>
 
-                      <div className="md:col-span-5 space-y-5 text-left flex flex-col justify-center">
+                      <div className="order-1 md:order-2 md:col-span-5 space-y-5 text-left flex flex-col justify-center">
                         <div className="space-y-1.5 border-l-2 border-amber-500 pl-4">
                           <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-stone-400 block">COORDINATE MAPPING MODEL</span>
                           <h2 className="font-serif text-2xl font-semibold leading-tight">Latent Space Coordinate Vector Projection</h2>
                         </div>
                         <p className="font-serif italic text-stone-600 dark:text-stone-400 text-xs leading-relaxed">
-                          Your visual artifacts and editorial selections are processed into high-dimension embeddings and mapped relative to your core taste footprint.
+                          Your visual artifacts and editorial selections are stored, recalled, and compiled into a taste footprint — anchors, embeddings, tags, and pattern clusters in one ledger.
                         </p>
                         
-                        <div className="space-y-2 bg-stone-50 dark:bg-stone-900 border border-stone-200/50 dark:border-stone-850/50 p-4 text-xs">
-                          <div className="flex justify-between border-b border-stone-200 dark:border-stone-800 pb-1.5">
-                            <span className="font-mono text-stone-400">Plotted Anchors:</span>
-                            <span className="font-mono font-bold">{nodes.length} Items</span>
+                        <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200/50 dark:border-stone-850/50 text-xs">
+                          <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-stone-200 dark:border-stone-800">
+                            <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-stone-400">
+                              Taste Footprint
+                            </span>
+                            <span className="font-mono text-[8px] uppercase tracking-widest text-stone-500">
+                              {displayFootprint.source === 'stored' ? 'Stored' : 'Live'} ·{' '}
+                              {new Date(displayFootprint.compiledAt).toLocaleDateString()}
+                              {displayFootprint.dimension
+                                ? ` · ${displayFootprint.dimension}D`
+                                : ''}
+                            </span>
                           </div>
-                          <div className="flex justify-between border-b border-stone-200 dark:border-stone-800 pb-1.5">
-                            <span className="font-mono text-stone-400">Listed Embeddings:</span>
-                            <span className="font-mono font-bold">{tasteGravity.points.length}</span>
-                          </div>
-                          <div className="flex justify-between border-b border-stone-200 dark:border-stone-800 pb-1.5">
-                            <span className="font-mono text-stone-400">Retrieved Tags:</span>
-                            <span className="font-mono font-bold">{retrievedTags.length}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="font-mono text-stone-400">Pattern Clusters:</span>
-                            <span className="font-mono font-bold text-[#10b981]">{tasteGravity.clusters.length}</span>
-                          </div>
+
+                          {(
+                            [
+                              {
+                                key: 'anchors' as const,
+                                label: 'Plotted Anchors',
+                                count: counts.plottedAnchors,
+                                accent: '',
+                              },
+                              {
+                                key: 'embeddings' as const,
+                                label: 'Listed Embeddings',
+                                count: counts.listedEmbeddings,
+                                accent: '',
+                              },
+                              {
+                                key: 'tags' as const,
+                                label: 'Retrieved Tags',
+                                count: counts.retrievedTags,
+                                accent: '',
+                              },
+                              {
+                                key: 'clusters' as const,
+                                label: 'Pattern Clusters',
+                                count: counts.patternClusters,
+                                accent: 'text-[#10b981]',
+                              },
+                            ] as const
+                          ).map((row) => (
+                            <button
+                              key={row.key}
+                              type="button"
+                              onClick={() =>
+                                setFootprintSection((prev) =>
+                                  prev === row.key ? null : row.key,
+                                )
+                              }
+                              className={`w-full flex justify-between items-center px-4 py-2 border-b border-stone-200 dark:border-stone-800 last:border-b-0 text-left transition-colors ${
+                                footprintSection === row.key
+                                  ? 'bg-amber-500/5'
+                                  : 'hover:bg-stone-100/80 dark:hover:bg-stone-800/40'
+                              }`}
+                            >
+                              <span className="font-mono text-stone-400">{row.label}:</span>
+                              <span className={`font-mono font-bold ${row.accent}`}>
+                                {row.count}
+                                {row.key === 'anchors' ? ' Items' : ''}
+                                <span className="ml-2 text-stone-400 font-normal">
+                                  {footprintSection === row.key ? '−' : '+'}
+                                </span>
+                              </span>
+                            </button>
+                          ))}
+
+                          {footprintSection === 'anchors' && (
+                            <div className="px-4 py-3 border-t border-stone-200 dark:border-stone-800 space-y-1.5 max-h-36 overflow-y-auto no-scrollbar">
+                              {displayFootprint.plottedAnchors.length === 0 ? (
+                                <p className="font-serif italic text-[11px] text-stone-500">
+                                  No anchors stored yet. Extract or re-scry to compile the graph.
+                                </p>
+                              ) : (
+                                displayFootprint.plottedAnchors.slice(0, 12).map((anchor) => (
+                                  <div key={anchor.id} className="flex justify-between gap-3">
+                                    <span className="font-mono text-[9px] uppercase tracking-wide text-stone-700 dark:text-stone-200 truncate">
+                                      {anchor.label}
+                                    </span>
+                                    <span className="font-mono text-[8px] text-stone-400 shrink-0">
+                                      {anchor.type} · w{anchor.weight.toFixed(1)}
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+
+                          {footprintSection === 'embeddings' && (
+                            <div className="px-4 py-3 border-t border-stone-200 dark:border-stone-800 space-y-1.5 max-h-36 overflow-y-auto no-scrollbar">
+                              {displayFootprint.listedEmbeddings.length === 0 ? (
+                                <p className="font-serif italic text-[11px] text-stone-500">
+                                  No listed embeddings yet. Shadow memory vectors appear here once stored.
+                                </p>
+                              ) : (
+                                displayFootprint.listedEmbeddings.slice(0, 12).map((point) => (
+                                  <div key={point.id} className="flex justify-between gap-3">
+                                    <span className="font-mono text-[9px] uppercase tracking-wide text-stone-700 dark:text-stone-200 truncate">
+                                      {point.preview}
+                                    </span>
+                                    <span className="font-mono text-[8px] text-amber-600 shrink-0">
+                                      dist {point.distanceFromCenter.toFixed(3)}
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+
+                          {footprintSection === 'tags' && (
+                            <div className="px-4 py-3 border-t border-stone-200 dark:border-stone-800">
+                              {displayFootprint.retrievedTags.length === 0 ? (
+                                <p className="font-serif italic text-[11px] text-stone-500">
+                                  No retrieved tags compiled yet.
+                                </p>
+                              ) : (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {displayFootprint.retrievedTags.slice(0, 24).map((tag) => (
+                                    <span
+                                      key={tag}
+                                      className="font-mono text-[8px] uppercase tracking-wider px-2 py-1 border border-stone-200 dark:border-stone-800 bg-white/60 dark:bg-stone-950/40 text-stone-600 dark:text-stone-300"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {footprintSection === 'clusters' && (
+                            <div className="px-4 py-3 border-t border-stone-200 dark:border-stone-800 space-y-1.5 max-h-36 overflow-y-auto no-scrollbar">
+                              {displayFootprint.patternClusters.length === 0 ? (
+                                <p className="font-serif italic text-[11px] text-stone-500">
+                                  No pattern clusters stored. Re-scry once enough embeddings exist.
+                                </p>
+                              ) : (
+                                displayFootprint.patternClusters.slice(0, 12).map((cluster) => (
+                                  <div key={cluster.id} className="flex justify-between gap-3">
+                                    <span className="font-serif italic text-[12px] text-stone-800 dark:text-stone-100 truncate">
+                                      {cluster.label}
+                                    </span>
+                                    <span className="font-mono text-[8px] text-[#10b981] shrink-0">
+                                      {cluster.artifactCount} arts
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {extractNotice ? (

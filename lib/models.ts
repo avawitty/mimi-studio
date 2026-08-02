@@ -26,7 +26,7 @@ export type GatewayModelRole =
  */
 export const GATEWAY_DEFAULT_MODELS: Record<GatewayModelRole, string> = {
   textFast: "google/gemini-3.6-flash",
-  textDeep: "anthropic/claude-sonnet-5",
+  textDeep: "moonshotai/kimi-k3",
   // GA image model (supersedes gemini-3.1-flash-image-preview)
   image: "google/gemini-3.1-flash-image",
   imageEdit: "google/gemini-3.1-flash-image",
@@ -84,6 +84,18 @@ export const GATEWAY_MODEL_OPTIONS = [
     label: "Claude Haiku 4.5",
     provider: "anthropic",
     roles: ["textFast"] as const,
+  },
+  {
+    id: "moonshotai/kimi-k3-fast",
+    label: "Kimi K3 Fast",
+    provider: "moonshotai",
+    roles: ["textFast"] as const,
+  },
+  {
+    id: "moonshotai/kimi-k3",
+    label: "Kimi K3",
+    provider: "moonshotai",
+    roles: ["textDeep"] as const,
   },
   {
     id: "google/gemini-3.1-flash-image",

@@ -14,7 +14,6 @@ import {
   type CompileDraft,
 } from "../lib/editCompileExport";
 import { useUser } from "../contexts/UserContext";
-import { IssueSpreadsPanel } from "./IssueSpreadsPanel";
 
 export const TheEditCompile: React.FC = () => {
   const { user, profile } = useUser();
@@ -147,18 +146,16 @@ export const TheEditCompile: React.FC = () => {
           <div className="flex items-center gap-2 mb-2">
             <BookOpen size={16} className="archive-text-muted" />
             <p className="font-mono text-[8px] uppercase tracking-[0.35em] archive-text-muted">
-              Editorial compile
+              Signal Edit
             </p>
           </div>
           <h2 className="font-serif italic text-2xl md:text-3xl archive-text-ink leading-tight">
             Assemble the read before export.
           </h2>
           <p className="font-sans text-[10px] archive-text-muted mt-2 max-w-xl leading-relaxed">
-            Approve atoms in the tray above, frame a thesis, then export markdown to The Press or copy for external publish.
+            Approve atoms in the tray above, frame a thesis, then export markdown to The Press. Compose spreads in Issue Edit.
           </p>
         </header>
-
-        <IssueSpreadsPanel />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <section className="space-y-6">

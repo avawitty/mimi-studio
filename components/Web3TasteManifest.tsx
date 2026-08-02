@@ -68,7 +68,7 @@ export const Web3TasteManifest: React.FC = () => {
                                 </>
                             )}
                         </div>
-                        <h1 className="font-serif text-2xl text-stone-200 tracking-wide italic">Mimi Zine Vault</h1>
+                        <h1 className="font-serif text-2xl text-stone-200 tracking-wide italic">Mimi Vault</h1>
                         <p className="font-mono text-[9px] text-stone-600 mt-1 uppercase tracking-wider">Secure Identity Archive</p>
                     </div>
 
@@ -240,7 +240,7 @@ export const Web3TasteManifest: React.FC = () => {
                                                             <span className={`w-2 h-2 rounded-full ${walletAddress ? 'bg-stone-800 group-hover:bg-[#4ade80]' : 'bg-stone-300'} transition-colors duration-500`}></span>
                                                             <span className="font-mono text-[8px] tracking-[0.2em] uppercase text-stone-500">Identity Card</span>
                                                         </div>
-                                                        <h3 className="font-serif text-2xl text-stone-900 mt-2">Mimi Zine</h3>
+                                                        <h3 className="font-serif text-2xl text-stone-900 mt-2">Mimi</h3>
                                                     </div>
                                                     <CheckCircle2 className="text-stone-300 group-hover:text-stone-800 transition-colors" size={24} />
                                                 </div>

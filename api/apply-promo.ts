@@ -1,6 +1,6 @@
 import { cors, readJsonBody, requireMethod, sendJson } from "../lib/apiUtils.js";
 import { buildCreditGrant } from "../lib/mimiEntitlements.js";
-import { extractMimiSessionToken, getServerFirebaseAdmin } from "../lib/serverFirebaseAdmin.js";
+import { extractMimiSessionToken } from "../lib/mimiSessionToken.js";
 
 const VALID_PROMO_CODES = new Set([
   "MIMIMUSE",
@@ -25,6 +25,7 @@ export default async function handler(req: any, res: any) {
       return sendJson(res, 401, { ok: false, error: "Sign in required to redeem a promo." });
     }
 
+    const { getServerFirebaseAdmin } = await import("../lib/serverFirebaseAdmin.js");
     const { auth, db } = getServerFirebaseAdmin();
     if (!auth || !db) {
       return sendJson(res, 503, {

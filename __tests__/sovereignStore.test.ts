@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cacheClear } from "../lib/sovereign/cache";
 import { resetSovereignDbForTests } from "../lib/sovereign/db";
+import { subscribeSovereignEvents } from "../lib/sovereign/events";
 import {
   deletePocketItem,
   deleteZine,
@@ -15,6 +16,7 @@ import {
   listPublicZines,
   listPublicZinesPage,
   listUserZines,
+  replaceAllZines,
   seedDemoShelfIfEmpty,
   slimZineForFloor,
   sovereignStatus,
@@ -160,6 +162,39 @@ describe("sovereign store", () => {
     ).toBe(false);
   });
 
+  it("refuses upsert that would steal another user's zine id", async () => {
+    await upsertZine(sampleZine({ id: "owned", userId: "owner_a" }));
+    await expect(
+      upsertZine(sampleZine({ id: "owned", userId: "owner_b", title: "Hijack" })),
+    ).rejects.toThrow(/owned by another user/i);
+    expect((await getZineById("owned", { requesterUid: "owner_a", includePrivate: true }))?.title).toBe(
+      "Floor Signal",
+    );
+  });
+
+  it("replaceAllZines clears and imports atomically", async () => {
+    await upsertZine(sampleZine({ id: "old1", timestamp: 10 }));
+    await upsertZine(sampleZine({ id: "old2", timestamp: 20 }));
+    const result = await replaceAllZines([
+      sampleZine({ id: "new1", timestamp: 30 }),
+      sampleZine({ id: "new2", timestamp: 40 }),
+    ]);
+    expect(result.cleared).toBe(2);
+    expect(result.imported).toBe(2);
+    expect((await listPublicZines(10)).map((z) => z.id).sort()).toEqual(["new1", "new2"]);
+  });
+
+  it("importZines emits a floor_refresh after quiet batch", async () => {
+    const seen: string[] = [];
+    const unsub = subscribeSovereignEvents((event) => {
+      seen.push(event.type);
+    });
+    await importZines([sampleZine({ id: "batch1" }), sampleZine({ id: "batch2" })]);
+    unsub();
+    expect(seen.filter((t) => t === "zine_upsert")).toHaveLength(0);
+    expect(seen.filter((t) => t === "floor_refresh")).toHaveLength(1);
+  });
+
   it("deletes zines from the archive", async () => {
     await upsertZine(sampleZine({ id: "del1" }));
     expect(await deleteZine("del1", "user_1")).toBe(true);
@@ -184,5 +219,11 @@ describe("sovereign store", () => {
     expect(status.ready).toBe(true);
     expect(status.schemaVersion).toBeGreaterThanOrEqual(1);
     expect(typeof status.latencyMs === "number" || status.latencyMs === null).toBe(true);
+    expect(typeof status.gatewayEmbed).toBe("boolean");
+    expect(typeof status.embeddedCount).toBe("number");
+    expect(typeof status.neonAuthConfigured).toBe("boolean");
+    expect(typeof status.neonAuthReady).toBe("boolean");
+    expect(typeof status.neonAuthLegacyStack).toBe("boolean");
+    expect(status.neonAuthHost === null || typeof status.neonAuthHost === "string").toBe(true);
   });
 });

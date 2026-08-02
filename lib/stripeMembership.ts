@@ -1,6 +1,11 @@
 import Stripe from "stripe";
-import type { Firestore } from "firebase-admin/firestore";
 import { STRIPE_PRICES, STRIPE_PRICES_ANNUAL } from "../constants.js";
+
+/** Duck-typed Admin Firestore — avoid firebase-admin type imports in this graph. */
+type Firestore = {
+  collection: (path: string) => any;
+  runTransaction?: (fn: (tx: any) => Promise<void>) => Promise<void>;
+};
 import {
   buildCreditGrant,
   MIMI_PRICE_ID_PLAN_MAP,

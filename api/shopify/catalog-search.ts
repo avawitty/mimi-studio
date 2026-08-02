@@ -1,5 +1,4 @@
 import { cors, readJsonBody, requireMethod, sendJson } from "../../lib/apiUtils.js";
-import { verifyMimiSession } from "../../lib/serverFirebaseAdmin.js";
 import { searchShopifyGlobalCatalog } from "../../lib/shopifyCatalog.js";
 
 export default async function handler(req: any, res: any) {
@@ -7,6 +6,7 @@ export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
 
   try {
+    const { verifyMimiSession } = await import("../../lib/serverFirebaseAdmin.js");
     await verifyMimiSession(req.headers || {});
     const body = await readJsonBody(req);
     const agentProfileUrl = process.env.SHOPIFY_UCP_AGENT_PROFILE || "";

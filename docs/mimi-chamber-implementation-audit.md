@@ -1,8 +1,8 @@
 # Mimi Chamber Implementation Audit
 
-Date: 2026-08-02 (Milestone 2–3 complete; recent maps below)
+Date: 2026-08-02 (Architecture Update 20 reconciliation; Milestones 2–3 complete; recent maps below)
 
-Source of truth: product canon + `lib/productCanon.ts`. Every canonical chamber has a dedicated route mode, chamber shell (where applicable), and `CanonModule` registry.
+Source of truth: product canon + `lib/productCanon.ts` (+ `CANON_INFRASTRUCTURE`). Every canonical chamber has a dedicated route mode, chamber shell (where applicable), and `CanonModule` registry. Living architecture: [mimi-system-architecture.md](./mimi-system-architecture.md), [architecture-update-20.md](./architecture-update-20.md).
 
 For durable domain contracts, see [`mimi-system-architecture.md`](./mimi-system-architecture.md). This file is the **current route / chamber / verify-script map** for developers.
 
@@ -238,3 +238,21 @@ npm run verify:fish
 ### Residue engine adapters
 
 Cultural → product adapters live under `services/residue/` (Phases 3–7). Status notes: `docs/residue-engine-phase*.md`. Verify: `npm run verify:residue`.
+
+---
+
+## Architecture Update 20 — Status Reconciliation (2026-08-02)
+
+| Element | Route / surface | Status |
+| --- | --- | --- |
+| Scry evidence lanes | `/scry` | Live — archive, web, reading, shadow + honest coverage |
+| Residue Cultural / Emotional | `/residue` | Live vertical slice — offline-first; optional Apify acquire |
+| Observatory / Mean Median Mode | `/observatory`, `/mean-median-mode` | Live vertical slice — Proscenium consent required |
+| The Edit Signal / Issue / Forecast | `/the-edit` | Live — Update 21 panel split; default Signal; `?panel=` |
+| Mimi Dolls shell-first | `/mimi-dolls` | Live — porcelain primary; Shader Lab secondary |
+| Scribe mobile grammar | `/scribe` | Live polished — reduced chrome, Guide in mode bar |
+| Sovereign Data Plane | `/api/sovereign/*` | Live / hardening — see `docs/sovereign-archive.md` |
+| AI Gateway embeddings | shared infra | Live — registered in `CANON_INFRASTRUCTURE` |
+| Shadow Memory migration | Shadow Memory flows | Live — UID-gated reindex |
+| Firestore quota / ghost Pocket | Pocket / Floor | Live — listener suppression + identity cancel |
+| Gateway entitlements | funded AI path | Live — server Stripe verification; no BYOK nag |

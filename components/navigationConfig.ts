@@ -120,7 +120,24 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "Tailor",
         note: "profile, evidence, style lab, diagnostics",
         keywords: ["tailor", "brand", "style", "physics", "aesthetic", "voice", "references", "art-style", "scryer", "patterns", "diagnostics", "telemetry", "chromatics"],
-      }
+      },
+      {
+        mode: "celestial-calibration",
+        label: "Celestial Calibration",
+        note: "tropical sun + seasonal timing for Tailor",
+        keywords: [
+          "celestial",
+          "calibration",
+          "zodiac",
+          "natal",
+          "birth chart",
+          "sun sign",
+          "astrology",
+          "season",
+          "timing",
+          "birth date",
+        ],
+      },
     ]
   },
   {
@@ -278,6 +295,23 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         ],
       },
       {
+        mode: "house",
+        label: "The House",
+        note: "four-floor editorial loop",
+        keywords: [
+          "house",
+          "floors",
+          "ingest",
+          "curate",
+          "plate",
+          "penthouse",
+          "ascension",
+          "editorial house",
+          "debris",
+          "issue",
+        ],
+      },
+      {
         mode: "geo_engine",
         label: "GEO Engine",
         note: "search/signal profile",
@@ -334,6 +368,23 @@ export const MENU_STRUCTURE: NavigationSection[] = [
           "collective moods",
           "central tendency",
           "observatory",
+        ],
+      },
+      {
+        mode: "forecast",
+        label: "Forecast",
+        note: "aesthetic meteorology · personal & brand drift",
+        keywords: [
+          "forecast",
+          "the forecast",
+          "meteorology",
+          "aesthetic meteorology",
+          "drift",
+          "trends",
+          "cultural shifts",
+          "content forecasting",
+          "weather",
+          "season",
         ],
       },
       {

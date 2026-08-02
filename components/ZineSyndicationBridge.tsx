@@ -23,7 +23,7 @@ export const ZineSyndicationBridge: React.FC<ZineSyndicationBridgeProps> = ({ me
   // 1. Export as Portable JSON (Perfect for developer pipelines or headless CMS APIs)
   const getJsonPayload = (): string => {
     const payload = {
-      source: 'MimiZine Editorial Intelligence',
+      source: 'Mimi Editorial Intelligence',
       issue_title: metadata.title,
       date_published: new Date(metadata.timestamp).toISOString(),
       creator: metadata.userHandle,
@@ -54,7 +54,7 @@ export const ZineSyndicationBridge: React.FC<ZineSyndicationBridgeProps> = ({ me
     `).join('\n') || '';
 
     return `<div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-      <p style="font-family: monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #888;">Issue Manifest // compiled via MimiZine</p>
+      <p style="font-family: monospace; font-size: 10px; letter-spacing: 2px; color: #888;">Issue Manifest // compiled via Mimi</p>
       <h1 style="font-family: Georgia, serif; font-size: 42px; font-style: italic; font-weight: normal; color: #111; margin: 10px 0;">${metadata.title}</h1>
       <p style="font-family: Georgia, serif; font-size: 18px; font-style: italic; color: #555;">"${metadata.content?.oracular_mirror || ''}"</p>
       
@@ -66,7 +66,7 @@ export const ZineSyndicationBridge: React.FC<ZineSyndicationBridgeProps> = ({ me
       ${pagesHtml}
       
       <hr />
-      <p style="font-family: monospace; font-size: 9px; text-align: center; color: #999; margin-top: 40px;">MimiZine Sovereign Archive. All Rights Reserved.</p>
+      <p style="font-family: monospace; font-size: 9px; text-align: center; color: #999; margin-top: 40px;">Mimi Sovereign Archive. All Rights Reserved.</p>
     </div>`;
   };
 

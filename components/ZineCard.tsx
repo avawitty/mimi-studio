@@ -287,11 +287,19 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
       if (zine.isPublic) {
         setIsPublishing(true);
         try {
-          await updateDoc(doc(db, "zines", zine.id), unpublishFieldsForZine());
+          const unpub = unpublishFieldsForZine();
+          await updateDoc(doc(db, "zines", zine.id), unpub);
+          // Mirror unpublish into Sovereign so Floor does not keep a public card.
+          try {
+            const { mirrorZineToSovereign } = await import("../services/sovereignClient");
+            void mirrorZineToSovereign({ ...zine, ...unpub });
+          } catch (mirrorErr) {
+            console.warn("MIMI // Sovereign unpublish mirror failed", mirrorErr);
+          }
           window.dispatchEvent(
             new CustomEvent("mimi:registry_alert", {
               detail: {
-                message: "Unpublished · future Mean Median Mode contribution stopped.",
+                message: "Unpublished · withdrawn from future Mean Median Mode windows.",
                 icon: <Radio size={14} />,
               },
             }),
@@ -315,7 +323,14 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
           artifactId: zine.id,
           contributeToMeanMedianMode,
         });
-        await updateDoc(doc(db, "zines", zine.id), consentFieldsForZine(consent));
+        const fields = consentFieldsForZine(consent);
+        await updateDoc(doc(db, "zines", zine.id), fields);
+        try {
+          const { mirrorZineToSovereign } = await import("../services/sovereignClient");
+          void mirrorZineToSovereign({ ...zine, ...fields });
+        } catch (mirrorErr) {
+          console.warn("MIMI // Sovereign publish mirror failed", mirrorErr);
+        }
         const handle = zine.userHandle || profile?.handle;
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {

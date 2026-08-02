@@ -1131,7 +1131,7 @@
   --sidebar-ring: hsl(0 0% 50%);
 }
 
-/* Custom CRT Scanline & Grain Shaders for Mimi Zine */
+/* Custom CRT Scanline & Grain Shaders for Mimi */
 .crt-overlay {
   position: fixed;
   top: 0;

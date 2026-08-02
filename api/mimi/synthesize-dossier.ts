@@ -1,14 +1,5 @@
 import { z } from "zod";
 import { cors, readJsonBody, requireMethod, sendError, sendJson, validateBody } from "../../lib/apiUtils.js";
-import {
-  chargeMimiFundedGateway,
-  fundedGatewayCreditCost,
-  resolveFundedGatewayApiKey,
-} from "../../lib/mimiFundedGateway.js";
-import {
-  CREATIVE_DOSSIER_SYSTEM_PROMPT,
-  buildCreativeDossierUserPrompt,
-} from "../../lib/creativeDossierPrompts.js";
 import { creditCostForTask } from "../../lib/aiCreditPolicy.js";
 
 const DOSSIER_MODEL = process.env.MIMI_DOSSIER_GATEWAY_MODEL || "google/gemini-3.5-flash";
@@ -29,6 +20,13 @@ const dossierSchema = z.object({
   priorMemoryDigest: z.string().optional(),
 });
 
+/**
+ * POST /api/mimi/synthesize-dossier
+ *
+ * Heavy modules (funded gateway + creativeDossierPrompts → geminiService) are
+ * loaded lazily. Static imports of that graph crash Vercel isolates at load
+ * with FUNCTION_INVOCATION_FAILED before requireMethod can return 405.
+ */
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
   if (!requireMethod(req, res, "POST")) return;
@@ -50,6 +48,16 @@ export default async function handler(req: any, res: any) {
         "INSUFFICIENT_INPUT",
       );
     }
+
+    const {
+      chargeMimiFundedGateway,
+      fundedGatewayCreditCost,
+      resolveFundedGatewayApiKey,
+    } = await import("../../lib/mimiFundedGateway.js");
+    const {
+      CREATIVE_DOSSIER_SYSTEM_PROMPT,
+      buildCreativeDossierUserPrompt,
+    } = await import("../../lib/creativeDossierPrompts.js");
 
     const cost = fundedGatewayCreditCost(creditCostForTask("tailor_analysis"));
     const { apiKey, access } = await resolveFundedGatewayApiKey(req, cost);

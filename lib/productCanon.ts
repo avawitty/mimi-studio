@@ -2,6 +2,9 @@ export type CanonLayer = "chamber" | "engine" | "artifact" | "infrastructure";
 
 export type CanonModuleStatus = "live" | "aliased" | "stub" | "missing";
 
+/** Optional product-maturity signal — distinct from route registration status. */
+export type CanonModuleMaturity = "prototype" | "evolving" | "established";
+
 export interface CanonModule {
   id: string;
   name: string;
@@ -9,6 +12,8 @@ export interface CanonModule {
   engine: string;
   priority: number;
   status: CanonModuleStatus;
+  /** Product maturity when known; omit when unset (no badge on Chamber Map). */
+  maturity?: CanonModuleMaturity;
   canonicalRoute: string;
   implementedMode?: string;
   component?: string;
@@ -66,6 +71,10 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   atelier: "atelier",
   objects: "atelier",
   "taste-objects": "atelier",
+  house: "house",
+  "the-house": "house",
+  floors: "house",
+  "editorial-house": "house",
   residue: "residue",
   "residue-engine": "residue",
   "cultural-residue": "residue",
@@ -73,6 +82,13 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   observatory: "observatory",
   "mean-median-mode": "mean-median-mode",
   "observatory-mmm": "mean-median-mode",
+  forecast: "forecast",
+  "the-forecast": "forecast",
+  "aesthetic-meteorology": "forecast",
+  "celestial-calibration": "celestial-calibration",
+  celestial: "celestial-calibration",
+  natal: "celestial-calibration",
+  zodiac: "celestial-calibration",
   // Social surfaces live on The Proscenium (wings via nested path).
   connections: "proscenium",
   correspondents: "proscenium",
@@ -141,7 +157,7 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow:
       "Ask a question or name a drift signal; inspect evidence by lane (archive, web, reading, shadow) before drafting.",
     notes:
-      "Lanes stay distinct — no shared result overwrite. Synthesis uses AI Gateway when available; Google Search grounding stays on Gemini.",
+      "Lanes stay distinct — no shared result overwrite. Empty ≠ complete; missing personal memory is empty not partial. Synthesis uses AI Gateway when available; Google Search grounding stays on Gemini. Mobile: one dark surface, query-led first viewport (Architecture Update 20).",
   },
   {
     id: "tailor",
@@ -221,9 +237,17 @@ export const CANON_MODULES: CanonModule[] = [
     aliases: ["Press", "Campaign/news surface"],
     inputs: ["Studio outputs", "fragments", "reports", "card decks"],
     generations: ["editorial compilation", "diagnostic framing", "strategy synthesis"],
-    outputs: ["strategy reports", "Aesthetic Census", "editorial briefings"],
-    userFlow: "Turn scattered material into an editorial read before publishing or exporting it.",
-    notes: "Legacy /press aliases here. Distinct from The Press export chamber.",
+    outputs: [
+      "strategy reports",
+      "Aesthetic Census",
+      "editorial briefings",
+      "hi-fi plate assets",
+      "spread composition metadata",
+    ],
+    userFlow:
+      "Turn scattered material into an editorial read, bake hi-fi plates, compose issue spreads, then publish or export.",
+    notes:
+      "Legacy /press aliases here. Distinct from The Press export chamber. Architecture Update 21: one chamber with Signal / Issue / Forecast panels (default Signal). ?panel=signal|issue|forecast supported.",
   },
   {
     id: "the-press",
@@ -264,6 +288,8 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["local/cloud persistence", "folder mapping", "provenance preservation"],
     outputs: ["persistent archive", "source packs", "reusable context packs"],
     userFlow: "Save and retrieve references without losing source priority or provenance.",
+    notes:
+      "Ghost/anonymous path uses IndexedDB and suppresses Firestore Pocket listeners. Storage read failures must not be treated as intentional deletes. Identity changes cancel in-flight sync (Architecture Update 20).",
   },
   {
     id: "stand",
@@ -276,10 +302,12 @@ export const CANON_MODULES: CanonModule[] = [
     implementedMode: "stand",
     component: "TheStand",
     aliases: ["Showcase", "Published Works"],
-    inputs: ["published zines", "local archive", "community floor"],
-    generations: ["cover grid", "issue filtering", "comment threads"],
+    inputs: ["published zines", "local archive", "community floor", "Sovereign archive projections"],
+    generations: ["cover grid", "issue filtering", "comment threads", "hybrid Floor search"],
     outputs: ["personal showcase", "floor feed", "profile seed"],
     userFlow: "Browse your published issues and the community Floor without leaving the Stand.",
+    notes:
+      "When Sovereign is ready, Floor/Mine prefer owned archive + SSE over Firestore listeners. Stand vs Floor vs Mine vs Press ownership distinction remains an open canon question.",
   },
   {
     id: "mood-board",
@@ -443,7 +471,8 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["identity consistency tracking", "art-historical reinterpretation", "editorial portrait generation"],
     outputs: ["Mimi Shell portraits (shell-v1 staple)", "identity pack refs", "badges", "profile cards", "report covers"],
     userFlow: "Project taste onto a house porcelain-BJD shell — same species for every creator; wardrobe and motifs vary.",
-    notes: "Staple in services/dollEngine/staplePrompt.ts (prd/doll-staple-shell.md). Engine also: procedural aesthetic + identity pack + masks + companion. Public cards at /u/:handle.",
+    notes:
+      "Staple in services/dollEngine/staplePrompt.ts (prd/doll-staple-shell.md). Shell-first chamber plate; realtime shader lives in secondary Shader Lab tab (Architecture Update 20). Engine also: procedural aesthetic + identity pack + masks + companion. Public cards at /u/:handle.",
   },
   {
     id: "mimi-rip",
@@ -497,12 +526,38 @@ export const CANON_MODULES: CanonModule[] = [
     notes: "Distinct from the Atelier membership plan. Thimble=sourcing, Pocket=media, Atelier=commerce-as-taste. Soft cap 40; oldest references prune first.",
   },
   {
+    id: "house",
+    name: "The House",
+    layer: "chamber",
+    engine: "Four-Floor Editorial Loop",
+    priority: 7,
+    status: "live",
+    canonicalRoute: "/house",
+    implementedMode: "house",
+    component: "HouseChamber",
+    aliases: ["House", "Floors", "Editorial House", "Ascension"],
+    inputs: ["links", "text fragments", "image descriptions", "uploaded images"],
+    generations: [
+      "debris tagging",
+      "keep/refuse curation",
+      "aesthetic reading",
+      "generative plates",
+      "numbered issues",
+    ],
+    outputs: ["local debris archive", "plates", "issued editions (JSON)", "timeline chronicle"],
+    userFlow:
+      "Ascend Ingest → Curate → Plate → Penthouse. Refuse at least one thing, synthesize a reading, compose plates from your palette, bind a numbered edition. Undo/redo and night mode via keyboard.",
+    notes:
+      "Local-first House loop (mimi.studio.v2). Distinct from Atelier (commerce taste objects) and Chamber Map (registry). Nested /house/issue/:id opens the issue viewer.",
+  },
+  {
     id: "proscenium",
     name: "The Proscenium",
     layer: "chamber",
     engine: "Public Stage / Social Circle",
     priority: 8,
     status: "live",
+    maturity: "prototype",
     canonicalRoute: "/proscenium",
     implementedMode: "proscenium",
     component: "ProsceniumView",
@@ -572,6 +627,7 @@ export const CANON_MODULES: CanonModule[] = [
     engine: "Collective Perception",
     priority: 9,
     status: "live",
+    maturity: "prototype",
     canonicalRoute: "/observatory",
     implementedMode: "observatory",
     component: "ObservatoryChamber",
@@ -601,6 +657,7 @@ export const CANON_MODULES: CanonModule[] = [
     engine: "Collective Central Tendency",
     priority: 9.1,
     status: "live",
+    maturity: "prototype",
     canonicalRoute: "/mean-median-mode",
     implementedMode: "mean-median-mode",
     component: "ObservatoryChamber",
@@ -619,6 +676,136 @@ export const CANON_MODULES: CanonModule[] = [
       "Read the present atmosphere via literal mean, median, and mode — not a leaderboard. Stage on The Proscenium to contribute anonymized structure.",
     notes:
       "Collective Moods is a docs-only conceptual alias. Distinct from Residue per-run MeanMedianModeResult.",
+  },
+  {
+    id: "forecast",
+    name: "Forecast",
+    layer: "chamber",
+    engine: "Aesthetic Meteorology",
+    priority: 9.2,
+    status: "live",
+    canonicalRoute: "/forecast",
+    implementedMode: "forecast",
+    component: "TheForecast",
+    aliases: ["The Forecast", "Aesthetic Meteorology"],
+    inputs: [
+      "profile season",
+      "aesthetic DNA",
+      "GEO drift when calibrated",
+      "taste vector",
+      "optional You.com / AI Gateway for live content vectors",
+    ],
+    generations: [
+      "season / drift overview",
+      "content forecast synthesis (You.com → Mimi Gateway)",
+      "handoffs to Observatory / Residue / GEO",
+    ],
+    outputs: ["forecast overview", "live or empty content trends"],
+    userFlow:
+      "Read personal aesthetic meteorology from calibrated profile signals, then hand off to The Observatory for collective atmosphere or GEO for drift calibration.",
+    notes:
+      "Menu peer of Observatory; narrative child (Observatory’s “what next”). Content Forecasting uses live search/gateway paths with honest empty/offline states — never invent drift scores or costume trends.",
+  },
+  {
+    id: "celestial-calibration",
+    name: "Celestial Calibration",
+    layer: "chamber",
+    engine: "Personal Timing Calibration",
+    priority: 11.5,
+    status: "live",
+    canonicalRoute: "/celestial-calibration",
+    implementedMode: "celestial-calibration",
+    component: "CelestialCalibrationChamber",
+    aliases: ["Celestial", "Natal", "Zodiac", "Sun Sign"],
+    inputs: [
+      "birth date",
+      "optional birth time (local civil clock)",
+      "optional birth location (geocode → timezone + coordinates)",
+      "seasonal alignment + lineage notes",
+    ],
+    generations: [
+      "tropical Sun / Moon / planets via astronomy-engine",
+      "major aspects; Rising + Whole Sign houses when time + place resolve",
+      "astronomical season",
+      "timing phrase for Tailor / generation / Oracle Latent Space Translation",
+    ],
+    outputs: [
+      "tailorDraft.celestialCalibration",
+      "profile birth fields + zodiacSign",
+      "optional generation timing context",
+      "structured readout for Oracle Latent Space Translation",
+    ],
+    userFlow:
+      "Enter birth data, resolve place for timezone/coords, review ephemeris readout, opt in to generation use, save into Tailor, then hand off to Worktable or Oracle.",
+    notes:
+      "Rising/houses require birth time + geocoded coordinates. Sidereal and quadrant houses unsupported. Distinct from The Observatory (collective Mean Median Mode) and from poetic zine field celestial_calibration.",
+  },
+];
+
+/** Infrastructure substrates (not chamber routes). Not validated by validateCanonRoutes. */
+export interface CanonInfrastructure {
+  id: string;
+  name: string;
+  status: "live" | "hardening" | "proposed";
+  purpose: string;
+  owns: string[];
+  notes?: string;
+}
+
+export const CANON_INFRASTRUCTURE: CanonInfrastructure[] = [
+  {
+    id: "sovereign-data-plane",
+    name: "Sovereign Data Plane",
+    status: "hardening",
+    purpose: "Owned publication, discovery, and resilience persistence independent of Firestore quota",
+    owns: ["public zines", "profiles", "Pocket mirrors", "search projections", "SSE sync", "import/export"],
+    notes: "SQLite local/durable-host; Neon Postgres preferred on Vercel. Firebase remains identity + selected compatibility state.",
+  },
+  {
+    id: "sovereign-search",
+    name: "Sovereign Search",
+    status: "live",
+    purpose: "Hybrid keyword + Gateway embedding discovery over the owned archive",
+    owns: ["write-time card projections", "vector storage", "reindex route", "Floor search ranking"],
+  },
+  {
+    id: "ai-gateway-embeddings",
+    name: "AI Gateway Embeddings",
+    status: "live",
+    purpose: "Shared embedding pipeline with executed-model and dimension provenance",
+    owns: ["Scry", "Taste clustering", "Shadow Memory", "Sovereign search embeddings", "EmbeddingSpaceId contract"],
+    notes:
+      "Different dimensions/models are never compared. Shared contract: schemas/embeddingContracts.ts (Architecture Update 21).",
+  },
+  {
+    id: "shadow-memory-migration",
+    name: "Shadow Memory Migration",
+    status: "live",
+    purpose: "Detect and reindex embedding-incompatible personal memory vectors",
+    owns: ["dimension/model audit", "authenticated reindex", "ghost-identity denial"],
+  },
+  {
+    id: "gateway-entitlements",
+    name: "Gateway Entitlement Boundary",
+    status: "live",
+    purpose: "Funded Mimi plans use server-verified Gateway access rather than BYOK recovery prompts",
+    owns: ["Stripe verification", "credit grants", "promo redemption", "provider adapters"],
+  },
+  {
+    id: "serverless-lazy-graphs",
+    name: "Serverless Module Boundary",
+    status: "live",
+    purpose: "Load Node-heavy graphs only after cheap request checks on the active route",
+    owns: ["Firebase Admin", "Stripe", "Apify", "SQLite", "dossier prompts", "Gemini service lazy paths"],
+    notes: "CI: npm run verify:api-lazy-graphs (Architecture Update 21).",
+  },
+  {
+    id: "data-plane-ownership",
+    name: "Data Plane Ownership Map",
+    status: "live",
+    purpose: "Firebase identity/private state; Sovereign public publication/discovery; IndexedDB ghost buffer",
+    owns: ["ownership rules", "Stand/Floor/Mine/Press distinctions", "anon migrate policy"],
+    notes: "See docs/architecture-update-21.md and docs/sovereign-archive.md.",
   },
 ];
 

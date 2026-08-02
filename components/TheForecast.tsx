@@ -1,413 +1,556 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { useUser } from '../contexts/UserContext';
-import { fetchContentForecast, ResearchSynthesisResponse } from '../services/researchService';
-import { 
-  CloudRain, Sun, Snowflake, Flame, 
-  Wind, Navigation, ThermometerSun, 
-  Activity, Compass, Radio, Sparkles, User, Building2, Target, Brain,
-  Loader2, Link2, ExternalLink
-} from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import {
+  Activity,
+  Brain,
+  Building2,
+  CloudRain,
+  Compass,
+  ExternalLink,
+  Flame,
+  Link2,
+  Loader2,
+  Navigation,
+  Radio,
+  Snowflake,
+  Sparkles,
+  Sun,
+  Target,
+  ThermometerSun,
+  User,
+  Wind,
+} from "lucide-react";
+import { useUser } from "../contexts/UserContext";
+import { ChamberShell } from "./chambers/ChamberShell";
+import {
+  FORECAST_CHAMBER_MODULE_ID,
+  FORECAST_COPY,
+  FORECAST_HANDOFF_TARGETS,
+} from "../lib/forecastChamberContract";
+import {
+  fetchContentForecast,
+  type ResearchSynthesisResponse,
+} from "../services/researchService";
 
-export const TheForecast: React.FC = () => {
+type ForecastScope = "personal" | "company";
+type ForecastVector = "overview" | "content" | "culture";
+
+const WEATHER_ICONS: Record<string, React.ReactNode> = {
+  rotting: <CloudRain size={48} className="text-nous-text opacity-70" />,
+  blooming: <Sun size={48} className="text-nous-text opacity-90" />,
+  frozen: <Snowflake size={48} className="text-nous-text opacity-60" />,
+  burning: <Flame size={48} className="text-nous-text animate-pulse" />,
+};
+
+const WEATHER_DESCRIPTORS: Record<string, string> = {
+  rotting: "Deconstructive / Composting old aesthetics.",
+  blooming: "Generative / Rapid aesthetic synthesis.",
+  frozen: "Stagnant / Archival preservation mode.",
+  burning: "High-entropy / Radical reinvention.",
+};
+
+const VECTOR_TABS: { id: ForecastVector; label: string; icon: React.ReactNode }[] = [
+  { id: "overview", label: "Overview", icon: <Radio size={12} /> },
+  { id: "content", label: "Content", icon: <Target size={12} /> },
+  { id: "culture", label: "Cultural", icon: <Brain size={12} /> },
+];
+
+export const TheForecast: React.FC<{
+  navigate?: (path: string) => void;
+}> = ({ navigate }) => {
   const { user, profile, apiKeys } = useUser();
-  const [forecastingScope, setForecastingScope] = useState<'personal' | 'company'>('personal');
-  const [selectedVector, setSelectedVector] = useState<'overview' | 'content' | 'culture'>('overview');
-  
+  const [forecastingScope, setForecastingScope] = useState<ForecastScope>("personal");
+  const [selectedVector, setSelectedVector] = useState<ForecastVector>("overview");
   const [contentForecast, setContentForecast] = useState<ResearchSynthesisResponse | null>(null);
   const [isPingingLabs, setIsPingingLabs] = useState(false);
 
   useEffect(() => {
-    if (selectedVector === 'content' && !contentForecast) {
-      setIsPingingLabs(true);
-      fetchContentForecast(apiKeys).then(res => {
+    if (selectedVector !== "content" || contentForecast) return;
+    let cancelled = false;
+    setIsPingingLabs(true);
+    void fetchContentForecast(apiKeys)
+      .then((res) => {
+        if (cancelled) return;
         setContentForecast(res);
-        setIsPingingLabs(false);
+      })
+      .finally(() => {
+        if (!cancelled) setIsPingingLabs(false);
       });
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [selectedVector, contentForecast, apiKeys]);
 
-  if (!user) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-nous-base p-8">
-        <p className="font-mono text-nous-subtle uppercase tracking-widest text-[10px]">
-          Identity Not Established
-        </p>
-      </div>
-    );
-  }
-
-  // Weather Mapping based on user.currentSeason
-  const weatherIcons: Record<string, React.ReactNode> = {
-    'rotting': <CloudRain size={48} className="text-nous-text opacity-70" />,
-    'blooming': <Sun size={48} className="text-nous-text opacity-90" />,
-    'frozen': <Snowflake size={48} className="text-nous-text opacity-60" />,
-    'burning': <Flame size={48} className="text-nous-text animate-pulse" />
+  const go = (view: string) => {
+    if (navigate) {
+      navigate(`/${view}`);
+      return;
+    }
+    window.location.assign(`/${view}`);
   };
 
-  const weatherDescriptors: Record<string, string> = {
-    'rotting': 'Deconstructive / Composting old aesthetics.',
-    'blooming': 'Generative / Rapid aesthetic synthesis.',
-    'frozen': 'Stagnant / Archival preservation mode.',
-    'burning': 'High-entropy / Radical reinvention.'
-  };
-
-  const currentSeason = profile?.currentSeason || 'rotting';
-  
-  // Safely extract properties
+  const currentSeason = profile?.currentSeason || "rotting";
   const dna = profile?.aestheticDNA || null;
   const geo = profile?.geoProfile || null;
-  const driftScore = geo?.driftScore || Math.floor(Math.random() * 30 + 10);
-  const driftDirection = driftScore > 50 ? 'Severe Turbulence' : 'Stable Micro-Climate';
+  const tasteVector = profile?.tasteVector || null;
+  const vectorEntropy = Number(
+    (profile as { aestheticVector?: { entropy?: number } } | null)?.aestheticVector
+      ?.entropy,
+  );
+  const driftScore =
+    typeof geo?.driftScore === "number" && Number.isFinite(geo.driftScore)
+      ? geo.driftScore
+      : Number.isFinite(vectorEntropy)
+        ? Math.round(Math.min(100, Math.max(0, vectorEntropy * 100)))
+        : null;
+  const driftDirection =
+    driftScore == null
+      ? "Insufficient Signal"
+      : driftScore > 50
+        ? "Severe Turbulence"
+        : "Stable Micro-Climate";
+
+  const contentUnavailable =
+    !!contentForecast &&
+    (contentForecast.provider === "Unavailable" || contentForecast.trends.length === 0);
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-[#EAE8E4] text-nous-text">
-      
-      {/* Sidebar: Forecast Scope */}
-      <div className="w-80 border-r border-nous-border flex flex-col bg-nous-surface shadow-lg z-10 shrink-0">
-        <div className="p-6 border-b border-nous-border bg-nous-base border-l-4 border-l-[#a8b79f]">
-          <h2 className="font-serif italic text-2xl mb-1 text-nous-text">The Forecast</h2>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle leading-tight">
-            Predictive Content & Aesthetic Flow
-          </p>
+    <ChamberShell
+      moduleId={FORECAST_CHAMBER_MODULE_ID}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          {FORECAST_HANDOFF_TARGETS.map((target) => (
+            <button
+              key={target.view}
+              type="button"
+              onClick={() => go(target.view)}
+              className="px-3 py-1.5 border border-nous-border text-nous-subtle font-mono text-[8px] uppercase tracking-widest hover:text-nous-text hover:border-nous-text/40"
+            >
+              {target.label}
+            </button>
+          ))}
         </div>
-        
-        <div className="p-6 flex-1 flex flex-col gap-6 overflow-y-auto">
-          <div>
-            <h3 className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle mb-3">Forecasting Scope</h3>
-            <div className="space-y-2">
-               <button 
-                onClick={() => setForecastingScope('personal')}
-                className={`w-full text-left p-3 border font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-between ${forecastingScope === 'personal' ? 'bg-nous-text text-nous-base border-nous-text' : 'border-nous-border bg-nous-base hover:bg-nous-surface'}`}
-              >
-                <div className="flex items-center gap-2">
-                  <User size={14} /> Sovereign Curator
-                </div>
-              </button>
-              <button 
-                onClick={() => setForecastingScope('company')}
-                className={`w-full text-left p-3 border font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center justify-between ${forecastingScope === 'company' ? 'bg-nous-text text-nous-base border-nous-text' : 'border-nous-border bg-nous-base hover:bg-nous-surface'}`}
-              >
-                <div className="flex items-center gap-2">
-                  <Building2 size={14} /> Brand OS (Company)
-                </div>
-              </button>
-            </div>
-            {forecastingScope === 'company' && (
-               <p className="mt-3 font-sans text-[10px] text-nous-subtle leading-relaxed bg-[#a8b79f]/10 p-2 border border-[#a8b79f]/30 text-[#4a5c41]">
-                 Operating via Brand OS. Forecasting is derived from systemic brand guidelines and global market trajectories.
-               </p>
-            )}
-             {forecastingScope === 'personal' && (
-               <p className="mt-3 font-sans text-[10px] text-nous-subtle leading-relaxed border border-nous-border border-dashed p-2">
-                 Operating as Sovereign Curator. Forecasting is derived directly from your Thimble and aesthetic networking history. 
-               </p>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-             <h3 className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle mb-3">Available Vectors</h3>
-             <button 
-               onClick={() => setSelectedVector('overview')}
-               className={`w-full text-left p-3 border font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center gap-2 ${selectedVector === 'overview' ? 'bg-nous-text text-nous-base border-nous-text' : 'border-nous-border bg-nous-base hover:bg-nous-surface'}`}
-             >
-                <Radio size={14} /> Overview
-              </button>
-             <button 
-               onClick={() => setSelectedVector('content')}
-               className={`w-full text-left p-3 border font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center gap-2 ${selectedVector === 'content' ? 'bg-nous-text text-nous-base border-nous-text' : 'border-nous-border bg-nous-base hover:bg-nous-surface'}`}
-             >
-                <Target size={14} /> Content Forecasting
-              </button>
-              <button 
-               onClick={() => setSelectedVector('culture')}
-               className={`w-full text-left p-3 border font-mono text-[10px] uppercase tracking-widest transition-colors flex items-center gap-2 ${selectedVector === 'culture' ? 'bg-nous-text text-nous-base border-nous-text' : 'border-nous-border bg-nous-base hover:bg-nous-surface'}`}
-             >
-                <Brain size={14} /> Cultural Shifts
-              </button>
-          </div>
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto bg-nous-base text-nous-text p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        
-        {/* Header */}
-        <div className="mb-8 border-b border-nous-border pb-6 flex items-end justify-between">
-          <div>
-            <h1 className="font-serif italic text-3xl md:text-5xl text-nous-text">The Forecast</h1>
-            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-nous-subtle mt-2">
-              Aesthetic Meteorology & Identity Metrics
+      }
+    >
+      <div className="h-full overflow-y-auto bg-nous-base text-nous-text">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+          <div className="space-y-2 max-w-2xl">
+            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-nous-subtle">
+              Aesthetic Meteorology
+            </p>
+            <p className="font-serif italic text-xl md:text-2xl text-nous-text leading-relaxed">
+              {FORECAST_COPY.thesis}
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-2 font-mono text-[10px] text-nous-subtle uppercase tracking-widest">
-            <Radio size={12} className="animate-pulse" />
-            Live Telemetry
-          </div>
-        </div>
 
-        {selectedVector === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[minmax(180px,auto)]">
-            
-            {/* Main Weather Condition (2x2 on desktop) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="md:col-span-2 md:row-span-2 bg-nous-surface border border-nous-border p-6 flex flex-col justify-between relative overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 p-8 opacity-20 pointer-events-none scale-150 origin-top-right">
-                {weatherIcons[currentSeason]}
-              </div>
-              
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-4">
-                  <ThermometerSun size={14} className="text-nous-subtle" />
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">Current Condition</span>
+          {!user ? (
+            <div className="min-h-[240px] flex items-center justify-center border border-dashed border-nous-border px-6 py-12">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle text-center">
+                {FORECAST_COPY.identityRequired}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-nous-border pb-4">
+                <div
+                  className="inline-flex w-full sm:w-auto border border-nous-border"
+                  role="group"
+                  aria-label="Forecasting scope"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setForecastingScope("personal")}
+                    className={`flex-1 sm:flex-none px-3 py-2 font-mono text-[9px] uppercase tracking-widest inline-flex items-center justify-center gap-1.5 ${
+                      forecastingScope === "personal"
+                        ? "bg-nous-text text-nous-base"
+                        : "bg-nous-surface text-nous-subtle hover:text-nous-text"
+                    }`}
+                  >
+                    <User size={12} /> Personal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForecastingScope("company")}
+                    className={`flex-1 sm:flex-none px-3 py-2 font-mono text-[9px] uppercase tracking-widest inline-flex items-center justify-center gap-1.5 border-l border-nous-border ${
+                      forecastingScope === "company"
+                        ? "bg-nous-text text-nous-base"
+                        : "bg-nous-surface text-nous-subtle hover:text-nous-text"
+                    }`}
+                  >
+                    <Building2 size={12} /> Brand OS
+                  </button>
                 </div>
-                <h2 className="font-serif italic text-5xl md:text-7xl mb-2 capitalize">{currentSeason}</h2>
-                <p className="font-mono text-xs uppercase tracking-widest text-nous-text/80">
-                  {weatherDescriptors[currentSeason]}
+                <p className="font-sans text-[10px] text-nous-subtle leading-relaxed max-w-md">
+                  {forecastingScope === "company"
+                    ? FORECAST_COPY.brandScopeNote
+                    : FORECAST_COPY.personalScopeNote}
                 </p>
               </div>
 
-              <div className="relative z-10 mt-12 grid grid-cols-2 gap-4 border-t border-nous-border/50 pt-4">
-                <div>
-                  <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">Drift Probability</span>
-                  <span className="font-sans text-xl tracking-tight">{driftScore}%</span>
-                </div>
-                <div>
-                  <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">Atmospheric State</span>
-                  <span className="font-sans text-sm tracking-tight">{driftDirection}</span>
-                </div>
+              <div
+                className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1"
+                role="tablist"
+                aria-label="Forecast vectors"
+              >
+                {VECTOR_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={selectedVector === tab.id}
+                    onClick={() => setSelectedVector(tab.id)}
+                    className={`shrink-0 px-3 py-2 border font-mono text-[9px] uppercase tracking-widest inline-flex items-center gap-1.5 ${
+                      selectedVector === tab.id
+                        ? "bg-nous-text text-nous-base border-nous-text"
+                        : "bg-nous-surface text-nous-subtle border-nous-border hover:text-nous-text"
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                ))}
               </div>
-            </motion.div>
 
-            {/* Aesthetic DNA / Identity */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="md:col-span-2 bg-transparent border border-nous-border p-6 flex flex-col"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles size={14} className="text-nous-subtle" />
-                <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">Core Identity</span>
-              </div>
-              {dna ? (
-                <>
-                  <p className="font-serif text-lg leading-snug mb-4">"{dna.dnaStatement}"</p>
-                  <div className="flex flex-wrap gap-2 mt-auto">
-                    {dna.archetypes.map((a, i) => (
-                      <span key={i} className="px-2 py-1 border border-nous-text/20 font-mono text-[8px] uppercase tracking-widest">
-                        {a}
+              {selectedVector === "overview" && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[minmax(160px,auto)]">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="md:col-span-2 md:row-span-2 bg-nous-surface border border-nous-border p-5 md:p-6 flex flex-col justify-between relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 right-0 p-8 opacity-20 pointer-events-none scale-150 origin-top-right">
+                      {WEATHER_ICONS[currentSeason]}
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-4">
+                        <ThermometerSun size={14} className="text-nous-subtle" />
+                        <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">
+                          Current Condition
+                        </span>
+                      </div>
+                      <h2 className="font-serif italic text-4xl md:text-7xl mb-2 capitalize">
+                        {currentSeason}
+                      </h2>
+                      <p className="font-mono text-xs uppercase tracking-widest text-nous-text/80">
+                        {WEATHER_DESCRIPTORS[currentSeason]}
+                      </p>
+                    </div>
+                    <div className="relative z-10 mt-10 grid grid-cols-2 gap-4 border-t border-nous-border/50 pt-4">
+                      <div>
+                        <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">
+                          Drift Probability
+                        </span>
+                        <span className="font-sans text-xl tracking-tight">
+                          {driftScore == null ? "—" : `${Math.round(driftScore)}%`}
+                        </span>
+                        {driftScore == null ? (
+                          <p className="mt-1 font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
+                            {FORECAST_COPY.driftUncalibrated}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div>
+                        <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">
+                          Atmospheric State
+                        </span>
+                        <span className="font-sans text-sm tracking-tight">{driftDirection}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="md:col-span-2 border border-nous-border p-5 md:p-6 flex flex-col"
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <Sparkles size={14} className="text-nous-subtle" />
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">
+                        Core Identity
                       </span>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-nous-subtle font-mono text-xs">
-                  No DNA profile generated.
-                </div>
-              )}
-            </motion.div>
-
-            {/* Market / Generative Positioning */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="md:col-span-1 bg-nous-surface border border-nous-border p-6 flex flex-col"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Navigation size={14} className="text-nous-subtle" />
-                <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">Generative Vector</span>
-              </div>
-              {geo ? (
-                <div className="flex flex-col gap-4 flex-1 justify-center">
-                  <div>
-                    <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">Archetype Map</span>
-                    <span className="font-sans text-sm font-medium">{geo.marketMirror?.consumerArchetype || 'Undefined'}</span>
-                  </div>
-                  <div>
-                    <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">Semantic Clusters</span>
-                    <div className="flex flex-wrap gap-1">
-                      {geo.retrievalIdentity?.semanticClusters?.slice(0,3).map((c, i) => (
-                        <span key={i} className="text-[9px] text-nous-text/80">{c}{i !== 2 && ','}</span>
-                      ))}
                     </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-nous-subtle font-mono text-[9px]">
-                  GEO uncalibrated.
+                    {dna ? (
+                      <>
+                        <p className="font-serif text-lg leading-snug mb-4">
+                          &ldquo;{dna.dnaStatement}&rdquo;
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-auto">
+                          {dna.archetypes.map((a) => (
+                            <span
+                              key={a}
+                              className="px-2 py-1 border border-nous-text/20 font-mono text-[8px] uppercase tracking-widest"
+                            >
+                              {a}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-nous-subtle font-mono text-xs">
+                        No DNA profile generated.
+                      </div>
+                    )}
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="md:col-span-1 bg-nous-surface border border-nous-border p-5 md:p-6 flex flex-col"
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <Navigation size={14} className="text-nous-subtle" />
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">
+                        Generative Vector
+                      </span>
+                    </div>
+                    {geo ? (
+                      <div className="flex flex-col gap-4 flex-1 justify-center">
+                        <div>
+                          <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">
+                            Archetype Map
+                          </span>
+                          <span className="font-sans text-sm font-medium">
+                            {geo.marketMirror?.consumerArchetype || "Undefined"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">
+                            Semantic Clusters
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {geo.retrievalIdentity?.semanticClusters?.slice(0, 3).map((c, i, arr) => (
+                              <span key={c} className="text-[9px] text-nous-text/80">
+                                {c}
+                                {i !== arr.length - 1 ? "," : ""}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-nous-subtle font-mono text-[9px]">
+                        GEO uncalibrated.
+                      </div>
+                    )}
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="md:col-span-1 border border-nous-border p-5 md:p-6 flex flex-col justify-between"
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <Compass size={14} className="text-nous-subtle" />
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">
+                        Projected Shift
+                      </span>
+                    </div>
+                    {tasteVector && Object.keys(tasteVector).length > 0 ? (
+                      <div className="space-y-3">
+                        {Object.entries(tasteVector).map(([key, val]) => (
+                          <div key={key}>
+                            <div className="flex justify-between font-mono text-[8px] uppercase tracking-widest mb-1">
+                              <span>{key}</span>
+                              <span>{Math.round(val * 100)}%</span>
+                            </div>
+                            <div className="w-full h-px bg-nous-border">
+                              <div
+                                className="h-full bg-nous-text"
+                                style={{ width: `${Math.max(0, Math.min(100, val * 100))}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-nous-subtle font-mono text-[9px]">
+                        Vector data missing.
+                      </div>
+                    )}
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="md:col-span-4 bg-nous-surface border border-nous-border p-5 md:p-6"
+                  >
+                    <div className="flex flex-col md:flex-row gap-6 md:items-center">
+                      <div className="shrink-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Wind size={14} className="text-nous-subtle" />
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">
+                            Atmospheric Resonance
+                          </span>
+                        </div>
+                        <h3 className="font-serif italic text-2xl">
+                          {forecastingScope === "company" ? "Brand OS Read" : "Curator Read"}
+                        </h3>
+                      </div>
+                      <div className="hidden md:block w-px self-stretch bg-nous-border opacity-50" />
+                      <p className="flex-1 font-mono text-xs md:text-sm leading-relaxed text-nous-text/80">
+                        {geo?.semanticSignature?.stylisticLanguage ||
+                          dna?.poeticExpansion ||
+                          "Observation mode. Calibrate GEO or generate DNA to crystallize a higher-resolution forecast."}
+                      </p>
+                    </div>
+                  </motion.div>
                 </div>
               )}
-            </motion.div>
 
-            {/* Aesthetic Trajectory */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="md:col-span-1 bg-transparent border border-nous-border p-6 flex flex-col justify-between"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Compass size={14} className="text-nous-subtle" />
-                <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">Projected Shift</span>
-              </div>
-              {(profile as any)?.tasteVector ? (
-                <div className="space-y-3">
-                  {Object.entries((profile as any)?.tasteVector || {}).map(([key, val], i) => (
-                    <div key={key}>
-                      <div className="flex justify-between font-mono text-[8px] uppercase tracking-widest mb-1">
-                        <span>{key}</span>
-                        <span>{Math.round((val as number)*100)}%</span>
+              {selectedVector === "content" && (
+                <div className="flex flex-col gap-4">
+                  <div className="border border-nous-border/60 bg-nous-surface/60 px-3 py-2">
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle leading-relaxed">
+                      {contentUnavailable
+                        ? FORECAST_COPY.contentUnavailableBanner
+                        : FORECAST_COPY.contentLiveBanner}
+                    </p>
+                  </div>
+                  <h2 className="font-serif italic text-2xl flex flex-wrap items-center gap-3">
+                    <Target size={20} /> Content Forecasting
+                    <span className="text-[10px] uppercase font-sans tracking-widest text-nous-subtle bg-nous-border/30 px-2 py-1 inline-flex items-center gap-2">
+                      {contentForecast ? contentForecast.provider : "Research Synthesis"}
+                      {isPingingLabs ? <Loader2 size={10} className="animate-spin" /> : null}
+                    </span>
+                  </h2>
+
+                  {isPingingLabs && !contentForecast ? (
+                    <div className="min-h-[240px] flex flex-col items-center justify-center border border-nous-border border-dashed p-10 text-nous-subtle">
+                      <Loader2 className="animate-spin mb-4" size={24} />
+                      <p className="font-mono text-xs uppercase tracking-widest">
+                        Pinging research API…
+                      </p>
+                      <p className="font-sans text-[10px] mt-2 opacity-60">
+                        Synthesizing live format vectors
+                      </p>
+                    </div>
+                  ) : contentForecast ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-nous-surface border border-nous-border p-5 md:p-6 flex flex-col gap-6">
+                        <h3 className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle">
+                          Format Resonance Index
+                        </h3>
+                        <div className="space-y-6">
+                          {contentForecast.trends.length === 0 ? (
+                            <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle leading-relaxed">
+                              No live format vectors yet. Connect You.com / AI Gateway credits and
+                              retry.
+                            </p>
+                          ) : (
+                            contentForecast.trends.map((trend, idx) => (
+                              <div key={`${trend.format}-${idx}`} className="space-y-2">
+                                <div className="flex justify-between font-mono text-[9px] uppercase items-center gap-2">
+                                  <span className="font-bold text-[11px]">{trend.format}</span>
+                                  <span
+                                    className={
+                                      trend.velocity === "Surging"
+                                        ? "text-green-700"
+                                        : trend.velocity === "Rising"
+                                          ? "text-sky-700"
+                                          : "text-amber-700"
+                                    }
+                                  >
+                                    {trend.velocity}
+                                  </span>
+                                </div>
+                                <div className="w-full h-1 bg-nous-border relative overflow-hidden">
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${trend.score}%` }}
+                                    transition={{ duration: 1, delay: 0.2 + idx * 0.1 }}
+                                    className={`h-full ${
+                                      trend.velocity === "Surging" ? "bg-nous-text" : "bg-nous-subtle"
+                                    }`}
+                                  />
+                                </div>
+                                <p className="font-sans text-[11px] text-nous-text/80 leading-snug">
+                                  {trend.analysis}
+                                </p>
+                                {trend.sources.length > 0 ? (
+                                  <div className="mt-3 pt-2 border-t border-nous-border/50 flex flex-col gap-1.5">
+                                    <div className="flex items-center gap-1.5 text-nous-subtle">
+                                      <Link2 size={10} />
+                                      <span className="font-mono text-[8px] uppercase tracking-widest">
+                                        Sourced Citations
+                                      </span>
+                                    </div>
+                                    {trend.sources.map((source) => (
+                                      <a
+                                        key={source.url}
+                                        href={source.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="group flex items-center justify-between hover:bg-nous-base p-1.5 transition-colors border border-transparent hover:border-nous-border"
+                                      >
+                                        <span className="font-sans text-[10px] underline decoration-nous-border group-hover:decoration-nous-text/50 truncate pr-4">
+                                          {source.title}
+                                        </span>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <span className="font-mono text-[8px] text-nous-subtle bg-nous-border/30 px-1 py-0.5">
+                                            {(source.credibility * 100).toFixed(0)}% CQ
+                                          </span>
+                                          <ExternalLink
+                                            size={10}
+                                            className="text-nous-subtle opacity-0 group-hover:opacity-100 transition-opacity"
+                                          />
+                                        </div>
+                                      </a>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </div>
-                      <div className="w-full h-px bg-nous-border">
-                        <div className="h-full bg-nous-text" style={{ width: `${(val as number)*100}%` }} />
+                      <div className="border border-nous-border p-5 md:p-6 flex flex-col justify-between h-fit md:sticky md:top-4">
+                        <h3 className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle mb-4 flex items-center gap-2">
+                          <Brain size={14} /> The Synthesis
+                        </h3>
+                        <p className="font-serif text-xl leading-relaxed italic text-nous-text/90">
+                          &ldquo;{contentForecast.synthesis}&rdquo;
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-nous-subtle font-mono text-[9px]">
-                  Vector data missing.
+                  ) : null}
                 </div>
               )}
-            </motion.div>
 
-            {/* Full-width textual radar / insights stream */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="md:col-span-4 bg-nous-surface border border-nous-border p-6 relative overflow-hidden group"
-            >
-              <div className="flex flex-col md:flex-row gap-6 md:items-center">
-                <div className="shrink-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Wind size={14} className="text-nous-subtle" />
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">Atmospheric Resonance</span>
+              {selectedVector === "culture" && (
+                <div className="flex flex-col gap-4">
+                  <h2 className="font-serif italic text-2xl flex items-center gap-3">
+                    <Brain size={20} /> Cultural Shifts
+                  </h2>
+                  <div className="border border-dashed border-nous-border bg-nous-surface/40 p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-2 text-nous-subtle">
+                        <Activity size={16} />
+                        <span className="font-mono text-[9px] uppercase tracking-widest">
+                          Awaiting observatory signal
+                        </span>
+                      </div>
+                      <p className="font-serif italic text-lg text-nous-text leading-relaxed">
+                        {FORECAST_COPY.cultureAwaiting}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => go("observatory")}
+                      className="shrink-0 px-4 py-3 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest hover:opacity-90"
+                    >
+                      Open The Observatory
+                    </button>
                   </div>
-                  <h3 className="font-serif italic text-2xl">The Oracle's Read</h3>
                 </div>
-                <div className="w-px h-full bg-nous-border hidden md:block opacity-50" />
-                <div className="flex-1">
-                  <p className="font-mono text-xs md:text-sm leading-relaxed text-nous-text/80">
-                    {geo?.semanticSignature?.stylisticLanguage || 
-                     dna?.poeticExpansion || 
-                     "You are currently in a state of observation. The system requires more inputs to form a high-resolution forecast. Continue gathering artifacts to crystalize your signal."}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {selectedVector === 'content' && (
-          <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="font-serif italic text-2xl flex items-center gap-3">
-              <Target size={20}/> Content Forecasting 
-              <span className="text-[10px] uppercase font-sans tracking-widest text-nous-subtle ml-2 bg-nous-border/30 px-2 py-1 rounded-sm flex items-center gap-2">
-                Powered by {contentForecast ? contentForecast.provider : 'Research Synthesis'} {isPingingLabs && <Loader2 size={10} className="animate-spin" />}
-              </span>
-            </h2>
-
-            {isPingingLabs && !contentForecast ? (
-              <div className="flex-1 min-h-[300px] flex flex-col items-center justify-center border border-nous-border border-dashed p-12 text-nous-subtle">
-                <Loader2 className="animate-spin mb-4" size={24} />
-                <p className="font-mono text-xs uppercase tracking-widest">Pinging Research API...</p>
-                <p className="font-sans text-[10px] mt-2 opacity-60">Synthesizing deep research vectors</p>
-              </div>
-            ) : contentForecast ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div className="bg-nous-surface border border-nous-border p-6 flex flex-col gap-6">
-                   <h3 className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle">Format Resonance Index</h3>
-                   <div className="space-y-6">
-                     {contentForecast.trends.map((trend, idx) => (
-                       <div key={idx} className="space-y-2">
-                         <div className="flex justify-between font-mono text-[9px] uppercase items-center">
-                           <span className="font-bold text-[11px]">{trend.format}</span>
-                           <span className={trend.velocity === 'Surging' ? 'text-green-500' : trend.velocity === 'Rising' ? 'text-blue-400' : 'text-orange-500'}>
-                             {trend.velocity}
-                           </span>
-                         </div>
-                         <div className="w-full h-1 bg-nous-border relative overflow-hidden">
-                           <motion.div 
-                             initial={{ width: 0 }}
-                             animate={{ width: `${trend.score}%` }}
-                             transition={{ duration: 1, delay: 0.2 + idx * 0.1 }}
-                             className={`h-full ${trend.velocity === 'Surging' ? 'bg-nous-text' : 'bg-nous-subtle'}`}
-                           />
-                         </div>
-                         <p className="font-sans text-[11px] text-nous-text/80 leading-snug mt-2">{trend.analysis}</p>
-                         
-                         {/* Sources Section */}
-                         {trend.sources.length > 0 && (
-                           <div className="mt-3 pt-2 border-t border-nous-border/50 flex flex-col gap-1.5">
-                             <div className="flex items-center gap-1.5 text-nous-subtle">
-                               <Link2 size={10} />
-                               <span className="font-mono text-[8px] uppercase tracking-widest">Sourced Citations</span>
-                             </div>
-                             {trend.sources.map((source, sIdx) => (
-                               <a key={sIdx} href={source.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between hover:bg-nous-base p-1.5 rounded-sm transition-colors border border-transparent hover:border-nous-border">
-                                 <span className="font-sans text-[10px] underline decoration-nous-border group-hover:decoration-nous-text/50 truncate pr-4">{source.title}</span>
-                                 <div className="flex items-center gap-2 shrink-0">
-                                   <span className="font-mono text-[8px] text-nous-subtle bg-nous-border/30 px-1 py-0.5 rounded-sm">{(source.credibility * 100).toFixed(0)}% CQ</span>
-                                   <ExternalLink size={10} className="text-nous-subtle opacity-0 group-hover:opacity-100 transition-opacity" />
-                                 </div>
-                               </a>
-                             ))}
-                           </div>
-                         )}
-                       </div>
-                     ))}
-                   </div>
-                 </div>
-                 <div className="bg-transparent border border-nous-border p-6 flex flex-col justify-between sticky top-4 h-fit">
-                   <h3 className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle mb-4 flex items-center gap-2">
-                     <Brain size={14} /> The Synthesis
-                   </h3>
-                   <p className="font-serif text-xl leading-relaxed italic text-nous-text/90">"{contentForecast.synthesis}"</p>
-                 </div>
-              </div>
-            ) : null}
-          </div>
-        )}
-
-        {selectedVector === 'culture' && (
-          <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="font-serif italic text-2xl flex items-center gap-3"><Brain size={20}/> Cultural Shifts</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-               <div className="md:col-span-2 bg-nous-surface border border-nous-border p-6">
-                  <h3 className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle mb-4">Macro Atmospheric Currents</h3>
-                  <ul className="space-y-4">
-                    <li className="flex gap-4 items-start">
-                       <CloudRain size={16} className="text-nous-subtle mt-1 shrink-0"/>
-                       <div>
-                         <strong className="font-mono text-[10px] uppercase tracking-widest block mb-1">Post-Authenticity</strong>
-                         <p className="font-sans text-xs text-nous-text/80 leading-relaxed">The shift away from forced "rawness" towards deliberate, theatrical curation. Hyper-stylization as a form of honesty.</p>
-                       </div>
-                    </li>
-                    <li className="flex gap-4 items-start">
-                       <Snowflake size={16} className="text-nous-subtle mt-1 shrink-0"/>
-                       <div>
-                         <strong className="font-mono text-[10px] uppercase tracking-widest block mb-1">Neo-Luddite Aesthetics</strong>
-                         <p className="font-sans text-xs text-nous-text/80 leading-relaxed">Fetishization of analog interfaces, low-fidelity captures, and friction-heavy user experiences in a frictionless digital landscape.</p>
-                       </div>
-                    </li>
-                  </ul>
-               </div>
-               <div className="bg-transparent border border-nous-border border-dashed p-6 flex flex-col items-center justify-center text-center">
-                  <Activity size={24} className="text-nous-subtle mb-4"/>
-                  <h4 className="font-mono text-[10px] uppercase tracking-widest mb-2">Memetic Velocity</h4>
-                  <span className="font-sans text-4xl mb-2">High</span>
-                  <p className="font-sans text-[10px] text-nous-subtle">Cultural cycles are completing in 3 weeks average.</p>
-               </div>
-            </div>
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
-    </div>
+    </ChamberShell>
   );
 };

@@ -460,8 +460,15 @@ export interface TailorLogicDraft {
     birthDate?: string;
     birthTime?: string;
     birthLocation?: string;
+    birthTimezone?: string;
+    birthLatitude?: number;
+    birthLongitude?: number;
+    geocodeLabel?: string;
+    geocodeStatus?: "unset" | "resolved" | "manual" | "failed";
     astrologicalLineage?: string;
     seasonalAlignment?: string;
+    /** When true, chamber keeps a user-chosen sun sign instead of recomputing. */
+    zodiacLocked?: boolean;
   };
 
   materialityConfig?: MaterialityConfig;
@@ -656,6 +663,10 @@ export interface ZineMetadata {
   disclosedAt?: number;
   /** Disclosure copy version (e.g. mmm-consent-v1). */
   disclosureVersion?: string;
+  /** Live-window MMM eligibility after unpublish/withdraw (Architecture Update 21). */
+  mmmContributionStatus?: "active" | "withdrawn" | "never";
+  /** When contribution was withdrawn from future live windows. */
+  mmmWithdrawnAt?: number;
   isLocked?: boolean;
   mask?: string;
   useSearch?: boolean;

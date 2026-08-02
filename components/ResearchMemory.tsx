@@ -589,10 +589,11 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
                   <Folder className="text-nous-subtle/40 mb-3" size={32} />
                   <p className="font-serif italic text-base text-nous-subtle mb-1">No Atoms Anchored Here</p>
                   <p className="font-sans text-[9px] uppercase tracking-wider text-nous-subtle max-w-sm">
-                    {searchQuery 
-                      ? "No elements match your search filter." 
-                      : `Highlight text anywhere in the app, or use the form above to lock in your first cognitive seed.`
-                    }
+                    {searchQuery
+                      ? "No elements match your search filter."
+                      : mode === "retrieve"
+                        ? "Capture fragments in Capture, or highlight text anywhere in Mimi to seed this library."
+                        : "Highlight text anywhere in the app, or use the form above to lock in your first cognitive seed."}
                   </p>
                 </div>
               ) : (

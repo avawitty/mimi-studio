@@ -1,5 +1,4 @@
 import { cors, requireMethod, sendJson } from "../../lib/apiUtils.js";
-import { verifyMimiSession } from "../../lib/serverFirebaseAdmin.js";
 import { getShopifyConnectionStatus } from "../../lib/shopifyAdmin.js";
 
 export default async function handler(req: any, res: any) {
@@ -7,6 +6,7 @@ export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "GET")) return;
 
   try {
+    const { verifyMimiSession } = await import("../../lib/serverFirebaseAdmin.js");
     await verifyMimiSession(req.headers || {});
     sendJson(res, 200, getShopifyConnectionStatus());
   } catch (error: any) {
@@ -16,4 +16,3 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
-

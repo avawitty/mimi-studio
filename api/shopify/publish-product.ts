@@ -1,5 +1,4 @@
 import { cors, readJsonBody, requireMethod, sendJson } from "../../lib/apiUtils.js";
-import { verifyMimiSession } from "../../lib/serverFirebaseAdmin.js";
 import { publishShopifyDraft } from "../../lib/shopifyAdmin.js";
 
 export default async function handler(req: any, res: any) {
@@ -7,6 +6,7 @@ export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
 
   try {
+    const { verifyMimiSession } = await import("../../lib/serverFirebaseAdmin.js");
     await verifyMimiSession(req.headers || {});
     const body = await readJsonBody(req);
     if (body?.confirmed !== true) {
@@ -29,4 +29,3 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
-

@@ -834,11 +834,14 @@ export const createMoodboard = async (uid: string, name: string, itemIds: string
 
 export const updatePocketItem = async (itemId: string, patch: Partial<PocketItem>): Promise<void> => {
   const localPocket = await getLocalPocket();
-  const index = localPocket.findIndex(i => i.id === itemId);
-  if (index !== -1) {
-    const updated = { ...localPocket[index], ...patch };
-    await savePocketItemLocally(updated);
-    window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
+  // null = IndexedDB miss — skip local mutate; cloud path may still run.
+  if (localPocket) {
+    const index = localPocket.findIndex((i) => i.id === itemId);
+    if (index !== -1) {
+      const updated = { ...localPocket[index], ...patch };
+      await savePocketItemLocally(updated);
+      window.dispatchEvent(new CustomEvent("mimi:pocket_updated"));
+    }
   }
   if (isFullyAuthenticated() && navigator.onLine) {
     try {
@@ -1101,8 +1104,11 @@ export const fetchCommunityZines = async (count: number) => {
     }
 };
 
-export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => void) => {
-  const take = 30;
+export const subscribeToCommunityZines = (
+  callback: (data: ZineMetadata[]) => void,
+  opts?: { limit?: number },
+) => {
+  const take = Math.max(1, Math.min(opts?.limit ?? 30, COMMUNITY_ZINE_READ_CAP));
   let cancelled = false;
   let unsubFirestore = () => {};
   let unsubLive: (() => void) | null = null;
