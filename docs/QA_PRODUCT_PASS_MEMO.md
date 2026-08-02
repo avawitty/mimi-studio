@@ -9,8 +9,9 @@
 ## 7. Friends adding & Cliques — planning
 
 ### What exists today
-- `ConnectionsManager` + `services/connections.ts` — follow graph.
-- `CliqueView` / `CliqueProtocol` / `CliqueRadar` — early clique surfaces (partially wired).
+- **Unified on The Proscenium** — Stage / Correspondents / Cliques wings (`ProsceniumView`); `/connections` and `/cliques` redirect to `/proscenium/correspondents` and `/proscenium/cliques`.
+- `ConnectionsManager` + `services/connections.ts` — follow graph (embedded in Correspondents wing).
+- `CliqueView` / `CliqueProtocol` / `CliqueRadar` — clique surfaces (CliqueView embedded in Cliques wing).
 - Stand / Nebula can load a “network” of followed profiles’ zines.
 
 ### Product shape (recommended)

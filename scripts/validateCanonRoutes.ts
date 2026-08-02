@@ -34,6 +34,7 @@ const IMPLEMENTED_MODES = new Set([
   "mimi-rip",
   "chamber-map",
   "atelier",
+  "proscenium",
 ]);
 
 /** Primary chamber component paths (Milestone 1 registry) */
@@ -60,6 +61,7 @@ const CHAMBER_COMPONENT_FILES: Record<string, string> = {
   TheWard: "components/TheWard.tsx",
   ExportChamber: "components/ExportChamber.tsx",
   ChamberMapView: "components/chambers/ChamberMapView.tsx",
+  ProsceniumView: "components/ProsceniumView.tsx",
 };
 
 const failures: string[] = [];
