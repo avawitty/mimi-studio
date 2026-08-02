@@ -704,6 +704,8 @@ export interface AtelierObject {
   intent?: 'desire' | 'reference' | 'acquisition_signal';
   tags?: string[];
   savedAt: number;
+  /** Last time the user confirmed the pin still resonates */
+  lastResonantAt?: number;
 }
 
 export interface AestheticTouchpoint {

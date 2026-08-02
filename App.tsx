@@ -16,8 +16,15 @@ import { PublicDnaBadge } from "./components/PublicDnaBadge";
 import { MimiYouPublicRoute } from "./components/MimiYouPublicRoute";
 import { RipPublicRoute } from "./components/RipPublicRoute";
 import { RipLandingPage } from "./components/RipLandingPage";
+import { FishLandingPage } from "./components/FishLandingPage";
+import { FishShelfPage } from "./components/FishShelfPage";
 import { MimiShowcaseDirectory } from "./components/MimiShowcaseDirectory";
-import { getSiteSkin, parseRipPublicHandle } from "./lib/siteHost";
+import {
+  getSiteSkin,
+  parseFishShelfHandle,
+  parseFishShareId,
+  parseRipPublicHandle,
+} from "./lib/siteHost";
 import { StackView } from "./components/StackView";
 import { SubscriptionMatrix } from "./components/SovereignCommerceEngine";
 
@@ -2106,7 +2113,7 @@ export const App: React.FC = () => {
     return <MimiShowcaseDirectory navigate={navigate} />;
   }
 
-  // mimi.rip host skin (or ?skin=rip) — inverse public readings
+  // mimi.rip / mimi.fish host skins (or ?skin=rip|fish)
   const siteSkin = getSiteSkin();
   if (siteSkin === "rip") {
     const path = window.location.pathname;
@@ -2118,6 +2125,22 @@ export const App: React.FC = () => {
       return <RipPublicRoute handle={ripHandle} navigate={navigate} />;
     }
     // /rip chamber and other app routes fall through on rip host
+  }
+
+  if (siteSkin === "fish") {
+    const path = window.location.pathname;
+    if (path === "/" || path === "") {
+      return <FishLandingPage navigate={navigate} />;
+    }
+    // /s/:id already handled above; map /zine/:id onto the public share plate
+    const fishShareId = parseFishShareId(path);
+    if (fishShareId && path.startsWith("/zine/")) {
+      return <PublicZineSharePage zineId={fishShareId} />;
+    }
+    const fishHandle = parseFishShelfHandle(path);
+    if (fishHandle) {
+      return <FishShelfPage handle={fishHandle} navigate={navigate} />;
+    }
   }
 
   if (
@@ -2144,9 +2167,12 @@ export const App: React.FC = () => {
   ) {
     const handle = window.location.pathname.split("/u/")[1]?.split("/")[0];
     if (handle) {
-      // Same-host QA: ?skin=rip flips /u/:handle to the inverse card
+      // Same-host QA: ?skin=rip|fish flips /u/:handle
       if (siteSkin === "rip") {
         return <RipPublicRoute handle={handle} navigate={navigate} />;
+      }
+      if (siteSkin === "fish") {
+        return <FishShelfPage handle={handle} navigate={navigate} />;
       }
       return <MimiYouPublicRoute handle={handle} navigate={navigate} />;
     }
@@ -2429,7 +2455,15 @@ export const App: React.FC = () => {
           className={`flex-1 flex flex-col relative ${
             ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio"].includes(viewMode)
               ? "overflow-hidden min-h-0 pb-0 h-full"
-              : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0 mimi-page-pad"
+              : [
+                    "editorial-home",
+                    "stand",
+                    "signature",
+                    "showcase",
+                    "archival",
+                  ].includes(viewMode)
+                ? "overflow-y-auto bg-nous-base pb-8 md:pb-0 mimi-page-pad mimi-page-pad--public"
+                : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0 mimi-page-pad"
           }`}
         >
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (
