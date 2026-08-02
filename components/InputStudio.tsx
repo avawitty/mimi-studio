@@ -3707,7 +3707,7 @@ ${finalInput}`;
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.5 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black z-[60]"
+                className="fixed inset-0 bg-black z-[100]"
                 onClick={() => setToolsSheetOpen(false)}
               />
               <motion.div
@@ -3715,7 +3715,7 @@ ${finalInput}`;
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", stiffness: 340, damping: 34 }}
-                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[70] max-h-[80vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
+                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[110] max-h-[80vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
               >
                 <div className="sticky top-0 studio-bg-panel px-5 pt-3 pb-3 border-b studio-border">
                   <div className="w-10 h-1 rounded-full bg-current opacity-20 mx-auto mb-3" />
@@ -3906,7 +3906,7 @@ ${finalInput}`;
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.5 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black z-[60]"
+                className="fixed inset-0 bg-black z-[100]"
                 onClick={() => setMoreSheetOpen(false)}
               />
               <motion.div
@@ -3914,7 +3914,7 @@ ${finalInput}`;
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", stiffness: 340, damping: 34 }}
-                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[70] max-h-[70vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
+                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[110] max-h-[70vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
               >
                 <div className="sticky top-0 studio-bg-panel px-5 pt-3 pb-3 border-b studio-border">
                   <div className="w-10 h-1 rounded-full bg-current opacity-20 mx-auto mb-3" />
@@ -4095,7 +4095,7 @@ ${finalInput}`;
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
               onClick={() => setActivePanel(null)}
-              className="fixed inset-0 bg-black/60 z-[60] pointer-events-auto"
+              className="fixed inset-0 bg-black/60 z-[100] pointer-events-auto"
             />
 
             {/* Slide-Up/Modal Box */}
@@ -4107,7 +4107,7 @@ ${finalInput}`;
               transition={{ type: "spring", stiffness: 280, damping: 28 }}
               className={
                 isMobile
-                  ? "fixed bottom-0 left-0 right-0 w-full rounded-t-2xl border-t border-stone-800 max-h-[88vh] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] overflow-y-auto bg-[#111111] z-[70] pointer-events-auto shadow-[0_-12px_44px_rgba(0,0,0,0.5)] flex flex-col"
+                  ? "fixed bottom-0 left-0 right-0 w-full rounded-t-2xl border-t border-stone-800 max-h-[88vh] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] overflow-y-auto bg-[#111111] z-[110] pointer-events-auto shadow-[0_-12px_44px_rgba(0,0,0,0.5)] flex flex-col"
                   : "fixed bottom-16 left-1/2 -translate-x-1/2 w-[440px] max-h-[60vh] bg-[#12110F] border border-[#2B2925] rounded-none pointer-events-auto overflow-y-auto p-8 flex flex-col z-50 text-[#FAF9F6]"
               }
             >
