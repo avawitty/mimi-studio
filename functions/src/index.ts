@@ -108,6 +108,26 @@ const buildCreditGrant = (planInput?: unknown, interval: MimiBillingInterval = '
   };
 };
 
+const rollForwardMembershipGrant = (
+  grant: { allowance?: unknown } | null | undefined,
+  interval: MimiBillingInterval = 'month',
+  now = Date.now(),
+) => {
+  const allowance = Number(grant?.allowance ?? 0);
+  const periodMs = (interval === 'year' ? 365 : 30) * 24 * 60 * 60 * 1000;
+  return {
+    allowance,
+    used: 0,
+    remaining: allowance,
+    periodEndsAt: now + periodMs,
+  };
+};
+
+const hasTrustedStripeBilling = (data: Record<string, unknown>) => {
+  const stripeCustomerId = String(data.stripeCustomerId || '').trim();
+  return Boolean(stripeCustomerId) && !stripeCustomerId.startsWith('promo_');
+};
+
 const writeMembershipEntitlements = async ({
   uid,
   plan,
@@ -341,20 +361,17 @@ app.post('/api/funded-gateway/access', async (req, res) => {
       const now = Date.now();
       const needsPeriodReload =
         hasAllowance && Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
-      const stripeCustomerId = String(data.stripeCustomerId || '').trim();
-      const trustedBilling =
-        (Boolean(stripeCustomerId) && !stripeCustomerId.startsWith('promo_')) || hasAllowance;
+      const trustedBilling = hasTrustedStripeBilling(data as Record<string, unknown>);
       const needsTrustedMint = !hasAllowance && !hasRemaining && trustedBilling;
 
       if (needsPeriodReload || needsTrustedMint) {
         const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month') as MimiBillingInterval;
-        // Preserve a still-valid period window when minting a partial grant.
-        const credits =
-          !needsPeriodReload && periodEndsAt > now
-            ? {
-                ...buildCreditGrant(plan, interval),
-                periodEndsAt,
-              }
+        const credits = needsPeriodReload
+          ? trustedBilling
+            ? buildCreditGrant(plan, interval)
+            : rollForwardMembershipGrant(grant, interval, now)
+          : !needsPeriodReload && periodEndsAt > now
+            ? { ...buildCreditGrant(plan, interval), periodEndsAt }
             : buildCreditGrant(plan, interval);
         const healPatch = {
           membershipCredits: credits,

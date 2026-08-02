@@ -50,20 +50,32 @@ export function isPaidSubscriptionActive(subscriptionStatus: unknown): boolean {
 }
 
 /**
- * Trusted signals that the seat was granted by Stripe/webhook/admin — not a
- * client-forged `plan: "lab"` on an owner-writable profile doc.
+ * Stripe-backed billing only — never treat client-writable grant fields as trust.
+ * Used before minting paid credits from client-writable plan fields.
  */
 export function hasTrustedPaidBillingSignal(data: Record<string, unknown>): boolean {
   const stripeCustomerId = String(data.stripeCustomerId || "").trim();
-  if (stripeCustomerId && !stripeCustomerId.startsWith("promo_")) return true;
+  return Boolean(stripeCustomerId) && !stripeCustomerId.startsWith("promo_");
+}
 
-  const grant = (data.membershipCredits || (data.subscription as any)?.credits) as
-    | { allowance?: unknown; lastGrantedAt?: unknown }
-    | undefined;
-  // Prior server-issued grant (has allowance) is enough for period reload.
-  if (grant && grant.allowance != null && Number.isFinite(Number(grant.allowance))) return true;
-
-  return false;
+/** Roll an expired grant forward without re-deriving allowance from client plan. */
+export function rollForwardMembershipGrant(
+  grant: { allowance?: unknown; interval?: unknown } | null | undefined,
+  interval: MimiBillingInterval = "month",
+  now = Date.now(),
+) {
+  const normalizedInterval: MimiBillingInterval = interval === "year" ? "year" : "month";
+  const allowance = Number(grant?.allowance ?? 0);
+  const periodMs = (normalizedInterval === "year" ? 365 : 30) * 24 * 60 * 60 * 1000;
+  return {
+    allowance,
+    remaining: allowance,
+    used: 0,
+    interval: normalizedInterval,
+    periodStartedAt: now,
+    periodEndsAt: now + periodMs,
+    lastGrantedAt: now,
+  };
 }
 
 const require = createRequire(import.meta.url);
@@ -221,15 +233,17 @@ export const resolveMimiFundedGatewayAccess = async (
         if (shouldReloadPeriod || shouldMintMissing) {
           const interval = (data.subscriptionInterval || "month") as MimiBillingInterval;
           const existingPeriodEnd = Number(grant?.periodEndsAt ?? 0);
-          const { credits } = buildCreditGrant({
-            plan,
-            interval,
-            // Preserve a still-valid period window when minting a partial grant.
-            currentPeriodEnd:
-              !shouldReloadPeriod && existingPeriodEnd > Date.now()
-                ? existingPeriodEnd
-                : undefined,
-          });
+          const credits = shouldReloadPeriod
+            ? trustedBilling
+              ? buildCreditGrant({ plan, interval }).credits
+              : rollForwardMembershipGrant(grant, interval)
+            : buildCreditGrant({
+                plan,
+                interval,
+                // Preserve a still-valid period window when minting a partial grant.
+                currentPeriodEnd:
+                  existingPeriodEnd > Date.now() ? existingPeriodEnd : undefined,
+              }).credits;
           const healPatch = {
             membershipCredits: credits,
             subscriptionStatus: data.subscriptionStatus || "active",

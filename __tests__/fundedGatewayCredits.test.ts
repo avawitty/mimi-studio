@@ -5,6 +5,7 @@ import {
   needsMembershipCreditHeal,
   needsMembershipCreditMint,
   needsMembershipPeriodReload,
+  rollForwardMembershipGrant,
 } from "../lib/mimiFundedGateway.js";
 import { buildCreditGrant, isPaidMimiPlan, normalizeMimiPlan } from "../lib/mimiEntitlements.js";
 
@@ -71,7 +72,7 @@ describe("needsMembershipCreditHeal (compat)", () => {
 });
 
 describe("hasTrustedPaidBillingSignal", () => {
-  it("requires Stripe customer id or a prior allowance grant", () => {
+  it("requires a non-promo Stripe customer id (not client-writable grant fields)", () => {
     expect(hasTrustedPaidBillingSignal({ plan: "lab", mimiPlan: "lab" })).toBe(false);
     expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "promo_code" })).toBe(false);
     expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "cus_123" })).toBe(true);
@@ -79,7 +80,17 @@ describe("hasTrustedPaidBillingSignal", () => {
       hasTrustedPaidBillingSignal({
         membershipCredits: { allowance: 10000, remaining: 0 },
       }),
-    ).toBe(true);
+    ).toBe(false);
+  });
+});
+
+describe("rollForwardMembershipGrant", () => {
+  it("preserves existing allowance instead of re-deriving from client plan", () => {
+    const now = Date.now();
+    const rolled = rollForwardMembershipGrant({ allowance: 4321 }, "month", now);
+    expect(rolled.allowance).toBe(4321);
+    expect(rolled.remaining).toBe(4321);
+    expect(rolled.periodEndsAt).toBeGreaterThan(now);
   });
 });
 
