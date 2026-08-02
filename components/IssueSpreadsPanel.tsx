@@ -99,7 +99,18 @@ export const IssueSpreadsPanel: React.FC = () => {
           pages,
         },
       };
-      await updateZineMetadata(updated);
+      const persisted = await updateZineMetadata(updated);
+      if (!persisted) {
+        window.dispatchEvent(
+          new CustomEvent("mimi:registry_alert", {
+            detail: {
+              message: "Could not save spread — sign in as the issue owner and try again.",
+              type: "error",
+            },
+          }),
+        );
+        return;
+      }
       setIssues((prev) => prev.map((z) => (z.id === updated.id ? updated : z)));
       setComposing(null);
       window.dispatchEvent(
@@ -264,7 +275,7 @@ export const IssueSpreadsPanel: React.FC = () => {
           tone={defaultEditorTone(activeZine.tone)}
           initialTitle={activeZine.title || "Untitled Manifest"}
           onSave={(elements, trace) => {
-            void handleSaveSpread(elements, trace);
+            return handleSaveSpread(elements, trace);
           }}
           onCancel={() => {
             if (!saving) setComposing(null);

@@ -960,10 +960,11 @@ export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => vo
   }, (e) => logFirestoreError(e, OperationType.LIST, "zines"));
 };
 
-export const updateZineMetadata = async (metadata: ZineMetadata): Promise<void> => {
+/** @returns true when Firestore write ran; false when aborted (no auth / not owner). */
+export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolean> => {
   if (!auth.currentUser) {
     console.warn("MIMI // updateZineMetadata: No current user");
-    return;
+    return false;
   }
   if (!metadata.userId) {
     console.error("MIMI // updateZineMetadata: metadata.userId is missing");
@@ -971,7 +972,7 @@ export const updateZineMetadata = async (metadata: ZineMetadata): Promise<void> 
   }
   if (metadata.userId !== auth.currentUser.uid) {
     console.warn("MIMI // updateZineMetadata: User is not the owner of this zine. Update aborted.");
-    return;
+    return false;
   }
   try {
     devLog.info("MIMI // updateZineMetadata: Attempting update for zine:", metadata.id);
@@ -1043,6 +1044,7 @@ export const updateZineMetadata = async (metadata: ZineMetadata): Promise<void> 
     syncToShadowMemory(metadata);
     invalidateZineCache();
     console.info("MIMI // updateZineMetadata: Update complete");
+    return true;
   } catch (e) {
     console.error("MIMI // updateZineMetadata: Failed to update zine metadata", e);
     throw e; // Rethrow to be caught by caller if needed
