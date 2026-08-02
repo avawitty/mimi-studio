@@ -17,14 +17,27 @@ let driverInstance: SovereignDriver | null = null;
 let initAttempted = false;
 let initPromise: Promise<SovereignDriver | null> | null = null;
 
+/** True when a URL looks like a durable Postgres target (Neon, etc.). */
+export const looksLikePostgresUrl = (url: string | undefined | null): boolean => {
+  if (!url?.trim()) return false;
+  const value = url.trim().toLowerCase();
+  return (
+    value.startsWith("postgres://") ||
+    value.startsWith("postgresql://")
+  );
+};
+
+/** Neon / pooled hosts — prefer these over local SQLite when present. */
+export const looksLikeNeonUrl = (url: string | undefined | null): boolean => {
+  if (!looksLikePostgresUrl(url)) return false;
+  return url!.toLowerCase().includes("neon.tech");
+};
+
 export const isSovereignEnabled = (): boolean => {
   if (process.env.MIMI_SOVEREIGN_ENABLED === "0" || process.env.MIMI_SOVEREIGN_ENABLED === "false") {
     return false;
   }
-  const hasPostgres = Boolean(
-    process.env.MIMI_SOVEREIGN_DATABASE_URL?.trim() ||
-      (process.env.MIMI_SOVEREIGN_USE_DATABASE_URL === "1" && process.env.DATABASE_URL?.trim()),
-  );
+  const hasPostgres = Boolean(resolvePostgresUrl());
   const hasSqlitePath = Boolean(process.env.MIMI_SOVEREIGN_DB?.trim());
   // Vercel: require durable Postgres URL or explicit sqlite path/volume.
   if (process.env.VERCEL && !hasPostgres && !hasSqlitePath) {
@@ -40,11 +53,19 @@ export const resolveSovereignDbPath = (): string => {
   return path.join(process.cwd(), ".data", "sovereign.sqlite");
 };
 
-const resolvePostgresUrl = (): string | null => {
+export const resolvePostgresUrl = (): string | null => {
   const explicit = process.env.MIMI_SOVEREIGN_DATABASE_URL?.trim();
-  if (explicit) return explicit;
-  if (process.env.MIMI_SOVEREIGN_USE_DATABASE_URL === "1") {
-    return process.env.DATABASE_URL?.trim() || null;
+  if (looksLikePostgresUrl(explicit)) return explicit!;
+
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+  if (!looksLikePostgresUrl(databaseUrl)) return null;
+
+  // Explicit opt-in, or auto when DATABASE_URL is Neon (Vercel integration).
+  if (
+    process.env.MIMI_SOVEREIGN_USE_DATABASE_URL === "1" ||
+    looksLikeNeonUrl(databaseUrl)
+  ) {
+    return databaseUrl!;
   }
   return null;
 };

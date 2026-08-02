@@ -16,12 +16,23 @@ const toPg = (sql: string): string => {
   });
 };
 
+const withSslMode = (connectionString: string): string => {
+  // Neon requires TLS; keep caller overrides if already present.
+  if (/[?&]sslmode=/i.test(connectionString)) return connectionString;
+  const join = connectionString.includes("?") ? "&" : "?";
+  return `${connectionString}${join}sslmode=require`;
+};
+
 export const openPostgresDriver = async (connectionString: string): Promise<SovereignDriver> => {
   const { default: pg } = await import("pg");
+  const isNeon = /neon\.tech/i.test(connectionString);
   const pool: Pool = new pg.Pool({
-    connectionString,
-    max: 5,
+    connectionString: withSslMode(connectionString),
+    // Serverless / Neon pooler: keep the pool tiny.
+    max: isNeon ? 3 : 5,
     idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: isNeon ? 15_000 : 10_000,
+    ssl: isNeon ? { rejectUnauthorized: true } : undefined,
   });
 
   await pool.query(SCHEMA_SQL);
