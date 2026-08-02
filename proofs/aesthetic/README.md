@@ -18,6 +18,13 @@ These are **direction boards**, not production pixel specs. Implementation shoul
 | `08-studio-canvas-colophon.jpg` | Always-on Studio colophon (Phase C) |
 | `09-moodboard-darkroom-collapse.jpg` | Moodboard / Darkroom chrome collapse |
 | `10-graph-settle-taste-graph.jpg` | Evidence → Taste Graph settle |
+| `11-mobile-front-page.jpg` | Mobile Front Page plate |
+| `12-mobile-studio-colophon.jpg` | Mobile Studio + colophon |
+| `13-mobile-stand.jpg` | Mobile Stand shelf |
+| `14-mobile-signature.jpg` | Mobile Signature plate |
+| `15-mobile-moodboard.jpg` | Mobile Moodboard collapse |
+| `16-mobile-taste-graph.jpg` | Mobile Taste Graph settle |
+| `17-mobile-darkroom.jpg` | Mobile Darkroom collapse |
 
 Visual language target: high-contrast black/white, olive/stone accents, Cormorant + Geist, column rules, editorial-archive discipline — not cream/lifestyle cliché, and not “Mimi as a print shop.”
 
