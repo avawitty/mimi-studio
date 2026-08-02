@@ -696,11 +696,17 @@ async function synthesizeViaOpenAiCompatible(
     };
   }
 
+  // OpenAI proxy reads Authorization: Bearer; Anthropic reads x-api-key.
+  const authHeaders =
+    provider === 'openai'
+      ? { Authorization: `Bearer ${apiKey}` }
+      : { 'x-api-key': apiKey };
+
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
+      ...authHeaders,
     },
     body: JSON.stringify(body),
   });
@@ -781,9 +787,9 @@ export async function synthesizeCreativeDossier({
     keys.unshift({ provider: 'gemini', key: apiKey });
   }
 
-  const hasAnyByok = keys.length > 0;
-
-  if (preferFundedGateway && !hasAnyByok) {
+  // Prefer funded gateway when requested even if stale BYOK keys exist — dead
+  // local keys should not skip trial credits. Fall through to BYOK / local on failure.
+  if (preferFundedGateway) {
     try {
       return await synthesizeViaFundedGateway(
         normalized,
@@ -793,15 +799,21 @@ export async function synthesizeCreativeDossier({
       );
     } catch (fundedError) {
       const message = fundedError instanceof Error ? fundedError.message : String(fundedError);
-      // Credits / auth blockers: still try local pattern synthesis so the report is useful offline.
-      if (allowLocalFallback && (message.includes('Sign in') || message.includes('credits') || message.includes('Gemini key'))) {
+      // Credits / auth blockers with no BYOK: local pattern synthesis still useful offline.
+      if (
+        keys.length === 0 &&
+        allowLocalFallback &&
+        (message.includes('Sign in') || message.includes('credits') || message.includes('Gemini key'))
+      ) {
         console.warn('MIMI // Funded dossier unavailable; compiling local evidence read.', message);
         return synthesizeLocalFallback(normalized, userBlurb, digest, priorContext);
       }
       if (!message.includes('Sign in') && !message.includes('credits')) {
         console.warn('MIMI // Funded dossier path failed, falling back to BYOK / local:', message);
-      } else if (!allowLocalFallback) {
+      } else if (keys.length === 0 && !allowLocalFallback) {
         throw fundedError;
+      } else {
+        console.warn('MIMI // Funded dossier unavailable; trying BYOK / local.', message);
       }
     }
   }

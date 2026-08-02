@@ -292,7 +292,7 @@ export const MENU_STRUCTURE: NavigationSection[] = [
       {
         mode: "residue",
         label: "Residue",
-        note: "cultural / emotional travel maps",
+        note: "cultural / emotional residue maps",
         keywords: [
           "residue",
           "cultural residue",
@@ -300,8 +300,11 @@ export const MENU_STRUCTURE: NavigationSection[] = [
           "lineage",
           "neighborhoods",
           "mean median mode",
+          "mmm",
           "provenance",
           "non-diagnostic",
+          "countersignal",
+          "phenomenology",
         ],
       },
       {

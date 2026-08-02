@@ -14,6 +14,7 @@ import { buildSessionCookieHeader, clearSessionCookieHeader, SESSION_EXPIRES_MS 
 import { proxySessionLogin } from './lib/proxySessionToFunctions';
 import mimiImageHandler from "./api/mimi-image";
 import generateTextHandler from "./api/mimi/generate-text";
+import aiGatewayProxyHandler from "./api/proxy/ai-gateway";
 import createCheckoutSessionHandler from "./api/create-checkout-session";
 import createBillingPortalSessionHandler from "./api/create-billing-portal-session";
 import stripeWebhookHandler from "./api/stripe-webhook";
@@ -356,6 +357,17 @@ async function startServer() {
         return res.json(fallbackResult);
       } catch (err: any) {
         res.status(500).json({ error: { message: err.message }});
+      }
+    }
+  });
+
+  app.post("/api/proxy/ai-gateway", async (req, res) => {
+    try {
+      await aiGatewayProxyHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/proxy/ai-gateway:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }
     }
   });

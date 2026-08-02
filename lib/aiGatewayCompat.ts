@@ -279,22 +279,187 @@ const extractImagePrompt = (params: any): string => {
   return textFromUnknown(contents) || "Create an editorial image for Mimi.";
 };
 
-const imageSizeFromAspectRatio = (aspectRatio?: string) => {
-  if (aspectRatio === "16:9" || aspectRatio === "3:2") return "1536x1024";
-  if (aspectRatio === "9:16" || aspectRatio === "2:3" || aspectRatio === "3:4") return "1024x1536";
+export const imageSizeFromAspectRatio = (aspectRatio?: string) => {
+  if (
+    aspectRatio === "16:9" ||
+    aspectRatio === "3:2" ||
+    aspectRatio === "4:3" ||
+    aspectRatio === "landscape"
+  ) {
+    return "1536x1024";
+  }
+  if (
+    aspectRatio === "9:16" ||
+    aspectRatio === "2:3" ||
+    aspectRatio === "3:4" ||
+    aspectRatio === "portrait"
+  ) {
+    return "1024x1536";
+  }
   return "1024x1024";
 };
 
-const generateGatewayImageBytes = async (
-  params: any,
-  apiKey: string,
-) => {
-  const prompt = extractImagePrompt(params);
-  const aspectRatio =
-    params?.config?.aspectRatio ||
-    params?.config?.imageConfig?.aspectRatio ||
-    "1:1";
-  const model = modelFor("image", "gateway");
+/**
+ * Gemini Flash/Pro Image models are multimodal *language* models on the AI Gateway.
+ * They reject `/v1/images/generations` with ModelTypeMismatchError and must be
+ * called via `/v1/chat/completions` with `modalities: ["text","image"]`.
+ * True image endpoints (gpt-image, Imagen, Flux) keep using `/images/generations`.
+ */
+export const gatewayImageUsesChatModalities = (model: string): boolean => {
+  const id = String(model || "").toLowerCase();
+  return id.includes("gemini") && id.includes("image");
+};
+
+const parseDataUrl = (value: string): { base64: string; mimeType: string } | null => {
+  const match = String(value || "").match(DATA_URL_RE);
+  if (!match) return null;
+  return { mimeType: match[1] || "image/png", base64: match[2] };
+};
+
+export const extractGatewayChatImageBytes = (
+  message: any,
+): { base64: string; mimeType: string } | null => {
+  const images = Array.isArray(message?.images) ? message.images : [];
+  for (const image of images) {
+    const url = image?.image_url?.url || image?.url || "";
+    const parsed = parseDataUrl(url);
+    if (parsed?.base64) return parsed;
+  }
+
+  const content = message?.content;
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (part?.type === "image_url") {
+        const parsed = parseDataUrl(part?.image_url?.url || "");
+        if (parsed?.base64) return parsed;
+      }
+      if (part?.inlineData?.data) {
+        return {
+          base64: String(part.inlineData.data),
+          mimeType: String(part.inlineData.mimeType || "image/png"),
+        };
+      }
+    }
+  }
+
+  if (typeof content === "string") {
+    const parsed = parseDataUrl(content);
+    if (parsed?.base64) return parsed;
+  }
+
+  return null;
+};
+
+export type GatewayImageReference = {
+  dataUrl?: string;
+  mimeType?: string;
+  data?: string;
+  url?: string;
+};
+
+export type GatewayImageGenerationInput = {
+  apiKey: string;
+  model: string;
+  prompt: string;
+  aspectRatio?: string;
+  references?: GatewayImageReference[];
+};
+
+const referenceToDataUrl = (reference: GatewayImageReference): string => {
+  if (reference.dataUrl && reference.dataUrl.startsWith("data:")) return reference.dataUrl;
+  if (reference.url && reference.url.startsWith("data:")) return reference.url;
+  if (reference.data) {
+    return `data:${reference.mimeType || "image/png"};base64,${reference.data}`;
+  }
+  return "";
+};
+
+const collectReferenceDataUrls = (
+  references: GatewayImageReference[] | undefined,
+  params?: any,
+): string[] => {
+  const urls: string[] = [];
+  for (const reference of references || []) {
+    const dataUrl = referenceToDataUrl(reference);
+    if (dataUrl.startsWith("data:image/")) urls.push(dataUrl);
+  }
+
+  // Gemini-compat generateContent often ships references as inlineData parts.
+  const messages = params ? toGatewayMessages(params.contents) : [];
+  for (const message of messages) {
+    const content = message?.content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (part?.type === "image_url" && part?.image_url?.url?.startsWith("data:image/")) {
+        urls.push(part.image_url.url);
+      }
+    }
+  }
+
+  return urls.slice(0, 6);
+};
+
+/**
+ * Generate image bytes through Vercel AI Gateway, routing Gemini image models
+ * through chat completions + modalities and other models through
+ * `/images/generations`.
+ */
+export const generateGatewayImageBytesForModel = async (
+  input: GatewayImageGenerationInput,
+): Promise<{ base64: string; mimeType: string; model: string }> => {
+  const apiKey = String(input.apiKey || "").trim();
+  const model = String(input.model || modelFor("image", "gateway")).trim();
+  const prompt = String(input.prompt || "").trim() || "Create an editorial image for Mimi.";
+  const aspectRatio = input.aspectRatio || "1:1";
+
+  if (!apiKey) {
+    throw Object.assign(new Error("AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN is required."), {
+      status: 403,
+      code: "MISSING_AI_GATEWAY_KEY",
+    });
+  }
+
+  if (gatewayImageUsesChatModalities(model)) {
+    const referenceUrls = collectReferenceDataUrls(input.references);
+    const content: any[] = [{ type: "text", text: prompt }];
+    for (const url of referenceUrls) {
+      content.push({
+        type: "image_url",
+        image_url: { url, detail: "auto" },
+      });
+    }
+
+    const result = await gatewayChatCompletion(
+      apiKey,
+      {
+        messages: [{ role: "user", content }],
+        modalities: ["text", "image"],
+      },
+      { model, feature: "gateway-image-chat" },
+    );
+
+    const message = result?.choices?.[0]?.message;
+    const extracted = extractGatewayChatImageBytes(message);
+    if (!extracted?.base64) {
+      throw Object.assign(new Error("Vercel AI Gateway did not return image bytes."), {
+        status: 502,
+        code: "NO_IMAGE_RETURNED",
+      });
+    }
+    return { base64: extracted.base64, mimeType: extracted.mimeType, model: result?.model || model };
+  }
+
+  const gatewayBody: Record<string, unknown> = {
+    model,
+    prompt,
+    n: 1,
+    response_format: "b64_json",
+  };
+  // OpenAI-compatible sizing; BFL/Flux use their own size behavior.
+  if (!model.startsWith("bfl/")) {
+    gatewayBody.size = imageSizeFromAspectRatio(aspectRatio);
+    gatewayBody.quality = process.env.AI_GATEWAY_IMAGE_QUALITY || "medium";
+  }
 
   const upstream = await fetch(`${AI_GATEWAY_BASE_URL}/images/generations`, {
     method: "POST",
@@ -302,14 +467,7 @@ const generateGatewayImageBytes = async (
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      prompt,
-      n: 1,
-      size: imageSizeFromAspectRatio(aspectRatio),
-      quality: process.env.AI_GATEWAY_IMAGE_QUALITY || "medium",
-      response_format: "b64_json",
-    }),
+    body: JSON.stringify(gatewayBody),
   });
 
   const raw = await upstream.text();
@@ -325,14 +483,34 @@ const generateGatewayImageBytes = async (
       code: "NO_IMAGE_RETURNED",
     });
   }
-  return { base64, model, prompt };
+  return { base64, mimeType: "image/png", model: payload?.model || model };
+};
+
+const generateGatewayImageBytes = async (
+  params: any,
+  apiKey: string,
+) => {
+  const prompt = extractImagePrompt(params);
+  const aspectRatio =
+    params?.config?.aspectRatio ||
+    params?.config?.imageConfig?.aspectRatio ||
+    "1:1";
+  const model = modelFor("image", "gateway");
+  const { base64, mimeType } = await generateGatewayImageBytesForModel({
+    apiKey,
+    model,
+    prompt,
+    aspectRatio,
+    references: collectReferenceDataUrls(undefined, params).map((dataUrl) => ({ dataUrl })),
+  });
+  return { base64, mimeType, model, prompt };
 };
 
 export const generateGeminiImageViaGateway = async (
   params: any,
   apiKey: string,
 ) => {
-  const { base64, model } = await generateGatewayImageBytes(params, apiKey);
+  const { base64, mimeType, model } = await generateGatewayImageBytes(params, apiKey);
   return {
     candidates: [
       {
@@ -341,7 +519,7 @@ export const generateGeminiImageViaGateway = async (
           parts: [
             {
               inlineData: {
-                mimeType: "image/png",
+                mimeType: mimeType || "image/png",
                 data: base64,
               },
             },
@@ -359,13 +537,13 @@ export const generateGeminiImagesViaGateway = async (
   params: any,
   apiKey: string,
 ) => {
-  const { base64, model } = await generateGatewayImageBytes(params, apiKey);
+  const { base64, mimeType, model } = await generateGatewayImageBytes(params, apiKey);
   return {
     generatedImages: [
       {
         image: {
           imageBytes: base64,
-          mimeType: "image/png",
+          mimeType: mimeType || "image/png",
         },
       },
     ],

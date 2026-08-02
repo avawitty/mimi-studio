@@ -2265,6 +2265,9 @@ export const App: React.FC = () => {
         "threads",
         "latent-constellation",
         "the-lens",
+        "residue",
+        "intel-hub",
+        "forecast",
       ].includes(mode)
     )
       return "reflect";
@@ -2737,7 +2740,9 @@ export const App: React.FC = () => {
                           <ChamberMapView onNavigate={setViewMode} />
                         )}
                         {viewMode === "atelier" && <AtelierChamber />}
-                        {viewMode === "residue" && <ResidueChamber />}
+                        {viewMode === "residue" && (
+                          <ResidueChamber navigate={navigate} />
+                        )}
                         {viewMode === "geo_engine" && (
                           <div className="h-full w-full overflow-y-auto">
                             <TheGEOEngine />

@@ -49,10 +49,13 @@ function GlyphTile({
   label,
   color,
   accent,
+  fill = false,
 }: {
   label: string;
   color: string;
   accent: string;
+  /** When true, fill the parent (SCROLL mode) instead of sizing to content. */
+  fill?: boolean;
 }) {
   const initials = label
     .split(/\s+/)
@@ -63,7 +66,9 @@ function GlyphTile({
 
   return (
     <div
-      className="relative aspect-square border border-white/10 overflow-hidden flex flex-col justify-between p-2"
+      className={`relative border border-white/10 overflow-hidden flex flex-col justify-between ${
+        fill ? "w-full h-full p-6" : "aspect-square p-2"
+      }`}
       style={{
         background: `linear-gradient(145deg, ${color}ee, ${accent}55 60%, #0a0a0a)`,
       }}
@@ -75,10 +80,18 @@ function GlyphTile({
             "repeating-linear-gradient(90deg, transparent, transparent 6px, rgba(255,255,255,0.08) 6px, rgba(255,255,255,0.08) 7px), repeating-linear-gradient(0deg, transparent, transparent 6px, rgba(255,255,255,0.05) 6px, rgba(255,255,255,0.05) 7px)",
         }}
       />
-      <span className="relative z-10 font-mono text-[7px] uppercase tracking-[0.2em] text-white/70 truncate">
+      <span
+        className={`relative z-10 font-mono uppercase tracking-[0.2em] text-white/70 truncate ${
+          fill ? "text-[10px]" : "text-[7px]"
+        }`}
+      >
         {label}
       </span>
-      <span className="relative z-10 font-serif italic text-2xl text-white/90 leading-none">
+      <span
+        className={`relative z-10 font-serif italic text-white/90 leading-none ${
+          fill ? "text-6xl md:text-7xl" : "text-2xl"
+        }`}
+      >
         {initials || "·"}
       </span>
     </div>
@@ -250,11 +263,12 @@ export const ArtStyleMintVisual: React.FC<ArtStyleMintVisualProps> = ({
                 }`}
               >
                 {frame.kind === "glyph" ? (
-                  <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: base }}>
+                  <div className="w-full h-full" style={{ backgroundColor: base }}>
                     <GlyphTile
                       label={frame.label}
                       color={palette[i % Math.max(palette.length, 1)] || "#444"}
                       accent={accent}
+                      fill
                     />
                   </div>
                 ) : (

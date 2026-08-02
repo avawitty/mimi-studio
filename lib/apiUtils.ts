@@ -91,12 +91,19 @@ export const providerKey = (req: any, provider: "gemini" | "anthropic" | "openai
     return authHeader.replace(/^Bearer\s+/i, "");
   }
 
+  // Gateway env key is independently gated by funded-credit / BYOK flows.
+  // Do not require MIMI_ENABLE_SERVER_AI — Vercel serverless does not run
+  // server.ts auto-enable, and image routes that prefer the gateway would
+  // otherwise silently fall into Simulated Mirror Mode.
+  if (provider === "gateway") {
+    return process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+  }
+
   if (!serverAiEnabled()) return "";
   if (provider === "gemini") return process.env.GEMINI_API_KEY || process.env.API_KEY || "";
   if (provider === "anthropic") return process.env.ANTHROPIC_API_KEY || "";
   if (provider === "replicate") return process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY || "";
   if (provider === "openrouter") return process.env.OPENROUTER_API_KEY || "";
-  if (provider === "gateway") return process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
   return process.env.OPENAI_API_KEY || "";
 };
 

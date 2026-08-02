@@ -219,6 +219,23 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       import('../services/aiProvider').then(m => m.setGlobalAIProvider(provider));
   };
 
+  // Keep React state in sync when Oracle failover writes mimi_active_llm outside setActiveLlmProvider.
+  useEffect(() => {
+    const onProviderChanged = (event: Event) => {
+      const provider = (event as CustomEvent<{ provider?: string }>).detail?.provider;
+      if (
+        provider === 'gemini' ||
+        provider === 'openai' ||
+        provider === 'anthropic' ||
+        provider === 'gateway'
+      ) {
+        setActiveLlmProviderState(provider);
+      }
+    };
+    window.addEventListener('mimi:llm_provider_changed', onProviderChanged);
+    return () => window.removeEventListener('mimi:llm_provider_changed', onProviderChanged);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetch('/api/health')
