@@ -44,11 +44,11 @@ describe("sovereign db url resolution", () => {
     expect(resolvePostgresUrl()).toContain("ep-b");
   });
 
-  it("strips sslmode so Pool ssl owns cert verification", () => {
+  it("upgrades Neon sslmode to verify-full and drops uselibpqcompat", () => {
     const normalized = normalizePostgresConnectionString(
       "postgresql://u:p@ep-x.neon.tech/neondb?sslmode=require&uselibpqcompat=true&channel_binding=require",
     );
-    expect(normalized).not.toMatch(/sslmode=/i);
+    expect(normalized).toMatch(/sslmode=verify-full/i);
     expect(normalized).not.toMatch(/uselibpqcompat=/i);
     expect(normalized).toMatch(/channel_binding=require/);
   });

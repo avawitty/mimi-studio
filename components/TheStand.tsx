@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useEffect, useState, useMemo } from 'react';
-import { AnimatePresence } from 'motion/react';
-import { subscribeToUserZines, fetchCommunityZines } from '../services/firebaseUtils';
+import { motion, AnimatePresence } from 'motion/react';
+import { subscribeToUserZines, fetchCommunityZines, subscribeToCommunityZines } from '../services/firebaseUtils';
 import { fetchSovereignStatus, type SovereignArchiveStatus } from '../services/sovereignClient';
 import { getLocalZines } from '../services/localArchive';
 import { ZineMetadata } from '../types';
@@ -79,30 +79,41 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     };
   }, [user]);
 
-  // Lazy-load Floor (sovereign archive first) only when the tab is opened.
+  // Lazy-load Floor once, then keep live via SSE / poll (subscribeToCommunityZines).
   useEffect(() => {
-    if (mode !== 'floor' || floorLoaded) return;
+    if (mode !== 'floor') return;
     let cancelled = false;
+    let unsubLive = () => {};
+
     (async () => {
-      setFloorLoading(true);
-      try {
-        const community = await fetchCommunityZines(40);
-        if (!cancelled) {
-          setCommunityZines(community || []);
-          setFloorLoaded(true);
-          const status = await fetchSovereignStatus(true);
-          if (status) setArchive(status);
+      if (!floorLoaded) {
+        setFloorLoading(true);
+        try {
+          const community = await fetchCommunityZines(40);
+          if (!cancelled) {
+            setCommunityZines(community || []);
+            setFloorLoaded(true);
+            const status = await fetchSovereignStatus(true);
+            if (status) setArchive(status);
+          }
+        } catch (e) {
+          console.warn('Mimi // Stand community feed unavailable', e);
+        } finally {
+          if (!cancelled) setFloorLoading(false);
         }
-      } catch (e) {
-        console.warn('Mimi // Stand community feed unavailable', e);
-      } finally {
-        if (!cancelled) setFloorLoading(false);
       }
+
+      if (cancelled || searchQuery.trim()) return;
+      unsubLive = subscribeToCommunityZines((docs) => {
+        if (!cancelled) setCommunityZines(docs || []);
+      });
     })();
+
     return () => {
       cancelled = true;
+      unsubLive();
     };
-  }, [mode, floorLoaded]);
+  }, [mode, floorLoaded, searchQuery]);
 
   // Server-side Floor search when sovereign is ready; restore full shelf when cleared.
   useEffect(() => {
@@ -113,9 +124,12 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
       try {
         const { fetchSovereignCommunityZines } = await import('../services/sovereignClient');
         const results = await fetchSovereignCommunityZines(40, q);
-        if (!cancelled && results) setCommunityZines(results);
+        if (!cancelled && results) {
+          setCommunityZines(results);
+          return;
+        }
       } catch {
-        // keep client filter
+        // fall through to client filter via filteredZines
       }
     }, q ? 220 : 0);
     return () => {
@@ -133,7 +147,22 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
 
   const filteredZines = useMemo(() => {
     const source = mode === 'mine' ? myZines : communityZines;
-    if (!searchQuery.trim() || (mode === 'floor' && archive?.ready)) return source;
+    if (!searchQuery.trim()) return source;
+    // When sovereign search succeeds it already filtered communityZines.
+    // If it failed (stale full shelf + non-empty q), still filter client-side.
+    if (mode === 'floor' && archive?.ready) {
+      const q = searchQuery.toLowerCase();
+      const looksUnfiltered =
+        communityZines.length > 0 &&
+        !communityZines.every(
+          (z) =>
+            z.title?.toLowerCase().includes(q) ||
+            z.tone?.toLowerCase().includes(q) ||
+            z.userHandle?.toLowerCase().includes(q) ||
+            z.content?.headlines?.[0]?.toLowerCase().includes(q),
+        );
+      if (!looksUnfiltered) return source;
+    }
     const q = searchQuery.toLowerCase();
     return source.filter(
       (z) =>
@@ -327,7 +356,21 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
 
       <AnimatePresence>
         {commentZineId && (
-          <ZineComments zineId={commentZineId} onClose={() => setCommentZineId(null)} />
+          <motion.div
+            key="stand-comments"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/40 flex items-end md:items-center justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+            onClick={() => setCommentZineId(null)}
+          >
+            <div
+              className="bg-[var(--mimi-field)] w-full max-w-lg max-h-[80vh] overflow-y-auto border border-[var(--mimi-ink)] rounded-t-xl md:rounded-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ZineComments zineId={commentZineId} onClose={() => setCommentZineId(null)} />
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

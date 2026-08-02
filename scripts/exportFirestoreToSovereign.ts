@@ -10,6 +10,7 @@
  * Options:
  *   --limit=200
  *   --dry-run
+ *   --replace   (delete existing sovereign zines before import — true Floor swap)
  *   --out=./.data/firestore-export.json  (also writes JSON even when importing)
  */
 
@@ -18,6 +19,7 @@ import path from "node:path";
 import { config as loadEnv } from "dotenv";
 import { resetSovereignDbForTests } from "../lib/sovereign/db";
 import {
+  clearAllZines,
   importZines,
   sovereignStatus,
   upsertProfile,
@@ -36,6 +38,7 @@ const hasFlag = (name: string) => process.argv.includes(`--${name}`);
 async function main() {
   const limit = Math.max(1, Math.min(Number(arg("limit") || 200), 2000));
   const dryRun = hasFlag("dry-run");
+  const replace = hasFlag("replace");
   const outPath = arg("out") || path.join(process.cwd(), ".data", "firestore-export.json");
 
   process.env.MIMI_SOVEREIGN_ENABLED = process.env.MIMI_SOVEREIGN_ENABLED || "1";
@@ -84,6 +87,11 @@ async function main() {
   }
 
   await resetSovereignDbForTests();
+  let cleared = 0;
+  if (replace) {
+    cleared = await clearAllZines();
+    console.info(`MIMI // --replace: cleared ${cleared} existing sovereign zines`);
+  }
   for (const profile of profiles) {
     await upsertProfile(profile);
   }
@@ -94,6 +102,8 @@ async function main() {
         ok: true,
         imported,
         skipped,
+        cleared,
+        replace,
         profilesUpserted: profiles.length,
         archive: await sovereignStatus(),
         outPath,

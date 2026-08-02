@@ -245,8 +245,13 @@ export const reindexZineEmbeddings = async (opts?: {
 export const countIndexedEmbeddings = async (): Promise<number> => {
   const db = await getSovereignDb();
   if (!db) return 0;
-  const row = await db
-    .prepare(`SELECT COUNT(*) AS n FROM zines WHERE embedding IS NOT NULL`)
-    .get<{ n: number | string }>();
-  return Number(row?.n || 0);
+  try {
+    const row = await db
+      .prepare(`SELECT COUNT(*) AS n FROM zines WHERE embedding IS NOT NULL`)
+      .get<{ n: number | string }>();
+    return Number(row?.n || 0);
+  } catch {
+    // Column may be mid-migration on a stale host — never crash /api/health.
+    return 0;
+  }
 };

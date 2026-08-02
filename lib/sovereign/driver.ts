@@ -13,8 +13,11 @@ export type SovereignDriver = {
   pathOrUrl: string;
   exec: (sql: string) => Promise<void>;
   prepare: (sql: string) => SovereignStatement;
-  /** Run work inside a single transaction when the backend supports it. */
-  withTransaction: <T>(fn: () => Promise<T>) => Promise<T>;
+  /**
+   * Run work inside a single transaction.
+   * Callback receives a tx-scoped driver — never mutates the shared prepare().
+   */
+  withTransaction: <T>(fn: (tx: SovereignDriver) => Promise<T>) => Promise<T>;
   close: () => Promise<void>;
   /** Optional ping — returns round-trip ms or throws. */
   ping?: () => Promise<number>;

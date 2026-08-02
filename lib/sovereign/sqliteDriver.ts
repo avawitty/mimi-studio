@@ -47,10 +47,11 @@ export const openSqliteDriver = async (dbPath: string): Promise<SovereignDriver>
       db.exec(sql);
     },
     prepare,
-    withTransaction: async <T>(fn: () => Promise<T>): Promise<T> => {
+    withTransaction: async <T>(fn: (tx: SovereignDriver) => Promise<T>): Promise<T> => {
       db.exec("BEGIN");
       try {
-        const value = await fn();
+        // SQLite is process-local; the same prepare() is already serialized.
+        const value = await fn(driver);
         db.exec("COMMIT");
         return value;
       } catch (error) {
