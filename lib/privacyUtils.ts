@@ -155,7 +155,7 @@ export function sanitizeZineForPublicView(
       ? JSON.stringify(persistedPages)
       : undefined,
   };
-  const coverSpec = metadata.coverSpec
+  const coverSpec: ZineMetadata["coverSpec"] = metadata.coverSpec
     ? {
         ...metadata.coverSpec,
         originalImageUrl: undefined,
