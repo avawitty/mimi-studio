@@ -12,6 +12,12 @@ import {
 } from "../lib/zineSpreadLayout";
 import { ZineLayoutEditor } from "./ZineLayoutEditor";
 import { ZineSpreadCanvas } from "./ZineSpreadCanvas";
+import { normalizeZineArtifact } from "../lib/zine/normalizeZineArtifact";
+import {
+  artifactRequiresRevision,
+  createArtifactRevision,
+  withCanonicalZinePages,
+} from "../lib/zine/zineMigrations";
 
 function openIssue(zineId: string): void {
   window.dispatchEvent(
@@ -83,22 +89,41 @@ export const IssueSpreadsPanel: React.FC = () => {
     if (!composing || !activeZine?.content?.pages) return;
     setSaving(true);
     try {
-      const pages = [...activeZine.content.pages];
+      const artifact = normalizeZineArtifact(activeZine);
+      const revisionRequired = artifactRequiresRevision(artifact.status);
+      const revisedArtifact = revisionRequired
+        ? createArtifactRevision(artifact, {
+            reason: `Spread ${composing.pageIndex + 1} revised from The Edit`,
+            changedPageIds: [
+              artifact.pages[composing.pageIndex]?.id ||
+                `${activeZine.id}:page:${composing.pageIndex + 1}`,
+            ],
+          })
+        : artifact;
+      const pages = [...revisedArtifact.pages];
       const current = pages[composing.pageIndex];
       pages[composing.pageIndex] = {
         ...current,
+        revision: revisedArtifact.revision,
+        layoutRevision: (current.layoutRevision || 0) + 1,
         customLayout: {
           elements,
+          readingOrder:
+            current.customLayout?.readingOrder ||
+            elements.map((element) => element.id),
           editTrace: trace || current.customLayout?.editTrace || [],
         },
       };
-      const updated: ZineMetadata = {
-        ...activeZine,
-        content: {
-          ...activeZine.content,
-          pages,
+      const updated: ZineMetadata = withCanonicalZinePages(
+        {
+          ...activeZine,
+          artifactSchemaVersion: revisedArtifact.schemaVersion,
+          lifecycleStatus: revisedArtifact.status,
+          revision: revisedArtifact.revision,
+          revisions: revisedArtifact.revisions,
         },
-      };
+        pages,
+      );
       const persisted = await updateZineMetadata(updated);
       if (!persisted) {
         window.dispatchEvent(
