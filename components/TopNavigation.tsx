@@ -45,7 +45,7 @@ const MENU_STRUCTURE = [
  { mode: 'stand', label: 'The Stand', note: 'Your Published Showcase' },
  { mode: 'nebula', label: 'Resonance Feed', note: 'Community Floor' },
  { mode: 'press', label: 'Forecast Edit', note: 'Ad Profile & Affiliates' },
- { mode: 'proscenium', label: 'Proscenium', note: 'Manifested Visions' }
+ { mode: 'proscenium', label: 'Proscenium', note: 'Stage · Correspondents · Cliques' }
  ]},
  { section: 'System', items: [
  { mode: 'syllabus', label: 'The Syllabus', note: 'Bimbo Intellectual Reading List' },

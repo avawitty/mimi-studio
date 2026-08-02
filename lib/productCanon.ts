@@ -63,6 +63,11 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   atelier: "atelier",
   objects: "atelier",
   "taste-objects": "atelier",
+  // Social surfaces live on The Proscenium (wings via nested path).
+  connections: "proscenium",
+  correspondents: "proscenium",
+  cliques: "proscenium",
+  clique: "proscenium",
 };
 
 export const canonicalizeMimiRoute = (segment: string): string => {
