@@ -458,13 +458,8 @@ export const CANON_MODULES: CanonModule[] = [
     inputs: ["zine commerce touchpoints", "Shopify-verified product metadata", "semiotic rationale"],
     generations: ["taste-signal persistence", "cross-issue object clustering"],
     outputs: ["pinned taste objects", "desire / buyer-orientation evidence"],
-<<<<<<< HEAD
     userFlow: "Pin semiotic commerce objects from a zine as Desire or Reference taste signals, then revisit them here. Desire steers Studio/Tailor; reference stays light. Soft-capped archive, not a wishlist.",
     notes: "Distinct from the Atelier membership plan. Thimble=sourcing, Pocket=media, Atelier=commerce-as-taste. Soft cap 40; oldest references prune first.",
-  }
-=======
-    userFlow: "Pin semiotic commerce objects from a zine as taste signals, then revisit them here across issues. Not a wishlist or cart.",
-    notes: "Distinct from the Atelier membership plan. Local-first archive under mimi_atelier_objects::{uid}.",
   },
   {
     id: "proscenium",
@@ -500,7 +495,6 @@ export const CANON_MODULES: CanonModule[] = [
     notes:
       "Legacy /connections and /cliques redirect to /proscenium/correspondents and /proscenium/cliques. Local Echoes are demonstration specimens only.",
   },
->>>>>>> d2c4a3b (Polish Proscenium wings and lock social routing with e2e)
 ];
 
 export const CANON_MODULE_BY_ROUTE = CANON_MODULES.reduce<Record<string, CanonModule>>((acc, module) => {

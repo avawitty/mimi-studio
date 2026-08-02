@@ -1,0 +1,3 @@
+export {
+  separateResearchFromCommunityReports,
+} from "./emotionalHeuristics";

@@ -418,7 +418,7 @@ Install `apify-client` only when implementing Phase 9. Keep Actor IDs in `actorR
 | --- | --- | --- |
 | **1** | This audit | Findings + file plan returned; no engine code |
 | **2** | Shared Zod schemas, scoring, provenance, uncertainty, Firestore store stubs, constants | Runtime validation tests green |
-| **3** | Cultural Residue engine + shared pipeline stages | Cultural fixture (`office siren`) produces schema-valid result with provenance |
+| **3** | Cultural Residue engine + shared pipeline stages | Cultural fixture (`indie sleaze`) produces schema-valid result with provenance |
 | **4** | Emotional Residue engine + safety layer | Emotional fixtures non-diagnostic; research ≠ community |
 | **5** | Mean / Median / Mode adapter | Literal + interpretive paths labeled |
 | **6** | Intel Hub + Intelligence Report adapters + run persistence UI hooks | Runs reopenable; report structured |
