@@ -2473,7 +2473,7 @@ export const App: React.FC = () => {
         {/* Main Content Area */}
         <main
           className={`flex-1 flex flex-col relative ${
-            ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio"].includes(viewMode)
+            ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio", "brand-intake"].includes(viewMode)
               ? "overflow-hidden min-h-0 pb-0 h-full"
               : viewMode === "mimi-rip"
                 ? "overflow-hidden min-h-0 pb-0 h-full bg-[#050506]"
