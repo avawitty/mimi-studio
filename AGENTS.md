@@ -39,6 +39,12 @@ starts everything on one port.
   (the suite uses both a `chromium` project and a WebKit-based `ios-pwa` project).
 - Visual snapshot baselines live in `e2e/*.spec.ts-snapshots/`.
 
+### Bot review autofix
+- When asked to check Cursor / Codex / Vercel bot PR comments, follow
+  `.cursor/skills/fix-bot-pr-comments/SKILL.md`.
+- Recurring setup (Cursor Automation + optional GitHub Action):
+  `docs/automations/fix-bot-pr-comments.md`.
+- Manual / CI launch: `npm run cursor:fix-bot-comments` (needs `CURSOR_API_KEY`).
 ### Frequent UX review (do this often)
 After any UI/chrome/public-face change — and at least once per agent session that
 touches the product surface — run a short mobile review before calling work done:
