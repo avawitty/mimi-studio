@@ -26,13 +26,13 @@ export const PRIVACY_POLICY: LegalDocument = {
       id: "overview",
       title: "Overview",
       body:
-        "Mimi Zine (“Mimi,” “we,” “us”) operates at mimi.you and related subdomains. This Privacy Policy explains what information we collect, why we collect it, how we use and share it, and the choices you have. We built Mimi as a creative studio—not a data broker. We do not sell your personal information.",
+        "Mimi (“Mimi,” “we,” “us”) operates at mimi.you and related subdomains. This Privacy Policy explains what information we collect, why we collect it, how we use and share it, and the choices you have. We built Mimi as a creative studio—not a data broker. We do not sell your personal information.",
     },
     {
       id: "controller",
       title: "Who Is Responsible",
       body:
-        "Mimi Zine is the data controller for processing described in this policy. For privacy requests, contact us at privacy@mimi.you. If you use Mimi through a third-party embed or partner, their terms may also apply.",
+        "Mimi is the data controller for processing described in this policy. For privacy requests, contact us at privacy@mimi.you. If you use Mimi through a third-party embed or partner, their terms may also apply.",
     },
     {
       id: "collected",
@@ -110,7 +110,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       id: "contact",
       title: "Contact",
       body:
-        "Questions or requests: privacy@mimi.you\n\nMimi Zine — mimi.you",
+        "Questions or requests: privacy@mimi.you\n\nMimi — mimi.you",
     },
   ],
 };
@@ -125,7 +125,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       id: "acceptance",
       title: "Acceptance",
       body:
-        "By accessing or using Mimi Zine at mimi.you, you agree to these Terms of Service and our Privacy Policy. If you do not agree, do not use the service.",
+        "By accessing or using Mimi at mimi.you, you agree to these Terms of Service and our Privacy Policy. If you do not agree, do not use the service.",
     },
     {
       id: "service",
@@ -203,7 +203,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       id: "contact",
       title: "Contact",
       body:
-        "Legal inquiries: privacy@mimi.you\n\nMimi Zine — mimi.you",
+        "Legal inquiries: privacy@mimi.you\n\nMimi — mimi.you",
     },
   ],
 };

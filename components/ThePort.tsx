@@ -11,7 +11,7 @@ export const ThePort: React.FC<ThePortProps> = ({ onClose }) => {
     const [selectedAsset, setSelectedAsset] = useState<number | null>(null);
 
     const mockAssets = [
-        { id: 1, name: 'Vol 01: The Quiet Earth', type: 'ERC-721', origin: 'Mimi Zine Vault', date: '2023-10-24' },
+        { id: 1, name: 'Vol 01: The Quiet Earth', type: 'ERC-721', origin: 'Mimi Vault', date: '2023-10-24' },
         { id: 2, name: 'Fragment: Morning Fog', type: 'ERC-1155', origin: 'Sovereign Curation', date: '2024-01-12' },
         { id: 3, name: 'Manifesto: Digital Permanence', type: 'MIMI-X', origin: 'Mother Tree Network', date: '2024-05-03' }
     ];

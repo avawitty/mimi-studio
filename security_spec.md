@@ -1,6 +1,6 @@
-# SECURITY SPECIFICATION: MIMI ZINE REGISTRY (FIREBASE)
+# SECURITY SPECIFICATION: MIMI REGISTRY (FIREBASE)
 
-This document contains the security specification for the Mimi Zine Registry, adhering strictly to the **8 Pillars of Hardened Rules** for Attribute-Based Access Control (ABAC) and Zero-Trust Firestore Security.
+This document contains the security specification for the Mimi Registry, adhering strictly to the **8 Pillars of Hardened Rules** for Attribute-Based Access Control (ABAC) and Zero-Trust Firestore Security.
 
 ---
 
@@ -163,7 +163,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import * as fs from "fs";
 
-describe("Mimi Zine Registry - Fortress Rules Audit", () => {
+describe("Mimi Registry - Fortress Rules Audit", () => {
   let testEnv: RulesTestEnvironment;
 
   before(async () => {

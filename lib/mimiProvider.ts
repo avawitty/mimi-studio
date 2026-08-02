@@ -190,7 +190,7 @@ export function getSimulatedImageBase64(prompt: string, aspectRatio = "1:1"): st
 
     <!-- Lower metadata block (Vogue Italia publishing format) -->
     <g transform="translate(60, ${height - 110})">
-      <text x="0" y="0" class="mono-text">MIMIZINE // TEMPORAL REFRACTION SYSTEM</text>
+      <text x="0" y="0" class="mono-text">Mimi // TEMPORAL REFRACTION SYSTEM</text>
       <text x="0" y="32" class="title-text">${prompt.slice(0, 48)}${prompt.length > 48 ? '...' : ''}</text>
       <text x="0" y="56" class="desc-text">Simulated mirror state // Vogue Italia Luminous Diaphanity concept</text>
     </g>

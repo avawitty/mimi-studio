@@ -16,11 +16,11 @@ Keeping the GEO Pack in the top header is visually dense but has a distinct stra
 ## 3. TikTok Restrictions & the "Book" Bypass
 The "book link" loophole on TikTok is a brilliant arbitrage of platform restrictions. 
 - As TikTok clamps down on external links in favor of TikTok Shop, they maintain exceptions for "Books" or educational materials. 
-- We can structure exported Mimi Zines/Storefronts to legally and structurally qualify as "Digital Portfolios" or "Lookbooks" (complete with minimal ISBN or cataloging metadata that we parse via Brand OS). Users map their direct affiliate loops into a format that the algorithmic gatekeepers classify as a "book," thereby preserving their out-bound traffic flow and reclaiming their monetization sovereignty.
+- We can structure exported Mimi zines/Storefronts to legally and structurally qualify as "Digital Portfolios" or "Lookbooks" (complete with minimal ISBN or cataloging metadata that we parse via Brand OS). Users map their direct affiliate loops into a format that the algorithmic gatekeepers classify as a "book," thereby preserving their out-bound traffic flow and reclaiming their monetization sovereignty.
 
 ## 4. The Boutique Agency Vision
 Your vision for Mimi evolving into a boutique agency apparatus is the exact endgame.
-- **The Setup**: "Mimi Zine" transitions from a personal tool to a B2B structural asset. You acquire clients (brands, emerging designers, specific creators).
+- **The Setup**: "Mimi" transitions from a personal tool to a B2B structural asset. You acquire clients (brands, emerging designers, specific creators).
 - **The Interface**: The user profile splits into two modes: **Sovereign Curator** (you) and **Brand OS** (client management). 
 - **The Value Prop**: You don't just offer them "marketing"; you offer them *Aesthetic Intelligence Integration*. You ingest their brand into the Mimi apparatus, parse their DNA, cross-reference it against taste constellations, and output surgically precise affiliate grids, zines, and deployment strategies. 
 - **The Physical Layer**: The *RealReal* analogy is potent. The boutique agency could maintain a minimal, highly curated physical rack—a physical extension of the digital Thimble—where clients/partners experience the aesthetic thesis in reality.
