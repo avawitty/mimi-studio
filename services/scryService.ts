@@ -203,7 +203,24 @@ export async function runSpecimenScry(options: {
     };
     const hits = mapArchiveHits(data.results || []);
     run.sources.personalMemory = hits;
-    run.laneStatus.personalMemory = hits.length > 0 ? "success" : "empty";
+    const summary = (data.summary || "").trim();
+    // Summary-only / sign-in / error copy is not live evidence — never mark
+    // "partial" here or assessScryCoverage will inflate coverage.
+    if (hits.length > 0) {
+      run.laneStatus.personalMemory = "success";
+    } else {
+      const isError = /failed|error|try again|connection/i.test(summary);
+      run.laneStatus.personalMemory = isError ? "failed" : "empty";
+      // Keep actionable copy (sign-in, failure) visible in the Guide panel.
+      if (summary && (isError || /sign in/i.test(summary))) {
+        run.failures.push({
+          provider: "searchGrounding",
+          lane: "personalMemory",
+          message: summary,
+          at: Date.now(),
+        });
+      }
+    }
   } else {
     run.laneStatus.personalMemory = "failed";
     run.failures.push({

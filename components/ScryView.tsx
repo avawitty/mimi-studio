@@ -112,27 +112,34 @@ const PRESETS = [
   },
 ];
 
-function safeHostname(url?: string): string {
-  if (!url) return "unknown";
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return "unknown";
+/** Only http(s) (and same-origin relative paths) — blocks javascript: etc. */
+function safeHref(url?: string): string | undefined {
+  if (!url || typeof url !== "string") return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    return trimmed;
   }
-}
-
-/** Only allow http(s) links in user-facing hrefs (blocks javascript: / data: injection). */
-function safeExternalHref(url?: string): string | undefined {
-  if (!url) return undefined;
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(trimmed);
     if (parsed.protocol === "http:" || parsed.protocol === "https:") {
       return parsed.href;
     }
   } catch {
-    // ignore malformed URLs
+    return undefined;
   }
   return undefined;
+}
+
+function safeHostname(url?: string): string {
+  const href = safeHref(url);
+  if (!href) return "unknown";
+  try {
+    return new URL(href, typeof window !== "undefined" ? window.location.origin : "https://local.invalid")
+      .hostname;
+  } catch {
+    return "unknown";
+  }
 }
 
 const ResultCard: React.FC<{
@@ -140,7 +147,7 @@ const ResultCard: React.FC<{
   index: number;
 }> = ({ item, index }) => {
   const meta = LANE_META[item.sourceLane];
-  const safeHref = safeExternalHref(item.url);
+  const href = safeHref(item.url);
   return (
     <motion.article
       initial={{ opacity: 0, y: 8 }}
@@ -154,9 +161,9 @@ const ResultCard: React.FC<{
             {meta.icon}
             {meta.label}
           </p>
-          {safeHref ? (
+          {href ? (
             <p className="font-mono text-[8px] archive-text-muted mt-1 truncate">
-              {safeHostname(safeHref)}
+              {safeHostname(href)}
             </p>
           ) : null}
           {typeof item.similarity === "number" ? (
@@ -168,9 +175,9 @@ const ResultCard: React.FC<{
         <Layers size={12} className="archive-text-muted shrink-0 mt-0.5" />
       </div>
       <h3 className="font-serif text-lg md:text-xl italic archive-text-ink mb-2 leading-snug">
-        {safeHref ? (
+        {href ? (
           <a
-            href={safeHref}
+            href={href}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:underline underline-offset-4"
@@ -926,28 +933,28 @@ export const ScryView: React.FC = () => {
                         </p>
                         <ul className="space-y-2">
                           {curationMap.sources.map((src, sIdx) => {
-                            const citationHref = safeExternalHref(src.url);
+                            const href = safeHref(src.url);
                             return (
-                            <li
-                              key={`${src.url}-${sIdx}`}
-                              className="border archive-border px-3 py-2.5 flex justify-between items-center gap-3 font-mono text-[10px]"
-                            >
-                              <span className="truncate font-bold">{src.title}</span>
-                              {citationHref ? (
-                              <a
-                                href={citationHref}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="shrink-0 uppercase text-[8px] tracking-widest archive-text-muted hover:archive-text-ink flex items-center gap-1"
+                              <li
+                                key={`${src.url}-${sIdx}`}
+                                className="border archive-border px-3 py-2.5 flex justify-between items-center gap-3 font-mono text-[10px]"
                               >
-                                Open <ChevronRight size={10} />
-                              </a>
-                              ) : (
-                                <span className="shrink-0 uppercase text-[8px] tracking-widest archive-text-muted">
-                                  No link
-                                </span>
-                              )}
-                            </li>
+                                <span className="truncate font-bold">{src.title}</span>
+                                {href ? (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="shrink-0 uppercase text-[8px] tracking-widest archive-text-muted hover:archive-text-ink flex items-center gap-1"
+                                  >
+                                    Open <ChevronRight size={10} />
+                                  </a>
+                                ) : (
+                                  <span className="shrink-0 uppercase text-[8px] tracking-widest archive-text-muted">
+                                    Unavailable
+                                  </span>
+                                )}
+                              </li>
                             );
                           })}
                         </ul>

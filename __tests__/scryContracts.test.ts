@@ -37,4 +37,41 @@ describe("scryContracts", () => {
     const run = createEmptyScryRun("void");
     expect(assessScryCoverage(run)).toBeUndefined();
   });
+
+  it("does not treat empty archive lanes as live coverage", () => {
+    const run: ScryRun = {
+      ...createEmptyScryRun("signed out"),
+      laneStatus: {
+        personalMemory: "empty",
+        web: "empty",
+        generatedReading: "empty",
+        shadowMemory: "empty",
+      },
+    };
+    expect(assessScryCoverage(run)).toBeUndefined();
+  });
+
+  it("counts partial as live but not empty/failed", () => {
+    const partialOnly: ScryRun = {
+      ...createEmptyScryRun("partial"),
+      laneStatus: {
+        personalMemory: "partial",
+        web: "empty",
+        generatedReading: "failed",
+        shadowMemory: "empty",
+      },
+    };
+    expect(assessScryCoverage(partialOnly)?.score).toBe(0.25);
+
+    const emptyAndFailed: ScryRun = {
+      ...createEmptyScryRun("miss"),
+      laneStatus: {
+        personalMemory: "empty",
+        web: "failed",
+        generatedReading: "empty",
+        shadowMemory: "empty",
+      },
+    };
+    expect(assessScryCoverage(emptyAndFailed)).toBeUndefined();
+  });
 });

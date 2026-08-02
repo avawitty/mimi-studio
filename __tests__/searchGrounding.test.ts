@@ -9,6 +9,16 @@ describe("searchGrounding keyword gate", () => {
     { id: "a", type: "zine", title: "Saturation Chic lookbook", tags: ["neon"] },
     { id: "b", type: "pocket", title: "Greige wardrobe notes", content_preview: "ash linen" },
     { id: "c", type: "zine", title: "Untitled", content: { prompt: "moss garden" } },
+    {
+      id: "d",
+      type: "zine",
+      title: "Untitled plate",
+      originalInput: "lover girl soft focus diary",
+      content: {
+        the_reading: "A slow return to tenderness after armor.",
+        pages: [{ pageNumber: 1, headline: "Ash linen", bodyCopy: "Quiet wardrobe residue.", imagePrompt: "x" }],
+      },
+    },
   ];
 
   it("scores only when query terms appear in archive text", () => {
@@ -16,8 +26,17 @@ describe("searchGrounding keyword gate", () => {
     expect(scoreArchiveDoc(docs[0], ["moss"])).toBe(0);
   });
 
+  it("scores saved zine content fields beyond title/tags", () => {
+    expect(scoreArchiveDoc(docs[3], ["lover", "girl"])).toBeGreaterThan(0);
+    expect(scoreArchiveDoc(docs[3], ["tenderness"])).toBeGreaterThan(0);
+    expect(scoreArchiveDoc(docs[3], ["wardrobe"])).toBeGreaterThan(0);
+    expect(selectKeywordMatchedArchive(docs, "lover girl tenderness").map((m) => m.doc.id)).toContain(
+      "d",
+    );
+  });
+
   it("returns empty when no archive item matches the query", () => {
-    const matched = selectKeywordMatchedArchive(docs, "will i be a lover girl again?");
+    const matched = selectKeywordMatchedArchive(docs, "will i be a quantum flux capacitor?");
     expect(matched).toEqual([]);
   });
 
