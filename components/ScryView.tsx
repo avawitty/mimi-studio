@@ -386,25 +386,41 @@ export const ScryView: React.FC = () => {
         return;
       }
 
+      // Prefer the live input, then the last run's query (input may be cleared).
+      const scryQuery = query.trim() || String(run?.query || "").trim();
+      const willRerunScry = result.updated > 0 && Boolean(scryQuery);
+
       showNotification(
         result.updated > 0
-          ? `Re-indexed ${result.updated} shadow vector${result.updated === 1 ? "" : "s"}${result.dims ? ` → ${result.dims}d` : ""}. Running Scry…`
+          ? willRerunScry
+            ? `Re-indexed ${result.updated} shadow vector${result.updated === 1 ? "" : "s"}${result.dims ? ` → ${result.dims}d` : ""}. Running Scry…`
+            : `Re-indexed ${result.updated} shadow vector${result.updated === 1 ? "" : "s"}${result.dims ? ` → ${result.dims}d` : ""}. Run Scry to refresh results.`
           : result.attempted === 0
             ? "No shadow vectors needed re-index."
             : `Re-index finished with ${result.failed} failure${result.failed === 1 ? "" : "s"}.`,
       );
 
       // Drop stale "needs re-index" Guide failures from the prior empty-hit run.
+      // When we cannot re-scry, clear prior shadow hits so the UI doesn't keep
+      // empty/stale incompatible results after a successful rewrite.
       setRun((prev) => {
         if (!prev) return prev;
         const failures = (prev.failures || []).filter(
           (f) => !(f.lane === "shadowMemory" && /re-index/i.test(f.message)),
         );
+        const base =
+          result.updated > 0 && !willRerunScry
+            ? {
+                ...prev,
+                sources: { ...prev.sources, shadowMemory: [] },
+                laneStatus: { ...prev.laneStatus, shadowMemory: "empty" as const },
+              }
+            : prev;
         if (!result.auditAfter.needsReindex) {
-          return { ...prev, failures, shadowIndexHint: undefined };
+          return { ...base, failures, shadowIndexHint: undefined };
         }
         return {
-          ...prev,
+          ...base,
           failures,
           shadowIndexHint: {
             needsReindex: true,
@@ -419,16 +435,17 @@ export const ScryView: React.FC = () => {
         };
       });
 
-      if (result.updated > 0 && query.trim()) {
+      if (willRerunScry) {
         // Guarded post-reindex scry (same abort + request-id path as Run).
         abortRef.current?.abort();
         const controller = new AbortController();
         abortRef.current = controller;
         const requestId = ++scryRequestIdRef.current;
         setIsScrying(true);
+        if (!query.trim() && scryQuery) setQuery(scryQuery);
         try {
           const next = await runSpecimenScry({
-            query: query.trim(),
+            query: scryQuery,
             profile,
             geminiKey: apiKeys?.gemini,
             signal: controller.signal,
@@ -458,6 +475,7 @@ export const ScryView: React.FC = () => {
     isScrying,
     profile,
     query,
+    run?.query,
     run?.shadowIndexHint?.referenceDims,
     run?.shadowIndexHint?.referenceModel,
     showNotification,
