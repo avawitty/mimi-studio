@@ -73,7 +73,7 @@ export const WorktableShell: React.FC<WorktableShellProps> = ({
             </span>
           </span>
           <span className="font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
-            {toolsOpen ? "Hide" : isNarrow ? "Open" : toolsOpen ? "Hide" : "Show"}
+            {toolsOpen ? "Hide" : "Open"}
           </span>
         </button>
 

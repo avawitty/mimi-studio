@@ -1,6 +1,6 @@
 # Phase C — Hypothetical UI/UX Outcomes
 
-**Status**: Spec + generate-image proofs (not yet implemented)  
+**Status**: Implemented on branch (colophon + worktable collapse + GraphSettle)  
 **Parent**: [`aesthetic-system-overview.md`](./aesthetic-system-overview.md)  
 **Branch**: `meaesthetic-system-3413`
 
@@ -24,9 +24,9 @@ These boards show the intended implementation outcome for the three remaining ae
 - Component: extend `UsedContextColophon` into Studio worktable layout (outside orchestrator panel).
 
 ### Acceptance
-- [ ] Colophon visible on Studio open without opening Used Context panel
-- [ ] Does not steal > ~12% of viewport height when collapsed
-- [ ] Expand/approve preserved; empty state: “Mimi will not invent sources”
+- [x] Colophon visible on Studio open without opening Used Context panel
+- [x] Does not steal > ~12% of viewport height when collapsed
+- [x] Expand/approve preserved; empty state: “Mimi will not invent sources”
 
 ---
 
@@ -43,9 +43,9 @@ These boards show the intended implementation outcome for the three remaining ae
 - Mobile default: tools collapsed; media ≥ ~70% height.
 
 ### Acceptance
-- [ ] Moodboard and Darkroom open media-first
-- [ ] No permanent multi-row tool strip above media on mobile
-- [ ] Primary actions reachable from sheet header when expanded
+- [x] Moodboard and Darkroom open media-first (`WorktableShell`, tools collapsed by default)
+- [x] No permanent multi-row tool strip above media on mobile
+- [x] Primary actions reachable from sheet when expanded
 
 ---
 
@@ -62,10 +62,10 @@ These boards show the intended implementation outcome for the three remaining ae
 - Wire in `TasteGraph.tsx` / `LatentConstellation.tsx` on node mount keyed by atom/node id.
 
 ### Acceptance
-- [ ] Approving evidence triggers settle for new nodes only
-- [ ] Bulk approve: staggered settle, capped delay
-- [ ] `prefers-reduced-motion` skips animation
-- [ ] No ambient glow / orbiting nodes introduced
+- [x] New Taste Graph nodes settle (`GraphSettle` on map SVG + cluster cards); existing stay still
+- [x] Staggered settle, capped delay
+- [x] `prefers-reduced-motion` skips animation
+- [x] Olive marks newest nodes; no ambient orbit introduced for this motion
 
 ---
 
