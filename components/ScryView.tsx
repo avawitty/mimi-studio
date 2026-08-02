@@ -16,6 +16,8 @@ import {
   Archive,
   AlertCircle,
   CheckCircle,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import {
   ArchiveChamberShell,
@@ -722,6 +724,20 @@ export const ScryView: React.FC = () => {
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => setContextOpen((o) => !o)}
+                title={contextOpen ? "Hide guide" : "Show guide"}
+                aria-label={contextOpen ? "Hide guide" : "Show guide"}
+                aria-expanded={contextOpen}
+                className="ml-auto w-9 h-9 min-w-[36px] min-h-[44px] flex items-center justify-center text-white/45 border border-white/15"
+              >
+                {contextOpen ? (
+                  <PanelRightClose size={15} strokeWidth={1.25} />
+                ) : (
+                  <PanelRightOpen size={15} strokeWidth={1.25} />
+                )}
+              </button>
             </nav>
 
             {tab === "specimen" && (

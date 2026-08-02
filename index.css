@@ -531,25 +531,9 @@
       background: #050506;
     }
 
-    /* App chrome already says Scry — keep Guide only, drop duplicate masthead */
+    /* App chrome already says Scry — hide chamber masthead strip entirely on mobile */
     .archive-chamber.scry-mobile-ink .archive-chrome {
-      background: #050506;
-      border-bottom: none;
-      padding-top: 0.25rem;
-      padding-bottom: 0;
-    }
-
-    .archive-chamber.scry-mobile-ink .archive-chrome > div {
-      justify-content: flex-end;
-    }
-
-    .archive-chamber.scry-mobile-ink .archive-chrome h1 {
       display: none;
-    }
-
-    .archive-chamber.scry-mobile-ink .archive-icon-btn {
-      color: rgba(243, 241, 234, 0.65);
-      border-color: rgba(243, 241, 234, 0.16);
     }
 
     .archive-chamber.scry-mobile-ink .archive-canvas {
