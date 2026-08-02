@@ -119,7 +119,8 @@ export const savePocketItemLocally = async (item: PocketItem) => {
   }
 };
 
-export const getLocalPocket = async (): Promise<PocketItem[]> => {
+/** Local pocket snapshot. `null` means IndexedDB read failed — not an empty pocket. */
+export const getLocalPocket = async (): Promise<PocketItem[] | null> => {
   try {
     const db = await openDB();
     const tx = db.transaction(STORES.POCKET, 'readonly');
@@ -131,9 +132,9 @@ export const getLocalPocket = async (): Promise<PocketItem[]> => {
         const results = request.result as PocketItem[];
         resolve(results.sort((a, b) => b.savedAt - a.savedAt));
       };
-      request.onerror = () => resolve([]);
+      request.onerror = () => resolve(null);
     });
-  } catch (e) { return []; }
+  } catch (e) { return null; }
 };
 
 export const saveProfileLocally = async (profile: UserProfile) => {

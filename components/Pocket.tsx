@@ -803,7 +803,9 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  // Local pocket_updated: upsert local rows, drop ids removed from local, keep
  // true cloud-only rows (never seen in local) so we don't re-fetch the collection.
  const handlePocketUpdate = async () => {
-   const localData = (await getLocalPocket()) || [];
+   const localData = await getLocalPocket();
+   // IndexedDB miss → null (not []). Do not treat as mass-delete.
+   if (localData === null) return;
    localData.forEach((item) => {
      if (item?.id) seenLocalPocketIdsRef.current.add(item.id);
    });
