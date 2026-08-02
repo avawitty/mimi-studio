@@ -6,6 +6,7 @@ import {
   Link2,
   MessageSquare,
   Network,
+  PanelRightOpen,
   Sparkles,
 } from "lucide-react";
 import {
@@ -235,6 +236,7 @@ export const ScribeChamber: React.FC<{ initialTab?: ScribeTab }> = ({ initialTab
       contextDrawerOpen={contextOpen}
       onContextDrawerToggle={() => setContextOpen((open) => !open)}
       contextDrawerTitle="Guide"
+      mobileGuideOnly
       spine={
         <>
           {SCRIBE_TABS.map((item) => (
@@ -260,33 +262,42 @@ export const ScribeChamber: React.FC<{ initialTab?: ScribeTab }> = ({ initialTab
       }
       canvas={
         <div className="flex flex-col h-full min-h-0">
-          {/* Mobile 3-mode workbench bar */}
-          <nav
-            aria-label="Scribe modes"
-            className="md:hidden shrink-0 grid grid-cols-3 border-b archive-border"
-          >
-            {MOBILE_MODES.map((mode) => {
-              const active = mobileMode === mode.id;
-              return (
-                <button
-                  key={mode.id}
-                  type="button"
-                  onClick={() => setMobileMode(mode.id)}
-                  className={`flex items-center justify-center gap-1.5 px-2 py-2.5 font-mono text-[8px] uppercase tracking-[0.15em] transition-colors border-b-2 ${
-                    active
-                      ? "archive-workflow-active border-archive-ink"
-                      : "archive-workflow-idle border-transparent"
-                  }`}
-                >
-                  {mode.icon}
-                  {mode.label}
-                </button>
-              );
-            })}
-          </nav>
+          {/* Mobile 3-mode workbench bar (+ guide, since chamber header is hidden) */}
+          <div className="md:hidden shrink-0 flex items-stretch border-b archive-border">
+            <nav aria-label="Scribe modes" className="flex-1 grid grid-cols-3 min-w-0">
+              {MOBILE_MODES.map((mode) => {
+                const active = mobileMode === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setMobileMode(mode.id)}
+                    className={`flex items-center justify-center gap-1.5 px-2 py-2.5 font-mono text-[8px] uppercase tracking-[0.15em] transition-colors border-b-2 ${
+                      active
+                        ? "archive-workflow-active border-archive-ink"
+                        : "archive-workflow-idle border-transparent"
+                    }`}
+                  >
+                    {mode.icon}
+                    {mode.label}
+                  </button>
+                );
+              })}
+            </nav>
+            <button
+              type="button"
+              onClick={() => setContextOpen((open) => !open)}
+              aria-label={contextOpen ? "Hide guide" : "Show guide"}
+              aria-expanded={contextOpen}
+              title="Guide"
+              className="shrink-0 w-11 border-l archive-border flex items-center justify-center archive-text-muted"
+            >
+              <PanelRightOpen size={14} strokeWidth={1.25} />
+            </button>
+          </div>
 
           {mobileMode === "library" && (
-            <div className="md:hidden shrink-0 flex items-center gap-1 overflow-x-auto px-3 py-2 border-b archive-border scrollbar-none">
+            <div className="md:hidden shrink-0 flex items-center gap-1 overflow-x-auto px-3 py-1.5 border-b archive-border scrollbar-none">
               {(
                 [
                   { id: "retrieve" as const, label: "Retrieve", icon: <BookOpen size={12} /> },
@@ -298,7 +309,7 @@ export const ScribeChamber: React.FC<{ initialTab?: ScribeTab }> = ({ initialTab
                   key={item.id}
                   type="button"
                   onClick={() => setLibrary(item.id)}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 border font-mono text-[8px] uppercase tracking-[0.15em] transition-colors ${
+                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1 border font-mono text-[8px] uppercase tracking-[0.12em] transition-colors ${
                     libraryView === item.id
                       ? "archive-workflow-active border-archive-ink"
                       : "archive-workflow-idle border-transparent"
