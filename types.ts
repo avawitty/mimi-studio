@@ -1214,7 +1214,7 @@ export interface UserPreferences {
   };
 }
 
-export type MembershipPlan = 'core' | 'pro' | 'lab' | 'free';
+export type MembershipPlan = 'core' | 'optioning' | 'pro' | 'lab' | 'free';
 
 export interface SubscriptionData {
   status: 'active' | 'canceled' | 'past_due';
@@ -1223,7 +1223,7 @@ export interface SubscriptionData {
   currentPeriodEnd: number;
 }
 
-export type UserPlanStatus = 'ghost' | 'trial' | 'free' | 'core' | 'pro' | 'lab' | 'expired';
+export type UserPlanStatus = 'ghost' | 'trial' | 'free' | 'core' | 'optioning' | 'pro' | 'lab' | 'expired';
 
 export interface UserProfile extends UserPreferences {
   uid: string;
@@ -1254,8 +1254,10 @@ export interface UserProfile extends UserPreferences {
   isPatron?: boolean;
   patronActivatedAt?: number;
   patronKey?: string;
-  plan?: 'free' | 'core' | 'pro' | 'lab';
+  plan?: 'free' | 'core' | 'optioning' | 'pro' | 'lab';
   planStatus?: UserPlanStatus;
+  /** Canonical patronage plan id (initiation | optioning | atelier | lab | …). */
+  mimiPlan?: string;
   trial?: {
     startedAt: number;
     endsAt: number;

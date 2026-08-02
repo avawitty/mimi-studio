@@ -17,6 +17,8 @@ const checkoutSchema = z.object({
   interval: z.enum(["month", "year"]).optional(),
 });
 
+const PAID_LEGACY = new Set(["core", "optioning", "pro", "lab"]);
+
 export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
 
@@ -43,8 +45,10 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const userSnapshot = await db.collection("users").doc(decoded.uid).get();
-    const existingCustomerId = String(userSnapshot.data()?.stripeCustomerId || "");
+    const userRef = db.collection("users").doc(decoded.uid);
+    const userSnapshot = await userRef.get();
+    const userData = userSnapshot.data() || {};
+    let customerId = String(userData.stripeCustomerId || "");
     const stripe = getStripeClient();
     const mimiPlan = getMimiPlanForCheckout(plan);
     const priceId = getStripePriceForPlan(plan, interval);
@@ -58,21 +62,49 @@ export default async function handler(req: any, res: any) {
     const protocol = String(req.headers["x-forwarded-proto"] || "https").split(",")[0];
     const baseUrl = configuredBase || `${protocol}://${forwardedHost}`;
 
+    // Ensure a durable Stripe Customer exists before Checkout so portal + webhooks
+    // always resolve to the same Firebase uid.
+    if (!customerId.startsWith("cus_")) {
+      const customer = await stripe.customers.create({
+        email: decoded.email || undefined,
+        metadata: { userId: decoded.uid },
+      });
+      customerId = customer.id;
+      await userRef.set({ stripeCustomerId: customerId }, { merge: true });
+    }
+
+    const hasActiveSubscription =
+      userData.subscriptionStatus === "active" &&
+      PAID_LEGACY.has(String(userData.planStatus || userData.membershipPlan || ""));
+
+    // Existing subscribers change plans via Customer Portal (proration / cancel)
+    // instead of opening a second Checkout Session that could double-bill.
+    if (hasActiveSubscription) {
+      const portal = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${baseUrl}/memberships`,
+      });
+      sendJson(res, 200, { url: portal.url, mode: "portal" });
+      return;
+    }
+
     const session = await stripe.checkout.sessions.create({
       integration_identifier: "mimi_subs_qfjrmtaz",
       mode: "subscription",
-      ...(existingCustomerId.startsWith("cus_")
-        ? { customer: existingCustomerId }
-        : { customer_email: decoded.email || undefined }),
+      customer: customerId,
       client_reference_id: decoded.uid,
+      allow_promotion_codes: true,
+      billing_address_collection: "auto",
       metadata: {
         plan: mimiPlan,
         userId: decoded.uid,
+        interval,
       },
       subscription_data: {
         metadata: {
           plan: mimiPlan,
           userId: decoded.uid,
+          interval,
         },
       },
       line_items: [
@@ -82,10 +114,10 @@ export default async function handler(req: any, res: any) {
         },
       ],
       success_url: `${baseUrl}/?checkout=success&plan=${plan}&interval=${interval}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/?checkout=canceled`,
+      cancel_url: `${baseUrl}/memberships`,
     });
 
-    sendJson(res, 200, { url: session.url });
+    sendJson(res, 200, { url: session.url, mode: "checkout" });
   } catch (error: any) {
     console.error("MIMI // Stripe checkout error:", error);
     sendError(res, error?.status || 500, error?.message || "Failed to create checkout session");
