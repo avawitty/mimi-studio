@@ -45,3 +45,17 @@ starts everything on one port.
 - Recurring setup (Cursor Automation + optional GitHub Action):
   `docs/automations/fix-bot-pr-comments.md`.
 - Manual / CI launch: `npm run cursor:fix-bot-comments` (needs `CURSOR_API_KEY`).
+### Frequent UX review (do this often)
+After any UI/chrome/public-face change — and at least once per agent session that
+touches the product surface — run a short mobile review before calling work done:
+
+1. `npm run review:mobile` (needs `npm run dev` on :3000, or pass a preview URL).
+2. Manually spot-check iPhone-width: Front Page, Stand (Mine/Floor), Signature, Studio
+   (Tools + Treatments sheets).
+3. Checklist:
+   - Public faces: quiet chrome (Menu + identity; no pocket/oracle); one `Mimi` wordmark
+   - Stand Floor fully tappable; no clipped tabs
+   - Studio: Tools opens; sheets above nav; dismissible; safe-area padding
+   - No app-owned circular right-edge FAB (preview chrome FABs are external)
+   - Spell the wordmark `Mimi` (never `MIMI`) when readable
+4. Fix P0/P1 findings in the same PR when cheap; defer the rest with a note.
