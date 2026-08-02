@@ -12,8 +12,15 @@ import path from "node:path";
 import type { SovereignDriver } from "./driver.js";
 
 let driverInstance: SovereignDriver | null = null;
-let initAttempted = false;
+/** True after a successful open that returned null (feature disabled). */
+let initSettledDisabled = false;
+/** True after open threw — retry allowed after cooldown (Neon cold start / TLS blips). */
+let initFailed = false;
+let lastInitFailureAt = 0;
 let initPromise: Promise<SovereignDriver | null> | null = null;
+
+/** Cooldown before retrying a failed Postgres/SQLite open in the same isolate. */
+const INIT_RETRY_COOLDOWN_MS = 5_000;
 
 /** True when a URL looks like a durable Postgres target (Neon, etc.). */
 export const looksLikePostgresUrl = (url: string | undefined | null): boolean => {
@@ -102,35 +109,44 @@ const openDriver = async (): Promise<SovereignDriver | null> => {
 /** Open (or return) the sovereign driver. Null when disabled / unavailable. */
 export const getSovereignDb = async (): Promise<SovereignDriver | null> => {
   if (driverInstance) return driverInstance;
-  if (initAttempted && !initPromise) return null;
-  if (!initPromise) {
-    initAttempted = true;
-    initPromise = openDriver()
-      .then((driver) => {
-        driverInstance = driver;
-        if (driver) {
-          import("./store.js")
-            .then(({ seedDemoShelfIfEmpty }) => seedDemoShelfIfEmpty())
-            .then((seeded) => {
-              if (seeded > 0) {
-                console.info(`MIMI // Sovereign demo shelf seeded (${seeded} issues)`);
-              }
-            })
-            .catch(() => {
-              // ignore seed failures at boot
-            });
-        }
-        return driver;
-      })
-      .catch((error: unknown): null => {
-        console.warn("MIMI // Sovereign archive unavailable:", error);
-        driverInstance = null;
-        return null;
-      })
-      .finally(() => {
-        initPromise = null;
-      });
+  if (initPromise) return initPromise;
+  if (initSettledDisabled) return null;
+  if (initFailed && Date.now() - lastInitFailureAt < INIT_RETRY_COOLDOWN_MS) {
+    return null;
   }
+
+  initPromise = openDriver()
+    .then((driver) => {
+      driverInstance = driver;
+      initFailed = false;
+      if (!driver) {
+        // Disabled on this host — do not spin-retry every request.
+        initSettledDisabled = true;
+        return null;
+      }
+      import("./store.js")
+        .then(({ seedDemoShelfIfEmpty }) => seedDemoShelfIfEmpty())
+        .then((seeded) => {
+          if (seeded > 0) {
+            console.info(`MIMI // Sovereign demo shelf seeded (${seeded} issues)`);
+          }
+        })
+        .catch(() => {
+          // ignore seed failures at boot
+        });
+      return driver;
+    })
+    .catch((error: unknown): null => {
+      console.warn("MIMI // Sovereign archive unavailable:", error);
+      driverInstance = null;
+      initFailed = true;
+      lastInitFailureAt = Date.now();
+      return null;
+    })
+    .finally(() => {
+      initPromise = null;
+    });
+
   return initPromise;
 };
 
@@ -142,6 +158,8 @@ export const resetSovereignDbForTests = async () => {
     // ignore
   }
   driverInstance = null;
-  initAttempted = false;
+  initSettledDisabled = false;
+  initFailed = false;
+  lastInitFailureAt = 0;
   initPromise = null;
 };

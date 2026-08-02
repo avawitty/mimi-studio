@@ -7,14 +7,9 @@ import {
   isSovereignGatewayEmbedEnabled,
   scheduleZineEmbedding,
   searchPublicZinesSemantic,
-<<<<<<< HEAD
 } from "./embeddings.js";
 import { emitSovereignEvent } from "./events.js";
-=======
-} from "./embeddings";
-import { emitSovereignEvent } from "./events";
-import { neonAuthStatusSnippet } from "./neonAuth";
->>>>>>> 655986a (Probe Neon Auth config without adopting it as login)
+import { neonAuthStatusSnippet } from "./neonAuth.js";
 
 const COMMUNITY_CAP = 60;
 const FLOOR_CACHE_TTL_MS = 30_000;

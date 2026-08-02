@@ -9,14 +9,14 @@ Owned Stand data plane behind Express. Prefer this over Firestore free-tier read
 | Local `npm run dev` | SQLite `.data/sovereign.sqlite` | On unless `MIMI_SOVEREIGN_ENABLED=0`. WAL + busy_timeout enabled. |
 | Docker / Fly | SQLite `/data/sovereign.sqlite` | Volume mount; see `Dockerfile`, `fly.toml` |
 | Postgres / Neon | `MIMI_SOVEREIGN_DATABASE_URL` | Or `DATABASE_URL` when it is a `neon.tech` URI (auto). Force any Postgres URL with `MIMI_SOVEREIGN_USE_DATABASE_URL=1`. |
-| Vercel | Off unless Neon/Postgres URL | Attach Neon project **mimineon** (`sweet-dust-78322246`) and set `DATABASE_URL` or `MIMI_SOVEREIGN_DATABASE_URL`. TLS cert verification is required (`rejectUnauthorized: true`). |
+| Vercel | Off unless Neon/Postgres URL | Attach Neon project **mimineon** (`sweet-dust-78322246`) and set pooled `DATABASE_URL` or `MIMI_SOVEREIGN_DATABASE_URL`. Pool uses `ssl: { rejectUnauthorized: true }`; connection-string `sslmode` / `channel_binding` are stripped. |
 
 Schema version is tracked in `schema_meta` (current: **3** — AI Gateway embedding columns).
 
 ## HTTP surface
 
-- `GET /api/sovereign/status` — ready, backend, counts, `schemaVersion`, `latencyMs`, `gatewayEmbed`, `embeddedCount`
-- `GET /api/sovereign/community?limit=&q=&cursor=` — keyset pagination; `q` uses hybrid keyword + AI Gateway semantic rank
+- `GET /api/sovereign/status` — ready, backend, counts, `schemaVersion`, `latencyMs`, `gatewayEmbed`, `embeddedCount`, `neonAuthConfigured` / `neonAuthReady` / `neonAuthHost` / `neonAuthLegacyStack`
+- `GET /api/sovereign/community?limit=&q=&cursor=` — keyset pagination; `q` uses hybrid keyword + AI Gateway semantic rank; **503** when enabled but DB not ready (client falls back)
 - `GET/POST/DELETE /api/sovereign/zines`
 - `GET/POST /api/sovereign/profile`
 - `GET/POST/DELETE /api/sovereign/pocket`
@@ -58,7 +58,7 @@ Feed (`/api/feed`) and OG (`/api/og/zine`) read sovereign first when ready.
 3. Use ingest key only for migration/import jobs.
 4. Never enable soft `x-user-id` on Vercel/production.
 
-**Neon Auth** is enabled on mimineon (`NEON_AUTH_BASE_URL`) and is fine to leave provisioned, but **do not adopt it as Mimi’s login** until Firebase (and Stripe customer linkage) is intentionally migrated. Status exposes `neonAuthConfigured` / `neonAuthHost` for ops visibility (`lib/sovereign/neonAuth.ts`). Ignore legacy Stack Auth vars.
+**Neon Auth** is enabled on mimineon (`NEON_AUTH_BASE_URL`) and is fine to leave provisioned, but **do not adopt it as Mimi’s login** until Firebase (and Stripe customer linkage) is intentionally migrated. Status / health expose `neonAuthConfigured`, `neonAuthReady` (needs `NEON_AUTH_COOKIE_SECRET`), `neonAuthLegacyStack`, and `neonAuthHost` (`lib/sovereign/neonAuth.ts`). Ignore legacy Stack Auth vars.
 
 Do **not** move to Neon RLS or a second auth vendor until Firestore is fully demoted and identity is a deliberate rewrite. For scale, stay with Express/API ownership + Neon pooled Postgres; add a long-lived Express host (Fly) when SSE fan-out matters more than serverless.
 
@@ -77,7 +77,7 @@ Writers accept (in order): ingest key → Firebase ID token → `__session` cook
 | Pagination | Keyset `cursor` on `timestamp` | Composite `(timestamp, id)` if collisions appear |
 | Live sync | In-process SSE bus | Redis pub/sub or Neon Logical Replication → worker |
 | Imports | Transactional batches, 500 cap | Chunked job queue |
-| Query safety | `statement_timeout=15s`, slim Floor payloads, Gateway cosine over JSON vectors | Neon `pgvector` for large catalogs |
+| Query safety | `statement_timeout=12s` (post-open SET), slim Floor payloads, Gateway cosine over JSON vectors | Neon `pgvector` for large catalogs |
 | Auth fan-out | Firebase Admin verify | Short-lived cached uid claims (careful with revoke) |
 
 ## Ops

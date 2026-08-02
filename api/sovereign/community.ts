@@ -1,5 +1,5 @@
 import { cors, requireMethod, sendError, sendJson } from "../../lib/apiUtils.js";
-import { isSovereignEnabled } from "../../lib/sovereign/db.js";
+import { getSovereignDb, isSovereignEnabled } from "../../lib/sovereign/db.js";
 import { listPublicZinesPage, sovereignStatus } from "../../lib/sovereign/store.js";
 
 /**
@@ -21,6 +21,18 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    // Enabled-but-unready must 503 so the client falls back to Firestore
+    // instead of treating an empty Floor as authoritative.
+    const db = await getSovereignDb();
+    if (!db) {
+      return sendError(
+        res,
+        503,
+        "Sovereign archive unavailable (database not ready).",
+        "SOVEREIGN_UNAVAILABLE",
+      );
+    }
+
     const rawLimit = Number(req.query?.limit ?? req.query?.count ?? 40);
     const limit = Number.isFinite(rawLimit) ? rawLimit : 40;
     const q = String(req.query?.q || req.query?.search || "");

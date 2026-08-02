@@ -194,5 +194,11 @@ describe("sovereign store", () => {
     expect(status.ready).toBe(true);
     expect(status.schemaVersion).toBeGreaterThanOrEqual(1);
     expect(typeof status.latencyMs === "number" || status.latencyMs === null).toBe(true);
+    expect(typeof status.gatewayEmbed).toBe("boolean");
+    expect(typeof status.embeddedCount).toBe("number");
+    expect(typeof status.neonAuthConfigured).toBe("boolean");
+    expect(typeof status.neonAuthReady).toBe("boolean");
+    expect(typeof status.neonAuthLegacyStack).toBe("boolean");
+    expect(status.neonAuthHost === null || typeof status.neonAuthHost === "string").toBe(true);
   });
 });
