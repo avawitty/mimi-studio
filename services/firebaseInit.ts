@@ -16,11 +16,14 @@ import firebaseConfig from '../firebase-applet-config.json';
 // Optional env: VITE_FIREBASE_FUNCTIONS_URL or FIREBASE_FUNCTIONS_URL (defaults to us-central1 + projectId).
 
 // Authorized domains (Firebase Console → Authentication → Settings → Authorized domains):
+// Primary production host: www.mimi.you (keep apex mimi.you authorized for redirects).
 // - localhost (dev)
-// - gen-lang-client-02106746-1e8ee.firebaseapp.com (default authDomain)
-// - mimi.you, www.mimi.you (production)
+// - mimistudios.firebaseapp.com / mimistudios.web.app (default auth hosts)
+// - www.mimi.you, mimi.you (production)
+// - mimi.rip, www.mimi.rip (inverse public skin)
+// - mimi.fish, www.mimi.fish (future share skin)
 // - avainlife.com, www.avainlife.com (production)
-// - *.vercel.app preview URLs for this project
+// - mimi-studio-gateway.vercel.app and other *.vercel.app preview URLs
 // Custom domains must also be listed in Vercel project Domains and use the same Firebase web app.
 
 // Support environment variable overrides for all Firebase config fields safely

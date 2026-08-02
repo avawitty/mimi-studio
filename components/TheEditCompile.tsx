@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronDown, Copy, FileOutput, Check, FileText, Loader2 } from "lucide-react";
-import { UsedContextTray } from "./UsedContextTray";
+import { UsedContextColophon } from "./provenance/UsedContextColophon";
 import {
   getApprovedUsedContext,
   subscribeUsedContext,
@@ -134,17 +134,12 @@ export const TheEditCompile: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
-      <div className="shrink-0 border-b archive-border px-4 md:px-8 py-4 bg-archive-surface/40">
-        <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted mb-3">
-          Approved Scribe context for editorial compile
-        </p>
-        <UsedContextTray
-          target="the-edit"
-          compact={false}
-          className="!border-archive-border !text-archive-ink [&_p]:!text-archive-muted [&_.font-serif]:!text-archive-ink"
-          onOpenScribe={openScribe}
-        />
-      </div>
+      <UsedContextColophon
+        target="the-edit"
+        defaultExpanded
+        className="shrink-0"
+        onOpenScribe={openScribe}
+      />
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-8 py-6 space-y-8">
         <header className="border-b archive-border pb-6">

@@ -39,10 +39,10 @@ export default async function handler(req: any, res: any) {
 
     const session = await getStripeClient().billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${baseUrl}/profile`,
+      return_url: `${baseUrl}/memberships`,
     });
 
-    sendJson(res, 200, { url: session.url });
+    sendJson(res, 200, { url: session.url, mode: "portal" });
   } catch (error: any) {
     console.error("MIMI // Stripe billing portal error:", error);
     sendError(res, error?.status || 500, error?.message || "Failed to open billing portal");

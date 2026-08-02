@@ -58,8 +58,8 @@ Creators and operators need a single, env-overridable catalog of gateway `provid
 **Acceptance**
 - [x] `ai` package installed
 - [x] `lib/ai/generate.ts` exports helpers using `generateText` + `gateway(modelId)` + `Output.object`
-- [ ] At least one production route imports and uses the helpers (open — helpers not yet wired into `server.ts` / `api/**`)
-- [ ] Live call succeeds with `AI_GATEWAY_API_KEY` (blocked without env)
+- [x] At least one production route imports and uses the helpers (`POST /api/mimi/generate-text` via `lib/mimiGenerateTextRoute.ts`)
+- [x] Live call succeeds with `AI_GATEWAY_API_KEY` (`npm run verify:gateway-generate-text`)
 
 ### US-4 — UI has shadcn primitives for future playground
 **As** a product engineer  
@@ -114,15 +114,15 @@ Operational rule: gateway call sites should use `modelFor(role, "gateway")` or
 | Catalog resolves | ✅ | `npx tsx` prints role → model map matching `GATEWAY_DEFAULT_MODELS` |
 | IDs exist on gateway | ✅ | Live `GET /v1/models` returned `present: true` for all five defaults |
 | Lint / build | ✅ | `npm run lint`, `npm run build:vercel` passed on branch |
-| Env present | ❌ | No `.env.local`; no `AI_GATEWAY_API_KEY` in this agent environment |
-| Live `generateText` | ❌ | Blocked by missing key — first broken runtime boundary |
-| Helper used by a route | ❌ | `generateGatewayText` has zero production call sites yet |
-| UI E2E / browser | ⏸ | Not run — no usable gateway key; stop at env boundary |
+| Env present | ✅ | `AI_GATEWAY_API_KEY` available in agent / `.env.local` |
+| Live `generateText` | ✅ | `generateGatewayText` + route verify returned `sdk-route-ok` |
+| Helper used by a route | ✅ | `POST /api/mimi/generate-text` charges via funded-gateway gate |
+| UI E2E / browser | ⏸ | Not required for this thin-slice adoption PR |
 
 ### Issues found
 
-1. **Missing runtime gateway credential** → Copy `.env.example` to `.env.local` and set `AI_GATEWAY_API_KEY`, or `vercel link` + `vercel env pull`.
-2. **Helpers unused** → Wire `lib/ai/generate.ts` into one server route (e.g. a small `/api/mimi/gateway-ping` or migrate one existing synthesis path) before claiming full adoption.
+1. ~~Missing runtime gateway credential~~ → Resolved via Cursor secret / `.env.local`.
+2. ~~Helpers unused~~ → Wired through `api/mimi/generate-text.ts` + Express mount in `server.ts`.
 3. **ChatPRD sync** → Authenticate ChatPRD in Cursor desktop, then re-run `/write-prd` to push this doc.
 
 ## Open questions

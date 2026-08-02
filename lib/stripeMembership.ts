@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import type { Firestore } from "firebase-admin/firestore";
+import { STRIPE_PRICES, STRIPE_PRICES_ANNUAL } from "../constants.js";
 import {
   buildCreditGrant,
   MIMI_PRICE_ID_PLAN_MAP,
@@ -8,8 +9,17 @@ import {
   type MimiPlan,
 } from "./mimiEntitlements.js";
 
-/** Legacy checkout price IDs (constants.ts STRIPE_PRICES). */
-const LEGACY_PRICE_ID_PLAN_MAP: Record<string, MimiPlan> = {
+/** Current + legacy checkout price IDs (constants.ts STRIPE_PRICES*). */
+const CATALOG_PRICE_ID_PLAN_MAP: Record<string, MimiPlan> = {
+  [STRIPE_PRICES.core]: "initiation",
+  [STRIPE_PRICES.optioning]: "optioning",
+  [STRIPE_PRICES.pro]: "atelier",
+  [STRIPE_PRICES.lab]: "lab",
+  [STRIPE_PRICES_ANNUAL.core]: "initiation",
+  [STRIPE_PRICES_ANNUAL.optioning]: "optioning",
+  [STRIPE_PRICES_ANNUAL.pro]: "atelier",
+  [STRIPE_PRICES_ANNUAL.lab]: "lab",
+  // Older test / migrated price IDs
   price_1TEfvx9AUz0q2nVC6zAP1OkZ: "initiation",
   price_1TEfzZ9AUz0q2nVC3qMmMyXk: "atelier",
   price_1TEg3S9AUz0q2nVCS7Jo0ens: "lab",
@@ -17,10 +27,18 @@ const LEGACY_PRICE_ID_PLAN_MAP: Record<string, MimiPlan> = {
 
 const PRICE_ID_PLAN_MAP: Record<string, MimiPlan> = {
   ...MIMI_PRICE_ID_PLAN_MAP,
-  ...LEGACY_PRICE_ID_PLAN_MAP,
+  ...CATALOG_PRICE_ID_PLAN_MAP,
 };
 
-export type LegacyPlanStatus = "ghost" | "trial" | "free" | "core" | "pro" | "lab" | "expired";
+export type LegacyPlanStatus =
+  | "ghost"
+  | "trial"
+  | "free"
+  | "core"
+  | "optioning"
+  | "pro"
+  | "lab"
+  | "expired";
 
 export const toLegacyPlanStatus = (planInput?: unknown): LegacyPlanStatus => {
   const plan = normalizeMimiPlan(planInput);
@@ -28,6 +46,7 @@ export const toLegacyPlanStatus = (planInput?: unknown): LegacyPlanStatus => {
     case "initiation":
       return "core";
     case "optioning":
+      return "optioning";
     case "atelier":
       return "pro";
     case "lab":
@@ -40,6 +59,7 @@ export const toLegacyPlanStatus = (planInput?: unknown): LegacyPlanStatus => {
     default: {
       const value = String(planInput || "free").trim().toLowerCase();
       if (value === "core") return "core";
+      if (value === "optioning") return "optioning";
       if (value === "pro") return "pro";
       if (value === "lab") return "lab";
       if (value === "ghost") return "ghost";
@@ -86,36 +106,29 @@ const resolvePlanFromPriceId = async (
   priceId?: string | null,
   metadataPlan?: string | null,
 ): Promise<{ plan: MimiPlan; interval: MimiBillingInterval }> => {
-  if (metadataPlan) {
-    return {
-      plan: normalizeMimiPlan(metadataPlan),
-      interval: "month",
-    };
+  let plan: MimiPlan | null = metadataPlan ? normalizeMimiPlan(metadataPlan) : null;
+  let interval: MimiBillingInterval = "month";
+
+  if (!plan && priceId && PRICE_ID_PLAN_MAP[priceId]) {
+    plan = PRICE_ID_PLAN_MAP[priceId];
   }
-  if (priceId && PRICE_ID_PLAN_MAP[priceId]) {
-    return { plan: PRICE_ID_PLAN_MAP[priceId], interval: "month" };
-  }
+
   if (priceId) {
     try {
       const price = await stripe.prices.retrieve(priceId);
-      const fromMeta = price.metadata?.plan;
-      if (fromMeta) {
-        return {
-          plan: normalizeMimiPlan(fromMeta),
-          interval: price.recurring?.interval === "year" ? "year" : "month",
-        };
+      interval = price.recurring?.interval === "year" ? "year" : "month";
+      if (!plan && price.metadata?.plan) {
+        plan = normalizeMimiPlan(price.metadata.plan);
       }
-      if (price.id && PRICE_ID_PLAN_MAP[price.id]) {
-        return {
-          plan: PRICE_ID_PLAN_MAP[price.id],
-          interval: price.recurring?.interval === "year" ? "year" : "month",
-        };
+      if (!plan && PRICE_ID_PLAN_MAP[price.id]) {
+        plan = PRICE_ID_PLAN_MAP[price.id];
       }
     } catch (error) {
       console.warn("MIMI // Stripe: failed to retrieve price", priceId, error);
     }
   }
-  return { plan: "free", interval: "month" };
+
+  return { plan: plan || "free", interval };
 };
 
 const findUidByStripeCustomer = async (db: Firestore, customerId: string): Promise<string | null> => {
@@ -159,6 +172,7 @@ export const writeMembershipEntitlements = async ({
     plan: legacyPlan === "free" || legacyPlan === "ghost" ? "free" : legacyPlan,
     planStatus: legacyPlan,
     membershipPlan: legacyPlan,
+    mimiPlan,
     subscriptionStatus: isActive ? "active" : "inactive",
     subscriptionInterval: normalizedInterval,
     membershipCredits: credits,
@@ -180,6 +194,7 @@ export const writeMembershipEntitlements = async ({
     plan: userPatch.plan,
     planStatus: legacyPlan,
     membershipPlan: legacyPlan,
+    mimiPlan,
     subscriptionStatus: userPatch.subscriptionStatus,
   };
 

@@ -1,46 +1,100 @@
-# Stripe Integration & Firebase Sync Gating Architecture
+# Stripe Integration Architecture
 
-## Overview
-Because this system operates predominantly as a sovereign, local-first application with Firebase providing the sync layer, we do not want to manage a traditional Node.js/Express server just for Stripe webhook processing. Instead, we can rely entirely on the official **Stripe Firebase Extension**.
+Maison Mimi Patronage uses **Stripe Billing + Checkout Sessions + Customer Portal**, with
+entitlements written to Firestore by our Express webhook handlers. This is the live path;
+the older “Stripe Firebase Extension only” sketch below is historical.
 
-This keeps our application perfectly "serverless" and reduces operational overhead.
+## Product catalog (best practice)
 
-## Step 1: The Stripe Firebase Extension
-To implement a "Stripe Proxy" securely without writing a custom backend:
-1. Go to the Firebase Console -> **Extensions** tab.
-2. Search for and install the **"Run Payments with Stripe"** extension.
-3. You will connect your Stripe account. The extension will automatically create webhooks to listen for subscription events.
+Model **one Stripe Product per patronage tier**, with monthly and annual Prices on each:
 
-### How it Works:
-- When a user enters their payment details, Stripe charges them.
-- Stripe fires a webhook to the Firebase Extension.
-- The Firebase Extension automatically writes the subscription status to your user's Firestore document (e.g., `/customers/{userId}/subscriptions/{subscriptionId}`).
+| Tier | Role | Monthly | Annual (~2 mo free) | Credits / cycle |
+| --- | --- | --- | --- | --- |
+| The Initiation | Interpreter | $12 | $120 | 500 |
+| Optioning | Tailor | $25 | $250 | 1,500 |
+| The Atelier | Couturier | $40 | $400 | 3,000 |
+| The Lab | Maison | $99 | $990 | 10,000 |
 
-## Step 2: Firebase Sync Gating (Feature Tiers)
-In the application, we will gate syncing and specific premium tools by observing the Firestore subscription collection that the extension manages.
+Do **not** put different tiers on a single Product — Checkout/invoice line items show the
+Product name, so shared products make tiers indistinguishable.
 
-### Data Flow
-1. User logs in.
-2. App queries the `/customers/{userId}/subscriptions` collection.
-3. If an active subscription (`status === 'active'`) exists with the "Pro" or "Lab" tier price ID, the application flags `planStatus = 'pro'`.
-4. Our `UserContext.tsx` consumes this status and enables feature flags (e.g., `cloudSync: true`, `premiumModels: true`).
+Canonical **live** price IDs live in `constants.ts` (`STRIPE_PRICES` / `STRIPE_PRICES_ANNUAL`)
+for account `acct_1T0fAo9AUz0q2nVC` and can be overridden with `STRIPE_PRICE_*` /
+`STRIPE_PRICE_*_ANNUAL` env vars.
 
-## Step 3: Where Does the Code Go?
+| Tier | Product | Monthly Price | Annual Price |
+| --- | --- | --- | --- |
+| The Initiation | `prod_UfElsz9OHHpgEd` | `price_1TfuI49AUz0q2nVCHuy4k4Sq` | `price_1Tzntj9AUz0q2nVCO66J6Wps` |
+| Optioning | `prod_UfqKthj95UDo7m` | `price_1TgUdR9AUz0q2nVC1EoBOgBi` | `price_1Tznti9AUz0q2nVC83IIz3KG` |
+| The Atelier | `prod_UfGndT7RktzUlE` | `price_1TgVQC9AUz0q2nVC5POSYpI7` | `price_1Tznti9AUz0q2nVCo7L96nzL` |
+| The Lab | `prod_UfGsM5PmAimbKy` | `price_1TfwLC9AUz0q2nVCxNzPtunX` | `price_1Tzntj9AUz0q2nVCsBYJKVze` |
 
-1. **Client-Side Trigger (`components/PatronMintView.tsx`)**:
-   Instead of redirecting to a payment link manually, the Firebase extension provides a way to generate a Stripe Checkout session by writing a document to a specific collection (e.g., `/customers/{userId}/checkout_sessions`). We listen to that document until it populates a `url` field, then redirect the user there.
-   
-2. **Subscription Listener (`contexts/UserContext.tsx` or `services/stripeService.ts`)**:
-   We create a `useSubscription` hook that attaches an `onSnapshot` listener to the user's subscription doc. As soon as the payment clears, the real-time listener updates the UI instantly, unlocking cloud sync and the "Lab" tier features.
+**Customer Portal (Dashboard):** allow subscription updates across the four products above
+(both monthly + annual prices), with proration on upgrades (`create_prorations`) and
+period-end scheduling for downgrades. Cancel at period end is already enabled.
 
-3. **Firestore Security Rules**:
-   We will update `firestore.rules` to ensure that only users with an active tier can read/write to the broader cloud sync collections (e.g., public streams or deep history). It looks like this:
-   ```javascript
-   function hasActiveSub() {
-     // Check if the user document has an active subscription
-     return get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.stripeRole in ['pro', 'lab'];
-   }
-   ```
+## Checkout (new subscribers)
 
-## Conclusion
-You don't need to write a standalone Stripe backend. We let Firebase and Stripe communicate natively through the extension, and our frontend just "listens" to Firestore to know when to unlock features!
+1. Client calls `POST /api/create-checkout-session` with `{ plan, interval }` and a Firebase ID token (`services/stripe.ts`).
+2. Server verifies the session, creates or reuses a Stripe Customer (`stripeCustomerId` on the user doc), then creates a Checkout Session:
+   - `mode: 'subscription'`
+   - `integration_identifier` for Dashboard funnel tracking
+   - `allow_promotion_codes: true`
+   - `billing_address_collection: 'auto'`
+   - **no** `payment_method_types` (dynamic payment methods from Dashboard)
+3. Webhooks (`/api/stripe-webhook`) grant entitlements via `lib/stripeMembership.ts`.
+
+## Plan changes (existing subscribers)
+
+If the user already has an active paid subscription, `create-checkout-session` returns a
+**Customer Portal** session instead of a second Checkout Session. That avoids double
+subscriptions and lets Stripe handle proration, payment method updates, and cancellation.
+
+Portal entry points:
+- Memberships page “Manage billing”
+- Checkout success “Manage Subscription”
+- Profile billing controls
+- `POST /api/create-billing-portal-session`
+
+Configure allowed products/prices and proration behavior in the Stripe Dashboard →
+Customer Portal settings.
+
+## Webhooks & entitlements
+
+Handled events:
+- `checkout.session.completed`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.payment_succeeded`
+
+Idempotency: events are tracked in `stripe_webhook_events/{event.id}` before processing.
+
+Writes (merge) to:
+- `users/{uid}` — `planStatus`, `mimiPlan`, credits, `stripeCustomerId`, interval
+- `profiles_public/{uid}`
+- `memberships/{uid}`
+- `users/{uid}/billing/subscription`
+
+Generation credits are an **in-app allowance** refreshed on successful invoice/period
+boundaries — not Stripe Billing Meters / Metronome. Keep prepaid credit burndown in
+Firestore until you need true usage-based overage billing.
+
+## Tax
+
+Do **not** enable `automatic_tax` until an active Stripe Tax registration exists for the
+relevant jurisdictions. Enabling the flag without a registration silently collects $0 tax.
+
+## Environment
+
+| Var | Purpose |
+| --- | --- |
+| `STRIPE_SECRET_KEY` | Server secret (prefer restricted key `rk_` in production) |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| `STRIPE_PRICE_*` / `*_ANNUAL` | Optional price ID overrides |
+| `MIMI_PUBLIC_BASE_URL` | Success / cancel / portal return URLs |
+
+## UI surfaces
+
+- Full page: `SubscriptionMatrix` in `components/SovereignCommerceEngine.tsx` (`view=memberships`)
+- Modal: `ImperialPatronageModal`
+- Shared copy/pricing: `lib/patronageTiers.ts`

@@ -8,7 +8,8 @@ export type TailorOutputChoice =
   | 'art_history'
   | 'marketing_asset'
   | 'field_notes'
-  | 'mimi_you';
+  | 'mimi_you'
+  | 'mimi_rip';
 
 const OUTPUTS: { id: TailorOutputChoice; label: string; description: string }[] = [
   { id: 'doll', label: 'Generate Doll', description: 'Symbolic embodiment of your taste graph' },
@@ -19,6 +20,7 @@ const OUTPUTS: { id: TailorOutputChoice; label: string; description: string }[] 
   { id: 'marketing_asset', label: 'Marketing Asset', description: 'Campaign-ready derived copy' },
   { id: 'field_notes', label: 'Save to Field Notes', description: 'Add to your research notebook' },
   { id: 'mimi_you', label: 'Reveal mimi.you', description: 'Your personal creative universe' },
+  { id: 'mimi_rip', label: 'Open mimi.rip', description: 'Inverse reading — refusals, blind spots, dark mirror' },
 ];
 
 interface OutputSelectionScreenProps {

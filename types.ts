@@ -1214,7 +1214,7 @@ export interface UserPreferences {
   };
 }
 
-export type MembershipPlan = 'core' | 'pro' | 'lab' | 'free';
+export type MembershipPlan = 'core' | 'optioning' | 'pro' | 'lab' | 'free';
 
 export interface SubscriptionData {
   status: 'active' | 'canceled' | 'past_due';
@@ -1223,13 +1223,15 @@ export interface SubscriptionData {
   currentPeriodEnd: number;
 }
 
-export type UserPlanStatus = 'ghost' | 'trial' | 'free' | 'core' | 'pro' | 'lab' | 'expired';
+export type UserPlanStatus = 'ghost' | 'trial' | 'free' | 'core' | 'optioning' | 'pro' | 'lab' | 'expired';
 
 export interface UserProfile extends UserPreferences {
   uid: string;
   handle: string;
   /** Published doll + taste token for anonymous visitors at /u/:handle */
   publicShowcase?: PublicShowcaseSnapshot;
+  /** Opt-in inverse reading for mimi.rip/:handle (private when absent) */
+  publicRip?: PublicRipSnapshot | null;
   email?: string | null;
   photoURL?: string | null;
   zodiacSign?: ZodiacSign;
@@ -1254,8 +1256,10 @@ export interface UserProfile extends UserPreferences {
   isPatron?: boolean;
   patronActivatedAt?: number;
   patronKey?: string;
-  plan?: 'free' | 'core' | 'pro' | 'lab';
+  plan?: 'free' | 'core' | 'optioning' | 'pro' | 'lab';
   planStatus?: UserPlanStatus;
+  /** Canonical patronage plan id (initiation | optioning | atelier | lab | …). */
+  mimiPlan?: string;
   trial?: {
     startedAt: number;
     endsAt: number;
@@ -2158,6 +2162,66 @@ export interface PublicShowcaseSnapshot {
   /** Optional link to a real Doll projection for portrait coherence. */
   sourceDollId?: string;
   dollPortraitUrl?: string;
+  updatedAt: number;
+}
+
+/**
+ * Inverse taste projection ("mimi.rip") — diagnostic dark mirror of the Taste Graph.
+ * Not identity. Private by default; publish via PublicRipSnapshot.
+ */
+export interface RipInversionCard {
+  becauseYouTendTo: string;
+  tryInstead: string;
+  evidenceRefIds: string[];
+}
+
+export interface RipReading {
+  id: string;
+  userId: string;
+  projectId?: string;
+  tasteGraphId?: string;
+  sourceDollId?: string;
+  /** Short title for the inverse reading */
+  title: string;
+  /** One-sentence shadow thesis (not a personal diagnosis) */
+  shadowThesis: string;
+  /** Motifs / aesthetics the graph refuses or underuses */
+  antiMotifs: string[];
+  /** Explicit avoidances from laws / operating system */
+  thingsToAvoid: string[];
+  /** Blind spots pulled from Doll / dossier tension */
+  blindSpots: string[];
+  /** Structured inversions (because → try instead) */
+  inversions: RipInversionCard[];
+  /** Opposite palette tokens (hex or named) for visual contrast */
+  oppositePalette: string[];
+  /** Opposite silhouette / proportion cues */
+  oppositeSilhouette: string;
+  /** Opposite emotional register */
+  oppositeRegister: string;
+  /** Evidence-linked experiment prompts from the inverse */
+  shadowExperiments: string[];
+  /** Provenance notes for transparency */
+  provenanceNotes: string[];
+  visibility: "private" | "public";
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Public-safe inverse token for mimi.rip/:handle (opt-in publish). */
+export interface PublicRipSnapshot {
+  handle: string;
+  title: string;
+  shadowThesis: string;
+  antiMotifs: string[];
+  thingsToAvoid: string[];
+  blindSpots: string[];
+  oppositePalette: string[];
+  oppositeSilhouette: string;
+  oppositeRegister: string;
+  inversions: RipInversionCard[];
+  sourceRipId: string;
+  accentHex: string;
   updatedAt: number;
 }
 

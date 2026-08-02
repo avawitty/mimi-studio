@@ -472,6 +472,33 @@
         "createdAt": { "type": "number" }
       },
       "required": ["id", "dollId", "name", "role", "behaviorDescription", "createdAt"]
+    },
+    "RipReading": {
+      "title": "RipReading",
+      "description": "Inverse taste projection for mimi.rip — refusals, blind spots, opposite palette.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "tasteGraphId": { "type": "string" },
+        "sourceDollId": { "type": "string" },
+        "title": { "type": "string" },
+        "shadowThesis": { "type": "string" },
+        "antiMotifs": { "type": "array", "items": { "type": "string" } },
+        "thingsToAvoid": { "type": "array", "items": { "type": "string" } },
+        "blindSpots": { "type": "array", "items": { "type": "string" } },
+        "inversions": { "type": "array", "items": { "type": "object" } },
+        "oppositePalette": { "type": "array", "items": { "type": "string" } },
+        "oppositeSilhouette": { "type": "string" },
+        "oppositeRegister": { "type": "string" },
+        "shadowExperiments": { "type": "array", "items": { "type": "string" } },
+        "provenanceNotes": { "type": "array", "items": { "type": "string" } },
+        "visibility": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "shadowThesis", "visibility", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -614,6 +641,10 @@
     "users/{userId}/dollMasks/{maskId}": {
       "schema": { "$ref": "#/entities/DollMask" },
       "description": "Specific behavior masks associated with dolls."
+    },
+    "users/{userId}/ripReadings/{ripId}": {
+      "schema": { "$ref": "#/entities/RipReading" },
+      "description": "Inverse taste projections (mimi.rip). Private by default."
     }
   }
 }
