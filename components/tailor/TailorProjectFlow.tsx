@@ -11,6 +11,7 @@ import type {
   UserWeight,
   CreativeDossier,
   Doll,
+  TailorLogicDraft,
 } from '../../types';
 import {
   createTailorProject,
@@ -24,14 +25,21 @@ import {
   updateCreativeLaw,
   updateTailorProject,
   exportTailorDraftFromGraph,
+  createFieldNote,
 } from '../../services/tailorService';
 import {
   runTailorAnalysis,
   generateCreativeDossierForProject,
   generateDollFromGraph,
+  generateMarketingAsset,
 } from '../../services/tailorAnalysisService';
 import { generateArtHistoryMatchesForProject } from '../../services/artHistoryService';
 import { saveArtworkMatches } from '../../services/tailorService';
+import {
+  evaluateGenerationReadiness,
+  isGenerationBlocked,
+  type GenerationBlocked,
+} from '../../services/tailorReadiness';
 import { TailorStartScreen } from './TailorStartScreen';
 import { EvidenceUploadScreen, type EvidenceUploadItem, type EvidenceIntakeHandoffPayload } from './EvidenceUploadScreen';
 import { AnalysisProgressScreen } from './AnalysisProgressScreen';
@@ -41,6 +49,7 @@ import { CreativeDossierScreen } from './CreativeDossierScreen';
 import { OutputSelectionScreen, type TailorOutputChoice } from './OutputSelectionScreen';
 import { DollProfileScreen } from './DollProfileScreen';
 import { ArtHistoryMirrorScreen } from './ArtHistoryMirrorScreen';
+import { GenerationBlockedPanel } from './GenerationBlockedPanel';
 import type { CuriosityPromptId } from '../../services/tailorEvidenceIntake';
 import { buildDirectStatementEvidence, CURIOSITY_PROMPTS } from '../../services/tailorEvidenceIntake';
 
@@ -57,7 +66,7 @@ type FlowStep =
 
 interface TailorProjectFlowProps {
   onExit: () => void;
-  onExportDraft?: (draft: unknown) => void;
+  onExportDraft?: (draft: TailorLogicDraft) => void;
   navigate?: (path: string) => void;
   initialProject?: TailorProject;
   initialEvidence?: EvidenceNode[];
@@ -89,6 +98,7 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
   const [curiosityIds, setCuriosityIds] = useState<CuriosityPromptId[]>([]);
   const [customCuriosity, setCustomCuriosity] = useState('');
   const [intakeHandoff, setIntakeHandoff] = useState<EvidenceIntakeHandoffPayload | null>(null);
+  const [generationBlock, setGenerationBlock] = useState<GenerationBlocked | null>(null);
   const bootstrappedRef = useRef(Boolean(initialProject));
 
   const refreshProjectData = useCallback(async (projectId: string) => {
@@ -279,6 +289,37 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
 
   const handleOutputSelect = async (choice: TailorOutputChoice) => {
     if (!uid || !project) return;
+    setGenerationBlock(null);
+
+    const actionForChoice =
+      choice === 'doll'
+        ? 'doll'
+        : choice === 'marketing_asset'
+          ? 'marketing_asset'
+          : choice === 'field_notes'
+            ? 'field_notes'
+            : choice === 'art_history'
+              ? 'art_history'
+              : choice === 'brand_kit' || choice === 'art_style' || choice === 'writing_voice'
+                ? 'brand_export'
+                : null;
+
+    if (actionForChoice) {
+      const readiness = evaluateGenerationReadiness({
+        action: actionForChoice,
+        project,
+        evidenceCount: evidence.length,
+        patterns: clusters,
+        laws,
+        assetType: choice === 'marketing_asset' ? 'brand_statement' : undefined,
+        expectedTasteGraphId: project.tasteGraphId,
+      });
+      if (isGenerationBlocked(readiness)) {
+        setGenerationBlock(readiness);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       switch (choice) {
@@ -289,6 +330,15 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
           break;
         }
         case 'art_history': {
+          if (!project.tasteGraphId) {
+            setGenerationBlock({
+              ok: false,
+              prerequisite: 'missing_taste_graph',
+              explanation: 'Art History needs a linked Taste Graph.',
+              recoveryAction: 'Re-run intake so the project has a tasteGraphId.',
+            });
+            break;
+          }
           const matches = await generateArtHistoryMatchesForProject(
             uid,
             project.id,
@@ -296,7 +346,10 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
             clusters.filter((c) => c.userStatus === 'accepted').map((c) => c.id),
             laws.filter((l) => l.userStatus === 'accepted').map((l) => l.id),
           );
-          await saveArtworkMatches(uid, matches);
+          await saveArtworkMatches(
+            uid,
+            matches.map((m) => ({ ...m, projectId: project.id })),
+          );
           setStep('art_history');
           break;
         }
@@ -310,22 +363,74 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
           break;
         }
         case 'mimi_you': {
-          const handle = profile?.handle || user?.email?.split('@')[0] || uid.slice(0, 8);
-          navigate?.(`/u/${handle}`);
+          navigate?.('/mimi-dolls/overview');
           break;
         }
         case 'mimi_rip': {
           navigate?.('/rip');
           break;
         }
-        case 'field_notes':
-        case 'marketing_asset':
+        case 'marketing_asset': {
+          if (!project.tasteGraphId) {
+            setGenerationBlock({
+              ok: false,
+              prerequisite: 'missing_taste_graph',
+              explanation: 'Marketing assets need a linked Taste Graph.',
+              recoveryAction: 'Re-run intake so the project has a tasteGraphId.',
+            });
+            break;
+          }
+          await generateMarketingAsset(
+            uid,
+            project.id,
+            project.tasteGraphId,
+            'brand_statement',
+          );
           setStep('outputs');
           break;
+        }
+        case 'field_notes': {
+          const accepted = clusters.filter((c) => c.userStatus === 'accepted');
+          await createFieldNote(uid, {
+            projectId: project.id,
+            title: 'Tailor session note',
+            body:
+              accepted.length > 0
+                ? `Accepted patterns: ${accepted.map((c) => c.name).join(', ')}`
+                : `Evidence count: ${evidence.length}. Continue curation in Tailor.`,
+            noteType: 'observation',
+            linkedPatternClusterIds: accepted.map((c) => c.id),
+            linkedEvidenceNodeIds: evidence.slice(0, 8).map((e) => e.id),
+            linkedCreativeLawIds: laws
+              .filter((l) => l.userStatus === 'accepted')
+              .map((l) => l.id),
+            linkedDollIds: [],
+            tags: ['tailor', 'session'],
+          });
+          navigate?.('/mimi-dolls/field-notes');
+          break;
+        }
         default: {
           const _exhaustive: never = choice;
           return _exhaustive;
         }
+      }
+    } catch (e) {
+      const err = e as Error & { prerequisite?: string; recoveryAction?: string };
+      if (err.prerequisite && err.recoveryAction) {
+        setGenerationBlock({
+          ok: false,
+          prerequisite: err.prerequisite as GenerationBlocked['prerequisite'],
+          explanation: err.message,
+          recoveryAction: err.recoveryAction,
+        });
+      } else {
+        setGenerationBlock({
+          ok: false,
+          prerequisite: 'no_evidence',
+          explanation: err.message || 'Generation failed.',
+          recoveryAction: 'Check evidence, accepted laws, and try again.',
+        });
       }
     } finally {
       setLoading(false);
@@ -423,7 +528,26 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
         />
       )}
       {step === 'outputs' && (
-        <OutputSelectionScreen onSelect={handleOutputSelect} onFinish={handleFinish} />
+        <>
+          {generationBlock && (
+            <GenerationBlockedPanel
+              block={generationBlock}
+              onDismiss={() => setGenerationBlock(null)}
+              onRecover={() => {
+                setGenerationBlock(null);
+                if (
+                  generationBlock.prerequisite === 'no_accepted_laws' ||
+                  generationBlock.prerequisite === 'no_accepted_patterns'
+                ) {
+                  setStep('laws');
+                } else if (generationBlock.prerequisite === 'no_evidence') {
+                  setStep('upload');
+                }
+              }}
+            />
+          )}
+          <OutputSelectionScreen onSelect={handleOutputSelect} onFinish={handleFinish} />
+        </>
       )}
       {step === 'doll' && doll && (
         <DollProfileScreen doll={doll} onBack={() => setStep('outputs')} onContinue={handleFinish} />
