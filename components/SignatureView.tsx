@@ -10,7 +10,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart,
 import * as htmlToImage from 'html-to-image';
 import { truncateUid } from '../lib/privacyUtils';
 import { SignaturePlate } from './signature/SignaturePlate';
-import { PublicField, MimiWordmark, PublicCTA } from './public-face';
+import { PublicField, PublicCTA } from './public-face';
 import { PressReveal } from './motion/PressReveal';
 import { getApprovedUsedContext } from '../services/usedContextService';
 
@@ -248,14 +248,13 @@ export const SignatureView: React.FC = () => {
  }
 
  return (
- <PublicField className="flex-1 overflow-y-auto font-serif selection:bg-black/5 pb-32 custom-scrollbar">
- <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-16">
+ <PublicField className="flex-1 overflow-y-auto font-serif selection:bg-black/5 pb-16 md:pb-24 custom-scrollbar">
+ <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-12 md:space-y-16">
  
  <PressReveal>
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-[var(--mimi-hairline)] pb-8">
  <div className="space-y-3">
- <MimiWordmark size="sm" />
- <h1 className="text-5xl md:text-7xl font-light italic tracking-tight text-[var(--mimi-ink)]">Signature</h1>
+ <h1 className="text-4xl md:text-7xl font-light italic tracking-tight text-[var(--mimi-ink)]">Signature</h1>
  <p className="font-sans text-[10px] uppercase tracking-[0.3em] text-[var(--mimi-stone)]">Collectible aesthetic plate</p>
  {activePersona?.tailorDraft && (
  <p className="font-sans text-[10px] uppercase tracking-widest text-[var(--mimi-stone)] mt-2 flex items-center gap-1">

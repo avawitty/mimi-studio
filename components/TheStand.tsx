@@ -10,7 +10,6 @@ import { ZineCoverCard } from './ZineCoverCard';
 import { ZineComments } from './ZineComments';
 import {
   PublicField,
-  MimiWordmark,
   ColumnRule,
   PublicCTA,
   PressMark,
@@ -105,13 +104,12 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   return (
     <>
       <PublicField className="flex-1 w-full h-full flex flex-col relative overflow-hidden">
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
+        <div className="flex-1 overflow-y-auto no-scrollbar pb-16 md:pb-24">
           <PressReveal>
-            <header className="px-6 md:px-16 pt-10 md:pt-16 pb-8 space-y-8">
+            <header className="px-6 md:px-16 pt-6 md:pt-14 pb-6 md:pb-8 space-y-6 md:space-y-8">
               <div className="flex justify-between items-start gap-6">
-                <div className="space-y-5 max-w-2xl">
-                  <MimiWordmark size="sm" />
-                  <h1 className="font-serif italic text-5xl md:text-7xl tracking-tight text-[var(--mimi-ink)] leading-[0.9]">
+                <div className="space-y-4 md:space-y-5 max-w-2xl">
+                  <h1 className="font-serif italic text-4xl md:text-7xl tracking-tight text-[var(--mimi-ink)] leading-[0.9]">
                     {displayName}
                   </h1>
                   {handle && (

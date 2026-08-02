@@ -2872,71 +2872,14 @@ ${finalInput}`;
 
         {/* COLUMN 3: COVER PROFILER / PREVIEW COLUMN */}
         {(!isMobile || mobileStudioView === "cover") && (
-          <div className={`w-full studio-bg-panel border-l studio-border flex flex-col shrink-0 relative min-h-0 ${isMobile ? "justify-start pb-44" : "justify-between"}`}
-            style={isMobile ? undefined : { width: coverPanelWidth }}>
-            <div className={`flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col p-6 md:pr-10 ${isMobile ? "" : ""}`}>
-            {isMobile && (
-              <div className="studio-mobile-actions fixed left-0 right-0 studio-bg-panel border-t studio-border z-[45] flex items-center justify-around gap-0 px-2 py-2">
-                {([
-                  {
-                    key: "optics",
-                    label: "Optics",
-                    icon: <Eye size={14} strokeWidth={1.6} />,
-                    active: activePanel === "telemetry",
-                    onClick: () => { togglePanel("telemetry"); playClick(); },
-                  },
-                  {
-                    key: "treatments",
-                    label: "Treatments",
-                    icon: <Paintbrush size={14} strokeWidth={1.6} />,
-                    active: activePanel === "treatments",
-                    onClick: () => { togglePanel("treatments"); playClick(); },
-                  },
-                  {
-                    key: "colophon",
-                    label: "Context",
-                    icon: <FileText size={14} strokeWidth={1.6} />,
-                    active: activePanel === "orchestrator",
-                    onClick: () => { togglePanel("orchestrator"); playClick(); },
-                  },
-                  {
-                    key: "doll",
-                    label: studioDoll.enabled ? "Doll: On" : "Doll",
-                    icon: studioDoll.loading ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Users size={14} strokeWidth={1.6} />
-                    ),
-                    active: studioDoll.enabled,
-                    onClick: () => { studioDoll.toggleDollInjection(!studioDoll.enabled); playClick(); },
-                  },
-                  {
-                    key: "reset",
-                    label: "Reset",
-                    icon: <RotateCcw size={14} strokeWidth={1.6} />,
-                    active: false,
-                    onClick: () => { setActiveThread(null); setInput(""); playClick(); },
-                  },
-                ] as { key: string; label: string; icon: React.ReactNode; active: boolean; onClick: () => void }[]).map((tool) => (
-                  <button
-                    key={tool.key}
-                    type="button"
-                    onClick={tool.onClick}
-                    aria-label={tool.label}
-                    className={`shrink-0 flex flex-col items-center justify-center gap-0.5 min-h-[44px] w-[56px] py-1.5 rounded-sm active:scale-95 transition-all ${
-                      tool.active
-                        ? "text-amber-600 dark:text-amber-400"
-                        : "studio-text-muted"
-                    }`}
-                  >
-                    {tool.icon}
-                    <span className="font-mono text-[6px] uppercase tracking-[0.1em] font-bold leading-none truncate w-full text-center">
-                      {tool.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+          <div
+            className={`w-full studio-bg-panel border-l studio-border flex flex-col shrink-0 relative min-h-0 ${
+              isMobile ? "pb-28" : ""
+            }`}
+            style={isMobile ? undefined : { width: coverPanelWidth }}
+          >
+            {/* Content-sized (not flex-1) so the colophon sits tight under the plate */}
+            <div className="overflow-y-auto no-scrollbar flex flex-col p-6 md:pr-10">
             <div className="space-y-6">
               {renderStudioPager()}
               {/* Zine Title Input Header */}

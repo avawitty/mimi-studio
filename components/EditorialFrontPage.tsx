@@ -125,6 +125,7 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
     <PublicField className="w-full h-full min-h-0 overflow-y-auto font-sans transition-colors duration-300 pb-32">
       <PressReveal>
         <EditorialPlate
+          showWordmark={false}
           thesis="Taste made inspectable — not averaged."
           supporting="Read what creators published with Approved Used Context. A quiet public archive for original expression and evidence you can audit."
           actionLabel={featured ? 'Read latest issue' : 'Enter the archive'}
