@@ -1016,22 +1016,33 @@ export const fetchUserZines = async (uid: string, forceRefresh = false) => {
     }
 
     try {
-      let q;
       devLog.info("MIMI // fetchUserZines: querying");
+      let docs: ZineMetadata[];
       if (auth.currentUser && uid === auth.currentUser.uid) {
-        q = query(collection(db, "zines"), where("userId", "==", uid));
+        const [legacySnapshot, workingSnapshot] = await Promise.all([
+          getDocs(query(collection(db, "zines"), where("userId", "==", uid))),
+          getDocs(query(collection(db, "zine_working"), where("userId", "==", uid))),
+        ]);
+        const byId = new Map<string, ZineMetadata>();
+        legacySnapshot.docs.forEach((item) => {
+          const zine = item.data() as ZineMetadata;
+          byId.set(zine.id, zine);
+        });
+        workingSnapshot.docs.forEach((item) => {
+          const zine = item.data() as ZineMetadata;
+          byId.set(zine.id, zine);
+        });
+        docs = [...byId.values()];
       } else {
-        q = query(
+        const publicSnapshot = await getDocs(query(
           collection(db, "zines"),
           where("userId", "==", uid),
           where("isPublic", "==", true),
           where("publicProjectionVersion", "==", 1),
-        );
+        ));
+        docs = publicSnapshot.docs.map((item) => item.data() as ZineMetadata);
       }
-      devLog.info("MIMI // fetchUserZines: Querying zines");
-      const querySnapshot = await getDocs(q);
-      console.info("MIMI // fetchUserZines: Found zines count:", querySnapshot.size);
-      const docs = querySnapshot.docs.map(d => d.data() as ZineMetadata);
+      console.info("MIMI // fetchUserZines: Found zines count:", docs.length);
       const sorted = docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       zineCache[uid] = { data: sorted, timestamp: Date.now() };
       return sorted;
@@ -1119,23 +1130,12 @@ export const subscribeToUserZines = (
       return;
     }
 
-    let q;
-    if (uid === auth.currentUser?.uid) {
-      q = query(collection(db, "zines"), where("userId", "==", uid));
-    } else {
-      q = query(
-        collection(db, "zines"),
-        where("userId", "==", uid),
-        where("isPublic", "==", true),
-        where("publicProjectionVersion", "==", 1),
-      );
-    }
-    unsubFirestore = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
+    const emitDocs = (docs: ZineMetadata[]) => {
       const sorted = docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       zineCache[uid] = { data: sorted, timestamp: Date.now() };
       callback(sorted);
-    }, (error: any) => {
+    };
+    const handleSnapshotError = (error: any) => {
       if (error.code === 'permission-denied' && auth.currentUser?.uid !== uid) {
         console.warn(`MIMI // Ignored permission-denied for zines/${uid} due to auth state change.`);
         onError?.(error);
@@ -1148,7 +1148,52 @@ export const subscribeToUserZines = (
       }
       logFirestoreError(error, OperationType.LIST, "zines");
       onError?.(error);
-    });
+    };
+
+    if (uid === auth.currentUser?.uid) {
+      let legacyDocs: ZineMetadata[] = [];
+      let workingDocs: ZineMetadata[] = [];
+      const emitMerged = () => {
+        const byId = new Map<string, ZineMetadata>();
+        legacyDocs.forEach((zine) => byId.set(zine.id, zine));
+        workingDocs.forEach((zine) => byId.set(zine.id, zine));
+        emitDocs([...byId.values()]);
+      };
+      const unsubscribeLegacy = onSnapshot(
+        query(collection(db, "zines"), where("userId", "==", uid)),
+        (snapshot) => {
+          legacyDocs = snapshot.docs.map((item) => item.data() as ZineMetadata);
+          emitMerged();
+        },
+        handleSnapshotError,
+      );
+      const unsubscribeWorking = onSnapshot(
+        query(collection(db, "zine_working"), where("userId", "==", uid)),
+        (snapshot) => {
+          workingDocs = snapshot.docs.map((item) => item.data() as ZineMetadata);
+          emitMerged();
+        },
+        handleSnapshotError,
+      );
+      unsubFirestore = () => {
+        unsubscribeLegacy();
+        unsubscribeWorking();
+      };
+    } else {
+      const publicQuery = query(
+        collection(db, "zines"),
+        where("userId", "==", uid),
+        where("isPublic", "==", true),
+        where("publicProjectionVersion", "==", 1),
+      );
+      unsubFirestore = onSnapshot(
+        publicQuery,
+        (snapshot) => {
+          emitDocs(snapshot.docs.map((item) => item.data() as ZineMetadata));
+        },
+        handleSnapshotError,
+      );
+    }
   })();
 
   return () => {
@@ -1415,10 +1460,18 @@ export const fetchZineById = async (id: string) => {
           const workingDoc = await getDoc(doc(db, "zine_working", id));
           if (workingDoc.exists()) {
             sovereign = workingDoc.data() as ZineMetadata;
+          } else if (sovereign.publicProjectionVersion !== 1) {
+            await setDoc(
+              doc(db, "zine_working", id),
+              sanitizeFirestoreData(sovereign),
+            );
           } else {
             const legacyDoc = await getDoc(doc(db, "zines", id));
-            if (legacyDoc.exists()) {
-              sovereign = legacyDoc.data() as ZineMetadata;
+            const legacy = legacyDoc.exists()
+              ? (legacyDoc.data() as ZineMetadata)
+              : null;
+            if (legacy && legacy.publicProjectionVersion !== 1) {
+              sovereign = legacy;
               await setDoc(
                 doc(db, "zine_working", id),
                 sanitizeFirestoreData(sovereign),
@@ -1448,7 +1501,7 @@ export const fetchZineById = async (id: string) => {
         const workingDoc = await getDoc(doc(db, "zine_working", id));
         if (workingDoc.exists()) {
           zine = workingDoc.data() as ZineMetadata;
-        } else {
+        } else if (zine.publicProjectionVersion !== 1) {
           // Lazy migration for pre-split owner archives.
           await setDoc(
             doc(db, "zine_working", id),
