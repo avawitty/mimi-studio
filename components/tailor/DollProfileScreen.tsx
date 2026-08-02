@@ -94,9 +94,21 @@ interface ChatMessage {
   timestamp: string;
 }
 
+function dollHasShellPortrait(d: Doll): boolean {
+  return Boolean(d.generatedImageUrl || d.identityReferences?.portraitUrl);
+}
+
+function mergeDollFromProp(d: Doll): Doll {
+  const portraitUrl = d.identityReferences?.portraitUrl;
+  if (portraitUrl && !d.generatedImageUrl) {
+    return { ...d, generatedImageUrl: portraitUrl };
+  }
+  return d;
+}
+
 export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBack, onContinue }) => {
   const { user } = useUser();
-  const [currentDoll, setCurrentDoll] = useState<Doll>(doll);
+  const [currentDoll, setCurrentDoll] = useState<Doll>(() => mergeDollFromProp(doll));
   const [isGeneratingPortrait, setIsGeneratingPortrait] = useState(false);
   const [identityView, setIdentityView] = useState<DollIdentityView>('portrait');
   /** One-shot cultish onboarding: first open without a portrait auto-runs shell projection. */
@@ -105,7 +117,7 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   const [activeMaskId, setActiveMaskId] = useState<string | null>(doll.activeMaskId || null);
 
   useEffect(() => {
-    setCurrentDoll(doll);
+    setCurrentDoll(mergeDollFromProp(doll));
     setActiveMaskId(doll.activeMaskId || null);
   }, [doll]);
 
@@ -274,13 +286,17 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   // Cultish onboarding beat: first visit without a portrait auto-projects the house shell.
   useEffect(() => {
     if (autoShellProjectedRef.current) return;
-    if (currentDoll.generatedImageUrl) return;
+    if (dollHasShellPortrait(currentDoll)) return;
     if (isGeneratingPortrait) return;
     autoShellProjectedRef.current = true;
     void handleRegeneratePortrait('portrait');
     // Intentionally one-shot per mount when shell image is missing.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onboarding auto-project
-  }, [currentDoll.id, currentDoll.generatedImageUrl]);
+  }, [
+    currentDoll.id,
+    currentDoll.generatedImageUrl,
+    currentDoll.identityReferences?.portraitUrl,
+  ]);
 
   useEffect(() => {
     localStorage.setItem(`mimi_doll_equipped_${doll.id}`, JSON.stringify(equippedIds));
