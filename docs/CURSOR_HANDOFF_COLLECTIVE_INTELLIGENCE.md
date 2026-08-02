@@ -4,6 +4,14 @@
 **Audience:** Cursor agents / senior engineers  
 **Principle:** Inspect before building. Prove every result. Do not invent functionality.
 
+**Plans landed (2026-08-02):**
+
+- Phase 1 audit → [`docs/COLLECTIVE_INTELLIGENCE_AUDIT.md`](./COLLECTIVE_INTELLIGENCE_AUDIT.md)
+- Phase 2 spec → [`docs/COLLECTIVE_INTELLIGENCE_SPEC.md`](./COLLECTIVE_INTELLIGENCE_SPEC.md)
+- MMM chamber build sequence → [`docs/mmm-chamber-implementation-plan.md`](./mmm-chamber-implementation-plan.md)
+
+Next code PR: Phase 3 Zod contracts + `verify:collective` (see chamber plan PR **B**).
+
 ---
 
 ## Question summary
@@ -366,16 +374,18 @@ interface ResultEnvelope<T> {
 
 Do **not** start with an ornamental dashboard. Inspect repo first.
 
-### Phase 1 — Audit (no production code)
+### Phase 1 — Audit (no production code) — **done**
 
 Inspect: public zine schema, public/private flags, Proscenium publish path, Scry storage, Forecast, tags/memory atoms, analytics/simulated metrics, Firestore collections/rules, deletion, consent UI, RSS support.
 
-**Create:** `docs/COLLECTIVE_INTELLIGENCE_AUDIT.md`
+**Created:** [`docs/COLLECTIVE_INTELLIGENCE_AUDIT.md`](./COLLECTIVE_INTELLIGENCE_AUDIT.md)
 
-### Phase 2 — Spec
+### Phase 2 — Spec — **done**
 
-**Create:** `docs/COLLECTIVE_INTELLIGENCE_SPEC.md`  
+**Created:** [`docs/COLLECTIVE_INTELLIGENCE_SPEC.md`](./COLLECTIVE_INTELLIGENCE_SPEC.md)  
 Architecture, event/signal taxonomies, cycle methodology, privacy/consent, thresholds, retention, deletion, provenance, failure/uncertainty language, IA.
+
+Chamber sequencing: [`docs/mmm-chamber-implementation-plan.md`](./mmm-chamber-implementation-plan.md).
 
 ### Phase 3 — Typed contracts (Zod, no `any`)
 
