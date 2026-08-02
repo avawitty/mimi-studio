@@ -14,7 +14,10 @@ import { PublicSharePage } from "./components/PublicSharePage";
 import { PublicZineSharePage } from "./components/PublicZineSharePage";
 import { PublicDnaBadge } from "./components/PublicDnaBadge";
 import { MimiYouPublicRoute } from "./components/MimiYouPublicRoute";
+import { RipPublicRoute } from "./components/RipPublicRoute";
+import { RipLandingPage } from "./components/RipLandingPage";
 import { MimiShowcaseDirectory } from "./components/MimiShowcaseDirectory";
+import { getSiteSkin, parseRipPublicHandle } from "./lib/siteHost";
 import { StackView } from "./components/StackView";
 import { SubscriptionMatrix } from "./components/SovereignCommerceEngine";
 
@@ -214,6 +217,9 @@ const ScribeChamber = lazy(() =>
 );
 const MimiDollsChamber = lazy(() =>
   import("./components/chambers/MimiDollsChamber").then((m) => ({ default: m.MimiDollsChamber })),
+);
+const RipChamber = lazy(() =>
+  import("./components/chambers/RipChamber").then((m) => ({ default: m.RipChamber })),
 );
 const MoodBoardChamber = lazy(() =>
   import("./components/chambers/MoodBoardChamber").then((m) => ({ default: m.MoodBoardChamber })),
@@ -847,6 +853,7 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "manifesto",
   "memberships",
   "mimi-dolls",
+  "mimi-rip",
   "mimi-drop",
   "moodboard",
   "nebula",
@@ -1331,6 +1338,10 @@ export const App: React.FC = () => {
       const normalizedMode = canonicalizeMimiRoute(mode);
       if (normalizedMode === "mimi-dolls" || normalizedMode === "mimi-you") {
         navigate("/mimi-dolls");
+        return;
+      }
+      if (normalizedMode === "mimi-rip" || normalizedMode === "rip") {
+        navigate("/rip");
         return;
       }
       if (normalizedMode === "studio") {
@@ -2073,6 +2084,20 @@ export const App: React.FC = () => {
     return <MimiShowcaseDirectory navigate={navigate} />;
   }
 
+  // mimi.rip host skin (or ?skin=rip) — inverse public readings
+  const siteSkin = getSiteSkin();
+  if (siteSkin === "rip") {
+    const path = window.location.pathname;
+    if (path === "/" || path === "") {
+      return <RipLandingPage navigate={navigate} />;
+    }
+    const ripHandle = parseRipPublicHandle(path);
+    if (ripHandle) {
+      return <RipPublicRoute handle={ripHandle} navigate={navigate} />;
+    }
+    // /rip chamber and other app routes fall through on rip host
+  }
+
   if (
     window.location.pathname.startsWith("/u/") &&
     window.location.pathname.endsWith("/dna")
@@ -2097,6 +2122,10 @@ export const App: React.FC = () => {
   ) {
     const handle = window.location.pathname.split("/u/")[1]?.split("/")[0];
     if (handle) {
+      // Same-host QA: ?skin=rip flips /u/:handle to the inverse card
+      if (siteSkin === "rip") {
+        return <RipPublicRoute handle={handle} navigate={navigate} />;
+      }
       return <MimiYouPublicRoute handle={handle} navigate={navigate} />;
     }
   }
@@ -2133,6 +2162,7 @@ export const App: React.FC = () => {
     darkroom: "Darkroom",
     "private-studio": "Private Studio",
     "mimi-dolls": "Mimi Dolls",
+    "mimi-rip": "mimi.rip",
     "mimi-drop": "The Drop",
     tailor: "The Tailor",
     "brand-intake": "Mimi Report",
@@ -2188,7 +2218,7 @@ export const App: React.FC = () => {
     if (["tailor", "loom", "action-board", "the-edit", "the-press", "wardrobe", "mimi-drop"].includes(mode))
       return "refine";
     if (
-      ["signature", "ward", "profile", "taste-graph", "pocket", "scribe", "mimi-dolls", "atelier"].includes(
+      ["signature", "ward", "profile", "taste-graph", "pocket", "scribe", "mimi-dolls", "mimi-rip", "atelier"].includes(
         mode,
       )
     )
@@ -2595,6 +2625,9 @@ export const App: React.FC = () => {
                         {viewMode === "scribe" && <ScribeChamber />}
                         {viewMode === "mimi-dolls" && (
                           <MimiDollsChamber navigate={navigate} />
+                        )}
+                        {viewMode === "mimi-rip" && (
+                          <RipChamber navigate={navigate} />
                         )}
                         {viewMode === "chamber-map" && (
                           <ChamberMapView onNavigate={setViewMode} />
