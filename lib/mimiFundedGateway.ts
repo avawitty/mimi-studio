@@ -345,12 +345,14 @@ export const resolveMimiFundedGatewayAccess = async (
 
       return { allowed: true, billable: true, uid: decoded.uid, cost };
     } catch (err) {
+      // JWT already verified — soft-allow this uid when credit docs are unreachable.
       console.warn("MIMI // Credit lookup failed; soft-allowing verified user:", err);
       return softAllow(decoded.uid, cost);
     }
   } catch (err) {
-    console.warn("MIMI // resolveMimiFundedGatewayAccess failed:", err);
-    return softAllow(undefined, cost);
+    // Never soft-allow without a verified session — deny on unexpected failures.
+    console.warn("MIMI // resolveMimiFundedGatewayAccess failed; denying:", err);
+    return { allowed: false, billable: false, cost };
   }
 };
 

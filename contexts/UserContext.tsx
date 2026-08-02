@@ -1336,9 +1336,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!profile || !user) return;
     const { applyPromoCode } = await import('../services/membershipPipeline');
     const result = await applyPromoCode(user.uid, key);
+    // Prefer server credits (including restored grants). Never invent a full
+    // allowance when the API omitted membershipCredits — that desyncs UI vs spend.
     const credits =
       result?.membershipCredits ||
-      buildCreditGrant({ plan: 'lab', interval: 'year' }).credits;
+      profile.membershipCredits ||
+      (result?.applied
+        ? buildCreditGrant({ plan: 'lab', interval: 'year' }).credits
+        : profile.membershipCredits);
     // Server Admin already wrote entitlement fields — only refresh local state.
     setProfile({
       ...profile,
@@ -1350,7 +1355,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       patronKey: key,
       subscriptionStatus: 'active',
       subscriptionInterval: 'year',
-      membershipCredits: credits,
+      ...(credits ? { membershipCredits: credits } : {}),
     });
   };
 

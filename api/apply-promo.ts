@@ -62,10 +62,9 @@ export default async function handler(req: any, res: any) {
     const periodEndsAt = Number(
       existingCredits?.periodEndsAt ?? existingMembership.currentPeriodEnd ?? 0,
     );
+    // Idempotent only for THIS promo key — not any active patron / any prior promo.
     const alreadyRedeemed =
-      periodEndsAt > now &&
-      (String(existingUser.patronKey || "") === promoKey ||
-        String(existingMembership.source || "") === "promo");
+      periodEndsAt > now && String(existingUser.patronKey || "") === promoKey;
 
     if (alreadyRedeemed) {
       const remaining = Number(existingCredits?.remaining ?? NaN);
