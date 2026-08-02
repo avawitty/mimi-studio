@@ -1,7 +1,16 @@
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { createRequire } from "module";
+import type { Auth } from "firebase-admin/auth";
+import type { Firestore } from "firebase-admin/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
+
+const require = createRequire(import.meta.url);
+
+type AdminBundle = {
+  auth: Auth | null;
+  db: Firestore | null;
+};
+
+let cached: AdminBundle | undefined;
 
 /**
  * Named DB from client config; `(default)` does not exist on mimistudios.
@@ -27,19 +36,54 @@ const parseServiceAccount = () => {
   }
 };
 
-export const getServerFirebaseAdmin = () => {
-  if (!getApps().length) {
-    const serviceAccount = parseServiceAccount();
-    if (!serviceAccount) {
-      return { auth: null, db: null };
-    }
-    initializeApp({ credential: cert(serviceAccount) });
-  }
+/**
+ * Lazily initialize Firebase Admin for server routes.
+ * Uses dynamic require so Vercel serverless functions that only need Admin for
+ * optional credit checks do not crash at module-evaluation time when the
+ * firebase-admin graph fails to load in the isolate.
+ */
+export const getServerFirebaseAdmin = (): AdminBundle => {
+  if (cached) return cached;
 
-  return {
-    auth: getAuth(),
-    db: getFirestore(resolveMimiFirestoreDatabaseId()),
-  };
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { cert, getApps, initializeApp } = require("firebase-admin/app") as typeof import("firebase-admin/app");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getAuth } = require("firebase-admin/auth") as typeof import("firebase-admin/auth");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getFirestore } = require("firebase-admin/firestore") as typeof import("firebase-admin/firestore");
+
+    if (!getApps().length) {
+      const serviceAccount = parseServiceAccount();
+      if (!serviceAccount) {
+        cached = { auth: null, db: null };
+        return cached;
+      }
+      initializeApp({ credential: cert(serviceAccount) });
+    }
+
+    let auth: Auth | null = null;
+    let db: Firestore | null = null;
+
+    try {
+      auth = getAuth();
+    } catch (err) {
+      console.warn("MIMI // Firebase Auth init failed:", err);
+    }
+
+    try {
+      db = getFirestore(resolveMimiFirestoreDatabaseId());
+    } catch (err) {
+      console.warn("MIMI // Firestore init failed:", err);
+    }
+
+    cached = { auth, db };
+    return cached;
+  } catch (err) {
+    console.warn("MIMI // Firebase Admin unavailable:", err);
+    cached = { auth: null, db: null };
+    return cached;
+  }
 };
 
 export const extractMimiSessionToken = (headers: Record<string, any>) => {
