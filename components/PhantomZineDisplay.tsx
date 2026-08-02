@@ -14,7 +14,7 @@ export const PhantomZineDisplay: React.FC<PhantomZineDisplayProps> = ({ page, pr
  const [elements, setElements] = useState<EditorElement[]>(page.customLayout?.elements || []);
 
  const tailorDraft = profile?.tailorDraft;
- const fontFamily = tailorDraft?.expressionEngine?.typographyIntent?.styleDescription || 'Inter';
+ const fontFamily = tailorDraft?.expressionEngine?.typographyIntent?.styleDescription || 'Cormorant Garamond';
  const baseHex = tailorDraft?.expressionEngine?.chromaticRegistry?.baseNeutral || '#FFFFFF';
  const accentHex = tailorDraft?.expressionEngine?.chromaticRegistry?.accentSignal || '#000000';
 

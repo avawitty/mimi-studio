@@ -24,7 +24,7 @@ interface ZineLayoutEditorProps {
 
 const FONT_FAMILIES = [
  { id: 'serif', label: 'Editorial Serif', css: 'Cormorant Garamond' },
- { id: 'sans', label: 'Space Grotesk', css: 'Space Grotesk' },
+ { id: 'sans', label: 'Geist', css: 'Geist' },
  { id: 'mono', label: 'Space Mono', css: 'Space Mono' },
  { id: 'brutalist', label: 'Brutalist', css: 'Anton' }
 ];
@@ -95,7 +95,7 @@ const initializeElements = (page: ZinePage, defaultFont: string): EditorElement[
 export const ZineLayoutEditor: React.FC<ZineLayoutEditorProps> = ({ page, tone, initialTitle ="Untitled Manifest", onSave, onCancel }) => {
  const { profile, user } = useUser();
  const tailorDraft = profile?.tailorDraft;
- const defaultFontFamily = tailorDraft?.expressionEngine?.typographyIntent?.styleDescription || 'Inter';
+ const defaultFontFamily = tailorDraft?.expressionEngine?.typographyIntent?.styleDescription || 'Cormorant Garamond';
  const [elements, setElements] = useState<EditorElement[]>(() => initializeElements(page, defaultFontFamily));
  const [zineTitle, setZineTitle] = useState(initialTitle);
  const [selectedId, setSelectedId] = useState<string | null>(null);

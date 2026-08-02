@@ -14,6 +14,7 @@ import {
   type CompileDraft,
 } from "../lib/editCompileExport";
 import { useUser } from "../contexts/UserContext";
+import { IssueSpreadsPanel } from "./IssueSpreadsPanel";
 
 export const TheEditCompile: React.FC = () => {
   const { user, profile } = useUser();
@@ -156,6 +157,8 @@ export const TheEditCompile: React.FC = () => {
             Approve atoms in the tray above, frame a thesis, then export markdown to The Press or copy for external publish.
           </p>
         </header>
+
+        <IssueSpreadsPanel />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <section className="space-y-6">

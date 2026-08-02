@@ -164,7 +164,7 @@ export const ThePressChamber: React.FC = () => {
                 <Package size={32} className="mb-4 opacity-40 mx-auto" strokeWidth={1} />
                 <p className="font-serif italic text-xl archive-text-ink mb-2">Export lives on the artifact</p>
                 <p className="font-sans text-sm leading-relaxed mb-6">
-                  Open a generated zine to access PDF, asset ZIP, Shopify packs, and share links with
+                  Open a generated zine to access structured archival PDF, asset ZIP, Shopify packs, and share links with
                   full provenance manifest.
                 </p>
                 <button
