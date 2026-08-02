@@ -19,8 +19,8 @@ import path from "node:path";
 import { config as loadEnv } from "dotenv";
 import { resetSovereignDbForTests } from "../lib/sovereign/db";
 import {
-  clearAllZines,
   importZines,
+  replaceAllZines,
   sovereignStatus,
   upsertProfile,
 } from "../lib/sovereign/store";
@@ -87,15 +87,29 @@ async function main() {
   }
 
   await resetSovereignDbForTests();
-  let cleared = 0;
-  if (replace) {
-    cleared = await clearAllZines();
-    console.info(`MIMI // --replace: cleared ${cleared} existing sovereign zines`);
-  }
   for (const profile of profiles) {
     await upsertProfile(profile);
   }
-  const { imported, skipped } = await importZines(zines);
+
+  // --replace clears + imports in one transaction so a failed import cannot
+  // leave the Floor empty after a committed DELETE.
+  let cleared = 0;
+  let imported = 0;
+  let skipped = 0;
+  if (replace) {
+    const replaced = await replaceAllZines(zines);
+    cleared = replaced.cleared;
+    imported = replaced.imported;
+    skipped = replaced.skipped;
+    console.info(
+      `MIMI // --replace: cleared ${cleared} then imported ${imported} (skipped ${skipped}) atomically`,
+    );
+  } else {
+    const result = await importZines(zines);
+    imported = result.imported;
+    skipped = result.skipped;
+  }
+
   console.info(
     JSON.stringify(
       {

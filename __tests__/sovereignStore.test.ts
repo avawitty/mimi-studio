@@ -15,6 +15,7 @@ import {
   listPublicZines,
   listPublicZinesPage,
   listUserZines,
+  replaceAllZines,
   seedDemoShelfIfEmpty,
   slimZineForFloor,
   sovereignStatus,
@@ -168,6 +169,18 @@ describe("sovereign store", () => {
     expect((await getZineById("owned", { requesterUid: "owner_a", includePrivate: true }))?.title).toBe(
       "Floor Signal",
     );
+  });
+
+  it("replaceAllZines clears and imports atomically", async () => {
+    await upsertZine(sampleZine({ id: "old1", timestamp: 10 }));
+    await upsertZine(sampleZine({ id: "old2", timestamp: 20 }));
+    const result = await replaceAllZines([
+      sampleZine({ id: "new1", timestamp: 30 }),
+      sampleZine({ id: "new2", timestamp: 40 }),
+    ]);
+    expect(result.cleared).toBe(2);
+    expect(result.imported).toBe(2);
+    expect((await listPublicZines(10)).map((z) => z.id).sort()).toEqual(["new1", "new2"]);
   });
 
   it("deletes zines from the archive", async () => {

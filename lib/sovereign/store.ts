@@ -1,7 +1,7 @@
 import type { PocketItem, UserProfile, ZineMetadata } from "../../types.js";
 import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache.js";
 import { getSovereignDb, isSovereignEnabled, resolveSovereignDbPath } from "./db.js";
-import { SOVEREIGN_SCHEMA_VERSION } from "./driver.js";
+import { SOVEREIGN_SCHEMA_VERSION, type SovereignDriver } from "./driver.js";
 import {
   countIndexedEmbeddings,
   isSovereignGatewayEmbedEnabled,
@@ -348,9 +348,9 @@ export const listUserZines = async (
 
 export const upsertZine = async (
   zine: ZineMetadata,
-  opts?: { skipEmbed?: boolean },
+  opts?: { skipEmbed?: boolean; db?: SovereignDriver; quiet?: boolean },
 ): Promise<void> => {
-  const db = await getSovereignDb();
+  const db = opts?.db ?? (await getSovereignDb());
   if (!db) {
     throw new Error("Sovereign archive unavailable");
   }
@@ -372,7 +372,9 @@ export const upsertZine = async (
   // Keep JSON payload aligned with the SQL visibility column.
   const payload = JSON.stringify({ ...zine, isPublic: Boolean(isPublic) });
 
-  await db
+  // Ownership is enforced atomically: ON CONFLICT only updates when user_id matches.
+  // Concurrent create of the same id by another user yields changes=0 — do not emit/embed.
+  const result = await db
     .prepare(
       `INSERT INTO zines (
       id, user_id, user_handle, title, tone, is_public, published_at,
@@ -405,6 +407,10 @@ export const upsertZine = async (
       payload,
       now,
     );
+  if (Number(result.changes || 0) < 1) {
+    throw new Error("Zine id is owned by another user");
+  }
+  if (opts?.quiet) return;
   cacheInvalidatePrefix("floor:");
   emitSovereignEvent({
     type: "zine_upsert",
@@ -426,6 +432,50 @@ export const clearAllZines = async (): Promise<number> => {
   await db.prepare("DELETE FROM zines").run();
   cacheInvalidatePrefix("floor:");
   return Number(before?.n || 0);
+};
+
+/**
+ * Atomically clear then import zines (export --replace).
+ * Previous Floor remains intact if the transaction rolls back.
+ */
+export const replaceAllZines = async (
+  zines: ZineMetadata[],
+): Promise<{ cleared: number; imported: number; skipped: number; truncated: boolean }> => {
+  const db = await getSovereignDb();
+  if (!db) throw new Error("Sovereign archive unavailable");
+
+  const truncated = zines.length > IMPORT_BATCH_CAP;
+  const batch = zines.slice(0, IMPORT_BATCH_CAP);
+
+  const outcome = await db.withTransaction(async (tx) => {
+    const before = await tx
+      .prepare("SELECT COUNT(*) AS n FROM zines")
+      .get<{ n: number | string }>();
+    await tx.prepare("DELETE FROM zines").run();
+    let imported = 0;
+    let skipped = 0;
+    for (const zine of batch) {
+      if (!zine?.id || !zine.userId) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        await upsertZine(zine, { skipEmbed: true, db: tx, quiet: true });
+        imported += 1;
+      } catch {
+        skipped += 1;
+      }
+    }
+    return {
+      cleared: Number(before?.n || 0),
+      imported,
+      skipped,
+      truncated,
+    };
+  });
+
+  cacheInvalidatePrefix("floor:");
+  return outcome;
 };
 
 export const deleteZine = async (id: string, userId?: string): Promise<boolean> => {
