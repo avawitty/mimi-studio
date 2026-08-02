@@ -6,6 +6,9 @@
   "functions": {
     "api/you-search.ts": {
       "maxDuration": 60
+    },
+    "api/residue-acquire.ts": {
+      "maxDuration": 60
     }
   },
   "redirects": [

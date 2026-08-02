@@ -35,6 +35,7 @@ import { searchShopifyGlobalCatalog } from "./lib/shopifyCatalog";
 import { verifyMimiSession } from "./lib/serverFirebaseAdmin";
 import { handleCreatorFeedRequest } from "./api/feed";
 import youSearchHandler from "./api/you-search";
+import residueAcquireHandler from "./api/residue-acquire";
 import liveTokenHandler from "./api/live/token";
 import { isPaidPatronPlan } from "./constants";
 
@@ -1377,6 +1378,14 @@ async function startServer() {
 
   app.post("/api/you-search", async (req, res) => {
     await youSearchHandler(req, res);
+  });
+
+  app.get("/api/residue-acquire", async (req, res) => {
+    await residueAcquireHandler(req, res);
+  });
+
+  app.post("/api/residue-acquire", async (req, res) => {
+    await residueAcquireHandler(req, res);
   });
 
   app.post("/api/live/token", async (req, res) => {

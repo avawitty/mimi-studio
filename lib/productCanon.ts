@@ -542,22 +542,25 @@ export const CANON_MODULES: CanonModule[] = [
       "cultural query or emotional experience text",
       "optional user notes",
       "manual / acquired sources (offline heuristics first)",
+      "optional Apify acquisition (token-gated)",
     ],
     generations: [
       "cultural lineage + codes",
       "interpretive neighborhoods",
       "mean / median / mode readouts",
+      "intelligence reports",
       "product adapter proposals",
     ],
     outputs: [
       "session residue runs",
       "evidence + source manifests",
+      "intelligence reports",
       "proposed zine / edit / forecast / taste / memory artifacts",
     ],
     userFlow:
-      "Run an offline-first cultural or emotional residue pass, inspect synthesis and evidence, review M/M/M and product proposals, then hand off to Intel Hub, Edit, Forecast, or Taste Graph.",
+      "Run an offline-first cultural or emotional residue pass, inspect synthesis and evidence, review M/M/M and product proposals, then hand off to Intel Hub, Edit, Forecast, or Taste Graph. Optional signed-in Apify acquisition when configured.",
     notes:
-      "Phase 8 UI over Phases 2–7 engines. Emotional mode always shows the non-diagnostic safety notice. Memory / taste / edit outputs stay proposed until accepted elsewhere. Live Apify acquisition is Phase 9.",
+      "Emotional mode always shows the non-diagnostic safety notice. Memory / taste / edit outputs stay proposed until accepted elsewhere. Live Apify acquisition is Phase 9 (token + session gated).",
   },
 ];
 
