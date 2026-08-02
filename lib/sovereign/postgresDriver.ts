@@ -17,10 +17,17 @@ const toPg = (sql: string): string => {
 };
 
 const withSslMode = (connectionString: string): string => {
-  // Neon requires TLS; keep caller overrides if already present.
-  if (/[?&]sslmode=/i.test(connectionString)) return connectionString;
-  const join = connectionString.includes("?") ? "&" : "?";
-  return `${connectionString}${join}sslmode=require`;
+  // Neon requires TLS. Prefer libpq-compatible sslmode=require to avoid
+  // node-pg's upcoming verify-full alias change (and noisy warnings).
+  let url = connectionString;
+  if (!/[?&]sslmode=/i.test(url)) {
+    const join = url.includes("?") ? "&" : "?";
+    url = `${url}${join}sslmode=require`;
+  }
+  if (/neon\.tech/i.test(url) && !/[?&]uselibpqcompat=/i.test(url)) {
+    url += (url.includes("?") ? "&" : "?") + "uselibpqcompat=true";
+  }
+  return url;
 };
 
 export const openPostgresDriver = async (connectionString: string): Promise<SovereignDriver> => {
