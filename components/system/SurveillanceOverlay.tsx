@@ -28,7 +28,7 @@ export const SurveillanceOverlay: React.FC<SurveillanceOverlayProps> = ({
 
   const opacity = signalDense ? 0.07 : 0.04;
 
-  if (family === "reflect" || signalDense) {
+  if (family === "intelligence" || signalDense) {
     return (
       <div
         aria-hidden
@@ -45,7 +45,7 @@ export const SurveillanceOverlay: React.FC<SurveillanceOverlayProps> = ({
     );
   }
 
-  if (family === "refine") {
+  if (family === "capture" || family === "services") {
     return (
       <div
         aria-hidden
@@ -64,7 +64,7 @@ export const SurveillanceOverlay: React.FC<SurveillanceOverlayProps> = ({
     );
   }
 
-  if (family === "signature") {
+  if (family === "identity" || family === "library") {
     return (
       <div
         aria-hidden
@@ -80,7 +80,7 @@ export const SurveillanceOverlay: React.FC<SurveillanceOverlayProps> = ({
     );
   }
 
-  if (family === "create") {
+  if (family === "production") {
     return (
       <div
         aria-hidden
@@ -93,7 +93,7 @@ export const SurveillanceOverlay: React.FC<SurveillanceOverlayProps> = ({
     );
   }
 
-  if (family === "observe") {
+  if (family === "publishing") {
     return (
       <div
         aria-hidden
