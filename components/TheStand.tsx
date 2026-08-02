@@ -49,12 +49,8 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   floorBrowseRef.current = floorBrowseZines;
 
   // Identity key — Floor fetch must cancel/restart when this changes (uid alone
-  // is not enough when floorLoaded stays false mid-flight). From #145.
-  const floorIdentityKey = `${user?.uid ?? ''}:${user?.isAnonymous ? 'anon' : 'reg'}`;
-
-  // Identity key — Floor fetch must cancel/restart when this changes (uid alone
   // is not enough when floorLoaded stays false mid-flight).
-  const floorIdentityKey = `${user?.uid ?? ""}:${user?.isAnonymous ? "anon" : "reg"}`;
+  const floorIdentityKey = `${user?.uid ?? ''}:${user?.isAnonymous ? 'anon' : 'reg'}`;
 
   // Identity change must resettle Floor — don't keep another account's shelf / empty quota state.
   useEffect(() => {
