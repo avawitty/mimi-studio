@@ -1,12 +1,14 @@
-# House Style v2 — Print-Shop Discipline
+# House Style v2 — Editorial Archive Discipline
 
 Source of truth for aesthetic tokens and anti-drift rules. Specs: `prd/aesthetic-01-house-style.md`, `prd/aesthetic-07-public-face.md`.
+
+**Product note:** Mimi is a private AI editorial studio for taste, identity, and image-making — not a print shop or print studio. Visual cues (column rules, quiet provenance, high-contrast type) are archival/editorial, not a claim that Mimi produces physical print.
 
 ## Wordmark
 
 - Product name: **`Mimi`** (title case) in Cormorant Garamond.
 - Never render brand as all-caps `MIMI` on public plates, entry compositions, Signature, Stand, or share cards.
-- Tracked uppercase is OK for system chrome only (`COLOPHON`, `ISSUE`, `FOLIO`).
+- Tracked uppercase is OK for system chrome only (`COLOPHON`, `ISSUE`, `MARK`).
 
 ## Surfaces
 

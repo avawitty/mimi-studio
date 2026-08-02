@@ -5,9 +5,9 @@ type PressMarkProps = {
   className?: string;
 };
 
-/** Quiet olive press mark — folio / colophon accent only. */
+/** Quiet olive accent mark — issue / provenance chrome only. */
 export const PressMark: React.FC<PressMarkProps> = ({
-  label = "FOLIO",
+  label = "ISSUE",
   className = "",
 }) => {
   return (

@@ -22,7 +22,7 @@ interface UsedContextColophonProps {
 }
 
 /**
- * Used Context as typographic colophon / press mark — always present, quiet by default.
+ * Used Context as typographic colophon / attribution mark — always present, quiet by default.
  * PRD-05: provenance as design, not developer tray.
  */
 export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({

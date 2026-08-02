@@ -18,7 +18,7 @@ import {
 import { PressReveal } from './motion/PressReveal';
 
 /**
- * The Stand — zine rack / open profile showcase.
+ * The Stand — published-issues shelf / open profile showcase.
  * Column-ruled grid, quiet typography — not a profile dashboard (PRD-03 / PRD-07).
  */
 export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> = ({ onSelectZine }) => {
@@ -120,7 +120,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
                     </p>
                   )}
                   <p className="font-serif italic text-lg text-[var(--mimi-stone)] max-w-xl leading-relaxed">
-                    Issues on the stand — covers as plates, quiet as a print rack.
+                    Issues on the stand — covers as plates, quiet as an open shelf.
                   </p>
                   <PressMark
                     label={
@@ -211,7 +211,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
                 )}
               </div>
             ) : (
-              /* Column-ruled zine rack — not a card deck with shadows */
+              /* Column-ruled issue grid — not a card deck with shadows */
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-t border-l border-[var(--mimi-hairline)]">
                 {filteredZines.map((zine, index) => (
                   <div

@@ -1,4 +1,4 @@
-# PRD-01: House Style v2 — Print-Shop Discipline
+# PRD-01: House Style v2 — Editorial Archive Discipline
 
 **Status**: Implementing (tokens + public kit landed)  
 **Parent**: [`aesthetic-system-overview.md`](./aesthetic-system-overview.md)  
@@ -34,7 +34,7 @@ Cormorant + Geist + grain is already Mimi, but token usage drifts into warm crea
 | Field | `#FFFFFF` public / `#FAFAFA` worktable | Prefer pure white over `#f9f7f2` on public surfaces |
 | Ink | `#000000` / `#0A0A0A` | High contrast titles and rules |
 | Subtle | `#404040` | Body secondary |
-| Accent A | Olive `#5A5A40` | Folio marks, press mark, rare emphasis |
+| Accent A | Olive `#5A5A40` | Issue marks, provenance accent, rare emphasis |
 | Accent B | Stone `#78716C` | Metadata, quiet UI chrome |
 | Border | `#E5E5E5` → prefer `#D4D4D4` hairlines | Column rules over filled panels |
 | Grain | Cool/neutral texture @ ≤12% opacity | Not warm cream paper fill |

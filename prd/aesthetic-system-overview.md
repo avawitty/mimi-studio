@@ -1,4 +1,4 @@
-# PRD: Mimi Aesthetic System — Print-Shop Discipline
+# PRD: Mimi Aesthetic System — Editorial Archive Discipline
 
 **Status**: Implementation in progress (Phase A–B landed on branch)  
 **Branch**: `meaesthetic-system-3413`  
@@ -16,9 +16,11 @@ The product differentiator is not “pretty generation UI.” It is **approved t
 
 ## North-star aesthetic thesis
 
-> **Print-shop archive, not lifestyle blog.**  
-> High-contrast black/white field, olive and stone as accents only, serif for names and theses, Geist for system, column rules over cards, provenance as colophon, motion as press mechanics.  
-> **Wordmark casing: `Mimi`** (title case in Cormorant) — not all-caps `MIMI`, not `mimi` as display brand.
+> **Editorial archive, not lifestyle blog — and not a print shop.**  
+> Mimi is a private AI editorial studio for taste and image-making. The visual language borrows archival discipline (high-contrast fields, column rules, quiet provenance) without positioning the product as a print studio.  
+> High-contrast black/white field, olive and stone as accents only, serif for names and theses, Geist for system, column rules over cards, provenance as colophon, motion with editorial purpose.  
+> **Wordmark casing: `Mimi`** (title case in Cormorant) — not all-caps `MIMI`, not `mimi` as display brand.  
+> **Copy rule:** Avoid “print shop,” “print studio,” “print rack,” and similar in user-facing UI.
 
 ## Pillars (mapped PRDs)
 
@@ -32,7 +34,8 @@ The product differentiator is not “pretty generation UI.” It is **approved t
 | 6 | Motion with editorial purpose | [`aesthetic-06-editorial-motion.md`](./aesthetic-06-editorial-motion.md) | `06-motion-storyboard.jpg` |
 | 7 | One public face | [`aesthetic-07-public-face.md`](./aesthetic-07-public-face.md) | `07-public-face-family.jpg` |
 
-**UX/UI plan (cross-cutting):** [`aesthetic-ux-ui-plan.md`](./aesthetic-ux-ui-plan.md)
+**UX/UI plan (cross-cutting):** [`aesthetic-ux-ui-plan.md`](./aesthetic-ux-ui-plan.md)  
+**Phase C outcome proofs:** [`aesthetic-phase-c-outcomes.md`](./aesthetic-phase-c-outcomes.md) (`08`–`10` in `proofs/aesthetic/`)
 
 ## Goals
 
@@ -80,7 +83,7 @@ The product differentiator is not “pretty generation UI.” It is **approved t
 
 - **Cream inertia**: `--nous-paper: #f9f7f2` and `.studio-chrome: #f3f1ea` currently dominate; tightening requires token migration, not just copy.
 - **Chamber utility**: Collapsing chrome must not bury frequent actions (Generate, Pocket, Used Context approve).
-- **Oracle exception**: Must not sand Oracle into quiet print shop; keep tonal boundary explicit.
+- **Oracle exception**: Must not sand Oracle into the quiet public language; keep tonal boundary explicit.
 - **Proof vs ship**: Ideation images are direction, not pixel specs; implementation should re-ground in live components.
 
 ## Open questions

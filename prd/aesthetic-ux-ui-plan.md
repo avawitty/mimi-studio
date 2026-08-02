@@ -12,7 +12,7 @@ Mimi’s advantage is not “AI that looks editorial.” It is an **archival ope
 
 | Layer | Intent |
 |-------|--------|
-| **System** | House Style v2 — B/W + olive/stone, Cormorant/Geist, cool grain |
+| **System** | House Style v2 — B/W + olive/stone, Cormorant/Geist, cool grain (editorial archive — not a print shop) |
 | **Rooms** | One composition entry plates for Studio, Signature, Stand, Front Page |
 | **Objects** | Signature plate + Stand grid as shareable brand artifacts |
 | **Worktables** | Canvas-first Moodboard/Studio/Darkroom; tools in sheets/rails |
@@ -64,7 +64,7 @@ flowchart TB
 1. **Brand first** — Wordmark/name is hero-level on public and entry plates; product name is **`Mimi`** (title case), not all-caps `MIMI`.
 2. **One job per viewport** — No chamber dashboards at entry.
 3. **Artifact > chrome** — If chrome can live in a sheet, it should.
-4. **Provenance is UI** — Colophon is not footer fine print; it is a press mark.
+4. **Provenance is UI** — Colophon is not footer fine print; it is a quiet attribution mark.
 5. **Motion means something** — Stamp, page-turn, settle — or nothing.
 6. **Anti-cliché** — Reject cream/serif/terracotta lifestyle defaults; reject purple glow AI defaults.
 
@@ -141,7 +141,7 @@ Full-resolution PNG masters also retained under `/opt/cursor/artifacts/assets/` 
 
 ## 8. Out of scope / exemptions
 
-- **Oracle** retains denser cyberdeck tone; do not “print-shop” it.
+- **Oracle** retains denser cyberdeck tone; do not flatten it into the quiet public kit.
 - User-generated artifact palettes may break house colors **inside** the media.
 - Functional publishing backend for Front Page remains owned by the editorial front-page functional spec; this plan covers aesthetic/UX shell.
 

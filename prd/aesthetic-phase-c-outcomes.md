@@ -6,6 +6,8 @@
 
 These boards show the intended implementation outcome for the three remaining aesthetic workstreams.
 
+**Copy note:** Mimi is not a print studio. Prefer “editorial archive,” “worktable,” “provenance,” “issue” in UI copy — avoid “print shop / print rack / print studio.”
+
 ---
 
 ## 1. Always-on Studio canvas colophon

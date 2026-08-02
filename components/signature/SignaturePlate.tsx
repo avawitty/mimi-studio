@@ -62,7 +62,7 @@ export const SignaturePlate = forwardRef<HTMLDivElement, SignaturePlateProps>(
             )}
           </div>
 
-          {/* Geometric press family — black + olive only */}
+          {/* Geometric mark family — black + olive only */}
           <div className="flex items-center gap-6 py-2" aria-hidden>
             <span className="w-10 h-10 border border-[var(--mimi-ink,#0a0a0a)] rounded-full" />
             <span className="w-0 h-0 border-l-[18px] border-l-transparent border-r-[18px] border-r-transparent border-b-[30px] border-b-[var(--mimi-olive,#5A5A40)]" />

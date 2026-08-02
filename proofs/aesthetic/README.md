@@ -15,7 +15,12 @@ These are **direction boards**, not production pixel specs. Implementation shoul
 | `05-colophon-used-context.jpg` | Used Context as colophon |
 | `06-motion-storyboard.jpg` | Three editorial motions |
 | `07-public-face-family.jpg` | Public face consistency |
+| `08-studio-canvas-colophon.jpg` | Always-on Studio colophon (Phase C) |
+| `09-moodboard-darkroom-collapse.jpg` | Moodboard / Darkroom chrome collapse |
+| `10-graph-settle-taste-graph.jpg` | Evidence → Taste Graph settle |
 
-Visual language target: high-contrast black/white, olive/stone accents, Cormorant + Geist, column rules, print-shop discipline — not cream/lifestyle editorial cliché.
+Visual language target: high-contrast black/white, olive/stone accents, Cormorant + Geist, column rules, editorial-archive discipline — not cream/lifestyle cliché, and not “Mimi as a print shop.”
 
 **Wordmark:** title-case **Mimi** (not all-caps MIMI). Proofs regenerated to match.
+
+Phase C outcome spec: `prd/aesthetic-phase-c-outcomes.md`.
