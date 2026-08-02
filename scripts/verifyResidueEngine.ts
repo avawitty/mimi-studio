@@ -30,8 +30,10 @@ import {
   meanMedianModeResultSchema,
   redactSensitiveText,
   runCulturalResidue,
+  runEmotionalResidue,
   safeParseCulturalResidueResult,
   sanitizeEmotionalStatement,
+  separateResearchFromCommunityReports,
   sourceQualityScore,
 } from "../services/residue/index";
 
@@ -462,7 +464,113 @@ async function main() {
     assert(sourceIds.has(ev.sourceId), `evidence source exists: ${ev.sourceId}`);
   }
 
-  console.log("OK — Residue Phase 2 + Phase 3 cultural engine checks passed.");
+  // --- Phase 4: Emotional Residue engine (offline / non-diagnostic) ---
+  const emotionalCases = [
+    "jealousy",
+    "feeling left behind",
+    "creative shame",
+    "I feel guilty when people like me",
+    "I cannot stop checking their Instagram",
+    "I think everyone secretly hates me",
+  ];
+
+  for (const experience of emotionalCases) {
+    const out = await runEmotionalResidue(
+      {
+        experience,
+        userNotes: [
+          "Forum posts mention checking profiles after seeing friends succeed.",
+          "A review article discusses social comparison without diagnosing readers.",
+        ],
+        sourceUrls: ["https://example.com/social-comparison-review"],
+        includeCommunitySources: true,
+        includeResearchSources: true,
+        retention: "temporary",
+        consentToStore: false,
+      },
+      {
+        llm: { offline: true },
+        runId: `run_em_${experience.slice(0, 12).replace(/\s+/g, "_")}`,
+        now,
+        sources: [
+          {
+            sourceId: "src_research_1",
+            title: "Social comparison review",
+            url: "https://example.com/social-comparison-review",
+            sourceType: "academic-research",
+            accessedAt: now,
+            evidenceLayer: "A",
+            excerpt:
+              "Research discusses social comparison processes and reported envy-adjacent experiences.",
+          },
+          {
+            sourceId: "src_forum_1",
+            title: "Forum thread",
+            sourceType: "forum",
+            accessedAt: now,
+            evidenceLayer: "C",
+            excerpt:
+              "People describing similar experiences often mention checking Instagram and feeling left behind.",
+            metadata: {
+              fullText:
+                "People describing similar experiences often mention checking Instagram. Creative shame shows up when posting work. Some say they feel guilty when people like them.",
+            },
+          },
+        ],
+      },
+    );
+
+    assert(out.usedLlm === false, `offline emotional (${experience})`);
+    assert(out.result.interpretiveNeighborhoods.length >= 2, `multiple neighborhoods (${experience})`);
+    assert(
+      out.result.safetyNotice.toLowerCase().includes("does not") ||
+        out.result.safetyNotice.toLowerCase().includes("diagnosis"),
+      `safety notice (${experience})`,
+    );
+    assert(
+      !containsForbiddenEmotionalLanguage(
+        out.result.interpretiveNeighborhoods.map((n) => n.description).join(" "),
+      ),
+      `no forbidden diagnosis language (${experience})`,
+    );
+    assert(
+      out.result.confidenceSummary.summary.includes("not a diagnostic likelihood"),
+      `confidence labeled (${experience})`,
+    );
+    assert(out.result.inputExperience === "[redacted-emotional-input]", `redacted input (${experience})`);
+
+    const split = separateResearchFromCommunityReports({
+      sources: out.result.sources,
+      evidence: out.result.evidence,
+    });
+    assert(split.researchEvidence.length >= 1, `research distinct (${experience})`);
+    assert(split.communityEvidence.length >= 1, `community distinct (${experience})`);
+  }
+
+  // Belief-validation guard: unsupported mind-reading stays non-confirmatory
+  const mindRead = await runEmotionalResidue(
+    {
+      experience: "I think everyone secretly hates me",
+      retention: "temporary",
+      consentToStore: false,
+      userNotes: ["No corroborating research in notes."],
+    },
+    { llm: { offline: true }, now },
+  );
+  const joined = [
+    ...mindRead.result.commonInterpretations.map((c) => c.statement),
+    ...mindRead.result.alternativeInterpretations.map((c) => c.statement),
+    ...mindRead.result.interpretiveNeighborhoods.map((n) => n.description),
+  ].join(" ");
+  assert(!/this proves|you are|reddit confirms/i.test(joined), "no belief-confirmation language");
+  assert(
+    mindRead.result.alternativeInterpretations.length +
+      mindRead.result.interpretiveNeighborhoods.length >=
+      2,
+    "offers alternatives / multiple neighborhoods",
+  );
+
+  console.log("OK — Residue Phase 2–4 checks passed.");
 }
 
 main().catch((err) => {

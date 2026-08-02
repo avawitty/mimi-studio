@@ -1,5 +1,5 @@
 /**
- * Mimi Residue Engine — public API (Phases 2–3).
+ * Mimi Residue Engine — public API (Phases 2–4).
  */
 
 export * from "./constants";
@@ -38,5 +38,11 @@ export {
   type CulturalResidueEngineOutput,
   type CulturalResidueRunOptions,
 } from "./cultural/culturalResidueEngine";
+export {
+  runEmotionalResidue,
+  type EmotionalResidueEngineOutput,
+  type EmotionalResidueRunOptions,
+} from "./emotional/emotionalResidueEngine";
 export { normalizeSources } from "./shared/normalizeSources";
 export { extractEvidenceOffline } from "./shared/extractEvidence";
+export { separateResearchFromCommunityReports } from "./emotional/separateResearchFromCommunityReports";

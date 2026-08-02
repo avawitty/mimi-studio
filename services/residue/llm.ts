@@ -153,3 +153,96 @@ export const culturalSynthesisLlmSchema = z.object({
 export type CulturalNormalizeLlm = z.infer<typeof culturalNormalizeLlmSchema>;
 export type CulturalEvidenceLlm = z.infer<typeof culturalEvidenceLlmSchema>;
 export type CulturalSynthesisLlm = z.infer<typeof culturalSynthesisLlmSchema>;
+
+/** Intermediate structured outputs for Emotional stages (LLM). */
+export const emotionalNormalizeLlmSchema = z.object({
+  normalizedExperience: z.string().min(1),
+  facets: z.array(z.string()),
+  warnings: z.array(z.string()).default([]),
+});
+
+export const emotionalEvidenceLlmSchema = culturalEvidenceLlmSchema;
+
+export const emotionalSynthesisLlmSchema = z.object({
+  interpretiveNeighborhoods: z.array(
+    z.object({
+      label: z.string().min(1),
+      description: z.string().min(1),
+      relevanceScore: z.number().min(0).max(1),
+      scoreMeaning: z.enum([
+        "semantic-proximity",
+        "pattern-frequency",
+        "evidence-supported-relevance",
+      ]),
+      status: z.enum([
+        "common-description",
+        "research-supported",
+        "community-reported",
+        "historical-framework",
+        "therapeutic-framework",
+        "model-proposed",
+      ]),
+      evidenceSourceIds: z.array(z.string()),
+      distinctions: z.array(z.string()),
+      uncertaintyFlags: z.array(z.string()),
+    }),
+  ),
+  neighboringFeelings: z.array(z.string()),
+  commonTriggers: z.array(z.string()),
+  commonInterpretations: z.array(z.string()),
+  alternativeInterpretations: z.array(z.string()),
+  bodilySensations: z.array(z.string()),
+  commonBehaviors: z.array(z.string()),
+  internetExpressions: z.array(z.string()),
+  historicalExpressions: z.array(z.string()),
+  therapeuticModels: z.array(z.string()),
+  communityPatterns: z.array(z.string()),
+  cognitivePatterns: z.array(z.string()),
+  adaptiveResponses: z.array(
+    z.object({
+      label: z.string(),
+      description: z.string(),
+      category: z.enum([
+        "behavioral",
+        "relational",
+        "cognitive",
+        "creative",
+        "avoidant",
+        "reflective",
+        "support-seeking",
+      ]),
+      commonlyReportedOutcomes: z.array(z.string()),
+      researchSummary: z.string().optional(),
+      communitySentimentSummary: z.string().optional(),
+      evidenceSourceIds: z.array(z.string()),
+      evidenceStrength: z.enum(["strong", "moderate", "weak", "speculative"]),
+      caveats: z.array(z.string()),
+    }),
+  ),
+  potentiallyUnhelpfulResponses: z.array(
+    z.object({
+      label: z.string(),
+      description: z.string(),
+      category: z.enum([
+        "behavioral",
+        "relational",
+        "cognitive",
+        "creative",
+        "avoidant",
+        "reflective",
+        "support-seeking",
+      ]),
+      commonlyReportedOutcomes: z.array(z.string()),
+      researchSummary: z.string().optional(),
+      communitySentimentSummary: z.string().optional(),
+      evidenceSourceIds: z.array(z.string()),
+      evidenceStrength: z.enum(["strong", "moderate", "weak", "speculative"]),
+      caveats: z.array(z.string()),
+    }),
+  ),
+  evidenceGaps: z.array(z.string()),
+  uncertaintyFlags: z.array(z.string()),
+});
+
+export type EmotionalNormalizeLlm = z.infer<typeof emotionalNormalizeLlmSchema>;
+export type EmotionalSynthesisLlm = z.infer<typeof emotionalSynthesisLlmSchema>;
