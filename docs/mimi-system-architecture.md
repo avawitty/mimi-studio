@@ -10,7 +10,7 @@ This document defines Mimi's durable product architecture. It is intentionally n
 
 For the current chamber-to-route implementation, see the [Mimi Chamber Implementation Audit](./mimi-chamber-implementation-audit.md). For current infrastructure and Used Context verification, see the [Functions Admin Proxy Audit](./wo-1-functions-admin-proxy-audit.md) and [Used Context end-to-end test](./wo-2-used-context-test.md).
 
-**Latest reconciliation:** [Architecture Update 20](./architecture-update-20.md) (implementation status) + [Architecture Update 21](./architecture-update-21.md) (decisions closing Update 20 open questions). Operational sovereign store detail: [Sovereign archive](./sovereign-archive.md).
+**Latest reconciliation:** [Architecture Update 20](./architecture-update-20.md) (implementation status) + [Architecture Update 21](./architecture-update-21.md) (decisions closing Update 20 open questions). Operational sovereign store detail: [Sovereign archive](./sovereign-archive.md). The editorial compiler between approved direction and generated zine pages is defined in the [Zine Editorial Intelligence Specification](./zine-editorial-intelligence-spec.md).
 
 ## 1. Product Philosophy
 
@@ -144,8 +144,10 @@ Engines are headless system responsibilities. A chamber may expose one or more e
 | Context Engine | Convert retrieval results and explicit selections into bounded task context | Retrieval result, selections, task intent | Context Run, Context Packet, Used Context view |
 | Prompt Assembly Engine | Translate task instructions and Context Packets into model-ready requests | Context Packet, template, constraints | Prompt payload and assembly record |
 | Generation Engine | Produce candidate content from an assembled prompt | Prompt payload, model configuration | Generated candidate, usage metadata |
+| Editorial Planning Engine | Compile approved material into an earned narrative sequence before copy or plate generation | Approved source packet, reading, Editorial Direction, authorship mode, budget; or an explicit versioned `ProvisionalInputSelection` bound to an Express quarantine | Versioned issue plan, page jobs, rhythm targets, spread relationships, compression decisions |
 | Embedding Engine | Produce and validate Gateway embeddings with model/dimension provenance | Text, clustering, Shadow Memory, Sovereign search inputs | Vectors, embedding metadata, compatibility audit |
 | Composition Engine | Arrange creator-selected and generated material into structured artifacts | Content blocks, assets, direction, layout rules | Composed artifact draft, spread composition metadata |
+| Composition Critic | Evaluate an issue as a narrative and visual sequence, separately from technical proof | Issue plan, realized pages, measured rhythm, composition summaries | Page/spread/issue critiques and local repair proposals |
 | Residue Engine | Offline-first cultural/emotional analysis with optional live acquisition | Query or experience text, optional sources | Residue reports, per-run M/M/M, proposed handoffs |
 | Collective Statistics Engine | Aggregate consented public signals into central-tendency profiles | Consented Proscenium contributions, disclosure version | Observatory Mean Median Mode reports |
 | Export Engine | Render and package an approved artifact for a destination | Artifact draft, destination profile | Exported files, publication record, manifest |
@@ -156,7 +158,7 @@ Engines are headless system responsibilities. A chamber may expose one or more e
 
 ## 6. Core Objects
 
-All persistent objects should share a minimal envelope: `id`, `objectType`, `ownerDomain`, `projectId`, `createdAt`, `createdBy`, `updatedAt`, `version`, `status`, and `provenance` where applicable.
+All persistent objects should share a minimal envelope: `id`, `objectType`, `ownerDomain`, `projectId`, `createdAt`, `createdBy`, `updatedAt`, `version`, `status`, and `provenance` where applicable. Immutable versioned editorial objects additionally carry a canonical `contentHash`; approvals, evaluations, manifests, and publication events point into that immutable graph rather than creating mutable backlinks.
 
 | Object | Canonical owner | Schema-level description |
 | --- | --- | --- |
@@ -181,8 +183,9 @@ All persistent objects should share a minimal envelope: `id`, `objectType`, `own
 | Artwork Match | Art History Domain | Educational comparison with `artworkTitle`, `artist`, `date`, `museum`, `imageUrl`, `sourceUrl`, `publicDomainStatus`, `matchedThemes`, `matchedVisualSignals`, `differences`, `educationalSummary`, and linked patterns. |
 | Marketing Asset | Publishing Domain | Downstream export generated from a Taste Graph, Doll, Mask, dossier, or project goal. It stores `assetType`, `bodyCopy`, `imagePrompt`, `layoutGuidance`, `palette`, `typographyGuidance`, evidence links, and source notes. |
 | Editorial Direction | Editorial Domain | Approved editorial contract with `thesis`, `audience`, `voice`, `storyArc`, `contentPillars`, `inclusions`, `exclusions`, `visualDirection`, `issueStructure`, `approvalId`, and source context. |
+| Zine Issue Plan | Editorial Domain | Immutable editorial compiler output containing page narrative jobs, claims, evidence refs, page grammars, rhythm curves, spread relationships, compression results, and authorship mode. Critiques, exceptions, and approvals are one-way related evaluations/records rather than mutable embedded state. |
 | Build Brief | Product Domain | Implementation-ready contract with `problem`, `userStories`, `scope`, `nonGoals`, `requirements`, `acceptanceCriteria`, `constraints`, `dependencies`, `decisionLog`, `CodexPrompts`, and provenance. |
-| Zine / Report / Artifact | Publishing Domain | Composed output with `artifactType`, `title`, `contentBlocks`, `assetRefs`, `compositionSpec`, `sourceObjectVersions`, `usedContext`, `validationState`, `publicationState`, `exports`, and provenance manifest reference. |
+| Zine / Report / Artifact | Publishing Domain | Immutable composed revision with `artifactType`, content blocks, asset placements, composition spec, source/context versions, and provenance. Destination projections, proof evaluations, and append-only publication events determine export/publication state without mutating the master revision. |
 
 ### Evidence and inference boundary
 
@@ -259,7 +262,7 @@ Contracts describe module boundaries independent of the current UI implementatio
 | Studio | Project intent, Creative Dossier, Editorial Direction, approved Context Packet, creator material | Generated candidates, compositions, artifact drafts, usage records | Workflow Session, Context Packet usage, draft artifact | The Edit, Build Brief, The Press |
 | Build Brief | Project goal, evidence, constraints, Product Insights, decisions, Context Packet | Implementation-ready Build Brief and Codex Prompts | Product decisions, requirements, acceptance criteria, provenance | Creator, Codex/build workflow, project planning |
 | Editorial Direction | Creative Dossier, research evidence, audience, goals, approved principles | Approved editorial thesis, voice, structure, inclusions, exclusions | Editorial decisions, direction version, approval record | Studio, The Edit, The Press, Report/Zine composition |
-| The Edit | Artifact draft, Editorial Direction, constraints, provenance, validation rules | Edit decisions, revisions, validation findings, approved release candidate | Artifact version, decision log, validation state | The Press, Studio revision loop |
+| The Edit | Approved source packet, reading, Editorial Direction, artifact draft, constraints, provenance, validation rules; or an explicit versioned `ProvisionalInputSelection` bound to an Express quarantine | Issue plan, rhythm and spread plan, compression decisions, composition critiques, revisions, approved release candidate | Plan/artifact version, decision log, approval records, validation state | The Press, Studio revision loop |
 | The Press | Approved release candidate, destination profile, rights, validation results | Export files, Zine/Report/Artifact record, publication event, provenance manifest | Publication state, export history, artifact relationships | Audience, external platform, archive, future retrieval |
 
 ### Contract rules
@@ -269,6 +272,7 @@ Contracts describe module boundaries independent of the current UI implementatio
 3. Any module using memory must receive an explicit Context Packet or creator selection and emit a Used Context record.
 4. Generated candidates remain drafts until a creator or authorized workflow approves their next state.
 5. Every contract is validated at ingress and egress.
+6. Express may consume only an explicit, versioned `ProvisionalInputSelection` bound to one quarantined working copy. Final bundle approval atomically verifies the selection digest, working-copy hash, and every dependency; any mismatch writes no approvals, revision, publication, or memory.
 
 **User-flow benefit:** A creator can send research from the Notebook to a Build Brief or Studio without copying a chat transcript. The destination receives a typed, approved context package, and the creator can inspect what crossed the boundary.
 
@@ -418,6 +422,7 @@ These rules are architecture constraints, not interface preferences.
 10. **Generation never grants authority.** Model output is a candidate until validated and approved through the relevant workflow.
 11. **State transitions are explicit and auditable.** Approval, application, archival, deprecation, export, and publication create events.
 12. **Exports are reproducible enough to inspect.** Artifact records retain the versions and configuration necessary to explain the result, subject to model and renderer constraints.
+13. **Every generated page must earn its existence.** A zine page contributes new evidence, interpretation, emotional movement, visual information, application, necessary pause, or provenance; otherwise the editorial planner removes or merges it.
 
 ## 12. Open Questions
 
@@ -473,6 +478,7 @@ Practical loop still demonstrated as:
 | Context application | `InputStudio`, `zineGenerator`, `fragmentsUsed`; active Doll prompt/media injection via `dollEngine` | Implemented for the Studio generation path |
 | Context provenance | `UsedContextSnapshot`, reveal Used Context, export manifest snapshots | Implemented in the current zine/export path |
 | Editorial validation | `TheEditCompile` (primary), `TheEditChamber` spine tabs, export diagnostics | Implemented for compile path; commerce remains secondary; Edit → Press compile markdown sync is wired |
+| Zine editorial intelligence | [Zine Editorial Intelligence Specification](./zine-editorial-intelligence-spec.md) | Product contract v1 complete; typed issue planner, rhythm engine, compression pass, composition critic, and approval integration remain proposed |
 | Spread composition | `customLayout` on `ZinePageSpec`, `ZineLayoutEditor` / `ZineSpreadCanvas`, `lib/zineSpreadLayout.ts` | Implemented for owner compose + read-only public render |
 | Studio cover export | `lib/studioCoverExport.ts`, `coverImageUrl`, `content.meta.studioCoverOverlays` | Implemented; overlay rasterization into export image remains open |
 | Gateway-funded AI | Entitlement checks, Stripe verification, no BYOK nag on funded path | Implemented and security-hardened |

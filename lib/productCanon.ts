@@ -1,9 +1,76 @@
+import type { ChamberIntentDescriptor } from "./chamberIntents";
+
 export type CanonLayer = "chamber" | "engine" | "artifact" | "infrastructure";
 
 export type CanonModuleStatus = "live" | "aliased" | "stub" | "missing";
 
 /** Optional product-maturity signal — distinct from route registration status. */
 export type CanonModuleMaturity = "prototype" | "evolving" | "established";
+
+export type StudioFamily =
+  | "orientation"
+  | "capture"
+  | "library"
+  | "identity"
+  | "production"
+  | "intelligence"
+  | "publishing"
+  | "services";
+
+export type StudioPhase =
+  | "collect"
+  | "understand"
+  | "shape"
+  | "compose"
+  | "approve"
+  | "publish"
+  | "preserve";
+
+export type CanonVisibility = "primary" | "contextual" | "registry";
+
+export type ChamberAtmosphere =
+  | "paper"
+  | "dark-plate"
+  | "specimen"
+  | "worktable"
+  | "registry"
+  | "public-face"
+  | "signal-dense";
+
+export type VisualPacketId =
+  | "desk-index"
+  | "codex-index"
+  | "worktable-layers"
+  | "loose-note"
+  | "evidence-lanes"
+  | "darkroom-proof"
+  | "filing-surface"
+  | "wardrobe-sleeves"
+  | "object-ledger"
+  | "private-envelope"
+  | "custody-ledger"
+  | "profile-dossier"
+  | "signature-specimen"
+  | "signal-graph"
+  | "diagnostics-sheet"
+  | "style-specimen"
+  | "celestial-chart"
+  | "identity-portrait"
+  | "mortuary-file"
+  | "editorial-signal"
+  | "house-blueprint"
+  | "composition-board"
+  | "intelligence-ledger"
+  | "geographic-plate"
+  | "residue-trace"
+  | "forecast-plot"
+  | "observatory-ledger"
+  | "distribution-strip"
+  | "proofing-table"
+  | "archive-stand"
+  | "public-stage"
+  | "correspondence-desk"
+  | "dispatch-folder";
 
 export interface CanonModule {
   id: string;
@@ -23,6 +90,20 @@ export interface CanonModule {
   outputs: string[];
   userFlow: string;
   notes?: string;
+  family: StudioFamily;
+  phase: StudioPhase;
+  visibility: CanonVisibility;
+  atmosphere: ChamberAtmosphere[];
+  primaryAction: {
+    label: string;
+    intent: ChamberIntentDescriptor;
+  };
+  suggestedNext?: {
+    mode: string;
+    label: string;
+    reason: string;
+  };
+  visualPacket?: VisualPacketId;
 }
 
 export const CANON_ROUTE_ALIASES: Record<string, string> = {
@@ -102,6 +183,70 @@ export const canonicalizeMimiRoute = (segment: string): string => {
 
 export const CANON_MODULES: CanonModule[] = [
   {
+    id: "chamber-map",
+    name: "Studio Map",
+    layer: "infrastructure",
+    engine: "Canon Orientation",
+    priority: 0,
+    status: "live",
+    maturity: "established",
+    canonicalRoute: "/chamber-map",
+    implementedMode: "chamber-map",
+    component: "ChamberMapView",
+    aliases: ["Chamber Map", "Architecture Registry"],
+    inputs: ["active dossier", "canon metadata", "recent material"],
+    generations: ["phase grouping", "next-action resolution", "registry disclosure"],
+    outputs: ["studio orientation", "architecture registry"],
+    userFlow:
+      "Read the active dossier, take the next useful action, or unfold the complete chamber index.",
+    family: "orientation",
+    phase: "collect",
+    visibility: "primary",
+    atmosphere: ["paper", "registry"],
+    primaryAction: {
+      label: "Capture a fragment",
+      intent: { type: "capture" },
+    },
+    suggestedNext: {
+      mode: "scribe",
+      label: "Bring something in",
+      reason: "The Loose Desk begins with material, not a destination.",
+    },
+    visualPacket: "desk-index",
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    layer: "infrastructure",
+    engine: "System Reference",
+    priority: 0.5,
+    status: "live",
+    maturity: "evolving",
+    canonicalRoute: "/codex",
+    implementedMode: "codex",
+    component: "CodexView",
+    aliases: ["System"],
+    inputs: ["canon metadata", "creator-path contracts"],
+    generations: ["system explanations", "workflow orientation"],
+    outputs: ["reference guidance", "architecture context"],
+    userFlow:
+      "Inspect how Mimi's chambers, evidence rules, and creator path fit together.",
+    family: "orientation",
+    phase: "understand",
+    visibility: "registry",
+    atmosphere: ["paper", "registry"],
+    primaryAction: {
+      label: "Research the system",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "chamber-map",
+      label: "Return to the Studio Map",
+      reason: "Reference should lead back to the active work.",
+    },
+    visualPacket: "codex-index",
+  },
+  {
     id: "studio",
     name: "Studio",
     layer: "chamber",
@@ -111,7 +256,7 @@ export const CANON_MODULES: CanonModule[] = [
     canonicalRoute: "/studio",
     implementedMode: "studio",
     component: "StudioOrientationEntry",
-    aliases: ["Orientation", "Intake"],
+    aliases: ["Orientation", "Intake", "Studio"],
     inputs: ["prompt text", "media references", "approved context when present"],
     generations: ["provider routing", "prompt optimization", "Tailor-aware context synthesis", "asset injection"],
     outputs: ["mini zines", "creative roadmaps", "image prompts", "content briefs", "instruction packets"],
@@ -119,6 +264,22 @@ export const CANON_MODULES: CanonModule[] = [
       "Land on a calm orientation screen, compose in one multimodal field, begin with a single primary action. The archival StudioWorktable desk is migration-only at /studio/worktable-legacy.",
     notes:
       "Do not mount StudioWorktable at /studio. Legacy desk: /studio/worktable-legacy.",
+    family: "orientation",
+    phase: "compose",
+    visibility: "primary",
+    // Keep worktable atmosphere so the App main shell stays full-bleed;
+    // the archival desk itself is not mounted at /studio.
+    atmosphere: ["paper", "worktable"],
+    primaryAction: {
+      label: "Begin with this",
+      intent: { type: "compose" },
+    },
+    suggestedNext: {
+      mode: "the-press",
+      label: "Prepare the final proof",
+      reason: "Approved compositions move to packaging and release.",
+    },
+    visualPacket: "worktable-layers",
   },
   {
     id: "scribe",
@@ -136,6 +297,20 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["Memory Atoms", "Codex context packs", "documented decisions", "Used Context payloads"],
     userFlow: "Save important conversation fragments and turn them into traceable context Mimi can retrieve later.",
     notes: "Legacy route /research-memory aliases here. ResearchMemory runs inside the Atomize tab.",
+    family: "capture",
+    phase: "collect",
+    visibility: "primary",
+    atmosphere: ["paper", "specimen"],
+    primaryAction: {
+      label: "Drop something here",
+      intent: { type: "capture" },
+    },
+    suggestedNext: {
+      mode: "the-edit",
+      label: "Shape the signal",
+      reason: "Traceable material can become an editorial direction.",
+    },
+    visualPacket: "loose-note",
   },
   {
     id: "scry",
@@ -161,6 +336,20 @@ export const CANON_MODULES: CanonModule[] = [
       "Ask a question or name a drift signal; inspect evidence by lane (archive, web, reading, shadow) before drafting.",
     notes:
       "Lanes stay distinct — no shared result overwrite. Empty ≠ complete; missing personal memory is empty not partial. Synthesis uses AI Gateway when available; Google Search grounding stays on Gemini. Mobile: one dark surface, query-led first viewport (Architecture Update 20).",
+    family: "capture",
+    phase: "understand",
+    visibility: "primary",
+    atmosphere: ["dark-plate", "specimen", "public-face", "signal-dense"],
+    primaryAction: {
+      label: "Read the evidence lanes",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "the-edit",
+      label: "Send evidence to The Edit",
+      reason: "Interpretation follows distinct evidence, never replaces it.",
+    },
+    visualPacket: "evidence-lanes",
   },
   {
     id: "tailor",
@@ -177,6 +366,20 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["profile synthesis", "semantic constraints", "taste tokenization"],
     outputs: ["Tailor Profile", "Mimi Logic Report", "prompt variables", "identity constraints"],
     userFlow: "Calibrate the taste logic that should guide every future generation.",
+    family: "identity",
+    phase: "approve",
+    visibility: "primary",
+    atmosphere: ["paper", "specimen"],
+    primaryAction: {
+      label: "Review profile evidence",
+      intent: { type: "approve" },
+    },
+    suggestedNext: {
+      mode: "studio",
+      label: "Apply approved signals",
+      reason: "Approved profile evidence should travel into composition.",
+    },
+    visualPacket: "profile-dossier",
   },
   {
     id: "taste-signature",
@@ -193,6 +396,20 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["motif extraction", "lineage synthesis", "signature summary generation"],
     outputs: ["Taste Signature Report", "motif summaries", "aesthetic readings"],
     userFlow: "See the current read of your taste so you can approve or repair Mimi's interpretation.",
+    family: "identity",
+    phase: "approve",
+    visibility: "contextual",
+    atmosphere: ["paper", "public-face", "specimen"],
+    primaryAction: {
+      label: "Approve the signature",
+      intent: { type: "approve" },
+    },
+    suggestedNext: {
+      mode: "tailor",
+      label: "Repair the interpretation",
+      reason: "Identity remains revisable when evidence and inference diverge.",
+    },
+    visualPacket: "signature-specimen",
   },
   {
     id: "taste-graph",
@@ -209,6 +426,20 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["cluster projection", "center-of-gravity calculation", "thread extraction"],
     outputs: ["taste clusters", "narrative threads", "embedding keywords"],
     userFlow: "Inspect how saved references cluster and which taste threads are becoming durable.",
+    family: "identity",
+    phase: "understand",
+    visibility: "contextual",
+    atmosphere: ["worktable", "signal-dense"],
+    primaryAction: {
+      label: "Read the graph",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "tailor",
+      label: "Review the profile",
+      reason: "Graph signals remain evidence until they are interpreted and approved.",
+    },
+    visualPacket: "signal-graph",
   },
   {
     id: "aesthetic-intelligence",
@@ -226,6 +457,20 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["style reports", "palette charts", "aesthetic diagnostic insights"],
     userFlow: "Open Tailor Diagnostics to compare your generated portfolio with the active profile and review style drift or chromatic dominance.",
     notes: "Compatibility route opens /tailor/diagnostics. The diagnostic engine remains modular inside Tailor.",
+    family: "identity",
+    phase: "understand",
+    visibility: "registry",
+    atmosphere: ["specimen", "signal-dense"],
+    primaryAction: {
+      label: "Inspect the diagnostics",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "tailor",
+      label: "Return to Tailor",
+      reason: "Diagnostics are a lens on the same profile, not a second identity.",
+    },
+    visualPacket: "diagnostics-sheet",
   },
   {
     id: "the-edit",
@@ -251,6 +496,20 @@ export const CANON_MODULES: CanonModule[] = [
       "Turn scattered material into an editorial read, bake hi-fi plates, compose issue spreads, then publish or export.",
     notes:
       "Legacy /press aliases here. Distinct from The Press export chamber. Architecture Update 21: one chamber with Signal / Issue / Forecast panels (default Signal). ?panel=signal|issue|forecast supported.",
+    family: "production",
+    phase: "shape",
+    visibility: "primary",
+    atmosphere: ["paper", "worktable"],
+    primaryAction: {
+      label: "Shape the direction",
+      intent: { type: "shape-direction" },
+    },
+    suggestedNext: {
+      mode: "studio",
+      label: "Compose the approved direction",
+      reason: "A clear signal can move into the active dossier without re-entry.",
+    },
+    visualPacket: "editorial-signal",
   },
   {
     id: "the-press",
@@ -275,6 +534,20 @@ export const CANON_MODULES: CanonModule[] = [
     ],
     userFlow: "Package approved work into a shareable or portfolio-ready artifact. Making a zine public files it in the creator Keep Tabs feed for subscribe-once readers. Share actions emit mimi.fish/s/:id attention plates.",
     notes: "Artifact-specific export exists inside AnalysisDisplay via ExportChamber; the canonical top-level route currently opens PublisherDashboard. Public issues also project to RSS via /api/feed?handle=. Attention/share loop surface is mimi.fish (host skin over PublicZineSharePage).",
+    family: "publishing",
+    phase: "publish",
+    visibility: "primary",
+    atmosphere: ["paper", "registry"],
+    primaryAction: {
+      label: "Apply seal and publish",
+      intent: { type: "publish" },
+    },
+    suggestedNext: {
+      mode: "stand",
+      label: "File on The Stand",
+      reason: "Released work enters the creator's published archive.",
+    },
+    visualPacket: "proofing-table",
   },
   {
     id: "pocket",
@@ -293,6 +566,20 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow: "Save and retrieve references without losing source priority or provenance.",
     notes:
       "Ghost/anonymous path uses IndexedDB and suppresses Firestore Pocket listeners. Storage read failures must not be treated as intentional deletes. Identity changes cancel in-flight sync (Architecture Update 20).",
+    family: "library",
+    phase: "collect",
+    visibility: "primary",
+    atmosphere: ["paper", "registry"],
+    primaryAction: {
+      label: "Preserve with provenance",
+      intent: { type: "preserve" },
+    },
+    suggestedNext: {
+      mode: "studio",
+      label: "Send selected material to the dossier",
+      reason: "Sources retain origin while becoming active context.",
+    },
+    visualPacket: "filing-surface",
   },
   {
     id: "stand",
@@ -311,6 +598,20 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow: "Browse your published issues and the community Floor without leaving the Stand.",
     notes:
       "When Sovereign is ready, Floor/Mine prefer owned archive + SSE over Firestore listeners. Stand vs Floor vs Mine vs Press ownership distinction remains an open canon question.",
+    family: "publishing",
+    phase: "preserve",
+    visibility: "primary",
+    atmosphere: ["paper", "public-face", "registry"],
+    primaryAction: {
+      label: "Open the published archive",
+      intent: { type: "preserve" },
+    },
+    suggestedNext: {
+      mode: "proscenium",
+      label: "Prepare a public encounter",
+      reason: "The archive and its circulation remain distinct publishing jobs.",
+    },
+    visualPacket: "archive-stand",
   },
   {
     id: "mood-board",
@@ -328,6 +629,20 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["moodboard reports", "board decks", "Studio prompt context"],
     userFlow: "Arrange references visually and send the board context into Studio.",
     notes: "Legacy /dossier aliases here. DossierView runs inside the chamber shell.",
+    family: "production",
+    phase: "compose",
+    visibility: "primary",
+    atmosphere: ["paper", "worktable"],
+    primaryAction: {
+      label: "Compose the references",
+      intent: { type: "compose" },
+    },
+    suggestedNext: {
+      mode: "studio",
+      label: "Send the board to the Worktable",
+      reason: "Spatial direction should travel with its source references.",
+    },
+    visualPacket: "composition-board",
   },
   {
     id: "intelhub",
@@ -345,6 +660,20 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["approved Used Context", "SEO/editorial briefs", "artifact packs", "Press handoffs", "intelligence audits"],
     userFlow: "Collect evidence, review Tailor inferences, approve Used Context, discover possibilities, and hand a provenance-bearing artifact pack to The Press.",
     notes: "IntelHub orchestrates project state; it does not publish directly. Paired with GeoEngine; canon treats them as related but distinct chambers.",
+    family: "intelligence",
+    phase: "understand",
+    visibility: "primary",
+    atmosphere: ["paper", "registry", "signal-dense"],
+    primaryAction: {
+      label: "Open an evidence-led inquiry",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "the-edit",
+      label: "Shape an editorial direction",
+      reason: "Approved evidence can inform direction without becoming unmarked fact.",
+    },
+    visualPacket: "intelligence-ledger",
   },
   {
     id: "geoengine",
@@ -361,6 +690,20 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["GEO schema generation", "location-scouting synthesis", "machine-readable brand metadata"],
     outputs: ["GEO manifests / JSON-LD", "location-scouting memos", "AI-readable brand metadata"],
     userFlow: "Turn aesthetic identity into location-aware, search-grounded machine-readable structure.",
+    family: "intelligence",
+    phase: "understand",
+    visibility: "contextual",
+    atmosphere: ["specimen", "signal-dense"],
+    primaryAction: {
+      label: "Read geographic variation",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "forecast",
+      label: "Project the directional drift",
+      reason: "Geographic context can qualify, not replace, a forecast.",
+    },
+    visualPacket: "geographic-plate",
   },
   {
     id: "darkroom",
@@ -377,6 +720,20 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["visual analysis", "treatment application", "image generation"],
     outputs: ["generated images", "visual concepts", "reusable anchors"],
     userFlow: "Test visual treatments against references and send strong anchors back into Studio or Pocket.",
+    family: "capture",
+    phase: "shape",
+    visibility: "primary",
+    atmosphere: ["specimen", "worktable"],
+    primaryAction: {
+      label: "Develop source material",
+      intent: { type: "capture" },
+    },
+    suggestedNext: {
+      mode: "studio",
+      label: "Send the developed asset to the dossier",
+      reason: "A visual experiment remains connected to its source and treatment.",
+    },
+    visualPacket: "darkroom-proof",
   },
   {
     id: "wardrobe",
@@ -393,6 +750,20 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["metadata embedding", "capsule organization", "Studio handoff context"],
     outputs: ["looks", "capsules", "style references", "generation anchors"],
     userFlow: "Store garments and looks as reusable visual context.",
+    family: "library",
+    phase: "preserve",
+    visibility: "contextual",
+    atmosphere: ["paper", "registry"],
+    primaryAction: {
+      label: "File a garment",
+      intent: { type: "preserve" },
+    },
+    suggestedNext: {
+      mode: "thimble",
+      label: "Translate a wardrobe gap",
+      reason: "Approved wardrobe evidence can become sourcing language.",
+    },
+    visualPacket: "wardrobe-sleeves",
   },
   {
     id: "thimble",
@@ -409,6 +780,20 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["aesthetic tag extraction", "marketplace query mapping", "procurement framing"],
     outputs: ["search terms", "product categories", "sourcing plans"],
     userFlow: "Convert taste signals into concrete sourcing language.",
+    family: "services",
+    phase: "shape",
+    visibility: "contextual",
+    atmosphere: ["paper", "registry"],
+    primaryAction: {
+      label: "Open a sourcing packet",
+      intent: { type: "start-service" },
+    },
+    suggestedNext: {
+      mode: "atelier",
+      label: "File the resulting objects",
+      reason: "Sourced objects become evidence only when their custody is clear.",
+    },
+    visualPacket: "dispatch-folder",
   },
   {
     id: "sanctuary",
@@ -425,6 +810,15 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["local-only persistence", "privacy boundary enforcement"],
     outputs: ["local-only grounded artifacts"],
     userFlow: "Keep sensitive material usable without sending it through cloud sync.",
+    family: "library",
+    phase: "preserve",
+    visibility: "contextual",
+    atmosphere: ["paper", "registry"],
+    primaryAction: {
+      label: "Preserve privately",
+      intent: { type: "preserve" },
+    },
+    visualPacket: "private-envelope",
   },
   {
     id: "the-ward",
@@ -441,6 +835,20 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["provenance tracking", "specimen records", "custody checks"],
     outputs: ["IP specimen records", "copyright notes", "infringement tracking data"],
     userFlow: "Keep proof and provenance attached to important artifacts.",
+    family: "library",
+    phase: "preserve",
+    visibility: "contextual",
+    atmosphere: ["paper", "registry", "specimen"],
+    primaryAction: {
+      label: "Register custody",
+      intent: { type: "preserve" },
+    },
+    suggestedNext: {
+      mode: "the-press",
+      label: "Attach custody to the proof",
+      reason: "Publishing should not detach an artifact from its provenance.",
+    },
+    visualPacket: "custody-ledger",
   },
   {
     id: "private-studio",
@@ -458,6 +866,20 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["service pages", "portfolio packages", "case studies"],
     userFlow: "Turn internal Mimi proof into client-facing work.",
     notes: "Legacy /case-study aliases here.",
+    family: "services",
+    phase: "compose",
+    visibility: "primary",
+    atmosphere: ["paper", "worktable"],
+    primaryAction: {
+      label: "Open a client working packet",
+      intent: { type: "start-service" },
+    },
+    suggestedNext: {
+      mode: "the-press",
+      label: "Prepare the client handoff",
+      reason: "Approved internal intelligence becomes a scoped public deliverable.",
+    },
+    visualPacket: "correspondence-desk",
   },
   {
     id: "mimi-dolls",
@@ -476,6 +898,20 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow: "Project taste onto a house porcelain-BJD shell — same species for every creator; wardrobe and motifs vary.",
     notes:
       "Staple in services/dollEngine/staplePrompt.ts (prd/doll-staple-shell.md). Shell-first chamber plate; realtime shader lives in secondary Shader Lab tab (Architecture Update 20). Engine also: procedural aesthetic + identity pack + masks + companion. Public cards at /u/:handle.",
+    family: "identity",
+    phase: "compose",
+    visibility: "contextual",
+    atmosphere: ["specimen", "signal-dense"],
+    primaryAction: {
+      label: "Compose a representation",
+      intent: { type: "compose" },
+    },
+    suggestedNext: {
+      mode: "signature",
+      label: "Review the identity specimen",
+      reason: "Representations remain lenses on one profile.",
+    },
+    visualPacket: "identity-portrait",
   },
   {
     id: "mimi-rip",
@@ -493,6 +929,20 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["private Rip reading", "optional public mimi.rip card"],
     userFlow: "Read the dark mirror of your graph — refusals, blind spots, and controlled inversions — without replacing your identity on mimi.you.",
     notes: "Private by default. Public skin at mimi.rip/:handle when published. Not diagnosis.",
+    family: "identity",
+    phase: "understand",
+    visibility: "contextual",
+    atmosphere: ["dark-plate", "public-face", "specimen", "signal-dense"],
+    primaryAction: {
+      label: "Read the discarded selves",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "tailor",
+      label: "Repair or refuse the interpretation",
+      reason: "An inverse reading never silently rewrites the profile.",
+    },
+    visualPacket: "mortuary-file",
   },
   {
     id: "art-style",
@@ -509,7 +959,21 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["pattern extraction", "motif calibration", "style card compositing"],
     outputs: ["Art Style Signature Card", "custom model prompts", "palette configurations"],
     userFlow: "Open Tailor Style Lab, upload references, inspect extracted patterns, and approve reusable style evidence for the active profile.",
-    notes: "Compatibility route opens /tailor/style-lab. Style evidence remains linked instead of being embedded into every profile payload."
+    notes: "Compatibility route opens /tailor/style-lab. Style evidence remains linked instead of being embedded into every profile payload.",
+    family: "identity",
+    phase: "understand",
+    visibility: "registry",
+    atmosphere: ["paper", "specimen"],
+    primaryAction: {
+      label: "Inspect style evidence",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "tailor",
+      label: "Approve in Tailor",
+      reason: "Style evidence remains linked to the persistent profile.",
+    },
+    visualPacket: "style-specimen",
   },
   {
     id: "atelier",
@@ -527,6 +991,20 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["pinned taste objects", "desire / buyer-orientation evidence"],
     userFlow: "Pin semiotic commerce objects from a zine as Desire or Reference taste signals, then revisit them here. Desire steers Studio/Tailor; reference stays light. Soft-capped archive, not a wishlist.",
     notes: "Distinct from the Atelier membership plan. Thimble=sourcing, Pocket=media, Atelier=commerce-as-taste. Soft cap 40; oldest references prune first.",
+    family: "library",
+    phase: "preserve",
+    visibility: "contextual",
+    atmosphere: ["paper", "registry", "specimen"],
+    primaryAction: {
+      label: "File a taste object",
+      intent: { type: "preserve" },
+    },
+    suggestedNext: {
+      mode: "studio",
+      label: "Use approved desire signals",
+      reason: "Objects steer composition only with their rationale attached.",
+    },
+    visualPacket: "object-ledger",
   },
   {
     id: "house",
@@ -552,6 +1030,20 @@ export const CANON_MODULES: CanonModule[] = [
       "Ascend Ingest → Curate → Plate → Penthouse. Refuse at least one thing, synthesize a reading, compose plates from your palette, bind a numbered edition. Undo/redo and night mode via keyboard.",
     notes:
       "Local-first House loop (mimi.studio.v2). Distinct from Atelier (commerce taste objects) and Chamber Map (registry). Nested /house/issue/:id opens the issue viewer.",
+    family: "production",
+    phase: "compose",
+    visibility: "contextual",
+    atmosphere: ["paper", "worktable"],
+    primaryAction: {
+      label: "Structure the larger world",
+      intent: { type: "compose" },
+    },
+    suggestedNext: {
+      mode: "the-press",
+      label: "Bind the approved issue",
+      reason: "The House structures work; The Press packages its release.",
+    },
+    visualPacket: "house-blueprint",
   },
   {
     id: "proscenium",
@@ -587,6 +1079,20 @@ export const CANON_MODULES: CanonModule[] = [
       "Enter the Stage to witness transmissions, open Correspondents for follows and connections, or manage invite-only Cliques — all under one arch.",
     notes:
       "Legacy /connections and /cliques redirect to /proscenium/correspondents and /proscenium/cliques. Local Echoes are demonstration specimens only.",
+    family: "publishing",
+    phase: "publish",
+    visibility: "contextual",
+    atmosphere: ["paper", "public-face"],
+    primaryAction: {
+      label: "Stage the public encounter",
+      intent: { type: "publish" },
+    },
+    suggestedNext: {
+      mode: "stand",
+      label: "Return to the published archive",
+      reason: "Circulation and archival custody remain separate.",
+    },
+    visualPacket: "public-stage",
   },
   {
     id: "residue",
@@ -622,6 +1128,20 @@ export const CANON_MODULES: CanonModule[] = [
       "Run an offline-first cultural or emotional residue pass, inspect synthesis and evidence, review M/M/M and product proposals, then hand off to Intel Hub, Edit, Forecast, or Taste Graph. Optional signed-in Apify acquisition when configured.",
     notes:
       "Emotional mode always shows the non-diagnostic safety notice. Memory / taste / edit outputs stay proposed until accepted elsewhere. Live Apify acquisition is Phase 9 (token + session gated). Alias MMM here is per-run Residue analysis — collective Mean Median Mode is The Observatory.",
+    family: "intelligence",
+    phase: "understand",
+    visibility: "contextual",
+    atmosphere: ["specimen", "signal-dense"],
+    primaryAction: {
+      label: "Read what remains",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "intel-hub",
+      label: "Audit the evidence",
+      reason: "Residue is interpretation and should travel with its source ledger.",
+    },
+    visualPacket: "residue-trace",
   },
   {
     id: "observatory",
@@ -652,6 +1172,20 @@ export const CANON_MODULES: CanonModule[] = [
       "Open The Observatory to read Mean Median Mode — mean, median, mode, and their joint profile over consented public signals. Per-run M/M/M stays in Residue.",
     notes:
       "Prototype may show labeled demonstration aggregates. Live contribution requires Proscenium publish disclosure. Do not alias this module as MMM (Residue keeps that short alias).",
+    family: "intelligence",
+    phase: "understand",
+    visibility: "contextual",
+    atmosphere: ["specimen", "signal-dense"],
+    primaryAction: {
+      label: "Observe the present atmosphere",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "forecast",
+      label: "Project what may follow",
+      reason: "Observation precedes directional projection.",
+    },
+    visualPacket: "observatory-ledger",
   },
   {
     id: "mean-median-mode",
@@ -679,6 +1213,20 @@ export const CANON_MODULES: CanonModule[] = [
       "Read the present atmosphere via literal mean, median, and mode — not a leaderboard. Stage on The Proscenium to contribute anonymized structure.",
     notes:
       "Collective Moods is a docs-only conceptual alias. Distinct from Residue per-run MeanMedianModeResult.",
+    family: "intelligence",
+    phase: "understand",
+    visibility: "contextual",
+    atmosphere: ["registry", "signal-dense"],
+    primaryAction: {
+      label: "Read the distribution",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "observatory",
+      label: "Return to the wider observation",
+      reason: "Central tendency is one lens within collective intelligence.",
+    },
+    visualPacket: "distribution-strip",
   },
   {
     id: "forecast",
@@ -708,6 +1256,20 @@ export const CANON_MODULES: CanonModule[] = [
       "Read personal aesthetic meteorology from calibrated profile signals, then hand off to The Observatory for collective atmosphere or GEO for drift calibration.",
     notes:
       "Menu peer of Observatory; narrative child (Observatory’s “what next”). Content Forecasting uses live search/gateway paths with honest empty/offline states — never invent drift scores or costume trends.",
+    family: "intelligence",
+    phase: "shape",
+    visibility: "contextual",
+    atmosphere: ["specimen", "signal-dense"],
+    primaryAction: {
+      label: "Project a direction",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "the-edit",
+      label: "Turn projection into direction",
+      reason: "A forecast remains a projection until editorially approved.",
+    },
+    visualPacket: "forecast-plot",
   },
   {
     id: "celestial-calibration",
@@ -742,6 +1304,20 @@ export const CANON_MODULES: CanonModule[] = [
       "Enter birth data, resolve place for timezone/coords, review ephemeris readout, opt in to generation use, save into Tailor, then hand off to Worktable or Oracle.",
     notes:
       "Rising/houses require birth time + geocoded coordinates. Sidereal and quadrant houses unsupported. Distinct from The Observatory (collective Mean Median Mode) and from poetic zine field celestial_calibration.",
+    family: "identity",
+    phase: "understand",
+    visibility: "contextual",
+    atmosphere: ["specimen", "signal-dense"],
+    primaryAction: {
+      label: "Review the calibration",
+      intent: { type: "approve" },
+    },
+    suggestedNext: {
+      mode: "tailor",
+      label: "Attach approved timing context",
+      reason: "Optional calibration belongs to the same persistent profile.",
+    },
+    visualPacket: "celestial-chart",
   },
 ];
 

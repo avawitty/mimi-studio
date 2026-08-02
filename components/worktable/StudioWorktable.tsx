@@ -307,7 +307,7 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
                   setDrawerOpen(true);
                 }}
                 className="lg:hidden min-h-12 min-w-12 border border-[var(--wt-line,#d8d3c6)] font-mono text-[14px] text-[var(--wt-ink,#1b1b19)]"
-                aria-label="Open taste drawer"
+                aria-label="Open tools"
               >
                 ◫
               </button>

@@ -18,18 +18,19 @@ describe("design-system chamber helpers", () => {
   });
 
   it("assigns chamber families consistently", () => {
-    expect(chamberFamilyForMode("oracle")).toBe("reflect");
-    expect(chamberFamilyForMode("studio")).toBe("create");
-    expect(chamberFamilyForMode("tailor")).toBe("refine");
-    expect(chamberFamilyForMode("signature")).toBe("signature");
-    expect(chamberFamilyForMode("observatory")).toBe("observe");
+    expect(chamberFamilyForMode("oracle")).toBe("intelligence");
+    expect(chamberFamilyForMode("studio")).toBe("orientation");
+    expect(chamberFamilyForMode("scribe")).toBe("capture");
+    expect(chamberFamilyForMode("tailor")).toBe("identity");
+    expect(chamberFamilyForMode("signature")).toBe("identity");
+    expect(chamberFamilyForMode("observatory")).toBe("intelligence");
   });
 
   it("maps creator path steps", () => {
     expect(creatorPathIndexForMode("scribe")).toBe(0);
-    expect(creatorPathIndexForMode("the-edit")).toBe(1);
-    expect(creatorPathIndexForMode("studio")).toBe(2);
-    expect(creatorPathIndexForMode("the-press")).toBe(3);
+    expect(creatorPathIndexForMode("the-edit")).toBe(2);
+    expect(creatorPathIndexForMode("studio")).toBe(3);
+    expect(creatorPathIndexForMode("the-press")).toBe(5);
     expect(creatorPathIndexForMode("oracle")).toBe(-1);
   });
 
@@ -40,6 +41,7 @@ describe("design-system chamber helpers", () => {
 
   it("returns CSS var strings", () => {
     expect(cssVar("cobalt")).toBe("var(--mimi-cobalt)");
+    expect(cssVar("periwinkle")).toBe("var(--mimi-periwinkle)");
     expect(cssVar("olive", "#5A5A40")).toBe("var(--mimi-olive, #5A5A40)");
   });
 });
@@ -50,5 +52,7 @@ describe("routes registry", () => {
     const rip = getRouteEntry("mimi-rip");
     expect(rip?.isPublicFace).toBe(true);
     expect(rip?.isDarkPlate).toBe(true);
+    expect(getRouteEntry("chamber-map")?.family).toBe("orientation");
+    expect(getRouteEntry("studio")?.phase).toBe("compose");
   });
 });

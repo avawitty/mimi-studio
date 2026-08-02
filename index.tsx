@@ -96,6 +96,7 @@ import { MotionProvider } from './components/motion/MotionProvider';
 import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AgentProvider } from './contexts/AgentContext';
+import { DossierProvider } from './components/studio-os/DossierContext';
 import { FeedbackProvider } from './contexts/FeedbackProvider';
 import { installStaleAssetListeners } from './lib/staleChunkRecovery';
 
@@ -111,7 +112,9 @@ if (rootElement) {
             <UserProvider>
               <AgentProvider>
                 <FeedbackProvider>
-                  <App />
+                  <DossierProvider>
+                    <App />
+                  </DossierProvider>
                 </FeedbackProvider>
               </AgentProvider>
             </UserProvider>
