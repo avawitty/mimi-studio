@@ -10,8 +10,6 @@
 
 import path from "node:path";
 import type { SovereignDriver } from "./driver";
-import { openPostgresDriver } from "./postgresDriver";
-import { openSqliteDriver } from "./sqliteDriver";
 
 let driverInstance: SovereignDriver | null = null;
 let initAttempted = false;
@@ -75,12 +73,16 @@ const openDriver = async (): Promise<SovereignDriver | null> => {
 
   const postgresUrl = resolvePostgresUrl();
   if (postgresUrl) {
+    // Lazy-load so Vercel/Neon never evaluates node:sqlite.
+    const { openPostgresDriver } = await import("./postgresDriver");
     const driver = await openPostgresDriver(postgresUrl);
     console.info(`MIMI // Sovereign archive ready (postgres): ${driver.pathOrUrl}`);
     return driver;
   }
 
+  // Local/Fly only — dynamic import keeps node:sqlite out of serverless bundles.
   const dbPath = resolveSovereignDbPath();
+  const { openSqliteDriver } = await import("./sqliteDriver");
   const driver = await openSqliteDriver(dbPath);
   console.info(`MIMI // Sovereign archive ready (sqlite): ${dbPath}`);
   return driver;
