@@ -266,18 +266,17 @@ export const TasteGraph: React.FC = () => {
         content: item.content,
       }));
 
-      const artifacts =
-        shadow.length > 0
-          ? shadow
-          : pocketArtifacts.length > 0
-            ? pocketArtifacts
-            : nodes.map((n) => ({
-                id: n.id,
-                title: n.label,
-                notes: n.explanation || "",
-                tags: n.tags || [],
-                type: n.type,
-              }));
+      // Merge shadow-memory + Pocket (Pocket fills gaps; shadow wins on id clash)
+      // so embedding-only memory docs never block rich Pocket evidence.
+      const artifactById = new Map<string, any>();
+      for (const item of shadow) {
+        const id = String((item as any).id || (item as any).originalId || "");
+        if (id) artifactById.set(id, item);
+      }
+      for (const item of pocketArtifacts) {
+        if (!artifactById.has(item.id)) artifactById.set(item.id, item);
+      }
+      const artifacts = Array.from(artifactById.values());
 
       if (artifacts.length === 0) {
         setExtractNotice("No artifacts found. Save items to Pocket or Darkroom first, then re-scry.");
