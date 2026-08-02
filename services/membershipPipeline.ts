@@ -16,6 +16,16 @@ export const fetchUserSubscription = async (uid: string): Promise<SubscriptionDa
       return null; // Fallback to free tier
     } catch (e: any) {
       const errorMessage = e instanceof Error ? e.message : String(e);
+      const code = typeof e?.code === 'string' ? e.code : '';
+      // Don't retry or reset network when quota is exhausted — that multiplies reads.
+      if (
+        code === 'resource-exhausted' ||
+        errorMessage.includes('RESOURCE_EXHAUSTED') ||
+        errorMessage.includes('Quota exceeded')
+      ) {
+        console.warn('MIMI // fetchUserSubscription: Firestore quota exhausted');
+        return null;
+      }
       if (errorMessage.includes('offline') && retries > 1) {
         console.warn(`MIMI // fetchUserSubscription: Offline error, retrying... (${retries - 1} left)`);
         const { resetFirestoreNetwork } = await import('./firebaseUtils');

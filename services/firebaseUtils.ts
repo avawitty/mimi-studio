@@ -939,12 +939,23 @@ export const subscribeToUserZines = (
   });
 };
 
+/** Cap community scans so free-tier read quota isn't burned by full-collection gets. */
+const COMMUNITY_ZINE_READ_CAP = 60;
+
 export const fetchCommunityZines = async (count: number) => {
     if (!auth.currentUser) return [];
+    const take = Math.max(0, Math.min(count || 0, COMMUNITY_ZINE_READ_CAP));
+    if (take === 0) return [];
     try {
-      const q = query(collection(db, "zines"), where("isPublic", "==", true));
+      // Limit at the server (same pattern as fetchFeaturedPublicZines). Over-fetch a little
+      // for client-side timestamp sort without scanning the whole public corpus.
+      const q = query(
+        collection(db, "zines"),
+        where("isPublic", "==", true),
+        limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
+      );
       const docs = (await getDocs(q)).docs.map(d => d.data() as ZineMetadata);
-      return docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, count);
+      return docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, take);
     } catch (e: any) {
       console.warn("MIMI // Community Fetch Error:", e.code);
       return [];
@@ -953,10 +964,15 @@ export const fetchCommunityZines = async (count: number) => {
 
 export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => void) => {
   if (!auth.currentUser) return () => {};
-  const q = query(collection(db, "zines"), where("isPublic", "==", true));
+  const take = 30;
+  const q = query(
+    collection(db, "zines"),
+    where("isPublic", "==", true),
+    limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
+  );
   return onSnapshot(q, (snapshot) => {
     const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
-    callback(docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 30));
+    callback(docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, take));
   }, (e) => logFirestoreError(e, OperationType.LIST, "zines"));
 };
 

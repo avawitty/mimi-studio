@@ -630,17 +630,29 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
       }
 
-      // Fetch subscription data with a race to prevent hanging
-      const subPromise = fetchUserSubscription(uid);
-      const subTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 4000));
-      const subscription = await Promise.race([subPromise, subTimeout]) as any;
+      // Fetch subscription data with a race to prevent hanging.
+      // Anonymous ghosts don't have billing docs — skip the read.
+      let subscription: any = null;
+      if (!fbUser.isAnonymous) {
+        const subPromise = fetchUserSubscription(uid);
+        const subTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 4000));
+        subscription = await Promise.race([subPromise, subTimeout]) as any;
+      }
       
       // 2. Setup Real-time Listeners
       unsubscribeProfile.current = subscribeToUserProfile(uid, async (pData) => {
          try {
-             const subscription = await fetchUserSubscription(uid);
+             // Reuse boot-time subscription for ghosts; only re-fetch for registered users.
+             const nextSub = fbUser.isAnonymous
+               ? null
+               : await fetchUserSubscription(uid);
              setProfile(prev => {
-                 const merged = { ...(prev || {}), ...pData, uid: uid, subscription } as UserProfile;
+                 const merged = {
+                   ...(prev || {}),
+                   ...pData,
+                   uid: uid,
+                   subscription: nextSub ?? prev?.subscription ?? null,
+                 } as UserProfile;
                  return ensurePersonas(merged);
              });
          } catch (e) {
@@ -650,9 +662,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       unsubscribePrefs.current = subscribeToUserPreferences(uid, async (prefsData) => {
          try {
-             const subscription = await fetchUserSubscription(uid);
+             const nextSub = fbUser.isAnonymous
+               ? null
+               : await fetchUserSubscription(uid);
              setProfile(prev => {
-                 const merged = { ...(prev || {}), ...prefsData, subscription } as UserProfile;
+                 const merged = {
+                   ...(prev || {}),
+                   ...prefsData,
+                   subscription: nextSub ?? prev?.subscription ?? null,
+                 } as UserProfile;
                  return ensurePersonas(merged);
              });
          } catch (e) {
@@ -660,9 +678,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
          }
       });
 
-      unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
-        setPocket(items);
-      });
+      // Pocket live sync is for registered sessions; ghosts stay on local pocket.
+      if (!fbUser.isAnonymous) {
+        unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
+          setPocket(items);
+        });
+      }
       
       // Construct initial state from one-time fetch to unblock UI immediately
       // (Listeners will follow up with updates)
