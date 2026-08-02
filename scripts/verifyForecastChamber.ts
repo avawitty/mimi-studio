@@ -28,6 +28,12 @@ assert.match(menuItem.label, /Forecast/i);
 
 assert.ok(FORECAST_HANDOFF_TARGETS.some((t) => t.view === "observatory"));
 assert.ok(FORECAST_COPY.driftUncalibrated.length > 0);
+assert.ok(FORECAST_COPY.contentLiveBanner.length > 0);
+assert.ok(FORECAST_COPY.contentUnavailableBanner.length > 0);
 assert.ok(!/Math\.random/.test(FORECAST_COPY.thesis));
+assert.ok(
+  !/simulated until a live gateway/i.test(FORECAST_COPY.contentLiveBanner),
+  "content banner should describe live path, not deferred simulation",
+);
 
 console.log("verifyForecastChamber: ok");

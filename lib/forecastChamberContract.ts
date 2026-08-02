@@ -16,14 +16,16 @@ export const FORECAST_HANDOFF_TARGETS = [
 export const FORECAST_COPY = {
   thesis:
     "Aesthetic meteorology — personal season, drift when calibrated, and content vectors. Observatory’s “what next,” not a second collective readout.",
-  simulatedBanner:
-    "Demonstration synthesis — research providers are simulated until a live gateway path lands. Not live market telemetry.",
+  contentLiveBanner:
+    "Live content vector — You.com evidence synthesized through Mimi Gateway. Citations only from returned search URLs.",
+  contentUnavailableBanner:
+    "Content forecast offline or empty — configure AI Gateway / You.com, or sign in with membership credits. No costume trends invented.",
   cultureAwaiting:
     "Cultural shifts will draw from Observatory Mean Median Mode motifs. Open The Observatory for the collective atmosphere.",
   brandScopeNote:
     "Brand OS scope reframes the same calibrated profile signals. Dedicated brand-guideline forecasting is not wired yet.",
   personalScopeNote:
     "Sovereign Curator scope reads your season, DNA, GEO, and taste vector when present.",
-  driftUncalibrated: "GEO drift uncalibrated — run GEO Engine or gather more signal.",
+  driftUncalibrated: "Drift uncalibrated — run GEO Engine or gather more signal.",
   identityRequired: "Identity not established — sign in to read your forecast.",
 } as const;

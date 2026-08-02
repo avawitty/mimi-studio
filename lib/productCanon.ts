@@ -656,18 +656,18 @@ export const CANON_MODULES: CanonModule[] = [
       "aesthetic DNA",
       "GEO drift when calibrated",
       "taste vector",
-      "optional research keys (simulated today)",
+      "optional You.com / AI Gateway for live content vectors",
     ],
     generations: [
       "season / drift overview",
-      "content forecast synthesis (simulated until live providers)",
+      "content forecast synthesis (You.com → Mimi Gateway)",
       "handoffs to Observatory / Residue / GEO",
     ],
-    outputs: ["forecast overview", "simulated content trends"],
+    outputs: ["forecast overview", "live or empty content trends"],
     userFlow:
       "Read personal aesthetic meteorology from calibrated profile signals, then hand off to The Observatory for collective atmosphere or GEO for drift calibration.",
     notes:
-      "Menu peer of Observatory; narrative child (Observatory’s “what next”). Content Forecasting is labeled demonstration until live research lands. Never invent drift scores.",
+      "Menu peer of Observatory; narrative child (Observatory’s “what next”). Content Forecasting uses live search/gateway paths with honest empty/offline states — never invent drift scores or costume trends.",
   },
   {
     id: "celestial-calibration",

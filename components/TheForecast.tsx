@@ -68,11 +68,14 @@ export const TheForecast: React.FC<{
     if (selectedVector !== "content" || contentForecast) return;
     let cancelled = false;
     setIsPingingLabs(true);
-    void fetchContentForecast(apiKeys).then((res) => {
-      if (cancelled) return;
-      setContentForecast(res);
-      setIsPingingLabs(false);
-    });
+    void fetchContentForecast(apiKeys)
+      .then((res) => {
+        if (cancelled) return;
+        setContentForecast(res);
+      })
+      .finally(() => {
+        if (!cancelled) setIsPingingLabs(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -90,16 +93,26 @@ export const TheForecast: React.FC<{
   const dna = profile?.aestheticDNA || null;
   const geo = profile?.geoProfile || null;
   const tasteVector = profile?.tasteVector || null;
+  const vectorEntropy = Number(
+    (profile as { aestheticVector?: { entropy?: number } } | null)?.aestheticVector
+      ?.entropy,
+  );
   const driftScore =
     typeof geo?.driftScore === "number" && Number.isFinite(geo.driftScore)
       ? geo.driftScore
-      : null;
+      : Number.isFinite(vectorEntropy)
+        ? Math.round(Math.min(100, Math.max(0, vectorEntropy * 100)))
+        : null;
   const driftDirection =
-    driftScore === null
-      ? "Uncalibrated"
+    driftScore == null
+      ? "Insufficient Signal"
       : driftScore > 50
         ? "Severe Turbulence"
         : "Stable Micro-Climate";
+
+  const contentUnavailable =
+    !!contentForecast &&
+    (contentForecast.provider === "Unavailable" || contentForecast.trends.length === 0);
 
   return (
     <ChamberShell
@@ -228,9 +241,9 @@ export const TheForecast: React.FC<{
                           Drift Probability
                         </span>
                         <span className="font-sans text-xl tracking-tight">
-                          {driftScore === null ? "—" : `${Math.round(driftScore)}%`}
+                          {driftScore == null ? "—" : `${Math.round(driftScore)}%`}
                         </span>
-                        {driftScore === null ? (
+                        {driftScore == null ? (
                           <p className="mt-1 font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
                             {FORECAST_COPY.driftUncalibrated}
                           </p>
@@ -392,7 +405,9 @@ export const TheForecast: React.FC<{
                 <div className="flex flex-col gap-4">
                   <div className="border border-nous-border/60 bg-nous-surface/60 px-3 py-2">
                     <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle leading-relaxed">
-                      {FORECAST_COPY.simulatedBanner}
+                      {contentUnavailable
+                        ? FORECAST_COPY.contentUnavailableBanner
+                        : FORECAST_COPY.contentLiveBanner}
                     </p>
                   </div>
                   <h2 className="font-serif italic text-2xl flex flex-wrap items-center gap-3">
@@ -407,7 +422,10 @@ export const TheForecast: React.FC<{
                     <div className="min-h-[240px] flex flex-col items-center justify-center border border-nous-border border-dashed p-10 text-nous-subtle">
                       <Loader2 className="animate-spin mb-4" size={24} />
                       <p className="font-mono text-xs uppercase tracking-widest">
-                        Preparing demonstration synthesis…
+                        Pinging research API…
+                      </p>
+                      <p className="font-sans text-[10px] mt-2 opacity-60">
+                        Synthesizing live format vectors
                       </p>
                     </div>
                   ) : contentForecast ? (
@@ -417,69 +435,76 @@ export const TheForecast: React.FC<{
                           Format Resonance Index
                         </h3>
                         <div className="space-y-6">
-                          {contentForecast.trends.map((trend, idx) => (
-                            <div key={`${trend.format}-${idx}`} className="space-y-2">
-                              <div className="flex justify-between font-mono text-[9px] uppercase items-center gap-2">
-                                <span className="font-bold text-[11px]">{trend.format}</span>
-                                <span
-                                  className={
-                                    trend.velocity === "Surging"
-                                      ? "text-green-700"
-                                      : trend.velocity === "Rising"
-                                        ? "text-sky-700"
-                                        : "text-amber-700"
-                                  }
-                                >
-                                  {trend.velocity}
-                                </span>
-                              </div>
-                              <div className="w-full h-1 bg-nous-border relative overflow-hidden">
-                                <motion.div
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${trend.score}%` }}
-                                  transition={{ duration: 1, delay: 0.2 + idx * 0.1 }}
-                                  className={`h-full ${
-                                    trend.velocity === "Surging" ? "bg-nous-text" : "bg-nous-subtle"
-                                  }`}
-                                />
-                              </div>
-                              <p className="font-sans text-[11px] text-nous-text/80 leading-snug">
-                                {trend.analysis}
-                              </p>
-                              {trend.sources.length > 0 ? (
-                                <div className="mt-3 pt-2 border-t border-nous-border/50 flex flex-col gap-1.5">
-                                  <div className="flex items-center gap-1.5 text-nous-subtle">
-                                    <Link2 size={10} />
-                                    <span className="font-mono text-[8px] uppercase tracking-widest">
-                                      Sourced Citations
-                                    </span>
-                                  </div>
-                                  {trend.sources.map((source) => (
-                                    <a
-                                      key={source.url}
-                                      href={source.url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="group flex items-center justify-between hover:bg-nous-base p-1.5 transition-colors border border-transparent hover:border-nous-border"
-                                    >
-                                      <span className="font-sans text-[10px] underline decoration-nous-border group-hover:decoration-nous-text/50 truncate pr-4">
-                                        {source.title}
-                                      </span>
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        <span className="font-mono text-[8px] text-nous-subtle bg-nous-border/30 px-1 py-0.5">
-                                          {(source.credibility * 100).toFixed(0)}% CQ
-                                        </span>
-                                        <ExternalLink
-                                          size={10}
-                                          className="text-nous-subtle opacity-0 group-hover:opacity-100 transition-opacity"
-                                        />
-                                      </div>
-                                    </a>
-                                  ))}
+                          {contentForecast.trends.length === 0 ? (
+                            <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle leading-relaxed">
+                              No live format vectors yet. Connect You.com / AI Gateway credits and
+                              retry.
+                            </p>
+                          ) : (
+                            contentForecast.trends.map((trend, idx) => (
+                              <div key={`${trend.format}-${idx}`} className="space-y-2">
+                                <div className="flex justify-between font-mono text-[9px] uppercase items-center gap-2">
+                                  <span className="font-bold text-[11px]">{trend.format}</span>
+                                  <span
+                                    className={
+                                      trend.velocity === "Surging"
+                                        ? "text-green-700"
+                                        : trend.velocity === "Rising"
+                                          ? "text-sky-700"
+                                          : "text-amber-700"
+                                    }
+                                  >
+                                    {trend.velocity}
+                                  </span>
                                 </div>
-                              ) : null}
-                            </div>
-                          ))}
+                                <div className="w-full h-1 bg-nous-border relative overflow-hidden">
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${trend.score}%` }}
+                                    transition={{ duration: 1, delay: 0.2 + idx * 0.1 }}
+                                    className={`h-full ${
+                                      trend.velocity === "Surging" ? "bg-nous-text" : "bg-nous-subtle"
+                                    }`}
+                                  />
+                                </div>
+                                <p className="font-sans text-[11px] text-nous-text/80 leading-snug">
+                                  {trend.analysis}
+                                </p>
+                                {trend.sources.length > 0 ? (
+                                  <div className="mt-3 pt-2 border-t border-nous-border/50 flex flex-col gap-1.5">
+                                    <div className="flex items-center gap-1.5 text-nous-subtle">
+                                      <Link2 size={10} />
+                                      <span className="font-mono text-[8px] uppercase tracking-widest">
+                                        Sourced Citations
+                                      </span>
+                                    </div>
+                                    {trend.sources.map((source) => (
+                                      <a
+                                        key={source.url}
+                                        href={source.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="group flex items-center justify-between hover:bg-nous-base p-1.5 transition-colors border border-transparent hover:border-nous-border"
+                                      >
+                                        <span className="font-sans text-[10px] underline decoration-nous-border group-hover:decoration-nous-text/50 truncate pr-4">
+                                          {source.title}
+                                        </span>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <span className="font-mono text-[8px] text-nous-subtle bg-nous-border/30 px-1 py-0.5">
+                                            {(source.credibility * 100).toFixed(0)}% CQ
+                                          </span>
+                                          <ExternalLink
+                                            size={10}
+                                            className="text-nous-subtle opacity-0 group-hover:opacity-100 transition-opacity"
+                                          />
+                                        </div>
+                                      </a>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                       <div className="border border-nous-border p-5 md:p-6 flex flex-col justify-between h-fit md:sticky md:top-4">
