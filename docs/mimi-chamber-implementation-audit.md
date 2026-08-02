@@ -1,8 +1,10 @@
 # Mimi Chamber Implementation Audit
 
-Date: 2026-08-02 (Architecture Update 20 reconciliation; Milestone 2 + Phase 2 tail remain complete)
+Date: 2026-08-02 (Architecture Update 20 reconciliation; Milestones 2–3 complete; recent maps below)
 
 Source of truth: product canon + `lib/productCanon.ts` (+ `CANON_INFRASTRUCTURE`). Every canonical chamber has a dedicated route mode, chamber shell (where applicable), and `CanonModule` registry. Living architecture: [mimi-system-architecture.md](./mimi-system-architecture.md), [architecture-update-20.md](./architecture-update-20.md).
+
+For durable domain contracts, see [`mimi-system-architecture.md`](./mimi-system-architecture.md). This file is the **current route / chamber / verify-script map** for developers.
 
 ## Milestone 1 Status: Complete
 
@@ -29,6 +31,7 @@ All 18 canonical modules are registered. Chamber shells live under `components/c
 | Private Studio | `/private-studio` | `PrivateStudioChamber` | Live |
 | Mimi Dolls | `/mimi-dolls` | `MimiDollsChamber` | Live |
 | Atelier | `/atelier` | `AtelierChamber` | Live |
+| The Proscenium | `/proscenium` | `ProsceniumView` | Live (Stage / Correspondents / Cliques wings) |
 
 ## Legacy Route Aliases (preserved)
 
@@ -43,6 +46,8 @@ All 18 canonical modules are registered. Chamber shells live under `components/c
 | `/stand`, `/registry` | `pocket` |
 | `/mimi-you` | `mimi-dolls` |
 | `/objects`, `/taste-objects` | `atelier` |
+| `/connections` | `proscenium` → `/proscenium/correspondents` |
+| `/cliques` | `proscenium` → `/proscenium/cliques` |
 
 Public doll cards remain at `/u/:handle` (infrastructure route, not chamber replacement).
 
@@ -58,6 +63,13 @@ Navigate to `/chamber-map` or **Intelligence → Chamber Map** to inspect the li
 npm run validate:canon
 npm run verify:used-context
 npm run verify:atelier
+npm run verify:doll-engine
+npm run verify:doll-staple
+npm run verify:zine-spread-compose
+npm run verify:structured-zine-pdf
+npm run verify:fish
+npm run verify:residue
+npm run review:mobile          # needs dev server on :3000 (or pass a base URL)
 npm run build
 ```
 
@@ -120,6 +132,114 @@ Ask → Atomize → Retrieve → Show Used Context
 | Approve | `UsedContextTray` in Studio (Continuum) and The Edit |
 | Apply | Studio generation + `usedContextSnapshots` on zine metadata |
 | Show / Export | `AnalysisDisplay` + `export-manifest.json` / `editorial-compile.md` / `used-context.json` in Press packs |
+
+---
+
+## Current developer map (2026-08)
+
+Scan-friendly notes for subsystems that landed after the July milestones. Prefer this section over digging through PRDs when onboarding or debugging.
+
+### Scribe mobile workbench (Ask / Library / Capture)
+
+Desktop Scribe still exposes finer tabs (`ask`, `capture`, `atoms`, `retrieve`, `threads`). On narrow viewports, `ScribeChamber` collapses those into three modes:
+
+| Mobile mode | Underlying tabs | Role |
+| --- | --- | --- |
+| **Ask** | `ask` | Grounded retrieval via `ScribeAskPanel` → `services/scribeService.ts` (atoms, Pocket, taste graph, evidence, active Doll as `doll_identity`) |
+| **Library** | `atoms` / `retrieve` / `threads` | Embedded `ResearchMemory`; Atomize manage view, Retrieve send-to-Studio/Edit, Threads panel |
+| **Capture** | `capture` | Paste → `createAtomFromScribeSignal` → Firestore atom + Pocket mirror |
+
+Key files: `components/chambers/ScribeChamber.tsx`, `components/ScribeAskPanel.tsx`, `components/ResearchMemory.tsx`, `services/scribeService.ts`, `services/memoryService.ts`.
+
+**Pitfalls**
+
+- Mobile labels hide the underlying tab graph — Library sub-pills switch `atoms` / `retrieve` / `threads`.
+- Some Capture / Ask save paths persist atoms immediately. Canonical architecture still requires explicit approval before durable memory; treat early-persist paths as known drift, not the target contract.
+- “Send to Studio / The Edit” goes through `addToUsedContext` → `UsedContextTray`; generation still gates on `approved`.
+
+### The Proscenium (Connections + Cliques unified)
+
+`ProsceniumView` owns three wings: **Stage** (public transmissions), **Correspondents** (connections), **Cliques**.
+
+| Route | Wing |
+| --- | --- |
+| `/proscenium` | Stage |
+| `/proscenium/correspondents` | Correspondents |
+| `/proscenium/cliques` | Cliques |
+| `/connections` | Redirect → Correspondents |
+| `/cliques` | Redirect → Cliques |
+
+Stage reads `public_transmissions` with global / following / local channels. Demo specimens must stay labeled and never mix into live counts. E2E: `e2e/proscenium.spec.ts`.
+
+Key files: `components/ProsceniumView.tsx`, `App.tsx` redirects, `lib/productCanon.ts`, `components/navigationConfig.ts`.
+
+### Doll Engine + Mimi Shell staple
+
+Taste Graph remains source of truth; Dolls are projections. Public API: `services/dollEngine/`.
+
+| Concern | Path |
+| --- | --- |
+| Shell staple prompt lock (`shell-v1`) | `services/dollEngine/staplePrompt.ts` |
+| Procedural aesthetic derivation | `services/dollEngine/proceduralFromDoll.ts` |
+| Identity pack / multi-view refs | `services/dollEngine/identityPack.ts`, `mediaRefs.ts` |
+| Default masks + companion bundle | `services/dollEngine/masks.ts`, `companion.ts` |
+| Studio active doll/mask (localStorage) | `hooks/useStudioDollSelection.ts` |
+| UI onboarding / auto-project shell | `components/tailor/DollProfileScreen.tsx` |
+| Scribe retrieval | `buildScribeDollExcerpt` → `doll_identity` context |
+| Zine media prepend | `services/zineGenerator.ts` |
+
+Portrait generation hits `/api/mimi-image` with `allowFaces: true`. Verify: `npm run verify:doll-engine`, `npm run verify:doll-staple`. Product intent: `prd/doll-staple-shell.md`.
+
+**Pitfalls**
+
+- Do not invent a second shell prompt; extend `MIMI_SHELL_STAPLE` / versioned helpers.
+- Skipping staple verification before prompt edits will desync Studio injection, Scribe excerpts, and portrait generation.
+
+### Zine spread compose + structured PDF
+
+Owners compose freeform plates via `ZineLayoutEditor`; layouts persist as `customLayout` on `ZinePageSpec`. Readers render saved layouts read-only through `ZineSpreadCanvas`.
+
+| Concern | Path |
+| --- | --- |
+| Layout model / mode plates / auto-develop | `lib/zineSpreadLayout.ts` |
+| Owner editor + reader canvas | `components/ZineLayoutEditor.tsx`, `ZineSpreadCanvas.tsx`, `AnalysisDisplay.tsx` |
+| Archival PDF (no html2canvas raster of `#export-target`) | `lib/structuredZinePdf.ts` → `ExportChamber` |
+| Edit issue-spreads entry | `components/IssueSpreadsPanel.tsx`, `TheEditCompile.tsx` |
+| Manifest `pdfMode: "structured"` | `services/exportManifestService.ts` |
+
+Verify: `npm run verify:zine-spread-compose`, `npm run verify:structured-zine-pdf`, `npm run verify:zine-visual-policy`. Product intent: `prd/zine-spread-compose.md`.
+
+**Constraints**
+
+- Structured PDF uses Times/Helvetica (brand fonts stay in the reader).
+- Soft-fails image fetch/CORS to placeholders rather than aborting the pack.
+- Hi-fi non-lite issues auto-develop cover/plates; lite modes do not.
+
+### Public host skins (mimi.you / mimi.rip / mimi.fish)
+
+Same SPA; skin from host (`lib/siteHost.ts`), then `?skin=rip|fish|you`, then `localStorage mimi_site_skin`.
+
+| Skin | Host | Public surface |
+| --- | --- | --- |
+| `you` | `mimi.you` (also localhost / `*.vercel.app`) | Full app + public cards |
+| `rip` | `mimi.rip` | Inverse reading / public rip plates |
+| `fish` | `mimi.fish` | Share plate `/s/:id` + creator shelf `/u/:handle` or bare `/:handle` |
+
+Canonical share URL: `https://mimi.fish/s/:zineId` (`getFishShareUrl` / `getZineShareUrl`). On fish host, `/zine/:id` maps onto the public share plate; `/s/:id` is handled before skin branching in `App.tsx`.
+
+Ops helpers:
+
+```bash
+npm run setup:mimi-fish-domains   # Firebase Auth authorized domains (+ optional Vercel)
+npm run setup:mimi-rip-domains
+npm run verify:fish
+```
+
+### Residue engine adapters
+
+Cultural → product adapters live under `services/residue/` (Phases 3–7). Status notes: `docs/residue-engine-phase*.md`. Verify: `npm run verify:residue`.
+
+---
 
 ## Architecture Update 20 — Status Reconciliation (2026-08-02)
 

@@ -31,12 +31,14 @@ Mimi is a creator operating system whose shared state is explicit, user-approved
 
 | Layer | Role | Product meaning |
 | --- | --- | --- |
-| `mimizine.app` | Parent platform | The canonical home for projects, Tailor, Field Notes, dossiers, Studio, Press, auth, billing, and infrastructure. |
+| `mimizine.app` / `mimi.you` | Parent platform | The canonical home for projects, Tailor, Field Notes, dossiers, Studio, Press, auth, billing, and infrastructure. |
 | Tailor | Ingestion and evidence engine | The guided intake that turns references, notes, and goals into an editable Taste Graph. |
 | Taste Graph | Source of truth | The evolving, evidence-linked model of what a creator or project is drawn to, rejects, applies, and revises. |
 | Creative Dossier | Explanation layer | The readable report that translates the Taste Graph into principles, patterns, opportunities, and applications. |
 | `mimi.u` | Personal universe layer | A generated universe view over the Taste Graph: Dolls, Masks, Field Notes, art-history mirrors, brand systems, and assets. |
 | Dolls / Masks | Projection layer | Symbolic embodiments and role-based expressions of the Taste Graph. They are outputs, not the source of truth. |
+| `mimi.rip` | Inverse public face | Host skin for inverse reading / public rip plates (same SPA, different chrome). |
+| `mimi.fish` | Attention / share face | Host skin for share plates (`/s/:id`) and creator shelves; canonical outbound zine share origin. |
 
 **User-flow benefit:** A creator starts inside the practical platform, uploads evidence into Tailor, curates what Mimi inferred, then reveals a personalized universe only after the system has something traceable to show. The Doll feels earned instead of randomly assigned.
 
@@ -443,7 +445,7 @@ Full decision text: [architecture-update-21.md](./architecture-update-21.md). Pr
 
 ## Current Implementation Baseline
 
-This section records the current branch implementation without redefining the canonical architecture above. A routed chamber is an interface milestone, not proof that its domain contract is complete. Statuses below reconcile [Architecture Update 20](./architecture-update-20.md).
+This section records the current branch implementation without redefining the canonical architecture above. A routed chamber is an interface milestone, not proof that its domain contract is complete. Statuses below reconcile [Architecture Update 20](./architecture-update-20.md). For route-level source maps and verify scripts, prefer the [Chamber Implementation Audit](./mimi-chamber-implementation-audit.md).
 
 ### Current creator spine
 
@@ -459,7 +461,7 @@ Practical loop still demonstrated as:
 
 | Canonical concern | Current implementation | Architecture status |
 | --- | --- | --- |
-| Capture and research | `ScribeChamber`, embedded `ResearchMemory`, global selection capture | Implemented in part; mobile grammar polished |
+| Capture and research | `ScribeChamber` (desktop tabs + mobile Ask/Library/Capture), embedded `ResearchMemory`, global selection capture | Implemented in part; mobile grammar polished |
 | Evidence-lane research | `ScryView` archive / web / reading / shadow lanes + Gateway synthesis | Implemented with honest coverage states |
 | Residue analysis | `ResidueChamber` Cultural/Emotional modes, offline engine, optional Apify acquire | Implemented vertical slice |
 | Collective intelligence | `ObservatoryChamber` / Mean Median Mode + Proscenium consent | Implemented vertical slice |
@@ -468,17 +470,19 @@ Practical loop still demonstrated as:
 | Registry mirror | `mirrorAtomToPocket`, Pocket archive, ghost local path | Partial; delete/identity races hardened; dual-plane ownership still open |
 | Sovereign publication plane | SQLite / Postgres / Neon drivers, search, SSE, import/export | Implemented; production hardening ongoing |
 | Context approval | `UsedContextTray`, `setUsedContextApproved` | Implemented for Studio and The Edit queues |
-| Context application | `InputStudio`, `zineGenerator`, `fragmentsUsed` | Implemented for the Studio generation path |
+| Context application | `InputStudio`, `zineGenerator`, `fragmentsUsed`; active Doll prompt/media injection via `dollEngine` | Implemented for the Studio generation path |
 | Context provenance | `UsedContextSnapshot`, reveal Used Context, export manifest snapshots | Implemented in the current zine/export path |
-| Editorial + composition | `TheEditCompile`, hi-fi plate baking, in-chamber spread composition | Implemented; Signal vs Issue Edit canon split still open |
+| Editorial validation | `TheEditCompile` (primary), `TheEditChamber` spine tabs, export diagnostics | Implemented for compile path; commerce remains secondary; Edit → Press compile markdown sync is wired |
+| Spread composition | `customLayout` on `ZinePageSpec`, `ZineLayoutEditor` / `ZineSpreadCanvas`, `lib/zineSpreadLayout.ts` | Implemented for owner compose + read-only public render |
 | Studio cover export | `lib/studioCoverExport.ts`, `coverImageUrl`, `content.meta.studioCoverOverlays` | Implemented; overlay rasterization into export image remains open |
 | Gateway-funded AI | Entitlement checks, Stripe verification, no BYOK nag on funded path | Implemented and security-hardened |
-| Export | `ThePressChamber`, `exportManifestService`, `validateExportManifest` | Implemented in part; universal artifact manifests remain open |
-| Mimi Dolls | Porcelain shell-first chamber; Shader Lab secondary | Implemented shell-first interface |
+| Export | `ThePressChamber`, `exportManifestService`, structured PDF via `lib/structuredZinePdf.ts` (`pdfMode: "structured"`) | Implemented in part; universal artifact manifests remain open |
+| Personal universe projection | `services/dollEngine` (shell staple, procedural aesthetic, identity pack, masks, companion) | Implemented; remote-only image-ref attachment into zine media still open |
+| Public social stage | `ProsceniumView` Stage / Correspondents / Cliques; legacy `/connections` + `/cliques` redirect | Implemented; demo vs live specimen labeling is a hard integrity rule |
 | Firestore quota resilience | Capped reads, ghost Pocket, listener suppression | Implemented |
-| Serverless module boundary | Lazy/dynamic import of Admin, Apify, SQLite, heavy graphs | Implemented for known crash paths; CI invariant still proposed |
+| Serverless module boundary | Lazy/dynamic import of Admin, Apify, SQLite, heavy graphs | Implemented for known crash paths; CI enforced via `verify:api-lazy-graphs` |
 
-Preview E2E checklist: `docs/DEMO_SCRIPT.md`. Service verification: `npm run verify:used-context`.
+Preview E2E checklist: `docs/DEMO_SCRIPT.md`. Service verification: `npm run verify:used-context` (plus chamber-audit verify scripts for dolls, fish, spreads, residue).
 
 Current implementation uses `UsedContextEntry.approved` as the generation gate. Any path that saves a proposed atom directly as retrievable memory without a separate creator approval is architecture drift against Sections 2, 7, and 11 and should be migrated deliberately rather than normalized as canon.
 
@@ -491,6 +495,18 @@ Sovereign = owned publication, discovery, and resilience data plane
 
 Firestore should not carry every public shelf interaction. Neon Postgres is the preferred Vercel sovereign path; SQLite remains for local and durable-host execution.
 
+### Public host skins
+
+The SPA serves multiple public faces from one build. Detection lives in `lib/siteHost.ts` (host wins, then `?skin=`, then `localStorage`).
+
+| Skin | Canonical origin | Intent |
+| --- | --- | --- |
+| `you` | `https://mimi.you` | Full creator platform + public cards |
+| `rip` | `https://mimi.rip` | Inverse public reading plates |
+| `fish` | `https://mimi.fish` | Attention/share plates (`/s/:zineId`) and creator shelves |
+
+Outbound zine share URLs canonicalize to `mimi.fish/s/:id`. Local QA can force a skin with `?skin=rip|fish` without changing DNS.
+
 ### Current platform services
 
 These are implementation examples of the Platform Services and Shared Intelligence layers. Chambers should consume them through shared contracts rather than create local alternatives.
@@ -502,6 +518,7 @@ These are implementation examples of the Platform Services and Shared Intelligen
 | Sovereign Data Plane | Owned publication, Floor/Mine, search, SSE, import/export | `docs/sovereign-archive.md`, `/api/sovereign/*`, `services/sovereignClient.ts` |
 | Local / ghost archive | Offline or guest references and drafts (IndexedDB) | `services/localArchive.ts`, Pocket ghost path |
 | AI Gateway + embeddings | Funded model routing, shared embeddings, provenance metadata | `lib/ai/generate.ts`, `services/modelConfig.ts`, `lib/models.ts` |
+| AI SDK → Gateway text | Production text generation via AI SDK + Gateway model roles | `POST /api/mimi/generate-text`, `lib/ai/generate.ts`, `lib/mimiGenerateTextRoute.ts` |
 | AI provider routing | Select funded Gateway, personal-key, or simulated paths | `lib/mimiProvider.ts`, `services/geminiClient.ts` |
 | Entitlement verification | Trusted server-side plan/credit checks (incl. Stripe) | membership / Stripe verification routes |
 | Image generation | Server-side cover and visual generation | `/api/mimi-image`, `lib/serverMimiImage.ts` |
@@ -509,8 +526,13 @@ These are implementation examples of the Platform Services and Shared Intelligen
 | Funded gateway | Authorize and account for platform-funded AI use | `lib/mimiFundedGateway.ts` |
 | Used Context bus | Stage and approve task-specific client context | `services/usedContextService.ts` |
 | Export and privacy | Build manifests and sanitize exported snapshots | `services/exportManifestService.ts`, `lib/privacyUtils.ts` |
+| Structured PDF | Archival A4 PDF from zine metadata (custom layouts when present) | `lib/structuredZinePdf.ts` |
+| Doll engine | Shell staple, procedural aesthetic, identity refs, Studio/Scribe injection | `services/dollEngine/` |
+| Residue adapters | Cultural/emotional residue → product output adapters | `services/residue/` |
 | Canon registry | Define and validate module routes | `lib/productCanon.ts`, `scripts/validateCanonRoutes.ts` |
 | Public showcase | Publish profile-backed public cards | `services/publicShowcaseService.ts` |
+| Host / share routing | Detect public skins and fish share/shelf paths | `lib/siteHost.ts`, `lib/publicBaseUrl.ts` |
+| Stale chunk recovery | Clear caches + SW and reload once after post-deploy MIME/chunk errors | `lib/staleChunkRecovery.ts`, `components/ErrorBoundary.tsx`, `public/sw.js` |
 
 ### Current interfaces
 
@@ -542,9 +564,11 @@ The current creator-facing interfaces are projections onto the architecture, not
 | The Ward | `/ward` | `TheWard` |
 | Private Studio | `/private-studio` | `PrivateStudioChamber` |
 | Mimi Dolls | `/mimi-dolls` | `MimiDollsChamber` |
+| Atelier | `/atelier` | `AtelierChamber` |
+| The Proscenium | `/proscenium` (+ `/correspondents`, `/cliques` wings) | `ProsceniumView` |
 | mimi.rip | `/rip` | `RipChamber` |
 
-`/chamber-map` is the registry inspector. `/u/:handle`, `/showcase`, `/zine/:id`, and `/api/*` are infrastructure or published-artifact routes rather than chambers.
+`/chamber-map` is the registry inspector. `/u/:handle`, `/showcase`, `/zine/:id`, `/s/:id` (fish share), and `/api/*` are infrastructure or published-artifact routes rather than chambers.
 
 ### Accepted architecture decisions (Updates 20–21)
 
@@ -573,6 +597,7 @@ Still open for later implementation (decisions already made where noted):
 - What are the canonical renderers and schemas for every Pocket object type?
 - Where is the privacy boundary between user-global, project-scoped, and Sanctuary-local knowledge?
 - What automated end-to-end evidence is required before the creator spine is considered complete?
+- How should remote-only Doll identity image refs attach into the zine media pipeline without breaking offline export?
 - Cross-plane Pocket tombstone store with retry queue (policy decided; store not built)
 - Explicit “Bring local Pocket” opt-in after Speed Ghost upgrade (auto-migrate declined)
 
