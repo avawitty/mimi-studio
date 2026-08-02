@@ -71,6 +71,12 @@ export const PRIVACY_POLICY: LegalDocument = {
         "Public handles (for example mimi.you/u/your-handle), public zines, and share links show only what you publish. We show your chosen handle and public work — not your full internal user ID.\n\nPlease check visibility settings before you share.",
     },
     {
+      id: "mean-median-mode",
+      title: "Mean Median Mode & The Observatory",
+      body:
+        "When you publish to The Proscenium and acknowledge the publish disclosure, eligible structure from that work — themes, motifs, inquiry types, and form — may contribute anonymized signals to Mean Median Mode, Mimi’s collective statistical reading inside The Observatory.\n\nYour private Studio, Tailor memory, and personal Scry remain excluded. We do not show exact private wording or personal excerpts in the collective readout. You can unpublish to stop future contribution, and advanced controls may let you stage publicly without contributing.",
+    },
+    {
       id: "retention",
       title: "How long we keep it",
       body:

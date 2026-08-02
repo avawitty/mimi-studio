@@ -24,8 +24,8 @@ const LEGAL_SUMMARY = {
  body: "If you explore as a guest, much of what you make can stay in your browser. Clearing your cache can remove it — so sign in when you want a lasting archive."
  },
  {
- head: "You choose what goes public",
- body: "Public profiles and shared zines only show what you publish. Private studio and Tailor memory stay out of collective readouts unless you explicitly share."
+ head: "Publishing & Mean Median Mode",
+ body: "When you publish to The Proscenium and acknowledge the disclosure, eligible structure — themes, motifs, inquiry types, and form — may contribute anonymized signals to Mean Median Mode inside The Observatory. Your private Studio, Tailor memory, and personal Scry stay out of that readout, and we do not show exact private wording as collective data."
  }
  ]
  },
