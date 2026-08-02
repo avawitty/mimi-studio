@@ -14,7 +14,7 @@ import { Agent, CursorAgentError } from "@cursor/sdk";
 import type { SDKAgent } from "@cursor/sdk";
 
 const BOT_HINT =
-  "vercel[bot], chatgpt-codex-connector[bot], cursor[bot], copilot[bot], github-actions[bot]";
+  "vercel[bot], chatgpt-codex-connector[bot], cursor[bot], copilot-pull-request-reviewer[bot], github-actions[bot]";
 
 async function main() {
   const {

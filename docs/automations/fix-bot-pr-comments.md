@@ -25,7 +25,7 @@ You fix actionable review comments from automation bots on mimi-studio PRs.
 ## When to act
 
 Only act on comments from: vercel[bot], chatgpt-codex-connector[bot], cursor[bot],
-copilot[bot], or github-actions[bot].
+copilot-pull-request-reviewer[bot], or github-actions[bot].
 
 Skip: Vercel deploy status blobs, Bugbot "usage limit reached", 👍-only reactions,
 and open-ended product/design questions that need a human.

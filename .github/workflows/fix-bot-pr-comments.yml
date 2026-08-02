@@ -3,6 +3,10 @@ name: Fix bot PR comments
 # Fires when review bots leave feedback; launches a Cursor cloud agent via SDK.
 # Requires repo secret CURSOR_API_KEY. Without it the job is skipped.
 
+concurrency:
+  group: fix-bot-pr-comments-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 on:
   pull_request_review_comment:
     types: [created]
@@ -102,18 +106,25 @@ jobs:
           else
             PR_NUMBER="${{ github.event.pull_request.number }}"
           fi
-          meta="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json url,headRefName,baseRefName)"
+          meta="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json url,headRefName,baseRefName,headRepository)"
+          head_name_with_owner="$(echo "$meta" | jq -r '.headRepository.nameWithOwner // empty')"
+          if [ -z "$head_name_with_owner" ] || [ "$head_name_with_owner" = "null" ]; then
+            head_repo="https://github.com/${GITHUB_REPOSITORY}"
+          else
+            head_repo="https://github.com/${head_name_with_owner}"
+          fi
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "pr_url=$(echo "$meta" | jq -r .url)" >> "$GITHUB_OUTPUT"
           echo "head_ref=$(echo "$meta" | jq -r .headRefName)" >> "$GITHUB_OUTPUT"
           echo "base_ref=$(echo "$meta" | jq -r .baseRefName)" >> "$GITHUB_OUTPUT"
+          echo "repo_url=$head_repo" >> "$GITHUB_OUTPUT"
 
       - name: Launch Cursor cloud agent
         if: steps.gate.outputs.skip != 'true' && steps.secret.outputs.has_key == 'true'
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           CURSOR_SDK_MODEL: ${{ vars.CURSOR_SDK_MODEL || 'composer-2' }}
-          REPO_URL: https://github.com/${{ github.repository }}
+          REPO_URL: ${{ steps.ctx.outputs.repo_url }}
           HEAD_REF: ${{ steps.ctx.outputs.head_ref }}
           BASE_REF: ${{ steps.ctx.outputs.base_ref }}
           PR_URL: ${{ steps.ctx.outputs.pr_url }}
