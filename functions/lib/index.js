@@ -195,7 +195,9 @@ const verifyStripeCustomerEntitlement = async (customerId, uid, email) => {
             return false;
         const wantEmail = String(email || '').trim().toLowerCase();
         const customerEmail = String(customer.email || '').trim().toLowerCase();
-        if (!metaUid && wantEmail && customerEmail && customerEmail !== wantEmail)
+        const hasUidBinding = Boolean(metaUid && metaUid === uid);
+        const hasEmailBinding = Boolean(wantEmail && customerEmail && customerEmail === wantEmail);
+        if (!hasUidBinding && !hasEmailBinding)
             return false;
         const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
         return subs.data.some((sub) => sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due');

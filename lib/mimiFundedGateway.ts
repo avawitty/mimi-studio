@@ -219,7 +219,7 @@ export const resolveMimiFundedGatewayAccess = async (
           return { allowed: false, billable: false, cost };
         }
       }
-      return softAllow(undefined, cost);
+      return { allowed: false, billable: false, cost };
     }
 
     let decoded: { uid: string; email?: string };

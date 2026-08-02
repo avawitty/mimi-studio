@@ -30,7 +30,9 @@ export async function verifyStripeCustomerEntitlement(opts: {
 
     const email = String(opts.email || "").trim().toLowerCase();
     const customerEmail = String(live.email || "").trim().toLowerCase();
-    if (!metaUid && email && customerEmail && customerEmail !== email) return false;
+    const hasUidBinding = Boolean(metaUid && metaUid === opts.uid);
+    const hasEmailBinding = Boolean(email && customerEmail && customerEmail === email);
+    if (!hasUidBinding && !hasEmailBinding) return false;
 
     const subs = await stripe.subscriptions.list({
       customer: customerId,

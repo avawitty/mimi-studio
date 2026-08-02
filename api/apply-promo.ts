@@ -65,10 +65,48 @@ export default async function handler(req: any, res: any) {
     const alreadyRedeemed =
       periodEndsAt > now &&
       (String(existingUser.patronKey || "") === promoKey ||
-        String(existingMembership.source || "") === "promo" ||
-        existingUser.isPatron === true);
+        String(existingMembership.source || "") === "promo");
 
     if (alreadyRedeemed) {
+      const remaining = Number(existingCredits?.remaining ?? NaN);
+      const allowance = Number(
+        (existingCredits as { allowance?: unknown } | undefined)?.allowance ?? NaN,
+      );
+      const creditsDrained =
+        !Number.isFinite(remaining) ||
+        remaining <= 0 ||
+        !Number.isFinite(allowance) ||
+        allowance <= 0;
+
+      if (creditsDrained) {
+        const { credits: membershipCredits } = buildCreditGrant({
+          plan: "lab",
+          interval: "year",
+          currentPeriodEnd: periodEndsAt,
+        });
+        await Promise.all([
+          db.collection("users").doc(uid).set({ membershipCredits }, { merge: true }),
+          db.collection("profiles_public").doc(uid).set({ membershipCredits }, { merge: true }),
+          db.collection("users").doc(uid).collection("billing").doc("subscription").set(
+            { credits: membershipCredits, updatedAt: now },
+            { merge: true },
+          ),
+          db.collection("memberships").doc(uid).set(
+            { credits: membershipCredits, updatedAt: now },
+            { merge: true },
+          ),
+        ]);
+        return sendJson(res, 200, {
+          ok: true,
+          applied: false,
+          alreadyRedeemed: true,
+          creditsRestored: true,
+          success: true,
+          message: "Promo credits restored.",
+          membershipCredits,
+        });
+      }
+
       return sendJson(res, 200, {
         ok: true,
         applied: false,
