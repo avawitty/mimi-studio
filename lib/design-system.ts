@@ -80,6 +80,7 @@ export const DARK_PLATE_MODES = modesWithAtmosphere("dark-plate");
 
 /** Canvas-first rooms whose tools belong in sheets or rails. */
 export const WORKTABLE_MODES = modesWithAtmosphere("worktable", [
+  "tailor",
   "taste-discovery",
   "quiet-studio",
   "brand-intake",

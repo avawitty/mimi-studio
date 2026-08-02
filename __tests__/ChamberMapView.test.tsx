@@ -6,7 +6,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ChamberMapView,
   getCanonStatusCounts,
@@ -19,6 +19,10 @@ import {
   CHAMBER_INTENT_EVENT,
   type ChamberIntent,
 } from "../lib/chamberIntents";
+
+vi.mock("../contexts/UserContext", () => ({
+  useUser: vi.fn(() => ({ user: { uid: "test-user", isAnonymous: false } })),
+}));
 
 const renderMap = (
   initialMode: "studio-map" | "architecture-registry" = "studio-map",

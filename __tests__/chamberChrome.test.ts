@@ -42,8 +42,10 @@ describe("chamberChrome", () => {
     expect(getFaceKind("scry")).toBe("public-dark");
     expect(getFaceKind("oracle")).toBe("void");
     expect(getFaceKind("studio")).toBe("worktable");
+    expect(getFaceKind("tailor")).toBe("worktable");
 
     expect(mainShellClassName("studio")).toContain("overflow-hidden");
+    expect(mainShellClassName("tailor")).toContain("overflow-hidden");
     expect(mainShellClassName("mimi-rip")).toContain("bg-[#050506]");
     expect(mainShellClassName("editorial-home")).toContain("mimi-page-pad--public");
     expect(mainShellClassName("pocket")).toContain("mimi-page-pad");
