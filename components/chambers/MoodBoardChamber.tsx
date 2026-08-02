@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { addToUsedContext } from '../../services/usedContextService';
 import type { MemoryAtom } from '../../types';
+import { WorktableShell } from '../worktable/WorktableShell';
+import { MimiWordmark } from '../public-face/MimiWordmark';
 
 interface MoodBoardItem {
   id: string;
@@ -403,111 +405,81 @@ export const MoodBoardChamber: React.FC = () => {
     setSelectedIds(new Set());
   };
 
-  return (
-    <ChamberShell
-      moduleId="mood-board"
-      actions={
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => {
-              setMultiSelect((v) => !v);
-              setSelectedIds(new Set());
-              setSynthOpen(false);
-            }}
-            className={`px-3 py-1.5 border font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
-              multiSelect
-                ? 'bg-stone-900 text-white border-stone-900'
-                : 'bg-white border-nous-border hover:bg-stone-50 text-nous-text'
-            }`}
-            title="Multi-select"
-          >
-            {multiSelect ? <CheckSquare size={12} /> : <Square size={12} />}
-            <span>Select</span>
-          </button>
-          {multiSelect && selectedIds.size > 0 && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setSynthOpen((v) => !v)}
-                className="px-3 py-1.5 bg-stone-900 text-white border border-stone-900 font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5"
-              >
-                <Sparkles size={12} />
-                Synthesize ({selectedIds.size})
-              </button>
-              {synthOpen && (
-                <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] border border-nous-border bg-white shadow-lg py-1">
-                  {[
-                    { id: 'studio' as const, label: 'Studio Used Context' },
-                    { id: 'tailor' as const, label: 'Tailor Evidence Intake' },
-                    { id: 'oracle' as const, label: 'Oracle Chamber notes' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => synthesize(opt.id)}
-                      className="w-full text-left px-3 py-2 font-mono text-[9px] uppercase tracking-wider text-stone-700 hover:bg-stone-50"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={addStickyNote}
-            className="px-3 py-1.5 bg-white border border-nous-border hover:bg-stone-50 text-nous-text font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5 transition-colors"
-          >
-            <Type size={12} />
-            <span>Note</span>
-          </button>
-          <button
-            type="button"
-            onClick={addColorSwatch}
-            className="px-3 py-1.5 bg-white border border-nous-border hover:bg-stone-50 text-nous-text font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5 transition-colors"
-          >
-            <Palette size={12} />
-            <span>Color</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 bg-white border border-nous-border hover:bg-stone-50 text-nous-text font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5 transition-colors"
-          >
-            <Upload size={12} />
-            <span>Upload</span>
-          </button>
-          <button
-            type="button"
-            onClick={clearCanvas}
-            className="px-3 py-1.5 bg-stone-100 hover:bg-red-50 text-stone-600 hover:text-red-600 border border-nous-border font-mono text-[9px] uppercase tracking-wider flex items-center gap-1.5 transition-colors"
-          >
-            <Trash2 size={12} />
-            <span>Clear</span>
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept="image/*"
-            className="hidden"
-          />
-        </div>
-      }
-    >
-      <div className="flex flex-col h-full min-h-0 bg-stone-50">
-        {/* Page strip */}
-        <div className="flex items-center gap-1 px-3 py-2 border-b border-nous-border bg-white overflow-x-auto no-scrollbar shrink-0">
-          <Layers size={12} className="text-nous-subtle shrink-0 mr-1" />
+  const toolActions = (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setMultiSelect((v) => !v);
+            setSelectedIds(new Set());
+            setSynthOpen(false);
+          }}
+          className={`px-3 py-1.5 border font-sans text-[9px] uppercase tracking-[0.18em] flex items-center gap-1.5 ${
+            multiSelect
+              ? 'bg-[var(--mimi-ink)] text-white border-[var(--mimi-ink)]'
+              : 'bg-white border-[var(--mimi-hairline)] text-[var(--mimi-ink)]'
+          }`}
+        >
+          {multiSelect ? <CheckSquare size={12} /> : <Square size={12} />}
+          Select
+        </button>
+        {multiSelect && selectedIds.size > 0 && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setSynthOpen((v) => !v)}
+              className="px-3 py-1.5 bg-[var(--mimi-ink)] text-white font-sans text-[9px] uppercase tracking-[0.18em] flex items-center gap-1.5"
+            >
+              <Sparkles size={12} />
+              Synthesize ({selectedIds.size})
+            </button>
+            {synthOpen && (
+              <div className="absolute left-0 top-full mt-1 z-50 min-w-[200px] border border-[var(--mimi-hairline)] bg-white py-1">
+                {[
+                  { id: 'studio' as const, label: 'Studio Used Context' },
+                  { id: 'tailor' as const, label: 'Tailor Evidence Intake' },
+                  { id: 'oracle' as const, label: 'Oracle Chamber notes' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => synthesize(opt.id)}
+                    className="w-full text-left px-3 py-2 font-sans text-[9px] uppercase tracking-[0.18em] hover:bg-stone-50"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <button type="button" onClick={addStickyNote} className="px-3 py-1.5 border border-[var(--mimi-hairline)] font-sans text-[9px] uppercase tracking-[0.18em] flex items-center gap-1.5">
+          <Type size={12} /> Note
+        </button>
+        <button type="button" onClick={addColorSwatch} className="px-3 py-1.5 border border-[var(--mimi-hairline)] font-sans text-[9px] uppercase tracking-[0.18em] flex items-center gap-1.5">
+          <Palette size={12} /> Color
+        </button>
+        <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 border border-[var(--mimi-hairline)] font-sans text-[9px] uppercase tracking-[0.18em] flex items-center gap-1.5">
+          <Upload size={12} /> Upload
+        </button>
+        <button type="button" onClick={clearCanvas} className="px-3 py-1.5 border border-[var(--mimi-hairline)] font-sans text-[9px] uppercase tracking-[0.18em] flex items-center gap-1.5 text-[var(--mimi-stone)]">
+          <Trash2 size={12} /> Clear
+        </button>
+        <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
+      </div>
+
+      <div>
+        <span className="block font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] mb-3">Pages</span>
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
+          <Layers size={12} className="text-[var(--mimi-stone)] shrink-0 mr-1" />
           {store.pages.map((page) => {
             const active = page.id === store.activePageId;
             return (
               <div
                 key={page.id}
                 className={`flex items-center gap-1 border px-2 py-1 shrink-0 ${
-                  active ? 'border-stone-800 bg-stone-900 text-white' : 'border-nous-border bg-stone-50 text-stone-600'
+                  active ? 'border-[var(--mimi-ink)] bg-[var(--mimi-ink)] text-white' : 'border-[var(--mimi-hairline)]'
                 }`}
               >
                 <button
@@ -517,122 +489,99 @@ export const MoodBoardChamber: React.FC = () => {
                     setSelectedIds(new Set());
                     setSelectedItemId(null);
                   }}
-                  className="font-mono text-[9px] uppercase tracking-wider"
+                  className="font-sans text-[9px] uppercase tracking-[0.18em]"
                 >
                   {page.name}
                 </button>
-                {active && (
-                  <input
-                    type="text"
-                    value={page.name}
-                    onChange={(e) => renamePage(page.id, e.target.value)}
-                    className="w-16 bg-transparent border-b border-white/30 font-mono text-[8px] focus:outline-none"
-                    aria-label="Rename page"
-                  />
-                )}
                 {store.pages.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => deletePage(page.id)}
-                    className="opacity-60 hover:opacity-100"
-                    title="Delete page"
-                  >
+                  <button type="button" onClick={() => deletePage(page.id)} className="opacity-60 hover:opacity-100" title="Delete page">
                     <X size={10} />
                   </button>
                 )}
               </div>
             );
           })}
-          <button
-            type="button"
-            onClick={addPage}
-            className="px-2 py-1 border border-dashed border-nous-border font-mono text-[9px] uppercase tracking-wider text-stone-500 hover:text-stone-800 flex items-center gap-1 shrink-0"
-          >
+          <button type="button" onClick={addPage} className="px-2 py-1 border border-dashed border-[var(--mimi-hairline)] font-sans text-[9px] uppercase tracking-[0.18em] flex items-center gap-1 shrink-0">
             <Plus size={10} /> Page
           </button>
-          {synthNotice && (
-            <span className="ml-auto font-mono text-[8px] uppercase tracking-wider text-amber-700 truncate max-w-[40%]">
-              {synthNotice}
-            </span>
-          )}
         </div>
+        {synthNotice && (
+          <p className="mt-2 font-sans text-[9px] uppercase tracking-[0.18em] text-[var(--mimi-olive)]">{synthNotice}</p>
+        )}
+      </div>
 
-        <div className="flex flex-col md:flex-row flex-1 min-h-0">
-          <div className="w-full md:w-64 shrink-0 max-h-[28vh] md:max-h-none border-b md:border-b-0 md:border-r border-nous-border bg-white flex flex-col min-h-0 select-none overflow-y-auto">
-            <div className="p-4 border-b border-nous-border">
-              <h3 className="font-serif italic text-base">Mood Board Maker</h3>
-              <p className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle mt-1">
-                Pages · Select · Synthesize
+      <div>
+        <span className="block font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] mb-3">Templates</span>
+        <div className="space-y-2">
+          {PRESET_TEMPLATES.map((tpl, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => loadTemplate(idx)}
+              className="w-full text-left p-3 border border-[var(--mimi-hairline)] hover:border-[var(--mimi-ink)] transition-colors"
+            >
+              <span className="font-serif italic text-sm block">{tpl.name}</span>
+              <span className="font-sans text-[8px] uppercase tracking-[0.18em] text-[var(--mimi-stone)] mt-1 block">
+                {tpl.items.length} elements
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <span className="block font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] mb-3">Quick images</span>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?auto=format&fit=crop&w=300&q=80',
+            'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=300&q=80',
+            'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=300&q=80',
+            'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80',
+          ].map((url, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => addImageFromUrl(url)}
+              className="aspect-square w-full border border-[var(--mimi-hairline)] overflow-hidden relative group"
+            >
+              <img src={url} alt="" className="object-cover w-full h-full" referrerPolicy="no-referrer" />
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Plus className="text-white" size={14} />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <ChamberShell moduleId="mood-board">
+      <WorktableShell
+        toolsLabel={`Tools · ${items.length} on canvas`}
+        defaultToolsOpen={false}
+        chrome={
+          <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <MimiWordmark size="sm" />
+              <p className="font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone)]">
+                Moodboard · {activePage?.name || 'Page'}
               </p>
             </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              <div>
-                <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-3">
-                  TEMPLATES
-                </span>
-                <div className="space-y-2">
-                  {PRESET_TEMPLATES.map((tpl, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => loadTemplate(idx)}
-                      className="w-full text-left p-3 border border-nous-border bg-stone-50 hover:bg-stone-100/50 hover:border-stone-400 transition-all group"
-                    >
-                      <span className="font-serif italic text-sm text-stone-800 group-hover:text-stone-900 block">
-                        {tpl.name}
-                      </span>
-                      <span className="font-mono text-[8px] text-stone-500 uppercase mt-1 block">
-                        {tpl.items.length} Elements
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-3">
-                  QUICK IMAGES
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=300&q=80',
-                    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80',
-                  ].map((url, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => addImageFromUrl(url)}
-                      className="aspect-square w-full border border-nous-border overflow-hidden hover:border-stone-400 active:scale-95 transition-all relative group"
-                    >
-                      <img
-                        src={url}
-                        alt="Preset"
-                        className="object-cover w-full h-full transition-transform group-hover:scale-105"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <Plus className="text-white" size={14} />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-nous-border bg-stone-50 font-mono text-[9px] text-stone-500 leading-relaxed space-y-1">
-              <p>Pages hold separate canvases.</p>
-              <p>Select → Synthesize pushes shards out.</p>
-            </div>
+            {multiSelect && selectedIds.size > 0 && (
+              <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[var(--mimi-olive)]">
+                {selectedIds.size} selected
+              </span>
+            )}
           </div>
-
+        }
+        tools={toolActions}
+      >
           <div
             ref={containerRef}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            className="flex-1 min-h-[62vh] md:min-h-0 relative overflow-hidden bg-white bg-[linear-gradient(to_right,rgba(0,0,0,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.04)_1px,transparent_1px)] [background-size:24px_24px] p-4 md:p-8 h-full touch-pan-y"
+            className="absolute inset-0 overflow-hidden bg-white bg-[linear-gradient(to_right,rgba(0,0,0,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.04)_1px,transparent_1px)] [background-size:24px_24px] p-4 md:p-8 touch-pan-y"
             onClick={() => {
               if (!multiSelect) setSelectedItemId(null);
               setSynthOpen(false);
@@ -777,8 +726,7 @@ export const MoodBoardChamber: React.FC = () => {
               })
             )}
           </div>
-        </div>
-      </div>
+      </WorktableShell>
     </ChamberShell>
   );
 };

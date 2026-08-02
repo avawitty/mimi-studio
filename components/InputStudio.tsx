@@ -2865,8 +2865,9 @@ ${finalInput}`;
 
         {/* COLUMN 3: COVER PROFILER / PREVIEW COLUMN */}
         {(!isMobile || mobileStudioView === "cover") && (
-          <div className={`w-full studio-bg-panel border-l studio-border flex flex-col p-6 md:pr-10 shrink-0 relative overflow-y-auto no-scrollbar ${isMobile ? "justify-start pb-44" : "justify-between"}`}
+          <div className={`w-full studio-bg-panel border-l studio-border flex flex-col shrink-0 relative min-h-0 ${isMobile ? "justify-start pb-44" : "justify-between"}`}
             style={isMobile ? undefined : { width: coverPanelWidth }}>
+            <div className={`flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col p-6 md:pr-10 ${isMobile ? "" : ""}`}>
             {isMobile && (
               <div className="studio-mobile-actions fixed left-0 right-0 studio-bg-panel border-t studio-border z-[45] flex items-center justify-around gap-0 px-2 py-2">
                 {([
@@ -2886,10 +2887,10 @@ ${finalInput}`;
                   },
                   {
                     key: "colophon",
-                    label: "Colophon",
+                    label: "Context",
                     icon: <FileText size={14} strokeWidth={1.6} />,
-                    active: false,
-                    onClick: () => { setShowColophon(true); playClick(); },
+                    active: activePanel === "orchestrator",
+                    onClick: () => { togglePanel("orchestrator"); playClick(); },
                   },
                   {
                     key: "doll",
@@ -3600,6 +3601,18 @@ ${finalInput}`;
                 Upload a reference, then Compose to generate or AI-edit the cover plate
               </p>
             </div>
+            </div>
+
+            {/* Always-on Used Context colophon under canvas (PRD-05 / Phase C) */}
+            <UsedContextColophon
+              target="studio"
+              className="shrink-0 border-t studio-border"
+              onOpenScribe={() => {
+                window.dispatchEvent(
+                  new CustomEvent("mimi:change_view", { detail: "scribe" }),
+                );
+              }}
+            />
           </div>
         )}
 
