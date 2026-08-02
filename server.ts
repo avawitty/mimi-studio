@@ -12,6 +12,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { registerTailorRoutes } from './server/tailorRoutes';
 import { buildSessionCookieHeader, clearSessionCookieHeader, SESSION_EXPIRES_MS } from './lib/sessionCookie';
 import { proxySessionLogin } from './lib/proxySessionToFunctions';
+import { proxyFirebaseAuthHelpers } from './lib/proxyFirebaseAuthHelpers';
 import mimiImageHandler from "./api/mimi-image";
 import generateTextHandler from "./api/mimi/generate-text";
 import createCheckoutSessionHandler from "./api/create-checkout-session";
@@ -265,6 +266,10 @@ async function startServer() {
     }
     res.json({received: true});
   });
+
+  // Same-site Firebase Auth helpers (fixes Safari redirect "missing initial state").
+  app.use("/__/auth", proxyFirebaseAuthHelpers);
+  app.use("/__/firebase", proxyFirebaseAuthHelpers);
 
   // Middleware to parse JSON bodies for all other routes
   app.use(express.json({ limit: '50mb' }));

@@ -11,6 +11,8 @@ export const formatAuthError = (codeOrMessage?: string | null): string => {
   switch (code) {
     case "auth/unauthorized-domain":
       return `This domain is not authorized for sign-in. ${AUTH_DOMAIN_HINT}`;
+    case "auth/missing-initial-state":
+      return "Sign-in was interrupted (browser cleared the login session). Close extra tabs, then try Google sign-in again — or use email/password.";
     case "auth/popup-closed-by-user":
       return "Sign-in was cancelled. Please try again.";
     case "auth/popup-blocked":

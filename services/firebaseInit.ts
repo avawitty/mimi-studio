@@ -7,6 +7,7 @@ import { FirebaseStorage, getStorage } from "firebase/storage";
 import { getAnalytics, Analytics, isSupported } from "firebase/analytics";
 import { isAnalyticsAllowed, COOKIE_CONSENT_CHANGED } from "../lib/cookieConsent";
 import { devLog } from "../lib/devLog";
+import { resolveAuthDomain } from "../lib/resolveAuthDomain";
 
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -33,9 +34,13 @@ const getOverride = (key: string): string | undefined => {
   return val;
 };
 
+const resolvedAuthDomain = resolveAuthDomain(getOverride("VITE_FIREBASE_AUTH_DOMAIN"));
+
 const config = {
   apiKey: getOverride("VITE_FIREBASE_API_KEY") || firebaseConfig.apiKey,
-  authDomain: getOverride("VITE_FIREBASE_AUTH_DOMAIN") || firebaseConfig.authDomain,
+  // Same-site authDomain on www.mimi.you / mimi.rip (etc.) + /__/auth proxy
+  // fixes Safari "missing initial state" on Google redirect sign-in.
+  authDomain: resolvedAuthDomain,
   projectId: getOverride("VITE_FIREBASE_PROJECT_ID") || firebaseConfig.projectId,
   storageBucket: getOverride("VITE_FIREBASE_STORAGE_BUCKET") || firebaseConfig.storageBucket,
   messagingSenderId: getOverride("VITE_FIREBASE_MESSAGING_SENDER_ID") || firebaseConfig.messagingSenderId,
@@ -60,6 +65,7 @@ const TARGET_DB_ID = config.firestoreDatabaseId || '(default)';
 if (typeof window !== 'undefined') {
   devLog.info(`%c MIMI // Registry Active: ${config.projectId} [TARGET DB: ${TARGET_DB_ID}]`, "color: #78716c; font-weight: bold; font-family: serif; font-style: italic;");
   devLog.info("MIMI // Database ID:", TARGET_DB_ID);
+  devLog.info("MIMI // Auth Domain:", resolvedAuthDomain);
   if (import.meta.env?.VITE_FIREBASE_API_KEY) {
     devLog.info("MIMI // Using API Key from environment override.");
   }

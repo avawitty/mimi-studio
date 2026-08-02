@@ -433,10 +433,10 @@ export const anchorIdentity = async (forceRedirect: boolean = false): Promise<vo
   // because redirects require complex top-level window configuration.
   const isIframe = typeof window !== 'undefined' && window.self !== window.top;
   
-  // Only redirect if explicitly forced AND we are not in an iframe, 
-  // or if we are in a captive webview where popups are impossible.
+  // Prefer popup. Use redirect for captive webviews / explicit force — with
+  // same-site authDomain + /__/auth proxy, redirect is safe on Safari too.
   const isCaptive = isCaptiveInWebview();
-  const shouldRedirect = forceRedirect || (isCaptive && !isIframe);
+  const shouldRedirect = (forceRedirect || isCaptive) && !isIframe;
 
   try {
     if (shouldRedirect) {
