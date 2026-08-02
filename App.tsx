@@ -2306,9 +2306,19 @@ export const App: React.FC = () => {
     if (["tailor", "loom", "action-board", "the-edit", "the-press", "wardrobe", "mimi-drop"].includes(mode))
       return "refine";
     if (
-      ["signature", "ward", "profile", "taste-graph", "pocket", "scribe", "mimi-dolls", "mimi-rip", "atelier"].includes(
-        mode,
-      )
+      [
+        "signature",
+        "ward",
+        "profile",
+        "taste-graph",
+        "pocket",
+        "scribe",
+        "mimi-dolls",
+        "mimi-rip",
+        "atelier",
+        "residue",
+        "intel-hub",
+      ].includes(mode)
     )
       return "signature";
     if (["nebula", "proscenium"].includes(mode)) return "observe";
