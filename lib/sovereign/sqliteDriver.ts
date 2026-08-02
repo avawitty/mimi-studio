@@ -7,7 +7,7 @@ import {
   type SovereignDriver,
   type SovereignRunResult,
   type SovereignStatement,
-} from "./driver";
+} from "./driver.js";
 
 /**
  * Local / Fly SQLite backend. `node:sqlite` is loaded inside this function so

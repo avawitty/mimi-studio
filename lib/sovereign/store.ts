@@ -1,7 +1,7 @@
 import type { PocketItem, UserProfile, ZineMetadata } from "../../types";
-import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache";
-import { getSovereignDb, isSovereignEnabled, resolveSovereignDbPath } from "./db";
-import { emitSovereignEvent } from "./events";
+import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache.js";
+import { getSovereignDb, isSovereignEnabled, resolveSovereignDbPath } from "./db.js";
+import { emitSovereignEvent } from "./events.js";
 
 const COMMUNITY_CAP = 60;
 const FLOOR_CACHE_TTL_MS = 30_000;

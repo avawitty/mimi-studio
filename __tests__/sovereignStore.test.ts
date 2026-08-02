@@ -120,9 +120,11 @@ describe("sovereign store", () => {
       uid: "user_1",
       handle: "Ava",
       displayName: "Ava",
+      currentSeason: "SS26",
+      createdAt: 1,
       // private prefs must not be persisted on the public projection
       tailorDrafts: { secret: true },
-    } as UserProfile);
+    } as unknown as UserProfile);
     const stored = await getProfileByHandle("ava");
     expect(stored?.displayName).toBe("Ava");
     expect((stored as any)?.tailorDrafts).toBeUndefined();

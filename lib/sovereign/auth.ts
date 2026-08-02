@@ -1,5 +1,5 @@
-import { extractMimiSessionToken } from "../mimiSessionToken";
-import { getServerFirebaseAdmin } from "../serverFirebaseAdmin";
+import { extractMimiSessionToken } from "../mimiSessionToken.js";
+import { getServerFirebaseAdmin } from "../serverFirebaseAdmin.js";
 
 export type SovereignAuthResult =
   | { ok: true; uid: string; via: "ingest_key" | "id_token" | "user_header" }

@@ -1,11 +1,9 @@
-import {
-  INDEX_SQL,
-  MIGRATION_SQL,
-  SCHEMA_STATEMENTS,
-  type SovereignDriver,
-  type SovereignRunResult,
-  type SovereignStatement,
-} from "./driver";
+import type {
+  SovereignDriver,
+  SovereignRunResult,
+  SovereignStatement,
+} from "./driver.js";
+import { INDEX_SQL, MIGRATION_SQL, SCHEMA_STATEMENTS } from "./driver.js";
 
 /** Convert `?` placeholders to Postgres `$1`, `$2`, … */
 export const toPgPlaceholders = (sql: string): string => {

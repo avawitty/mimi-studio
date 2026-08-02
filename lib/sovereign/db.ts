@@ -9,7 +9,7 @@
  */
 
 import path from "node:path";
-import type { SovereignDriver } from "./driver";
+import type { SovereignDriver } from "./driver.js";
 
 let driverInstance: SovereignDriver | null = null;
 let initAttempted = false;
@@ -73,7 +73,7 @@ const openDriver = async (): Promise<SovereignDriver | null> => {
   const postgresUrl = resolvePostgresUrl();
   if (postgresUrl) {
     // Postgres/Neon path — never touch the sqlite module graph.
-    const { openPostgresDriver } = await import("./postgresDriver");
+    const { openPostgresDriver } = await import("./postgresDriver.js");
     const driver = await openPostgresDriver(postgresUrl);
     console.info(`MIMI // Sovereign archive ready (postgres): ${driver.pathOrUrl}`);
     return driver;
@@ -90,7 +90,8 @@ const openDriver = async (): Promise<SovereignDriver | null> => {
   // Local/Fly only. Non-literal specifier so esbuild/nft do not pack sqlite into
   // API lambdas that import this module for status/health.
   const dbPath = resolveSovereignDbPath();
-  const sqliteSpecifier = `./${"sqlite"}Driver`;
+  // Non-literal specifier keeps node:sqlite out of Vercel/API bundles.
+  const sqliteSpecifier = `./${"sqlite"}Driver.js`;
   const sqliteModule = (await import(sqliteSpecifier)) as {
     openSqliteDriver: (path: string) => Promise<SovereignDriver>;
   };
@@ -109,7 +110,7 @@ export const getSovereignDb = async (): Promise<SovereignDriver | null> => {
       .then((driver) => {
         driverInstance = driver;
         if (driver) {
-          import("./store")
+          import("./store.js")
             .then(({ seedDemoShelfIfEmpty }) => seedDemoShelfIfEmpty())
             .then((seeded) => {
               if (seeded > 0) {

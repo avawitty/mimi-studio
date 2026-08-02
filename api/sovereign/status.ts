@@ -1,5 +1,4 @@
-import { cors, requireMethod, sendError, sendJson } from "../../lib/apiUtils.js";
-import { isSovereignEnabled, resolveSovereignDbPath } from "../../lib/sovereign/db.js";
+import { cors, requireMethod, sendJson } from "../../lib/apiUtils.js";
 
 /** GET /api/sovereign/status — archive health for ops + client degraded mode. */
 export default async function handler(req: any, res: any) {
@@ -7,6 +6,7 @@ export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "GET")) return;
 
   try {
+    const { isSovereignEnabled, resolveSovereignDbPath } = await import("../../lib/sovereign/db.js");
     const { sovereignStatus } = await import("../../lib/sovereign/store.js");
     const status = await sovereignStatus();
     return sendJson(res, 200, {
@@ -18,7 +18,19 @@ export default async function handler(req: any, res: any) {
         : "Sovereign archive offline — Floor may fall back to Firestore",
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error || "unknown");
-    return sendError(res, 500, message.slice(0, 240), "SOVEREIGN_STATUS_FAILED");
+    console.warn("MIMI // sovereign status failed", error);
+    return sendJson(res, 200, {
+      enabled: false,
+      ready: false,
+      backend: null,
+      path: null,
+      zineCount: 0,
+      publicCount: 0,
+      profileCount: 0,
+      pocketCount: 0,
+      enabledFlag: false,
+      message: "Sovereign archive offline — Floor may fall back to Firestore",
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
