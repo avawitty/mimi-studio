@@ -47,6 +47,11 @@ describe("needsMembershipCreditMint", () => {
     expect(needsMembershipCreditMint({})).toBe(true);
   });
 
+  it("mints malformed remaining:0 grants that never received an allowance", () => {
+    expect(needsMembershipCreditMint({ remaining: 0 })).toBe(true);
+    expect(needsMembershipCreditMint({ remaining: 0, allowance: 0 })).toBe(true);
+  });
+
   it("does not mint mid-period when remaining is simply spent", () => {
     expect(
       needsMembershipCreditMint({
@@ -72,10 +77,16 @@ describe("needsMembershipCreditHeal (compat)", () => {
 });
 
 describe("hasTrustedPaidBillingSignal", () => {
-  it("requires a non-promo Stripe customer id (not client-writable grant fields)", () => {
+  it("requires Stripe or patron activation — not a bare plan field", () => {
     expect(hasTrustedPaidBillingSignal({ plan: "lab", mimiPlan: "lab" })).toBe(false);
     expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "promo_code" })).toBe(false);
     expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "cus_123" })).toBe(true);
+    expect(
+      hasTrustedPaidBillingSignal({
+        isPatron: true,
+        patronActivatedAt: Date.now(),
+      }),
+    ).toBe(true);
     expect(
       hasTrustedPaidBillingSignal({
         membershipCredits: { allowance: 10000, remaining: 0 },

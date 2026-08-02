@@ -26,14 +26,15 @@ export function needsMembershipPeriodReload(
 /**
  * Missing/malformed grant — only heal when a trusted billing signal exists.
  * Never mint paid credits from client-writable plan fields alone.
+ * `remaining: 0` without a positive allowance is malformed (not "spent").
  */
 export function needsMembershipCreditMint(
   grant: { remaining?: unknown; allowance?: unknown; periodEndsAt?: unknown } | null | undefined,
 ): boolean {
   if (grant == null || typeof grant !== "object") return true;
-  const hasAllowance = grant.allowance != null && Number.isFinite(Number(grant.allowance));
-  const hasRemaining = grant.remaining != null && Number.isFinite(Number(grant.remaining));
-  return !hasAllowance && !hasRemaining;
+  const allowance = Number(grant.allowance);
+  const hasAllowance = Number.isFinite(allowance) && allowance > 0;
+  return !hasAllowance;
 }
 
 /** @deprecated Use needsMembershipPeriodReload / needsMembershipCreditMint. */
@@ -50,12 +51,20 @@ export function isPaidSubscriptionActive(subscriptionStatus: unknown): boolean {
 }
 
 /**
- * Stripe-backed billing only — never treat client-writable grant fields as trust.
- * Used before minting paid credits from client-writable plan fields.
+ * Trusted signals for minting paid credits. Prefer Stripe; also accept
+ * patron activation (promo/lab seats) which write credits via membershipPipeline.
+ * Never trust a bare client-writable `plan: "lab"` alone.
  */
 export function hasTrustedPaidBillingSignal(data: Record<string, unknown>): boolean {
-  const stripeCustomerId = String(data.stripeCustomerId || "").trim();
-  return Boolean(stripeCustomerId) && !stripeCustomerId.startsWith("promo_");
+  const stripeCustomerId = String(
+    data.stripeCustomerId || (data as any).subscription?.stripeCustomerId || "",
+  ).trim();
+  if (stripeCustomerId && !stripeCustomerId.startsWith("promo_")) return true;
+
+  // Patron / promo lab seats — membershipPipeline sets these on activation.
+  if (data.isPatron === true && (data.patronActivatedAt || data.patronKey)) return true;
+
+  return false;
 }
 
 /** Roll an expired grant forward without re-deriving allowance from client plan. */
@@ -225,8 +234,25 @@ export const resolveMimiFundedGatewayAccess = async (
           return { allowed: false, billable: false, uid: decoded.uid, cost };
         }
 
-        let grant = data.membershipCredits || data.subscription?.credits;
-        const trustedBilling = hasTrustedPaidBillingSignal(data as Record<string, unknown>);
+        // Stripe customer id often lives on billing/subscription, not the user root.
+        let billingData: Record<string, unknown> = {};
+        try {
+          const billingSnap = await userRef.collection("billing").doc("subscription").get();
+          billingData = (billingSnap.data() || {}) as Record<string, unknown>;
+        } catch (err) {
+          console.warn("MIMI // billing/subscription read failed during credit heal:", err);
+        }
+
+        let grant =
+          data.membershipCredits ||
+          data.subscription?.credits ||
+          billingData.credits;
+        const trustedBilling = hasTrustedPaidBillingSignal({
+          ...(data as Record<string, unknown>),
+          ...billingData,
+          stripeCustomerId:
+            data.stripeCustomerId || billingData.stripeCustomerId,
+        });
         const shouldReloadPeriod = needsMembershipPeriodReload(grant);
         const shouldMintMissing = needsMembershipCreditMint(grant) && trustedBilling;
 

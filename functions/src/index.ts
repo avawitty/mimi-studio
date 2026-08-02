@@ -124,8 +124,13 @@ const rollForwardMembershipGrant = (
 };
 
 const hasTrustedStripeBilling = (data: Record<string, unknown>) => {
-  const stripeCustomerId = String(data.stripeCustomerId || '').trim();
-  return Boolean(stripeCustomerId) && !stripeCustomerId.startsWith('promo_');
+  const stripeCustomerId = String(
+    data.stripeCustomerId || (data as any).subscription?.stripeCustomerId || '',
+  ).trim();
+  if (stripeCustomerId && !stripeCustomerId.startsWith('promo_')) return true;
+  // Patron / promo lab seats activated via membershipPipeline.
+  if (data.isPatron === true && (data.patronActivatedAt || data.patronKey)) return true;
+  return false;
 };
 
 const writeMembershipEntitlements = async ({
@@ -354,15 +359,28 @@ app.post('/api/funded-gateway/access', async (req, res) => {
         return;
       }
 
-      let grant = data.membershipCredits || data.subscription?.credits;
-      const hasAllowance = grant?.allowance != null && Number.isFinite(Number(grant.allowance));
-      const hasRemaining = grant?.remaining != null && Number.isFinite(Number(grant.remaining));
+      let billingData: Record<string, unknown> = {};
+      try {
+        const billingSnap = await userRef.collection('billing').doc('subscription').get();
+        billingData = (billingSnap.data() || {}) as Record<string, unknown>;
+      } catch {
+        billingData = {};
+      }
+
+      let grant = data.membershipCredits || data.subscription?.credits || billingData.credits;
+      const allowanceNum = Number(grant?.allowance);
+      const hasAllowance = Number.isFinite(allowanceNum) && allowanceNum > 0;
       const periodEndsAt = Number(grant?.periodEndsAt ?? 0);
       const now = Date.now();
       const needsPeriodReload =
         hasAllowance && Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
-      const trustedBilling = hasTrustedStripeBilling(data as Record<string, unknown>);
-      const needsTrustedMint = !hasAllowance && !hasRemaining && trustedBilling;
+      const trustedBilling = hasTrustedStripeBilling({
+        ...(data as Record<string, unknown>),
+        ...billingData,
+        stripeCustomerId: data.stripeCustomerId || billingData.stripeCustomerId,
+      });
+      // Malformed grant (remaining:0, no positive allowance) needs mint.
+      const needsTrustedMint = !hasAllowance && trustedBilling;
 
       if (needsPeriodReload || needsTrustedMint) {
         const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month') as MimiBillingInterval;

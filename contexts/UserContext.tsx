@@ -470,6 +470,27 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         msg.includes('database connection failed') ||
         (msg.includes('not-found') && msg.includes('database')) ||
         msg.includes('does not exist in project');
+      // AI Gateway credit / sign-in denials mention "billing period" and must NOT
+      // trip Simulated Mode — that was stacking System Dissonance toasts on Lab.
+      const isGatewayCreditNotice =
+        msg.includes('ai gateway') ||
+        msg.includes('membership credits') ||
+        msg.includes('plan credits') ||
+        msg.includes('credits reload') ||
+        msg.includes('billing period') ||
+        msg.includes('sign in to use mimi') ||
+        msg.includes('credits_exhausted') ||
+        msg.includes('oracle could not complete') ||
+        msg.includes('personal api keys are optional') ||
+        msg.includes('personal gateway key');
+
+      if (isGatewayCreditNotice) {
+        // Unstick false-positive Simulated Mode from older "billing period" matches.
+        setIsSimulatedMode(false);
+        setIsDatabaseMissing(false);
+        return;
+      }
+
       const isBillingOrLimit =
         msg.includes('dunning') ||
         msg.includes('billing') ||

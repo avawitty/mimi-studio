@@ -8,18 +8,22 @@ export const RegistryAlert: React.FC = () => {
 
  useEffect(() => {
  const handleAlert = (e: any) => {
- const id = Math.random().toString(36).substr(2, 9);
- const newAlert = { id, ...e.detail };
- setAlerts(prev => [...prev, newAlert]);
- 
- // Trigger sound based on alert type
+ const message = String(e.detail?.message || "").trim();
+ // Dedupe identical toasts — gateway/credit failures were stacking System Dissonance.
+ setAlerts((prev) => {
+   if (message && prev.some((a) => String(a.message || "").trim() === message)) {
+     return prev;
+   }
+   const id = Math.random().toString(36).substr(2, 9);
+   const newAlert = { id, ...e.detail };
+   setTimeout(() => {
+     setAlerts((current) => current.filter((a) => a.id !== id));
+   }, 5000);
+   return [...prev, newAlert];
+ });
+
  const soundType = e.detail.type === 'error' ? 'error' : 'success';
  window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: soundType } }));
- 
- // Auto-remove after 5 seconds
- setTimeout(() => {
- setAlerts(prev => prev.filter(a => a.id !== id));
- }, 5000);
  };
 
  window.addEventListener('mimi:registry_alert', handleAlert);

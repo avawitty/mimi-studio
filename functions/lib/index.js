@@ -150,8 +150,14 @@ const rollForwardMembershipGrant = (grant, interval = 'month', now = Date.now())
     };
 };
 const hasTrustedStripeBilling = (data) => {
-    const stripeCustomerId = String(data.stripeCustomerId || '').trim();
-    return Boolean(stripeCustomerId) && !stripeCustomerId.startsWith('promo_');
+    var _a;
+    const stripeCustomerId = String(data.stripeCustomerId || ((_a = data.subscription) === null || _a === void 0 ? void 0 : _a.stripeCustomerId) || '').trim();
+    if (stripeCustomerId && !stripeCustomerId.startsWith('promo_'))
+        return true;
+    // Patron / promo lab seats activated via membershipPipeline.
+    if (data.isPatron === true && (data.patronActivatedAt || data.patronKey))
+        return true;
+    return false;
 };
 const writeMembershipEntitlements = async ({ uid, plan, interval = 'month', stripeCustomerId, status = 'active', }) => {
     const mimiPlan = normalizeMimiPlan(plan);
@@ -330,14 +336,23 @@ app.post('/api/funded-gateway/access', async (req, res) => {
                 res.status(200).send({ allowed: false, billable: false, uid: decoded.uid, cost });
                 return;
             }
-            let grant = data.membershipCredits || ((_b = data.subscription) === null || _b === void 0 ? void 0 : _b.credits);
-            const hasAllowance = (grant === null || grant === void 0 ? void 0 : grant.allowance) != null && Number.isFinite(Number(grant.allowance));
-            const hasRemaining = (grant === null || grant === void 0 ? void 0 : grant.remaining) != null && Number.isFinite(Number(grant.remaining));
+            let billingData = {};
+            try {
+                const billingSnap = await userRef.collection('billing').doc('subscription').get();
+                billingData = (billingSnap.data() || {});
+            }
+            catch (_g) {
+                billingData = {};
+            }
+            let grant = data.membershipCredits || ((_b = data.subscription) === null || _b === void 0 ? void 0 : _b.credits) || billingData.credits;
+            const allowanceNum = Number(grant === null || grant === void 0 ? void 0 : grant.allowance);
+            const hasAllowance = Number.isFinite(allowanceNum) && allowanceNum > 0;
             const periodEndsAt = Number((_c = grant === null || grant === void 0 ? void 0 : grant.periodEndsAt) !== null && _c !== void 0 ? _c : 0);
             const now = Date.now();
             const needsPeriodReload = hasAllowance && Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
-            const trustedBilling = hasTrustedStripeBilling(data);
-            const needsTrustedMint = !hasAllowance && !hasRemaining && trustedBilling;
+            const trustedBilling = hasTrustedStripeBilling(Object.assign(Object.assign(Object.assign({}, data), billingData), { stripeCustomerId: data.stripeCustomerId || billingData.stripeCustomerId }));
+            // Malformed grant (remaining:0, no positive allowance) needs mint.
+            const needsTrustedMint = !hasAllowance && trustedBilling;
             if (needsPeriodReload || needsTrustedMint) {
                 const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month');
                 const credits = needsPeriodReload
