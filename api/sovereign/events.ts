@@ -1,7 +1,10 @@
 import { cors, requireMethod, sendError } from "../../lib/apiUtils.js";
 import { resolveSovereignRequesterUid } from "../../lib/sovereign/auth.js";
 import { isSovereignEnabled } from "../../lib/sovereign/db.js";
-import { subscribeSovereignEvents } from "../../lib/sovereign/events.js";
+import {
+  publicFloorSsePayload,
+  subscribeSovereignEvents,
+} from "../../lib/sovereign/events.js";
 import { sovereignStatus } from "../../lib/sovereign/store.js";
 
 /**
@@ -44,18 +47,10 @@ export default async function handler(req: any, res: any) {
 
     const unsubscribe = subscribeSovereignEvents((event) => {
       if (scope === "public") {
-        // Public SSE is unauthenticated — never leak private upsert metadata (userId).
-        // Public publishes go through; unpublish/delete only nudge with id so Floor refetches.
-        if (event.type === "zine_upsert" && event.isPublic) {
-          res.write(`event: zine\ndata: ${JSON.stringify(event)}\n\n`);
-        } else if (event.type === "zine_upsert" && !event.isPublic) {
-          res.write(
-            `event: zine\ndata: ${JSON.stringify({ type: "zine_delete", id: event.id })}\n\n`,
-          );
-        } else if (event.type === "zine_delete") {
-          res.write(
-            `event: zine\ndata: ${JSON.stringify({ type: "zine_delete", id: event.id })}\n\n`,
-          );
+        // Unauthenticated — only public publishes + wasPublic unpublish/delete nudges.
+        const payload = publicFloorSsePayload(event);
+        if (payload) {
+          res.write(`event: zine\ndata: ${JSON.stringify(payload)}\n\n`);
         }
         return;
       }

@@ -359,11 +359,12 @@ export const upsertZine = async (
   }
 
   const existing = await db
-    .prepare("SELECT user_id FROM zines WHERE id = ?")
-    .get<{ user_id: string }>(zine.id);
+    .prepare("SELECT user_id, is_public FROM zines WHERE id = ?")
+    .get<{ user_id: string; is_public: number | string }>(zine.id);
   if (existing?.user_id && existing.user_id !== zine.userId) {
     throw new Error("Zine id is owned by another user");
   }
+  const wasPublic = Number(existing?.is_public) === 1;
 
   const now = Date.now();
   const isPublic = zine.isPublic ? 1 : 0;
@@ -417,6 +418,7 @@ export const upsertZine = async (
     id: zine.id,
     userId: zine.userId,
     isPublic: Boolean(isPublic),
+    wasPublic,
   });
   // AI Gateway embedding index (async; skipped when no gateway credential).
   if (!opts?.skipEmbed) {
@@ -481,6 +483,12 @@ export const replaceAllZines = async (
 export const deleteZine = async (id: string, userId?: string): Promise<boolean> => {
   const db = await getSovereignDb();
   if (!db || !id) return false;
+  const existing = await db
+    .prepare("SELECT user_id, is_public FROM zines WHERE id = ?")
+    .get<{ user_id: string; is_public: number | string }>(id);
+  if (!existing) return false;
+  if (userId && existing.user_id !== userId) return false;
+  const wasPublic = Number(existing.is_public) === 1;
   const result = userId
     ? await db.prepare("DELETE FROM zines WHERE id = ? AND user_id = ?").run(id, userId)
     : await db.prepare("DELETE FROM zines WHERE id = ?").run(id);
@@ -490,7 +498,8 @@ export const deleteZine = async (id: string, userId?: string): Promise<boolean> 
     emitSovereignEvent({
       type: "zine_delete",
       id,
-      userId: userId || "",
+      userId: userId || existing.user_id || "",
+      wasPublic,
     });
   }
   return changed;
@@ -611,20 +620,24 @@ export const importZines = async (
   let imported = 0;
   let skipped = 0;
 
-  // Sequential upserts (no shared prepare hijack). Embeds deferred to reindex.
-  for (const zine of batch) {
-    if (!zine?.id || !zine.userId) {
-      skipped += 1;
-      continue;
+  // One transaction — process exit / open failure mid-batch cannot leave a
+  // half-written import. Per-row skips stay inside the tx (bad rows don't abort).
+  await db.withTransaction(async (tx) => {
+    for (const zine of batch) {
+      if (!zine?.id || !zine.userId) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        await upsertZine(zine, { skipEmbed: true, db: tx, quiet: true });
+        imported += 1;
+      } catch {
+        skipped += 1;
+      }
     }
-    try {
-      await upsertZine(zine, { skipEmbed: true });
-      imported += 1;
-    } catch {
-      skipped += 1;
-    }
-  }
+  });
 
+  cacheInvalidatePrefix("floor:");
   return { imported, skipped, truncated };
 };
 

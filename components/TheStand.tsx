@@ -154,24 +154,17 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
           setFloorSearchApplied('');
           return;
         }
-        // Search is active — refresh hybrid results so deletes/unpublishes drop out.
+        // Search is active — re-run hybrid search so deletes/unpublishes drop out.
+        // On miss/503 keep current hits: pruning against the recency browse shelf
+        // would drop valid semantic-only matches that never appear there.
         void fetchSovereignCommunityZines(40, q)
           .then((results) => {
-            if (cancelled) return;
-            if (results) {
-              setCommunityZines(results);
-              setFloorSearchApplied(q);
-              return;
-            }
-            // Miss/503: prune search hits against the refreshed browse shelf so
-            // unpublished/deleted ids cannot linger until the next successful search.
-            const browseIds = new Set(list.map((z) => z.id).filter(Boolean));
-            setCommunityZines((prev) => prev.filter((z) => z?.id && browseIds.has(z.id)));
+            if (cancelled || !results) return;
+            setCommunityZines(results);
+            setFloorSearchApplied(q);
           })
           .catch(() => {
-            if (cancelled) return;
-            const browseIds = new Set(list.map((z) => z.id).filter(Boolean));
-            setCommunityZines((prev) => prev.filter((z) => z?.id && browseIds.has(z.id)));
+            // keep current search hits
           });
       }, { limit: 40 });
     })();
