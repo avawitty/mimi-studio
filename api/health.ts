@@ -21,19 +21,15 @@ export default async function handler(req: any, res: any) {
     pocketCount: 0,
   };
   try {
-    // Dynamic import so a sovereign/driver crash cannot take down /api/health.
     const { sovereignStatus } = await import("../lib/sovereign/store.js");
     sovereign = await sovereignStatus();
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error || "unknown");
     console.warn("MIMI // health: sovereign status failed", error);
     sovereign = {
       ...sovereign,
-      error: message.slice(0, 240),
+      error: error instanceof Error ? error.message : String(error),
     };
   }
-
-  const openaiKey = process.env["OPENAI" + "_API_KEY"];
 
   sendJson(res, 200, {
     ok: true,
@@ -42,7 +38,7 @@ export default async function handler(req: any, res: any) {
       serverAiEnabled,
       defaultProvider: aiGatewayAvailable ? "gateway" : "legacy",
       gemini: serverAiEnabled && Boolean(process.env.GEMINI_API_KEY || process.env.API_KEY),
-      openai: serverAiEnabled && Boolean(openaiKey),
+      openai: serverAiEnabled && Boolean(process.env['OPENAI_API_KEY']),
       anthropic: serverAiEnabled && Boolean(process.env.ANTHROPIC_API_KEY),
       openrouter: serverAiEnabled && Boolean(process.env.OPENROUTER_API_KEY),
       aiGateway: aiGatewayAvailable,

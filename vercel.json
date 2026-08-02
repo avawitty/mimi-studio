@@ -19,6 +19,9 @@
     "api/sovereign/import.ts": {
       "maxDuration": 60
     },
+    "api/sovereign/reindex.ts": {
+      "maxDuration": 60
+    },
     "api/sovereign/events.ts": {
       "maxDuration": 60
     },
@@ -85,6 +88,14 @@
     {
       "source": "/.well-known/openai-apps-challenge",
       "destination": "/api/openai-apps-challenge"
+    },
+    {
+      "source": "/api/sovereign/zines/:id",
+      "destination": "/api/sovereign/zine?id=:id"
+    },
+    {
+      "source": "/api/sovereign/zines",
+      "destination": "/api/sovereign/zine"
     },
     {
       "source": "/u/:handle/feed.xml",

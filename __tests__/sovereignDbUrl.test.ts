@@ -5,7 +5,7 @@ import {
   looksLikePostgresUrl,
   resolvePostgresUrl,
 } from "../lib/sovereign/db";
-import { stripPgSslQueryParams, toPgPlaceholders } from "../lib/sovereign/postgresDriver";
+import { normalizePostgresConnectionString } from "../lib/sovereign/postgresDriver";
 
 const keys = [
   "MIMI_SOVEREIGN_DATABASE_URL",
@@ -44,19 +44,13 @@ describe("sovereign db url resolution", () => {
     expect(resolvePostgresUrl()).toContain("ep-b");
   });
 
-  it("strips sslmode/uselibpqcompat/channel_binding so drivers control TLS", () => {
-    const raw =
-      "postgresql://u:p@ep-x.neon.tech/neondb?sslmode=require&uselibpqcompat=true&channel_binding=require";
-    const cleaned = stripPgSslQueryParams(raw);
-    expect(cleaned).not.toMatch(/sslmode=/i);
-    expect(cleaned).not.toMatch(/uselibpqcompat=/i);
-    expect(cleaned).not.toMatch(/channel_binding=/i);
-    expect(cleaned).toContain("ep-x.neon.tech");
-  });
-
-  it("converts sqlite-style placeholders to postgres", () => {
-    expect(toPgPlaceholders("SELECT * FROM zines WHERE id = ? AND user_id = ?")).toBe(
-      "SELECT * FROM zines WHERE id = $1 AND user_id = $2",
+  it("strips sslmode/uselibpqcompat/channel_binding so Pool ssl owns cert verification", () => {
+    const normalized = normalizePostgresConnectionString(
+      "postgresql://u:p@ep-x.neon.tech/neondb?sslmode=require&uselibpqcompat=true&channel_binding=require",
     );
+    expect(normalized).not.toMatch(/sslmode=/i);
+    expect(normalized).not.toMatch(/uselibpqcompat=/i);
+    expect(normalized).not.toMatch(/channel_binding=/i);
+    expect(normalized).toContain("ep-x.neon.tech");
   });
 });

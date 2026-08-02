@@ -2,30 +2,22 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   INDEX_SQL,
-  MIGRATION_SQL,
   SCHEMA_SQL,
+  applySchemaMigrations,
   type SovereignDriver,
   type SovereignRunResult,
   type SovereignStatement,
 } from "./driver.js";
 
-/**
- * Local / Fly SQLite backend. `node:sqlite` is loaded inside this function so
- * serverless bundlers that accidentally include the file do not evaluate the
- * import at module load (Vercel Node often lacks `node:sqlite`).
- */
 export const openSqliteDriver = async (dbPath: string): Promise<SovereignDriver> => {
   const { DatabaseSync } = await import("node:sqlite");
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
+  db.exec("PRAGMA journal_mode = WAL;");
+  db.exec("PRAGMA synchronous = NORMAL;");
+  db.exec("PRAGMA foreign_keys = ON;");
+  db.exec("PRAGMA busy_timeout = 5000;");
   db.exec(SCHEMA_SQL);
-  for (const sql of MIGRATION_SQL) {
-    try {
-      db.exec(sql);
-    } catch {
-      // column may already exist
-    }
-  }
   for (const sql of INDEX_SQL) {
     try {
       db.exec(sql);
@@ -48,15 +40,38 @@ export const openSqliteDriver = async (dbPath: string): Promise<SovereignDriver>
     };
   };
 
-  return {
+  const driver: SovereignDriver = {
     backend: "sqlite",
     pathOrUrl: dbPath,
     exec: async (sql: string) => {
       db.exec(sql);
     },
     prepare,
+    withTransaction: async <T>(fn: () => Promise<T>): Promise<T> => {
+      db.exec("BEGIN");
+      try {
+        const value = await fn();
+        db.exec("COMMIT");
+        return value;
+      } catch (error) {
+        try {
+          db.exec("ROLLBACK");
+        } catch {
+          // ignore
+        }
+        throw error;
+      }
+    },
+    ping: async () => {
+      const started = Date.now();
+      db.prepare("SELECT 1").get();
+      return Date.now() - started;
+    },
     close: async () => {
       db.close();
     },
   };
+
+  await applySchemaMigrations(driver);
+  return driver;
 };
