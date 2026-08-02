@@ -2,6 +2,7 @@ import { UsedContextSnapshot, ZineMetadata } from "../types";
 import { sanitizeUsedContextForExport } from "../lib/privacyUtils";
 import { getEditorialCompileExport } from "../lib/editCompileExport";
 import { readStudioCoverOverlays } from "../lib/studioCoverExport";
+import { summarizePagesForExport, type StructuredPdfPageSummary } from "../lib/structuredZinePdf";
 
 export interface ExportDiagnostic {
   id: string;
@@ -26,6 +27,10 @@ export interface ExportManifest {
   editorialCompileLinkVersion?: number;
   studioCoverOverlays?: ReturnType<typeof readStudioCoverOverlays>;
   coverOverlayBaked?: boolean;
+  /** Plate summaries for Press — geometry stays on the artifact pages. */
+  pages?: StructuredPdfPageSummary[];
+  /** How PDF extraction should be produced for this pack. */
+  pdfMode?: "structured" | "raster";
   exportedAt: number;
   diagnostics: ExportDiagnostic[];
 }
@@ -158,6 +163,8 @@ export function buildExportManifest(
     editorialCompileLinkVersion,
     studioCoverOverlays,
     coverOverlayBaked,
+    pages: summarizePagesForExport(metadata),
+    pdfMode: "structured",
     exportedAt: Date.now(),
     diagnostics,
   };

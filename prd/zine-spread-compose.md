@@ -23,12 +23,19 @@ Zines are structured AI issues, but Visual Plates render as a fixed L/R template
 
 - Full print imposition / bind workflow (product is not a print shop).
 - Rewriting `ZineLayoutEditor` chrome in this pass (wire + house defaults only).
-- Structured vector PDF (follow-up).
+- Pixel-perfect Cormorant embedding inside PDF (structured PDF uses Times/Helvetica; brand fonts stay in the reader).
+
+## Follow-up (landed in same track)
+
+- **Structured archival PDF** via `lib/structuredZinePdf.ts` — ExportChamber PDF no longer html2canvas-rasters `#export-target`.
+- **Edit issue-spreads panel** — The Edit compile surfaces recent issues with Compose entry points.
+- Export manifest carries `pages[]` summaries + `pdfMode: "structured"`.
 
 ## Acceptance
 
 - Owner on `/zine/:id` can Compose a plate, save, reload, and see the composed spread.
 - Non-owners / public share still render saved `customLayout` read-only.
-- `npm run verify:zine-spread-compose` and `npm run verify:zine-visual-policy` pass.
+- `npm run verify:zine-spread-compose`, `npm run verify:structured-zine-pdf`, and `npm run verify:zine-visual-policy` pass.
 - Hi-fi + non-lite issues pass `autoDevelop` to Visualizer for hero/plates.
 - Signature Takeaways plate has no `#F5F2EA` cream fill.
+- ExportChamber PDF path calls `downloadStructuredZinePdf` (no html2canvas in that branch).

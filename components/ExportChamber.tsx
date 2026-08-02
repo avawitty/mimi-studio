@@ -18,8 +18,8 @@ import {
   validateExportManifest,
 } from '../services/exportManifestService';
 import { resolveZineExportCoverUrl } from '../lib/studioCoverExport';
+import { downloadStructuredZinePdf } from '../lib/structuredZinePdf';
 import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import JSZip from 'jszip';
 
 interface ExportChamberProps {
@@ -37,7 +37,7 @@ const SECTION_DEFS = [
 ];
 
 const EXPORT_MODES = [
- { id: 'pdf', label: 'EXPORT AS FLATTENED PDF', desc: 'Standard architectural layout calibrated for physical ink manifestation and archival binding.', icon: <Printer size={16} /> },
+ { id: 'pdf', label: 'STRUCTURED ARCHIVAL PDF', desc: 'A4 issue pages drawn from metadata — text, plates, and composed spreads — without DOM screenshot rasterization.', icon: <Printer size={16} /> },
  { id: 'assets', label: 'EXTRACT RAW VISUAL ASSETS (.ZIP)', desc: 'Separated high-fidelity cards. Designed for individual saving or social carousel processing.', icon: <Image size={16} /> },
  { id: 'shopify', label: 'SHOPIFY PRODUCT PACK (.ZIP)', desc: 'Product CSV, JSON-LD schema, and theme embed for Shopify Admin import or SEO apps.', icon: <ShoppingBag size={16} /> }
 ];
@@ -219,52 +219,11 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
   };
 
   const generatePDF = async () => {
-
- const doc = new jsPDF({
- orientation: 'p',
- unit: 'mm',
- format: 'a4'
- });
-
- const target = document.getElementById('export-target');
- if (!target) throw new Error("Capture target missing");
-
- // CRITICAL: Convert to Base64 to bypass CORS in html2canvas
- await convertImagesToBase64(target);
- await waitForImages(target);
-
- const sections = target.querySelectorAll('.export-section');
- const pageWidth = doc.internal.pageSize.getWidth();
- const pageHeight = doc.internal.pageSize.getHeight();
-
- for (let i = 0; i < sections.length; i++) {
- const section = sections[i] as HTMLElement;
- 
- // Ensure visibility for capture
- const originalStyle = section.style.cssText;
- section.style.width = '793px'; // A4 width at 96 DPI approx
-  section.style.margin = '0';
-  section.style.boxSizing = 'border-box';
-  section.style.overflow = 'hidden';
- section.style.height = '1122px'; // A4 height
- 
- const canvas = await html2canvas(section, {
- scale: 2,
- useCORS: true,
- logging: false,
- backgroundColor: '#ffffff'
- });
- 
- // Restore style
- section.style.cssText = originalStyle;
-
- const imgData = canvas.toDataURL('image/jpeg', 0.95);
- if (i > 0) doc.addPage();
- doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight);
- }
- 
- doc.save(`Mimi_${metadata.title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
- };
+    await downloadStructuredZinePdf(metadata, {
+      sections: selectedSections,
+      includeCustomLayouts: true,
+    });
+  };
 
  const handleExport = async () => {
  if (isGenerating) return;
@@ -287,14 +246,8 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  }
 
  try {
- const element = document.getElementById('export-target');
- if (!element) throw new Error("Capture target not found");
-
- // Robust Image Handling for both modes
- await convertImagesToBase64(element);
- await waitForImages(element);
-
  if (exportMode === 'pdf') {
+        // Structured path — no DOM capture / no mutation of #export-target.
         await generatePDF();
     } else if (exportMode === 'assets') {
         await generateAssetsZip();
@@ -311,7 +264,11 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
         const product = buildShopifyProductFromZine(metadata, { price: shopifyPrice });
         await downloadShopifyProductPack(product, manifest);
     } else {
- // Scroll Mode (PNG/JPG)
+ const element = document.getElementById('export-target');
+ if (!element) throw new Error("Capture target not found");
+ await convertImagesToBase64(element);
+ await waitForImages(element);
+ // Scroll Mode (PNG/JPG) — still rasterizes the preview strip.
  const canvas = await html2canvas(element, {
  scale: 2,
  useCORS: true,
@@ -548,13 +505,16 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  <div key={`plate-${i}`} className={blockClass}>
  <div className="flex justify-between items-end mb-6 opacity-50">
  <span className="font-mono text-[9px]">FIG_0{i+1}</span>
- <span className="font-sans text-[7px] uppercase tracking-widest font-black">Visual Plate</span>
+ <span className="font-sans text-[7px] uppercase tracking-widest font-black">
+   {page.customLayout?.elements?.length ? 'Composed Spread' : 'Visual Plate'}
+ </span>
  </div>
  <div className="aspect-[3/4] w-full overflow-hidden mb-8 bg-nous-base">
  <img 
  src={page.image_url} 
- className="w-full h-full object-cover grayscale"
+ className="w-full h-full object-cover opacity-100 grayscale-0"
  crossOrigin="anonymous"
+ alt=""
  />
  </div>
  <h2 className="font-serif text-3xl italic tracking-tight uppercase mb-4 text-nous-text text-nous-text">{page.headline}</h2>

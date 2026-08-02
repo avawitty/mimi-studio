@@ -58,7 +58,11 @@ assert.doesNotMatch(reveal, /bg-\[#F5F2EA\]/, "Signature Takeaways must not use 
 const types = read("types.ts");
 assert.match(types, /customLayout\?:/, "ZinePageSpec must persist customLayout.");
 
+const exportChamber = read("components/ExportChamber.tsx");
+assert.match(exportChamber, /downloadStructuredZinePdf/, "Press PDF must use structured export.");
+
 console.log("✓ Zine spread compose verified");
 console.log("  - layout helpers + mode grammar");
 console.log("  - reveal compose + canvas wiring");
 console.log("  - hi-fi auto-develop + no cream takeaways");
+console.log("  - structured PDF wired in ExportChamber");
