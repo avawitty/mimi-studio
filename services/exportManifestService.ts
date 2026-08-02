@@ -3,6 +3,7 @@ import { sanitizeUsedContextForExport } from "../lib/privacyUtils";
 import { getEditorialCompileExport } from "../lib/editCompileExport";
 import { readStudioCoverOverlays } from "../lib/studioCoverExport";
 import { summarizePagesForExport, type StructuredPdfPageSummary } from "../lib/structuredZinePdf";
+import { hydrateLegacyZineMetadata } from "../lib/zine/zineMigrations";
 
 export interface ExportDiagnostic {
   id: string;
@@ -39,6 +40,7 @@ export function buildExportManifest(
   metadata: ZineMetadata,
   snapshots?: UsedContextSnapshot[],
 ): ExportManifest {
+  metadata = hydrateLegacyZineMetadata(metadata);
   const usedContextSnapshots = sanitizeUsedContextForExport(
     snapshots ||
     metadata.usedContextSnapshots ||

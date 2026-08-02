@@ -9,6 +9,7 @@ import type {
   ZineMetadata,
   ZineSourceAsset,
   ZineSourcePacket,
+  UsedContextSnapshot,
 } from "../../types";
 import { resolveIssueMode } from "../zineSpreadLayout";
 import {
@@ -80,15 +81,18 @@ function sourceAssetFromMedia(media: MediaFile, index: number): ZineSourceAsset 
 
 function normalizeSourcePacket(metadata: ZineMetadata): ZineSourcePacket {
   const stored = metadata.sourcePacket;
-  const usedContextSnapshots = (
-    stored?.usedContextSnapshots ||
-    metadata.usedContextSnapshots ||
-    (metadata.fragmentsUsed || []).map((atomId) => ({
+  const fallbackSnapshots: UsedContextSnapshot[] = (metadata.fragmentsUsed || []).map(
+    (atomId) => ({
       atomId,
       title: "Fragment",
       content: "",
-    }))
-  ).map((snapshot) => ({
+    }),
+  );
+  const snapshots: UsedContextSnapshot[] =
+    stored?.usedContextSnapshots ||
+    metadata.usedContextSnapshots ||
+    fallbackSnapshots;
+  const usedContextSnapshots = snapshots.map((snapshot) => ({
     ...snapshot,
     visibility: snapshot.visibility
       ? { ...snapshot.visibility }

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ZinePageRenderer } from "../components/zine/ZinePageRenderer";
 import { normalizeZineArtifact } from "../lib/zine/normalizeZineArtifact";
-import type { ZinePageGrammar } from "../types";
+import type { ZinePageGrammar, ZinePageSpec } from "../types";
 import { makeLegacyZineMetadata } from "./fixtures/zineMetadata";
 
 const GRAMMARS: ZinePageGrammar[] = [
@@ -17,7 +17,7 @@ const GRAMMARS: ZinePageGrammar[] = [
 describe("exemplary zine page grammars", () => {
   it.each(GRAMMARS)("renders the %s grammar as a 4:5 page", (grammar) => {
     const artifact = normalizeZineArtifact(makeLegacyZineMetadata());
-    const page = {
+    const page: ZinePageSpec = {
       ...artifact.pages[0],
       grammar,
       customLayout: undefined,

@@ -3,6 +3,7 @@ import {
   buildExportManifest,
   validateExportManifest,
 } from "../services/exportManifestService";
+import type { ZineMetadata } from "../types";
 import { makeLegacyZineMetadata } from "./fixtures/zineMetadata";
 
 describe("zine export privacy and ownership", () => {
@@ -24,7 +25,7 @@ describe("zine export privacy and ownership", () => {
 
   it("refuses editorial compile metadata owned by another user", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const metadata = {
+    const metadata: ZineMetadata = {
       ...makeLegacyZineMetadata(),
       editorialCompileMarkdown: "# Foreign compile",
       editorialCompileOwnerUid: "another-owner",
@@ -45,7 +46,7 @@ describe("zine export privacy and ownership", () => {
     };
     expect(validateExportManifest(buildExportManifest(metadata)).ok).toBe(true);
 
-    const invalid = {
+    const invalid: ZineMetadata = {
       ...metadata,
       title: "",
       content: { ...metadata.content, title: undefined },

@@ -6,11 +6,15 @@ import {
   summarizePagesForExport,
 } from "../lib/structuredZinePdf";
 import { buildExportManifest } from "../services/exportManifestService";
+import type { ZinePageSpec } from "../types";
 import { makeLegacyZineMetadata } from "./fixtures/zineArtifactFixture";
 
 const metadata = makeLegacyZineMetadata();
-const pages = JSON.parse(metadata.content.pagesJson || "[]").map(
-  (page: Record<string, unknown>) => ({
+const legacyPages = JSON.parse(
+  metadata.content.pagesJson || "[]",
+) as ZinePageSpec[];
+const pages: ZinePageSpec[] = legacyPages.map(
+  (page): ZinePageSpec => ({
     ...page,
     image_url: undefined,
     originalMediaUrl: undefined,

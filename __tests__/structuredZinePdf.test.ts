@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildStructuredZinePdf, summarizePagesForExport } from "../lib/structuredZinePdf";
-import type { ZineMetadata } from "../types";
+import type { ZineMetadata, ZinePageSpec } from "../types";
 import { makeLegacyZineMetadata } from "./fixtures/zineMetadata";
 
 const base = {
@@ -63,8 +63,11 @@ describe("structuredZinePdf", () => {
 
   it("hydrates legacy pagesJson and includes every approved page", async () => {
     const metadata = makeLegacyZineMetadata();
-    const pages = JSON.parse(metadata.content.pagesJson || "[]").map(
-      (page: Record<string, unknown>) => ({
+    const legacyPages = JSON.parse(
+      metadata.content.pagesJson || "[]",
+    ) as ZinePageSpec[];
+    const pages: ZinePageSpec[] = legacyPages.map(
+      (page): ZinePageSpec => ({
         ...page,
         image_url: undefined,
         originalMediaUrl: undefined,
