@@ -250,3 +250,69 @@ export const fetchSovereignPocketItems = async (
     return null;
   }
 };
+
+export type SovereignLiveScope = "public" | "user";
+
+export type SovereignLiveHandlers = {
+  onZine?: () => void;
+  onPocket?: () => void;
+  onHello?: (payload: unknown) => void;
+  onUnsupported?: () => void;
+};
+
+/**
+ * Live Floor / Mine updates via SSE on long-lived Express hosts.
+ * Returns null when EventSource is unavailable; callers should poll.
+ * On Vercel/serverless the route returns 501 — onerror fires onUnsupported.
+ */
+export const subscribeSovereignLive = (
+  scope: SovereignLiveScope,
+  handlers: SovereignLiveHandlers,
+  opts?: { userId?: string },
+): (() => void) | null => {
+  if (typeof EventSource === "undefined") return null;
+
+  const params = new URLSearchParams({ scope });
+  if (scope === "user" && opts?.userId) {
+    params.set("userId", opts.userId);
+  }
+
+  let closed = false;
+  let es: EventSource;
+  try {
+    es = new EventSource(`/api/sovereign/events?${params}`, {
+      withCredentials: true,
+    } as EventSourceInit);
+  } catch {
+    return null;
+  }
+
+  let sawHello = false;
+  es.addEventListener("hello", (ev) => {
+    sawHello = true;
+    try {
+      handlers.onHello?.(JSON.parse((ev as MessageEvent).data || "{}"));
+    } catch {
+      handlers.onHello?.(null);
+    }
+  });
+  es.addEventListener("zine", () => {
+    handlers.onZine?.();
+  });
+  es.addEventListener("pocket", () => {
+    handlers.onPocket?.();
+  });
+  es.onerror = () => {
+    // First connection failure on serverless → fall back to polling.
+    if (!sawHello && !closed) {
+      handlers.onUnsupported?.();
+      closed = true;
+      es.close();
+    }
+  };
+
+  return () => {
+    closed = true;
+    es.close();
+  };
+};

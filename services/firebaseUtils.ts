@@ -946,37 +946,6 @@ export const fetchUserZines = async (uid: string, forceRefresh = false) => {
     }
 };
 
-export const subscribeToUserZines = (
-  uid: string,
-  callback: (data: ZineMetadata[]) => void,
-  onError?: (error: unknown) => void,
-) => {
-  if (!uid || uid === 'ghost' || !isFullyAuthenticated()) {
-    callback([]);
-    return () => {};
-  }
-  let q;
-  if (uid === auth.currentUser.uid) {
-    q = query(collection(db, "zines"), where("userId", "==", uid));
-  } else {
-    q = query(collection(db, "zines"), where("userId", "==", uid), where("isPublic", "==", true));
-  }
-  return onSnapshot(q, (snapshot) => {
-    const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
-    const sorted = docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    zineCache[uid] = { data: sorted, timestamp: Date.now() }; // Update cache on snapshot
-    callback(sorted);
-  }, (error: any) => {
-    if (error.code === 'permission-denied' && auth.currentUser?.uid !== uid) {
-      console.warn(`MIMI // Ignored permission-denied for zines/${uid} due to auth state change.`);
-      onError?.(error);
-      return;
-    }
-    logFirestoreError(error, OperationType.LIST, "zines");
-    onError?.(error);
-  });
-};
-
 /** Cap Firestore community scans; prefer sovereign archive when available. */
 const COMMUNITY_ZINE_READ_CAP = 60;
 
@@ -988,6 +957,106 @@ const isFirestoreQuotaError = (error: unknown): boolean => {
     message.includes("RESOURCE_EXHAUSTED") ||
     message.includes("Quota exceeded")
   );
+};
+
+export const subscribeToUserZines = (
+  uid: string,
+  callback: (data: ZineMetadata[]) => void,
+  onError?: (error: unknown) => void,
+) => {
+  if (!uid || uid === 'ghost' || !isFullyAuthenticated()) {
+    callback([]);
+    return () => {};
+  }
+
+  let cancelled = false;
+  let unsubFirestore = () => {};
+  let unsubLive: (() => void) | null = null;
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  const publicOnly = !(auth.currentUser && uid === auth.currentUser.uid);
+
+  const hydrateSovereign = async () => {
+    try {
+      const { fetchSovereignUserZines, isSovereignOnline } = await import("./sovereignClient");
+      const online = await isSovereignOnline();
+      const sovereign = await fetchSovereignUserZines(uid, { publicOnly });
+      if (cancelled) return online;
+      if (sovereign !== null) {
+        const sorted = [...sovereign].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        zineCache[uid] = { data: sorted, timestamp: Date.now() };
+        callback(sorted);
+        return online;
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  };
+
+  const startPolling = () => {
+    if (pollTimer || cancelled) return;
+    pollTimer = setInterval(() => {
+      void hydrateSovereign();
+    }, 45_000);
+  };
+
+  (async () => {
+    const sovereignOnline = await hydrateSovereign();
+    if (cancelled) return;
+
+    if (sovereignOnline) {
+      const { subscribeSovereignLive } = await import("./sovereignClient");
+      unsubLive = subscribeSovereignLive(
+        "user",
+        {
+          onZine: () => {
+            void hydrateSovereign();
+          },
+          onUnsupported: () => {
+            unsubLive = null;
+            startPolling();
+          },
+        },
+        { userId: uid },
+      );
+      if (!unsubLive) startPolling();
+      return;
+    }
+
+    let q;
+    if (uid === auth.currentUser?.uid) {
+      q = query(collection(db, "zines"), where("userId", "==", uid));
+    } else {
+      q = query(collection(db, "zines"), where("userId", "==", uid), where("isPublic", "==", true));
+    }
+    unsubFirestore = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
+      const sorted = docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      zineCache[uid] = { data: sorted, timestamp: Date.now() };
+      callback(sorted);
+    }, (error: any) => {
+      if (error.code === 'permission-denied' && auth.currentUser?.uid !== uid) {
+        console.warn(`MIMI // Ignored permission-denied for zines/${uid} due to auth state change.`);
+        onError?.(error);
+        return;
+      }
+      if (isFirestoreQuotaError(error)) {
+        console.warn("MIMI // Mine subscribe: Firestore quota exhausted — use sovereign host");
+        onError?.(error);
+        return;
+      }
+      logFirestoreError(error, OperationType.LIST, "zines");
+      onError?.(error);
+    });
+  })();
+
+  return () => {
+    cancelled = true;
+    unsubFirestore();
+    unsubLive?.();
+    if (pollTimer) clearInterval(pollTimer);
+  };
 };
 
 export const fetchCommunityZines = async (count: number) => {
@@ -1029,6 +1098,7 @@ export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => vo
   const take = 30;
   let cancelled = false;
   let unsubFirestore = () => {};
+  let unsubLive: (() => void) | null = null;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
 
   const hydrateSovereign = async () => {
@@ -1047,15 +1117,30 @@ export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => vo
     return false;
   };
 
+  const startPolling = () => {
+    if (pollTimer || cancelled) return;
+    pollTimer = setInterval(() => {
+      void hydrateSovereign();
+    }, 45_000);
+  };
+
   (async () => {
     const sovereignOnline = await hydrateSovereign();
     if (cancelled) return;
 
-    // When sovereign is online, poll it — do not open a Firestore listener (quota).
+    // When sovereign is online, prefer SSE; poll as fallback. Never open Firestore.
     if (sovereignOnline) {
-      pollTimer = setInterval(() => {
-        void hydrateSovereign();
-      }, 45_000);
+      const { subscribeSovereignLive } = await import("./sovereignClient");
+      unsubLive = subscribeSovereignLive("public", {
+        onZine: () => {
+          void hydrateSovereign();
+        },
+        onUnsupported: () => {
+          unsubLive = null;
+          startPolling();
+        },
+      });
+      if (!unsubLive) startPolling();
       return;
     }
 
@@ -1080,6 +1165,7 @@ export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => vo
   return () => {
     cancelled = true;
     unsubFirestore();
+    unsubLive?.();
     if (pollTimer) clearInterval(pollTimer);
   };
 };

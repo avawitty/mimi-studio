@@ -9,6 +9,18 @@
     },
     "api/residue-acquire.ts": {
       "maxDuration": 60
+    },
+    "api/sovereign/community.ts": {
+      "maxDuration": 30
+    },
+    "api/sovereign/zine.ts": {
+      "maxDuration": 30
+    },
+    "api/sovereign/import.ts": {
+      "maxDuration": 60
+    },
+    "api/sovereign/events.ts": {
+      "maxDuration": 60
     }
   },
   "redirects": [

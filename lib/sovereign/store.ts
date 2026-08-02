@@ -1,6 +1,7 @@
 import type { PocketItem, UserProfile, ZineMetadata } from "../../types";
 import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache";
 import { getSovereignDb, isSovereignEnabled, resolveSovereignDbPath } from "./db";
+import { emitSovereignEvent } from "./events";
 
 const COMMUNITY_CAP = 60;
 const FLOOR_CACHE_TTL_MS = 30_000;
@@ -211,6 +212,12 @@ export const upsertZine = async (zine: ZineMetadata): Promise<void> => {
       now,
     );
   cacheInvalidatePrefix("floor:");
+  emitSovereignEvent({
+    type: "zine_upsert",
+    id: zine.id,
+    userId: zine.userId,
+    isPublic: Boolean(isPublic),
+  });
 };
 
 export const deleteZine = async (id: string, userId?: string): Promise<boolean> => {
@@ -220,7 +227,14 @@ export const deleteZine = async (id: string, userId?: string): Promise<boolean> 
     ? await db.prepare("DELETE FROM zines WHERE id = ? AND user_id = ?").run(id, userId)
     : await db.prepare("DELETE FROM zines WHERE id = ?").run(id);
   const changed = Number(result.changes || 0) > 0;
-  if (changed) cacheInvalidatePrefix("floor:");
+  if (changed) {
+    cacheInvalidatePrefix("floor:");
+    emitSovereignEvent({
+      type: "zine_delete",
+      id,
+      userId: userId || "",
+    });
+  }
   return changed;
 };
 
@@ -249,6 +263,7 @@ export const upsertProfile = async (profile: UserProfile): Promise<void> => {
       JSON.stringify(profile),
       Date.now(),
     );
+  emitSovereignEvent({ type: "profile_upsert", uid: profile.uid });
 };
 
 export const getProfileByUid = async (uid: string): Promise<UserProfile | null> => {
@@ -306,6 +321,7 @@ export const upsertPocketItem = async (item: PocketItem): Promise<void> => {
       Number(item.savedAt || Date.now()),
       JSON.stringify(item),
     );
+  emitSovereignEvent({ type: "pocket_upsert", id: item.id, userId: item.userId });
 };
 
 export const deletePocketItem = async (id: string, userId?: string): Promise<boolean> => {
@@ -314,7 +330,11 @@ export const deletePocketItem = async (id: string, userId?: string): Promise<boo
   const result = userId
     ? await db.prepare("DELETE FROM pocket_items WHERE id = ? AND user_id = ?").run(id, userId)
     : await db.prepare("DELETE FROM pocket_items WHERE id = ?").run(id);
-  return Number(result.changes || 0) > 0;
+  const changed = Number(result.changes || 0) > 0;
+  if (changed) {
+    emitSovereignEvent({ type: "pocket_delete", id, userId: userId || "" });
+  }
+  return changed;
 };
 
 export const importZines = async (
