@@ -57,9 +57,12 @@ test.describe("Scry chamber", () => {
     await expect(page.getByRole("button", { name: "Specimen" }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Trend" }).first()).toBeVisible();
     await expect(page.locator('[data-testid="scry-query"]:visible')).toBeVisible();
-    // One Scry title only — chamber masthead (no duplicate hero wordmark)
-    await expect(page.getByRole("heading", { name: "Scry", exact: true })).toHaveCount(1);
+    // App chrome names Scry; chamber masthead is visually suppressed on mobile
+    await expect(page.locator('[data-chrome="public-face-dark"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Scry", exact: true })).toHaveCount(0);
     await expect(page.getByText("Ask a mood or a ghost")).toBeVisible();
+    // Idle: no lane strip clutter before the first ask
+    await expect(page.getByTestId("scry-lane-strip-mobile")).toHaveCount(0);
 
     // No cream-paper texture / broadsheet leftover
     await expect(page.locator("img[src*='cream-paper']")).toHaveCount(0);
@@ -70,9 +73,9 @@ test.describe("Scry chamber", () => {
     await openScry(page);
 
     await page.getByRole("button", { name: "Trend" }).first().click();
-    await expect(page.getByTestId("trend-query")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Deep-Scry" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Saturation Chic" })).toBeVisible();
+    await expect(page.locator('[data-testid="trend-query"]:visible')).toBeVisible();
+    await expect(page.getByRole("button", { name: "Deep-Scry" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Saturation Chic" }).first()).toBeVisible();
     await expect(page.getByText("Live search into a biaxial field")).toBeVisible();
   });
 
