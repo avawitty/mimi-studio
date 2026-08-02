@@ -12,10 +12,11 @@ const PUBLIC_FACE_MODES = new Set([
   "showcase",
   "archival",
   "mimi-rip",
+  "scry",
 ]);
 
 /** Public faces that sit on a forced-dark plate (chrome must match) */
-const DARK_PLATE_MODES = new Set(["mimi-rip"]);
+const DARK_PLATE_MODES = new Set(["mimi-rip", "scry"]);
 
 export const StudioChrome: React.FC<{
   theme: StudioTheme;

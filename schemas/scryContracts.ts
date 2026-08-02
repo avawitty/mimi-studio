@@ -74,6 +74,21 @@ export interface ScryRun {
     label: string;
   };
   latencyMs?: number;
+  /**
+   * When shadow docs exist but sit in a different embedding width than the
+   * current query (legacy Gemini vs Gateway OpenAI), Scry can offer reindex.
+   */
+  shadowIndexHint?: {
+    needsReindex: boolean;
+    incompatible: number;
+    missingVector: number;
+    /** Broken docs that have embeddable text (actionable re-index count). */
+    reindexable: number;
+    searchable: number;
+    shadowDocs: number;
+    referenceDims: number | null;
+    referenceModel?: string | null;
+  };
 }
 
 export interface TrendCluster {
