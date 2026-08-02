@@ -960,7 +960,11 @@ export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => vo
   }, (e) => logFirestoreError(e, OperationType.LIST, "zines"));
 };
 
-/** @returns true when Firestore write ran; false when aborted (no auth / not owner). */
+/**
+ * Persist zine metadata to Firestore when authenticated as owner.
+ * Ghost / no-auth sessions still write IndexedDB via saveZineLocally.
+ * @returns true when something was persisted (cloud and/or local); false when aborted (not owner).
+ */
 export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolean> => {
   if (!auth.currentUser) {
     console.warn("MIMI // updateZineMetadata: No current user — persisting locally only");

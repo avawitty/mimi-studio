@@ -44,7 +44,25 @@ assert.match(panel, /ZineLayoutEditor/, "Edit spreads must compose in-chamber.")
 assert.match(panel, /updateZineMetadata/, "In-Edit compose must persist layouts.");
 assert.match(panel, /hydrateZineContentPages/, "List must hydrate pagesJson.");
 
+const bake = read("lib/bakeZinePlates.ts");
+assert.match(bake, /MAX_BAKE_PLATES\s*=\s*24/, "Bake fan-out must hard-cap plate jobs.");
+assert.match(bake, /slice\(0,\s*MAX_BAKE_PLATES\)/, "Bake jobs must slice to the plate cap.");
+assert.match(
+  bake,
+  /allowStorageFallback:\s*false/,
+  "Bake uploads must refuse data-URL storage fallback.",
+);
+
+const firebaseUtils = read("services/firebaseUtils.ts");
+assert.match(
+  firebaseUtils,
+  /No current user[\s\S]*saveZineLocally\(metadata\)/,
+  "Ghost/no-auth updates must persist locally.",
+);
+
 console.log("✓ Hi-fi plate bake + Edit compose verified");
 console.log("  - hydrate pagesJson");
 console.log("  - App.tsx hi-fi bake wiring");
 console.log("  - IssueSpreadsPanel in-chamber compose");
+console.log("  - bake plate cap + no data-URL Firestore fallback");
+console.log("  - ghost/no-auth local persist");
