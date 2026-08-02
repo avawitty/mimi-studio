@@ -59,6 +59,7 @@ import { ApiKeyShield } from "./components/ApiKeyShield";
 import { ZineGenerationOptions } from "./types";
 import { InputStudio } from "./components/InputStudio";
 import { StudioChrome } from "./components/studio/StudioChrome";
+import { SurveillanceOverlay } from "./components/chrome/SurveillanceOverlay";
 import {
   MessyPocketStash,
   POCKET_STASH_CLOSE_EVENT,
@@ -66,6 +67,11 @@ import {
   POCKET_STASH_TOGGLE_EVENT,
 } from "./components/pocket/MessyPocketStash";
 import { injectJSONLD } from "./utils/seoHelper";
+import {
+  getChamberFamily,
+  getFaceKind,
+  mainShellClassName,
+} from "./lib/chamberChrome";
 
 import { archiveManager } from "./services/archiveManager";
 import { SUPERINTELLIGENCE_PROMPTS } from "./constants";
@@ -2312,78 +2318,8 @@ export const App: React.FC = () => {
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
 
-  const getChamber = (mode: string) => {
-    if (["studio", "moodboard", "darkroom", "private-studio"].includes(mode)) return "create";
-    if (
-      [
-        "oracle",
-        "geo_engine",
-        "thimble",
-        "archival",
-        "threads",
-        "latent-constellation",
-        "the-lens",
-        "residue",
-        "intel-hub",
-        "forecast",
-      ].includes(mode)
-    )
-      return "reflect";
-    if (
-      [
-        "tailor",
-        "celestial-calibration",
-        "loom",
-        "action-board",
-        "the-edit",
-        "the-press",
-        "wardrobe",
-        "mimi-drop",
-      ].includes(mode)
-    )
-      return "refine";
-    if (
-      [
-        "signature",
-        "ward",
-        "profile",
-        "taste-graph",
-        "pocket",
-        "scribe",
-        "mimi-dolls",
-        "mimi-rip",
-        "atelier",
-        "house",
-        "residue",
-        "intel-hub",
-      ].includes(mode)
-    )
-      return "signature";
-    if (["nebula", "proscenium", "observatory", "mean-median-mode"].includes(mode))
-      return "observe";
-    return "system";
-  };
-
-  const chamber = getChamber(viewMode);
-
-  const ChamberOverlay = ({ chamber }: { chamber: string }) => {
-    if (chamber === "reflect") {
-      return (
-        <div className="absolute inset-0 pointer-events-none opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] z-0 mix-blend-overlay" />
-      );
-    }
-    if (chamber === "refine") {
-      return (
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] z-0 mix-blend-overlay" />
-      );
-    }
-    if (chamber === "signature") {
-      return (
-        <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')] z-0 mix-blend-overlay" />
-      );
-    }
-    return null;
-  };
+  const chamber = getChamberFamily(viewMode);
+  const faceKind = getFaceKind(viewMode);
 
   return (
     <IntelligenceGateContext.Provider value={gateValue}>
@@ -2559,24 +2495,11 @@ export const App: React.FC = () => {
           </button>
         )}
 
-        {/* Main Content Area */}
+        {/* Main Content Area — chamber-aware shell */}
         <main
-          className={`flex-1 flex flex-col relative ${
-            ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio", "brand-intake"].includes(viewMode)
-              ? "overflow-hidden min-h-0 pb-0 h-full"
-              : viewMode === "mimi-rip" || viewMode === "scry"
-                ? "overflow-hidden min-h-0 pb-0 h-full bg-[#050506]"
-                : [
-                      "editorial-home",
-                      "stand",
-                      "signature",
-                      "showcase",
-                      "archival",
-                    ].includes(viewMode)
-                  ? "overflow-y-auto bg-nous-base pb-8 md:pb-0 mimi-page-pad mimi-page-pad--public"
-                  : // Modest bottom pad — Studio owns its own nav clearance; do not reserve 72px here
-                    "overflow-y-auto bg-nous-base pb-[max(1.25rem,env(safe-area-inset-bottom))] md:pb-0 mimi-page-pad"
-          }`}
+          className={mainShellClassName(viewMode)}
+          data-chamber={chamber}
+          data-face={faceKind}
         >
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (
             <div className="w-full bg-[#1A1A1A] text-[#F5F5F0] border-b border-[#333333] px-6 py-3 flex items-center justify-between z-40 relative">
@@ -2623,7 +2546,12 @@ export const App: React.FC = () => {
               exit={{ opacity: 0, y: isStandalonePwaShell ? 0 : -8 }}
               transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
-              <ChamberOverlay chamber={chamber} />
+              <SurveillanceOverlay
+                chamber={chamber}
+                face={faceKind}
+                disabled={isCRTEnabled}
+              />
+              <div className="relative z-[1] h-full min-h-0 flex flex-col">
               <AnimatePresence>
                 {appState === AppState.THINKING && (
                   <ElevatorLoader
@@ -2846,6 +2774,7 @@ export const App: React.FC = () => {
                   </>
                 )}
               </Suspense>
+              </div>
             </motion.div>
           </AnimatePresence>
           <SelectionMemoryCapture />

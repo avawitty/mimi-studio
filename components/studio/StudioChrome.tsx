@@ -3,20 +3,11 @@ import { GripVertical, Menu, Moon, Sparkles, Sun, User, Layers } from "lucide-re
 import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
-
-/** Routes that should read as editorial plates — quieter chrome, less icon density */
-const PUBLIC_FACE_MODES = new Set([
-  "editorial-home",
-  "stand",
-  "signature",
-  "showcase",
-  "archival",
-  "mimi-rip",
-  "scry",
-]);
-
-/** Public faces that sit on a forced-dark plate (chrome must match) */
-const DARK_PLATE_MODES = new Set(["mimi-rip", "scry"]);
+import {
+  chromeDataAttr,
+  isDarkPlateMode,
+  isPublicFaceMode,
+} from "../../lib/chamberChrome";
 
 export const StudioChrome: React.FC<{
   theme: StudioTheme;
@@ -47,8 +38,8 @@ export const StudioChrome: React.FC<{
 }) => {
   const { user, profile } = useUser();
   const isDark = theme === "dark";
-  const isPublicFace = PUBLIC_FACE_MODES.has(viewMode);
-  const isDarkPlate = DARK_PLATE_MODES.has(viewMode);
+  const isPublicFace = isPublicFaceMode(viewMode);
+  const isDarkPlate = isDarkPlateMode(viewMode);
   const [stashOpen, setStashOpen] = React.useState(pocketStashOpen);
 
   React.useEffect(() => {
@@ -176,7 +167,7 @@ export const StudioChrome: React.FC<{
           : "studio-border"
       }`}
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.875rem)" }}
-      data-chrome={isPublicFace ? (isDarkPlate ? "public-face-dark" : "public-face") : "worktable"}
+      data-chrome={chromeDataAttr(viewMode)}
     >
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (
