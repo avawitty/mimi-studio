@@ -32,4 +32,20 @@ describe("searchGrounding keyword gate", () => {
     expect(matched.map((m) => m.doc.id)).toEqual(["a"]);
     expect(matched.every((m) => m.score > 0)).toBe(true);
   });
+
+  it("scores saved zine body fields beyond title and tags", () => {
+    const doc = {
+      id: "z",
+      type: "zine",
+      title: "Untitled draft",
+      originalInput: "lover girl again moodboard",
+      content: {
+        the_reading: "saturation chic neon romance",
+        pages: [{ headline: "mirror phase", bodyCopy: "wardrobe reset" }],
+      },
+    };
+    expect(scoreArchiveDoc(doc, ["lover", "girl"])).toBeGreaterThan(0);
+    expect(scoreArchiveDoc(doc, ["saturation"])).toBeGreaterThan(0);
+    expect(scoreArchiveDoc(doc, ["mirror"])).toBeGreaterThan(0);
+  });
 });

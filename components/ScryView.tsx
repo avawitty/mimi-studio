@@ -121,11 +121,26 @@ function safeHostname(url?: string): string {
   }
 }
 
+/** Only allow http(s) links in user-facing hrefs (blocks javascript: / data: injection). */
+function safeExternalHref(url?: string): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.href;
+    }
+  } catch {
+    // ignore malformed URLs
+  }
+  return undefined;
+}
+
 const ResultCard: React.FC<{
   item: ResearchResult;
   index: number;
 }> = ({ item, index }) => {
   const meta = LANE_META[item.sourceLane];
+  const safeHref = safeExternalHref(item.url);
   return (
     <motion.article
       initial={{ opacity: 0, y: 8 }}
@@ -139,9 +154,9 @@ const ResultCard: React.FC<{
             {meta.icon}
             {meta.label}
           </p>
-          {item.url ? (
+          {safeHref ? (
             <p className="font-mono text-[8px] archive-text-muted mt-1 truncate">
-              {safeHostname(item.url)}
+              {safeHostname(safeHref)}
             </p>
           ) : null}
           {typeof item.similarity === "number" ? (
@@ -153,9 +168,9 @@ const ResultCard: React.FC<{
         <Layers size={12} className="archive-text-muted shrink-0 mt-0.5" />
       </div>
       <h3 className="font-serif text-lg md:text-xl italic archive-text-ink mb-2 leading-snug">
-        {item.url ? (
+        {safeHref ? (
           <a
-            href={item.url}
+            href={safeHref}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:underline underline-offset-4"
@@ -910,22 +925,31 @@ export const ScryView: React.FC = () => {
                           Citations
                         </p>
                         <ul className="space-y-2">
-                          {curationMap.sources.map((src, sIdx) => (
+                          {curationMap.sources.map((src, sIdx) => {
+                            const citationHref = safeExternalHref(src.url);
+                            return (
                             <li
                               key={`${src.url}-${sIdx}`}
                               className="border archive-border px-3 py-2.5 flex justify-between items-center gap-3 font-mono text-[10px]"
                             >
                               <span className="truncate font-bold">{src.title}</span>
+                              {citationHref ? (
                               <a
-                                href={src.url}
+                                href={citationHref}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="shrink-0 uppercase text-[8px] tracking-widest archive-text-muted hover:archive-text-ink flex items-center gap-1"
                               >
                                 Open <ChevronRight size={10} />
                               </a>
+                              ) : (
+                                <span className="shrink-0 uppercase text-[8px] tracking-widest archive-text-muted">
+                                  No link
+                                </span>
+                              )}
                             </li>
-                          ))}
+                            );
+                          })}
                         </ul>
                       </div>
                     ) : null}

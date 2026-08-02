@@ -203,8 +203,7 @@ export async function runSpecimenScry(options: {
     };
     const hits = mapArchiveHits(data.results || []);
     run.sources.personalMemory = hits;
-    run.laneStatus.personalMemory =
-      hits.length > 0 ? "success" : data.summary ? "partial" : "empty";
+    run.laneStatus.personalMemory = hits.length > 0 ? "success" : "empty";
   } else {
     run.laneStatus.personalMemory = "failed";
     run.failures.push({

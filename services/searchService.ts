@@ -1,7 +1,7 @@
 import { getClient } from "./geminiClient";
 import { modelFor } from "./modelConfig";
 import { db, auth } from "./firebase";
-import { collection, getDocs, query, where, limit } from "firebase/firestore";
+import { collection, getDocs, query, where, limit, orderBy } from "firebase/firestore";
 
 type ArchiveDoc = {
   id: string;
@@ -12,18 +12,47 @@ type ArchiveDoc = {
   prompt?: string;
   name?: string;
   tags?: string[];
+  originalInput?: string;
+  summary?: string;
 };
+
+function archivePageCopy(content: Record<string, unknown> | undefined): string[] {
+  if (!content) return [];
+  const pages =
+    (Array.isArray(content.pages) ? content.pages : undefined) ||
+    (Array.isArray((content.structure as Record<string, unknown> | undefined)?.pages)
+      ? ((content.structure as Record<string, unknown>).pages as unknown[])
+      : undefined);
+  if (!pages?.length) return [];
+  return pages.flatMap((page) => {
+    if (!page || typeof page !== "object") return [];
+    const p = page as Record<string, unknown>;
+    return [p.headline, p.bodyCopy, p.supportingText, p.body, p.copy]
+      .filter((v): v is string => typeof v === "string" && v.length > 0)
+      .map((v) => v.slice(0, 200));
+  });
+}
 
 /** Lightweight keyword score — retrieve first, then ask the model over top excerpts only. */
 export function scoreArchiveDoc(doc: ArchiveDoc, terms: string[]): number {
+  const content = doc.content;
   const hay = [
     doc.title,
     doc.content_preview,
     doc.prompt,
     doc.name,
+    doc.originalInput,
+    doc.summary,
     ...(doc.tags || []),
-    typeof doc.content?.title === "string" ? doc.content.title : "",
-    typeof doc.content?.prompt === "string" ? doc.content.prompt : "",
+    typeof content?.title === "string" ? content.title : "",
+    typeof content?.prompt === "string" ? content.prompt : "",
+    typeof content?.the_reading === "string" ? content.the_reading : "",
+    typeof content?.oracular_mirror === "string" ? content.oracular_mirror : "",
+    typeof content?.poetic_interpretation === "string" ? content.poetic_interpretation : "",
+    typeof content?.vocal_summary_blurb === "string" ? content.vocal_summary_blurb : "",
+    typeof content?.originalThought === "string" ? content.originalThought : "",
+    typeof content?.poetic_provocation === "string" ? content.poetic_provocation : "",
+    ...archivePageCopy(content),
   ]
     .filter(Boolean)
     .join(" ")
@@ -110,8 +139,22 @@ export const searchGrounding = async (searchQuery: string) => {
   try {
     const uid = auth.currentUser.uid;
     const [zinesSnapshot, pocketSnapshot] = await Promise.all([
-      getDocs(query(collection(db, "zines"), where("userId", "==", uid), limit(80))),
-      getDocs(query(collection(db, "pocket"), where("userId", "==", uid), limit(80))),
+      getDocs(
+        query(
+          collection(db, "zines"),
+          where("userId", "==", uid),
+          orderBy("timestamp", "desc"),
+          limit(80),
+        ),
+      ),
+      getDocs(
+        query(
+          collection(db, "pocket"),
+          where("userId", "==", uid),
+          orderBy("savedAt", "desc"),
+          limit(80),
+        ),
+      ),
     ]);
 
     const zines: ArchiveDoc[] = zinesSnapshot.docs.map((docSnap) => {
@@ -125,6 +168,8 @@ export const searchGrounding = async (searchQuery: string) => {
         prompt: data.prompt as string | undefined,
         name: data.name as string | undefined,
         tags: data.tags as string[] | undefined,
+        originalInput: data.originalInput as string | undefined,
+        summary: data.summary as string | undefined,
       };
     });
     const pocketItems: ArchiveDoc[] = pocketSnapshot.docs.map((docSnap) => {
