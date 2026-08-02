@@ -16,12 +16,35 @@
     --nous-accent: #78716c; /* Desaturated stone */
     --nous-olive: #5A5A40;
     --nous-charcoal: #262626;
-    --nous-border: #e5e5e5;
-    --nous-paper: #f9f7f2; /* Warm cream paper */
+    --nous-border: #d4d4d4; /* Hairline preference (House Style v2) */
+    /* Paper: cool/neutral field — avoid warm-cream lifestyle wash on public surfaces */
+    --nous-paper: #fafafa;
+
+    /* House Style v2 — editorial archive discipline (docs/house-style-v2.md) */
+    --mimi-field: #ffffff;
+    --mimi-worktable: #fafafa;
+    --mimi-ink: #0a0a0a;
+    --mimi-olive: #5a5a40;
+    --mimi-stone: #78716c;
+    --mimi-hairline: #d4d4d4;
+    --mimi-grain-opacity: 0.08;
+    /* Accent C — light blue (peer to olive; not a theme fill) */
+    --mimi-cobalt: #9bb8ce;
+    --mimi-cobalt-deep: #6a8aa4;
+    --mimi-cobalt-mist: #e8f0f6;
+    --mimi-cobalt-haze: rgba(155, 184, 206, 0.22);
+    --mimi-gilt: #c4b08a;
+    /* Spy × Manila folder motif (Captive Sentinel / dossier nods) */
+    --mimi-manila-tab: #e8dcb5;
+    --mimi-manila-body: #f0e6c8;
+    --mimi-manila-edge: #c9ba86;
+    --mimi-manila-sheet: #f7f3e8;
+    --mimi-manila-ink: #5c5334;
 
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
     --era-font-serif: "Cormorant Garamond", serif;
+    /* Cool/neutral tooth; public surfaces use .mimi-public-grain at ≤12% */
     --era-bg-image: url("https://www.transparenttextures.com/patterns/cream-paper.png");
   }
 
@@ -30,10 +53,26 @@
     --nous-text: #FAF9F6; /* Cream/Off-white */
     --nous-subtle: #A3A3A3; 
     --nous-accent: #E5E5E5;
-    --nous-olive: #404040;
+    --nous-olive: #5A5A40;
     --nous-charcoal: #1f1f1f;
     --nous-border: #262626;
     --nous-paper: #121212; /* Deep charcoal paper */
+    --mimi-field: #ffffff; /* Public plates stay precious white even in dark app shell */
+    --mimi-worktable: #0c0c0c;
+    --mimi-ink: #0a0a0a; /* Ink on public white field */
+    --mimi-olive: #5a5a40;
+    --mimi-stone: #78716c;
+    --mimi-hairline: #d4d4d4;
+    --mimi-cobalt: #a8c4d6;
+    --mimi-cobalt-deep: #5a7a92;
+    --mimi-cobalt-mist: #eef4f8;
+    --mimi-cobalt-haze: rgba(155, 184, 206, 0.28);
+    --mimi-gilt: #c4b08a;
+    --mimi-manila-tab: #c9ba86;
+    --mimi-manila-body: #3a352a;
+    --mimi-manila-edge: #8a7f5c;
+    --mimi-manila-sheet: #2a261c;
+    --mimi-manila-ink: #e8dcb5;
     --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
   }
 
@@ -85,32 +124,32 @@
     color: var(--nous-text);
   }
 
-  /* Studio / Worktable editorial shell (light + dark) */
+  /* Studio / Worktable editorial shell (light + dark) — cooler chrome, less cream */
   .studio-worktable {
-    --studio-chrome: #f3f1ea;
+    --studio-chrome: #f5f5f5;
     --studio-canvas: #ffffff;
-    --studio-panel: #fafaf8;
+    --studio-panel: #fafafa;
     --studio-surface: #ffffff;
     --studio-workspace: #ffffff;
     --studio-rail: #0a0a0a;
     --studio-rail-track: rgba(0, 0, 0, 0.12);
     --studio-ink: #0a0a0a;
     --studio-muted: #6b6b6b;
-    --studio-border: #e3e3de;
-    --studio-divider: #d4d4ce;
-    --studio-polaroid: #faf9f6;
+    --studio-border: #d4d4d4;
+    --studio-divider: #d4d4d4;
+    --studio-polaroid: #fafafa;
     --studio-polaroid-slot: #121212;
-    --studio-tab-bg: #f3f1ea;
+    --studio-tab-bg: #f5f5f5;
     --studio-tab-active: #0a0a0a;
-    --studio-ref-tab: #f3f1ea;
+    --studio-ref-tab: #f5f5f5;
     --studio-ref-tab-ink: #0a0a0a;
     --studio-icon-hover: rgba(0, 0, 0, 0.04);
   }
 
-  /* Binder Portfolio dark field: cream header chrome on black gallery */
+  /* Binder Portfolio dark field: cool header chrome on black gallery */
   .studio-worktable[data-studio-theme="dark"],
   .studio-worktable.binder-portfolio[data-studio-theme="dark"] {
-    --studio-chrome: #f3f1ea;
+    --studio-chrome: #f0f0f0;
     --studio-canvas: #050505;
     --studio-panel: #101010;
     --studio-surface: #0c0c0c;
@@ -125,9 +164,113 @@
     --studio-polaroid-slot: #121212;
     --studio-tab-bg: #0a0a0a;
     --studio-tab-active: #faf9f6;
-    --studio-ref-tab: #f3f1ea;
+    --studio-ref-tab: #f0f0f0;
     --studio-ref-tab-ink: #0a0a0a;
     --studio-icon-hover: rgba(255, 255, 255, 0.06);
+  }
+
+  /* Public face kit — white field, cool grain, hairlines */
+  [data-surface="public"],
+  .mimi-public-field {
+    --mimi-field: #ffffff;
+    --mimi-ink: #0a0a0a;
+    --mimi-olive: #5a5a40;
+    --mimi-stone: #78716c;
+    --mimi-hairline: #d4d4d4;
+    color: var(--mimi-ink);
+    background-color: var(--mimi-field);
+  }
+
+  .mimi-public-grain {
+    background-image: url("https://www.transparenttextures.com/patterns/noise.png");
+    background-repeat: repeat;
+  }
+
+  .mimi-wordmark {
+    font-family: var(--era-font-serif), "Cormorant Garamond", serif;
+    font-variant-ligatures: none;
+  }
+
+  /* Signal Underarchive — luminous monolithic cobalt fog (hero-key atmosphere) */
+  .mimi-cobalt-haze {
+    position: relative;
+  }
+
+  .mimi-cobalt-haze::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(
+        ellipse 70% 55% at 50% 42%,
+        color-mix(in srgb, var(--mimi-cobalt-mist, #e8f0f6) 60%, transparent) 0%,
+        var(--mimi-cobalt-haze) 42%,
+        transparent 74%
+      ),
+      radial-gradient(
+        ellipse 140% 100% at 50% 100%,
+        color-mix(in srgb, var(--mimi-cobalt-deep, #6a8aa4) 35%, transparent) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 120% 80% at 50% 0%,
+        color-mix(in srgb, var(--mimi-cobalt, #9bb8ce) 30%, transparent) 0%,
+        transparent 50%
+      );
+    mix-blend-mode: multiply;
+    opacity: 0.72;
+  }
+
+  .mimi-cobalt-haze > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Full-bleed hero atmosphere — pale light-cobalt fog field */
+  .mimi-cobalt-field {
+    background:
+      radial-gradient(ellipse 65% 58% at 50% 40%, var(--mimi-cobalt-mist, #e8f0f6) 0%, transparent 60%),
+      radial-gradient(ellipse 100% 90% at 50% 50%, var(--mimi-cobalt, #9bb8ce) 0%, var(--mimi-cobalt-deep, #6a8aa4) 72%, #8aa8be 100%);
+  }
+
+  /* Soft art-deco feminine fan — gilt + light blue arcs (accent only) */
+  .mimi-deco-fan {
+    width: 3.25rem;
+    height: 1rem;
+    background:
+      radial-gradient(ellipse 110% 130% at 50% 100%, transparent 36%, var(--mimi-gilt, #c4b08a) 37%, var(--mimi-gilt, #c4b08a) 40%, transparent 41%),
+      radial-gradient(ellipse 85% 115% at 50% 100%, transparent 44%, var(--mimi-cobalt, #9bb8ce) 45%, var(--mimi-cobalt, #9bb8ce) 47.5%, transparent 48.5%),
+      radial-gradient(ellipse 55% 90% at 50% 100%, transparent 52%, color-mix(in srgb, var(--mimi-gilt, #c4b08a) 70%, transparent) 53%, transparent 56%);
+    opacity: 0.9;
+  }
+
+  /* Ticket / plate notch corners — Signature collectible */
+  .mimi-ticket-plate {
+    --ticket-notch: 10px;
+    clip-path: polygon(
+      var(--ticket-notch) 0%,
+      calc(100% - var(--ticket-notch)) 0%,
+      100% var(--ticket-notch),
+      100% calc(100% - var(--ticket-notch)),
+      calc(100% - var(--ticket-notch)) 100%,
+      var(--ticket-notch) 100%,
+      0% calc(100% - var(--ticket-notch)),
+      0% var(--ticket-notch)
+    );
+  }
+
+  .mimi-gilt-rule {
+    height: 1px;
+    width: 2.5rem;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--mimi-gilt, #a89b6e) 30%,
+      var(--mimi-gilt, #a89b6e) 70%,
+      transparent
+    );
   }
 
   .studio-worktable {

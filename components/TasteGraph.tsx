@@ -20,6 +20,7 @@ import {
   ArchiveChamberShell,
   ArchiveContextPanel,
 } from './chambers/ArchiveChamberShell';
+import { GraphSettle } from './motion/GraphSettle';
 
 type TabType = 'map' | 'radar' | 'clusters' | 'report';
 type RadarAxis = { axis: string; value: number; desc: string };
@@ -39,6 +40,29 @@ export const TasteGraph: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(
     () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
   );
+
+  /** New node ids settle with GraphSettle; existing nodes stay still (PRD-06 / Phase C). */
+  const prevNodeIdsRef = useRef<Set<string>>(new Set());
+  const [settlingIds, setSettlingIds] = useState<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    const nextIds = new Set(nodes.map((n) => n.id));
+    const prev = prevNodeIdsRef.current;
+    const fresh: string[] = [];
+    nextIds.forEach((id) => {
+      if (!prev.has(id)) fresh.push(id);
+    });
+    if (fresh.length > 0 && prev.size > 0) {
+      const map = new Map<string, number>();
+      fresh.forEach((id, i) => map.set(id, i));
+      setSettlingIds(map);
+      const clearMs = 700 + Math.min(fresh.length, 6) * 40;
+      const t = window.setTimeout(() => setSettlingIds(new Map()), clearMs);
+      prevNodeIdsRef.current = nextIds;
+      return () => window.clearTimeout(t);
+    }
+    prevNodeIdsRef.current = nextIds;
+  }, [nodes]);
 
   // WE SEARCH STATES
   const [isYouSearchOpen, setIsYouSearchOpen] = useState(false);
@@ -517,54 +541,77 @@ export const TasteGraph: React.FC = () => {
         {plottedPoints.map((p, idx) => {
           const isSelected = selectedNode?.id === p.id;
           const dotColor = p.type === 'concept' ? '#10b981' : p.type === 'web_reference' ? '#8b5cf6' : '#f59e0b';
+          const settleIndex = settlingIds.get(p.id);
+          const isSettling = settleIndex !== undefined;
           
-          return (
-            <g 
-              key={p.id}
-              className="cursor-pointer group"
-              onClick={() => setSelectedNode(isSelected ? null : p)}
-            >
-              {/* Highlight Ring */}
+          const nodeBody = (
+            <>
               {isSelected && (
                 <circle
                   cx={p.cx}
                   cy={p.cy}
                   r="12"
-                  className="fill-none stroke-amber-500/50"
+                  className="fill-none stroke-[var(--mimi-olive,#5A5A40)]/50"
                   strokeWidth="1.5"
                   strokeDasharray="3,1"
                 />
               )}
-
-              {/* Pulsing glow under dot */}
+              {isSettling && (
+                <circle
+                  cx={p.cx}
+                  cy={p.cy}
+                  r="10"
+                  className="fill-none stroke-[var(--mimi-olive,#5A5A40)]"
+                  strokeWidth="1"
+                  opacity={0.7}
+                />
+              )}
               <circle
                 cx={p.cx}
                 cy={p.cy}
                 r={isSelected ? 8 : 4}
                 className="opacity-20 transition-all duration-300"
-                fill={dotColor}
+                fill={isSettling ? '#5A5A40' : dotColor}
               />
-
-              {/* Precise dot target */}
               <circle
                 cx={p.cx}
                 cy={p.cy}
                 r={isSelected ? "5" : "3.5"}
                 className="transition-all duration-200 stroke-white dark:stroke-stone-900"
                 strokeWidth="1.5"
-                fill={dotColor}
+                fill={isSettling ? '#5A5A40' : dotColor}
               />
-
-              {/* Dynamic node label tag */}
               <text
                 x={p.cx + 8}
                 y={p.cy + 3}
                 className={`font-mono text-[8px] uppercase tracking-wider select-none font-bold transition-all ${
-                  isSelected ? 'fill-amber-600 dark:fill-amber-400 scale-105' : 'fill-stone-500 dark:fill-stone-400 group-hover:fill-stone-800 dark:group-hover:fill-stone-100'
+                  isSelected || isSettling
+                    ? 'fill-[var(--mimi-olive,#5A5A40)]'
+                    : 'fill-stone-500 dark:fill-stone-400 group-hover:fill-stone-800 dark:group-hover:fill-stone-100'
                 }`}
               >
                 {p.label}
               </text>
+            </>
+          );
+
+          if (isSettling) {
+            return (
+              <GraphSettle key={p.id} as="g" index={settleIndex} className="cursor-pointer group">
+                <g onClick={() => setSelectedNode(isSelected ? null : p)}>
+                  {nodeBody}
+                </g>
+              </GraphSettle>
+            );
+          }
+
+          return (
+            <g 
+              key={p.id}
+              className="cursor-pointer group"
+              onClick={() => setSelectedNode(isSelected ? null : p)}
+            >
+              {nodeBody}
             </g>
           );
         })}
@@ -970,11 +1017,15 @@ export const TasteGraph: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {nodes.map((n, i) => {
                           const alignment = Math.floor(82 + (n.weight || 2.5) * 4);
-                          return (
+                          const settleIndex = settlingIds.get(n.id);
+                          const card = (
                             <div 
-                              key={n.id}
                               onClick={() => setSelectedNode(n)}
-                              className="p-5 border border-stone-200/60 dark:border-stone-850/60 bg-stone-50/50 dark:bg-[#0d0d0d]/50 hover:border-amber-500/50 hover:bg-stone-50 dark:hover:bg-[#11100f] duration-150 transition-all text-left flex flex-col justify-between cursor-pointer"
+                              className={`p-5 border bg-stone-50/50 dark:bg-[#0d0d0d]/50 hover:border-[var(--mimi-olive,#5A5A40)]/50 hover:bg-stone-50 dark:hover:bg-[#11100f] duration-150 transition-all text-left flex flex-col justify-between cursor-pointer ${
+                                settleIndex !== undefined
+                                  ? 'border-[var(--mimi-olive,#5A5A40)]'
+                                  : 'border-stone-200/60 dark:border-stone-850/60'
+                              }`}
                             >
                               <div className="space-y-3">
                                 <div className="flex items-center justify-between">
@@ -1007,6 +1058,14 @@ export const TasteGraph: React.FC = () => {
                               </div>
                             </div>
                           );
+                          if (settleIndex !== undefined) {
+                            return (
+                              <GraphSettle key={n.id} index={settleIndex}>
+                                {card}
+                              </GraphSettle>
+                            );
+                          }
+                          return <React.Fragment key={n.id}>{card}</React.Fragment>;
                         })}
                       </div>
                     </div>

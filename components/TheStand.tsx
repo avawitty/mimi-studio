@@ -5,14 +5,21 @@ import { subscribeToUserZines, fetchCommunityZines } from '../services/firebaseU
 import { getLocalZines } from '../services/localArchive';
 import { ZineMetadata } from '../types';
 import { useUser } from '../contexts/UserContext';
-import { Search, Radio, Loader2, Ghost, LayoutGrid, User, Globe, ArrowUpRight } from 'lucide-react';
+import { Search, Loader2, Ghost, User, Globe, ArrowUpRight } from 'lucide-react';
 import { ZineCoverCard } from './ZineCoverCard';
 import { ZineComments } from './ZineComments';
+import {
+  PublicField,
+  MimiWordmark,
+  ColumnRule,
+  PublicCTA,
+  PressMark,
+} from './public-face';
+import { PressReveal } from './motion/PressReveal';
 
 /**
- * The Stand — personal (and eventually public) showcase of published works.
- * Defaults to the signed-in user's issues with covers; community feed is a secondary tab.
- * This is the seed of the open profile / creator stand page.
+ * The Stand — published-issues shelf / open profile showcase.
+ * Column-ruled grid, quiet typography — not a profile dashboard (PRD-03 / PRD-07).
  */
 export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> = ({ onSelectZine }) => {
   const { user, profile } = useUser();
@@ -31,7 +38,6 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
       try {
         const local = (await getLocalZines()) || [];
         setLocalZines(local.filter((z) => z && z.id && z.content));
-        // Show merged local issues immediately; cloud sync is progressive.
         setLoading(false);
 
         if (user && !user.isAnonymous) {
@@ -51,7 +57,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
           const community = await fetchCommunityZines(40);
           setCommunityZines(community || []);
         } catch (e) {
-          console.warn('MIMI // Stand community feed unavailable', e);
+          console.warn('Mimi // Stand community feed unavailable', e);
         }
       } catch (e) {
         console.error(e);
@@ -92,62 +98,60 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     );
   }, [mode, myZines, communityZines, searchQuery]);
 
-  const handle = profile?.handle ? `@${profile.handle}` : 'Your Stand';
-  // Only block the grid while we have nothing local/cloud yet and are still booting.
+  const handle = profile?.handle ? `@${profile.handle}` : null;
+  const displayName = profile?.displayName || profile?.handle || 'The Stand';
   const showFullLoader = loading && mode === 'mine' && myZines.length === 0;
 
   return (
     <>
-      <div className="flex-1 w-full h-full flex flex-col bg-nous-base transition-colors duration-1000 relative overflow-hidden">
-        <div className="w-full h-8 bg-nous-text text-nous-base flex items-center overflow-hidden border-b border-black/5 shrink-0 z-20">
-          <div className="flex items-center px-4 h-full bg-nous-base0 text-white shrink-0 font-sans text-[9px] uppercase tracking-widest font-black gap-2">
-            <Radio size={10} className="animate-pulse" /> Stand
-          </div>
-          <div className="flex-1 px-4 font-mono text-[9px] uppercase tracking-widest opacity-80 truncate">
-            {mode === 'mine' ? `${handle} · ${myZines.length} issues` : `Floor · ${communityZines.length} signals`}
-          </div>
-        </div>
-
+      <PublicField className="flex-1 w-full h-full flex flex-col relative overflow-hidden">
         <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
-          <header className="px-6 md:px-16 pt-10 md:pt-16 pb-10">
-            <div className="flex flex-col gap-8">
+          <PressReveal>
+            <header className="px-6 md:px-16 pt-10 md:pt-16 pb-8 space-y-8">
               <div className="flex justify-between items-start gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-nous-subtle">
-                    <LayoutGrid size={16} />
-                    <span className="font-sans text-[10px] uppercase tracking-[0.4em] font-black italic">
-                      Published Works Showcase
-                    </span>
-                  </div>
-                  <h1 className="font-serif text-5xl md:text-8xl italic tracking-tighter text-nous-text leading-[0.85]">
-                    The Stand.
+                <div className="space-y-5 max-w-2xl">
+                  <MimiWordmark size="sm" />
+                  <h1 className="font-serif italic text-5xl md:text-7xl tracking-tight text-[var(--mimi-ink)] leading-[0.9]">
+                    {displayName}
                   </h1>
-                  <p className="font-sans text-[11px] text-nous-subtle max-w-xl leading-relaxed">
-                    Your open shelf of zines — covers, issues, and eventually the public face of your profile.
-                    Publish from Studio; they land here.
+                  {handle && (
+                    <p className="font-sans text-[11px] uppercase tracking-[0.28em] text-[var(--mimi-stone)]">
+                      {handle}
+                    </p>
+                  )}
+                  <p className="font-serif italic text-lg text-[var(--mimi-stone)] max-w-xl leading-relaxed">
+                    Issues on the stand — covers as plates, quiet as an open shelf.
                   </p>
+                  <PressMark
+                    label={
+                      mode === 'mine'
+                        ? `${myZines.length} issues`
+                        : `Floor · ${communityZines.length}`
+                    }
+                  />
                 </div>
                 <button
                   type="button"
                   onClick={() =>
                     window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'profile' }))
                   }
-                  className="hidden md:flex items-center gap-2 px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
+                  className="hidden md:inline-flex items-center gap-2 font-sans text-[10px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] hover:text-[var(--mimi-ink)]"
                 >
-                  <User size={12} /> Profile seed
-                  <ArrowUpRight size={12} />
+                  Profile <ArrowUpRight size={12} />
                 </button>
               </div>
 
-              <div className="flex flex-col md:flex-row justify-between items-end gap-6 pt-6 border-b border-nous-border pb-4">
+              <ColumnRule />
+
+              <div className="flex flex-col md:flex-row justify-between items-end gap-6">
                 <div className="flex gap-8">
                   <button
                     type="button"
                     onClick={() => setMode('mine')}
-                    className={`font-sans text-[10px] uppercase tracking-[0.2em] font-black pb-2 transition-all flex items-center gap-2 ${
+                    className={`font-sans text-[10px] uppercase tracking-[0.22em] font-semibold pb-2 transition-colors flex items-center gap-2 border-b ${
                       mode === 'mine'
-                        ? 'text-nous-text border-b-2 border-nous-text'
-                        : 'text-nous-subtle border-b-2 border-transparent hover:text-nous-text'
+                        ? 'text-[var(--mimi-ink)] border-[var(--mimi-ink)]'
+                        : 'text-[var(--mimi-stone)] border-transparent hover:text-[var(--mimi-ink)]'
                     }`}
                   >
                     <User size={12} /> My Issues
@@ -155,63 +159,68 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
                   <button
                     type="button"
                     onClick={() => setMode('floor')}
-                    className={`font-sans text-[10px] uppercase tracking-[0.2em] font-black pb-2 transition-all flex items-center gap-2 ${
+                    className={`font-sans text-[10px] uppercase tracking-[0.22em] font-semibold pb-2 transition-colors flex items-center gap-2 border-b ${
                       mode === 'floor'
-                        ? 'text-nous-text border-b-2 border-nous-text'
-                        : 'text-nous-subtle border-b-2 border-transparent hover:text-nous-text'
+                        ? 'text-[var(--mimi-ink)] border-[var(--mimi-ink)]'
+                        : 'text-[var(--mimi-stone)] border-transparent hover:text-[var(--mimi-ink)]'
                     }`}
                   >
                     <Globe size={12} /> Floor
                   </button>
                 </div>
 
-                <div className="relative group w-full md:w-auto">
+                <div className="relative w-full md:w-auto">
                   <Search
                     size={14}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 text-nous-subtle group-focus-within:text-nous-text transition-colors"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 text-[var(--mimi-stone)]"
                   />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="FILTER ISSUES..."
-                    className="w-full md:w-64 bg-transparent border-b border-nous-border py-2 pl-6 font-mono text-xs focus:outline-none focus:border-nous-text transition-colors uppercase placeholder:text-nous-subtle"
+                    placeholder="Filter issues…"
+                    className="w-full md:w-64 bg-transparent border-0 border-b border-[var(--mimi-hairline)] py-2 pl-6 font-sans text-xs focus:outline-none focus:border-[var(--mimi-ink)] transition-colors placeholder:text-[var(--mimi-stone)]"
                   />
                 </div>
               </div>
-            </div>
-          </header>
+            </header>
+          </PressReveal>
 
           <div className="px-4 md:px-12">
             {showFullLoader ? (
               <div className="py-48 flex flex-col items-center justify-center gap-6 opacity-50">
-                <Loader2 size={32} className="animate-spin text-nous-subtle" />
-                <span className="font-sans text-[8px] uppercase tracking-[0.4em] font-black">
+                <Loader2 size={32} className="animate-spin text-[var(--mimi-stone)]" />
+                <span className="font-sans text-[9px] uppercase tracking-[0.3em]">
                   Loading stand…
                 </span>
               </div>
             ) : filteredZines.length === 0 ? (
-              <div className="py-32 flex flex-col items-center justify-center gap-6 opacity-60 text-center px-6">
-                <Ghost size={48} />
-                <p className="font-serif italic text-2xl text-nous-text">
+              <div className="py-32 flex flex-col items-center justify-center gap-6 text-center px-6">
+                <Ghost size={40} className="text-[var(--mimi-stone)]" />
+                <p className="font-serif italic text-2xl text-[var(--mimi-ink)]">
                   {mode === 'mine' ? 'No issues on your stand yet.' : 'No signal on this frequency.'}
                 </p>
                 {mode === 'mine' && (
-                  <button
-                    type="button"
+                  <PublicCTA
                     onClick={() =>
                       window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'studio' }))
                     }
-                    className="px-6 py-3 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest"
                   >
-                    Make one in Studio
-                  </button>
+                    Compose first issue
+                  </PublicCTA>
                 )}
               </div>
             ) : (
-              <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-                {filteredZines.map((zine) => (
-                  <div key={zine.id} className="break-inside-avoid">
+              /* Column-ruled issue grid — not a card deck with shadows */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-t border-l border-[var(--mimi-hairline)]">
+                {filteredZines.map((zine, index) => (
+                  <div
+                    key={zine.id}
+                    className="border-r border-b border-[var(--mimi-hairline)] p-3 md:p-4"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <PressMark label={`Issue ${String(index + 1).padStart(2, '0')}`} />
+                    </div>
                     <ZineCoverCard
                       zine={zine}
                       onClick={() => onSelectZine(zine)}
@@ -226,11 +235,13 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
             )}
           </div>
 
-          <footer className="mt-24 border-t border-nous-border py-12 text-center opacity-40">
-            <p className="font-serif italic text-xs">Your stand is your open profile in waiting.</p>
+          <footer className="mt-24 border-t border-[var(--mimi-hairline)] py-12 text-center">
+            <p className="font-serif italic text-sm text-[var(--mimi-stone)]">
+              Your stand is your open profile in waiting.
+            </p>
           </footer>
         </div>
-      </div>
+      </PublicField>
 
       <AnimatePresence>
         {commentZineId && (
@@ -238,10 +249,13 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[11000] flex items-center justify-center p-6 bg-nous-base/80 backdrop-blur-xl"
+            className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-4"
             onClick={() => setCommentZineId(null)}
           >
-            <div onClick={(e) => e.stopPropagation()}>
+            <div
+              className="bg-[var(--mimi-field)] w-full max-w-lg max-h-[80vh] overflow-y-auto border border-[var(--mimi-ink)]"
+              onClick={(e) => e.stopPropagation()}
+            >
               <ZineComments zineId={commentZineId} onClose={() => setCommentZineId(null)} />
             </div>
           </motion.div>
@@ -250,5 +264,3 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     </>
   );
 };
-
-export default TheStand;
