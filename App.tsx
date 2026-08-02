@@ -2485,7 +2485,8 @@ export const App: React.FC = () => {
                       "archival",
                     ].includes(viewMode)
                   ? "overflow-y-auto bg-nous-base pb-8 md:pb-0 mimi-page-pad mimi-page-pad--public"
-                  : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0 mimi-page-pad"
+                  : // Modest bottom pad — Studio owns its own nav clearance; do not reserve 72px here
+                    "overflow-y-auto bg-nous-base pb-[max(1.25rem,env(safe-area-inset-bottom))] md:pb-0 mimi-page-pad"
           }`}
         >
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (
