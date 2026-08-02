@@ -1626,8 +1626,8 @@ export const App: React.FC = () => {
       checkoutStatus === "canceled" ||
       window.location.pathname.includes("/canceled")
     ) {
-      alert("Payment canceled.");
-      window.history.replaceState({}, document.title, "/");
+      // Quiet return to patronage — no alert; user can re-pick a plan.
+      setViewMode("memberships");
     }
   }, []);
 
