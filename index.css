@@ -112,6 +112,7 @@
     font-weight: 400;
     line-height: 1.5; /* Increased line height for better readability */
     overscroll-behavior-y: none;
+    touch-action: manipulation;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -1019,6 +1020,8 @@
 }
 
 @theme inline {
+  /* Prefer dynamic viewport height so mobile chrome (iOS URL bar) doesn't clip */
+  --height-screen: 100dvh;
   --font-heading: var(--era-font-serif);
   --font-sans: var(--era-font-sans);
   --font-serif: var(--era-font-serif);
@@ -1137,7 +1140,7 @@
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   background: radial-gradient(circle, rgba(0,0,0,0) 65%, rgba(0,0,0,0.3) 100%),
               linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%),
               linear-gradient(90deg, rgba(239, 68, 68, 0.03), rgba(34, 197, 94, 0.01), rgba(59, 130, 246, 0.03));
@@ -1145,6 +1148,56 @@
   z-index: 9999;
   pointer-events: none;
   opacity: 0.15;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Mobile a11y — dvh viewport, 16px inputs, touch-action, 48px targets         */
+/* -------------------------------------------------------------------------- */
+
+/* Tailwind screen utilities → dynamic viewport (iOS/Android browser chrome) */
+.h-screen {
+  height: 100dvh !important;
+}
+.min-h-screen {
+  min-height: 100dvh !important;
+}
+.max-h-screen {
+  max-height: 100dvh !important;
+}
+
+/* Prevent iOS focus-zoom: form controls must be ≥16px on narrow viewports */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Reduce double-tap zoom delay / improve tap responsiveness */
+button,
+a,
+[role="button"],
+summary,
+label[for],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  touch-action: manipulation;
+}
+
+/* WCAG 2.2 target-size helper (48×48 CSS px) */
+.touch-target {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+@media (max-width: 767px) {
+  .studio-chrome button,
+  .studio-chrome--mobile-safe button {
+    min-width: 48px;
+    min-height: 48px;
+  }
 }
 
 .crt-flicker-anim {
