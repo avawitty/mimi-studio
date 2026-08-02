@@ -7,6 +7,7 @@ import type {
   ZineCoverOverlayLayer,
   ZineCoverSpec,
   ZineMetadata,
+  ZinePageSpec,
   ZineSourceAsset,
   ZineSourcePacket,
   UsedContextSnapshot,
@@ -126,6 +127,41 @@ function normalizeSignals(signals: SemioticSignal[] | undefined): SemioticSignal
   }));
 }
 
+function firstNonBlankString(...values: unknown[]): string | undefined {
+  return values.find(
+    (value): value is string =>
+      typeof value === "string" && value.trim().length > 0,
+  );
+}
+
+function normalizeLegacyPageStrings(
+  metadata: ZineMetadata,
+  page: ZinePageSpec,
+  index: number,
+): ZinePageSpec {
+  const headline =
+    firstNonBlankString(
+      page.headline,
+      metadata.content.headlines?.[index],
+      index === 0 ? metadata.content.title : undefined,
+      index === 0 ? metadata.title : undefined,
+    ) || `Plate ${index + 1}`;
+
+  return {
+    ...page,
+    headline,
+    bodyCopy: typeof page.bodyCopy === "string" ? page.bodyCopy : "",
+    imagePrompt:
+      firstNonBlankString(
+        page.imagePrompt,
+        metadata.content.visual_plates?.[index],
+        index === 0 ? metadata.content.header_image_prompt : undefined,
+        index === 0 ? metadata.content.structure?.hero_prompt : undefined,
+        headline,
+      ) || headline,
+  };
+}
+
 function coverTreatment(metadata: ZineMetadata): ZineCoverSpec["treatment"] {
   const mode = resolveIssueMode(metadata.content.meta?.mode);
   if (mode === "oracle") return "dark-plate";
@@ -186,11 +222,12 @@ function normalizeCover(metadata: ZineMetadata): ZineCoverSpec {
     };
   }
 
-  const overlays = (metadata.content.meta.studioCoverOverlays || []).map(
+  const legacyMeta = metadata.content.meta;
+  const overlays = (legacyMeta?.studioCoverOverlays || []).map(
     overlayToEditorElement,
   );
   const originalImageUrl =
-    metadata.content.meta.originalCoverImageUrl ||
+    legacyMeta?.originalCoverImageUrl ||
     metadata.coverImageUrl ||
     metadata.content.hero_image_url ||
     undefined;
@@ -220,9 +257,14 @@ export function normalizeZineArtifact(
   const createdAt = hydrated.createdAt || hydrated.timestamp || Date.now();
   const updatedAt = hydrated.updatedAt || hydrated.timestamp || createdAt;
   const mode = resolveIssueMode(hydrated.content.meta?.mode);
+  const pageSource = hydrated.content.pages?.length
+    ? hydrated.content.pages
+    : hydrated.content.structure?.pages || [];
   const pages = prepareArtifactPages(
     hydrated.id,
-    hydrated.content.pages || hydrated.content.structure?.pages || [],
+    pageSource.map((page, index) =>
+      normalizeLegacyPageStrings(hydrated, page, index),
+    ),
   );
   const status = inferLegacyLifecycleStatus(hydrated, pages);
   const signals = normalizeSignals(

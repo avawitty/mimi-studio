@@ -7,6 +7,7 @@ import {
   hydrateLegacyZineMetadata,
   withCanonicalZinePages,
 } from "../lib/zine/zineMigrations";
+import type { ZineMetadata } from "../types";
 import { makeLegacyZineMetadata } from "./fixtures/zineMetadata";
 
 describe("Mimi zine artifact normalization", () => {
@@ -44,6 +45,56 @@ describe("Mimi zine artifact normalization", () => {
       type: "text",
       content: "The Handled Archive",
     });
+  });
+
+  it("normalizes sovereign legacy records that omit content.meta", () => {
+    const sovereignLegacyRecord = {
+      id: "sovereign_demo_press",
+      userId: "mimi_press",
+      userHandle: "mimi",
+      title: "The Press Is Open",
+      tone: "editorial",
+      timestamp: 1_700_000_000_000,
+      createdAt: 1_700_000_000_000,
+      likes: 12,
+      isPublic: true,
+      publishedAt: 1_700_000_000_000,
+      fragmentsUsed: [],
+      theme: "sovereign",
+      aestheticVector: {},
+      coverImageUrl: null,
+      content: {
+        title: "The Press Is Open",
+        headlines: ["A shelf that belongs to the house"],
+        vocal_summary_blurb:
+          "Public issues now live in Mimi’s own archive — quiet, local, free of cloud quotas.",
+        pages: [
+          {
+            pageNumber: 1,
+            bodyCopy:
+              "Floor reads no longer spend Firebase free-tier units. Publish once; the stand remembers.",
+          },
+        ],
+      },
+    } as unknown as ZineMetadata;
+
+    const artifact = normalizeZineArtifact(sovereignLegacyRecord);
+
+    expect(artifact.identity.title).toBe("The Press Is Open");
+    expect(artifact.pages).toHaveLength(1);
+    expect(artifact.pages[0]).toMatchObject({
+      headline: "A shelf that belongs to the house",
+      bodyCopy:
+        "Floor reads no longer spend Firebase free-tier units. Publish once; the stand remembers.",
+      imagePrompt: "A shelf that belongs to the house",
+    });
+    expect(artifact.cover).toMatchObject({
+      title: "The Press Is Open",
+      treatment: "editorial",
+      overlays: [],
+      overlayBaked: false,
+    });
+    expect(safeParseMimiZineArtifact(artifact).success).toBe(true);
   });
 
   it("builds a complete section-aware issue structure without rewriting storage", () => {
