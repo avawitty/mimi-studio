@@ -57,13 +57,9 @@ test.describe("Scry chamber", () => {
     await expect(page.getByRole("button", { name: "Specimen" }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Trend" }).first()).toBeVisible();
     await expect(page.locator('[data-testid="scry-query"]:visible')).toBeVisible();
-    // Hero "Scry" inside the chamber (masthead also says Scry)
-    await expect(
-      page.getByTestId("scry-chamber").getByRole("heading", { name: "Scry" }),
-    ).toBeVisible();
-    await expect(
-      page.getByTestId("scry-chamber").locator("p", { hasText: "Latent retrieval" }).first(),
-    ).toBeVisible();
+    // One Scry title only — chamber masthead (no duplicate hero wordmark)
+    await expect(page.getByRole("heading", { name: "Scry", exact: true })).toHaveCount(1);
+    await expect(page.getByText("Ask a mood or a ghost")).toBeVisible();
 
     // No cream-paper texture / broadsheet leftover
     await expect(page.locator("img[src*='cream-paper']")).toHaveCount(0);
@@ -77,7 +73,7 @@ test.describe("Scry chamber", () => {
     await expect(page.getByTestId("trend-query")).toBeVisible();
     await expect(page.getByRole("button", { name: "Deep-Scry" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Saturation Chic" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Drift map" })).toBeVisible();
+    await expect(page.getByText("Live search into a biaxial field")).toBeVisible();
   });
 
   test("desktop shows specimen query and lane strip idle state", async ({ page }) => {
