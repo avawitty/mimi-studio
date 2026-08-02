@@ -57,8 +57,10 @@ export const ROUTE_ENTRY_BY_MODE: Record<string, LazyRouteEntry> =
  * for progressive extraction and Suspense boundaries.
  */
 export const LAZY_CHAMBERS = {
-  /** Default-export page — mounts with zero props in debug shells */
-  studio: lazy(() => import("../components/worktable/StudioWorktable")),
+  /** Named export — editorial Studio console (quiet mobile chrome) */
+  studio: lazy(() =>
+    import("../components/InputStudio").then((m) => ({ default: m.InputStudio })),
+  ),
   stand: lazy(() =>
     import("../components/TheStand").then((m) => ({ default: m.TheStand })),
   ),

@@ -971,9 +971,14 @@ export const InputStudio: React.FC<{
 
   useEffect(() => {
     if (input) return;
-    let text = promptList[typewriterIndex];
+    const text = promptList[typewriterIndex];
+    // Mobile shows the cycle question as a static hero — no auto-advance chatter
+    if (isMobile) {
+      setTypewriterText(text);
+      return;
+    }
     let charIndex = 0;
-    let typingTimer: any;
+    let typingTimer: ReturnType<typeof setTimeout>;
 
     const typeNextChar = () => {
       if (charIndex <= text.length) {
@@ -999,7 +1004,7 @@ export const InputStudio: React.FC<{
 
     typeNextChar();
     return () => clearTimeout(typingTimer);
-  }, [typewriterIndex, input]);
+  }, [typewriterIndex, input, isMobile]);
 
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const skipVoiceMemoRef = useRef(false);
@@ -2026,8 +2031,8 @@ ${finalInput}`;
         style={
           isMobile
             ? {
-                /* nav (~56) + slim action row (~56) + safe area */
-                paddingBottom: "calc(56px + 56px + env(safe-area-inset-bottom, 0px))",
+                /* thin instrument rail + brand footer + safe area */
+                paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
               }
             : undefined
         }
@@ -2279,30 +2284,66 @@ ${finalInput}`;
             </div>
 
             {/* 3b: Center Dark Text Area */}
-            <div className={`flex-1 flex flex-col items-center px-6 relative overflow-y-auto no-scrollbar ${isMobile ? "justify-start gap-3 pt-6 pb-44" : "justify-between py-12"}`}>
+            <div className={`flex-1 flex flex-col items-center px-6 relative overflow-y-auto no-scrollbar ${isMobile ? "justify-start gap-3 pt-6 pb-28" : "justify-between py-12"}`}>
               
-              {/* Practical creator promise with an editorial Mimi accent. */}
-              <div className="text-center studio-text-muted mb-6 select-none flex flex-col items-center gap-1.5 shrink-0">
+              {/* Intake mast — mobile is prompt-cycle first; desktop keeps the fuller thesis */}
+              <div className="text-center studio-text-muted mb-4 select-none flex flex-col items-center gap-1.5 shrink-0">
                 {renderStudioPager()}
-                <span>{currentTime}</span>
+                <span className="font-serif italic text-[12px] tracking-wide">{currentTime}</span>
                 {activeThread ? (
                   <span className="font-mono uppercase studio-text-ink text-[8px] border studio-border studio-bg-surface px-2 py-0.5 tracking-[0.2em] font-bold">
                     WEAVING // {activeThread.title}
                   </span>
                 ) : (
-                  <span className="font-mono text-[9px] uppercase tracking-[0.22em]">PROMPT CYCLE {promptIndex + 1}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label="Previous prompt cycle"
+                      onClick={() => {
+                        setTypewriterIndex((i) => (i - 1 + promptList.length) % promptList.length);
+                        setPromptIndex((i) => (i - 1 + promptList.length) % promptList.length);
+                        playClick();
+                      }}
+                      className="min-w-10 min-h-10 flex items-center justify-center studio-text-muted hover:studio-text-ink"
+                    >
+                      <ChevronLeft size={14} strokeWidth={1.5} />
+                    </button>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.22em]">
+                      Prompt cycle {typewriterIndex + 1}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Next prompt cycle"
+                      onClick={() => {
+                        setTypewriterIndex((i) => (i + 1) % promptList.length);
+                        setPromptIndex((i) => (i + 1) % promptList.length);
+                        playClick();
+                      }}
+                      className="min-w-10 min-h-10 flex items-center justify-center studio-text-muted hover:studio-text-ink"
+                    >
+                      <ChevronRight size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
                 )}
-                
-                <div className="w-16 h-px studio-rail-track my-1.5" />
-                <span className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-amber-600 dark:text-amber-400">
-                  From fragment to finished issue
-                </span>
-                <h1 className="font-serif italic text-2xl md:text-3xl leading-tight studio-text-ink max-w-xl">
-                  Turn source material into an editorial issue.
-                </h1>
-                <p className="font-sans text-[12px] tracking-wide text-stone-500 max-w-md mt-1 leading-relaxed">
-                  Begin with a fragment, reference, tension, or question. Mimi helps shape it without flattening your voice.
-                </p>
+
+                {isMobile && !activeThread ? (
+                  <p className="font-sans text-[11px] uppercase tracking-[0.14em] studio-text-ink max-w-sm mt-3 leading-relaxed px-1">
+                    {promptList[typewriterIndex]}
+                  </p>
+                ) : (
+                  <>
+                    <div className="w-16 h-px studio-rail-track my-1.5" />
+                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-amber-600 dark:text-amber-400">
+                      From fragment to finished issue
+                    </span>
+                    <h1 className="font-serif italic text-2xl md:text-3xl leading-tight studio-text-ink max-w-xl">
+                      Turn source material into an editorial issue.
+                    </h1>
+                    <p className="font-sans text-[12px] tracking-wide text-stone-500 max-w-md mt-1 leading-relaxed">
+                      Begin with a fragment, reference, tension, or question. Mimi helps shape it without flattening your voice.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Voice memo status */}
@@ -2429,10 +2470,12 @@ ${finalInput}`;
 
                 {/* Primary field: Source Material */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-3">
-                    <label className="font-mono text-[9px] uppercase tracking-[0.22em] text-stone-400 font-extrabold shrink-0">01 / Source material</label>
-                    <div className="h-px flex-1 bg-stone-200/10 dark:bg-stone-800/50" />
-                  </div>
+                  {!isMobile && (
+                    <div className="flex items-center gap-3">
+                      <label className="font-mono text-[9px] uppercase tracking-[0.22em] text-stone-400 font-extrabold shrink-0">01 / Source material</label>
+                      <div className="h-px flex-1 bg-stone-200/10 dark:bg-stone-800/50" />
+                    </div>
+                  )}
                   <textarea
                     ref={textareaRef}
                     value={input || ""}
@@ -2441,7 +2484,11 @@ ${finalInput}`;
                       playClick();
                     }}
                     className="w-full bg-transparent border-none focus:ring-0 text-md md:text-xl font-serif italic text-center studio-prompt-input outline-none resize-none leading-relaxed no-scrollbar select-text focus:outline-none min-h-[120px]"
-                    placeholder="Paste a fragment, reference, question, or unfinished idea..."
+                    placeholder={
+                      isMobile
+                        ? "Lately, I keep returning to the idea of…"
+                        : "Paste a fragment, reference, question, or unfinished idea..."
+                    }
                   />
                 </div>
 
@@ -2702,37 +2749,26 @@ ${finalInput}`;
                 </div>
               )}
 
-              {/* Mobile Sticky Action Cluster — slim primary row; tools live in sheet */}
-              {isMobile && !activePanel && !moreSheetOpen && !toolsSheetOpen && (
-                <div className="studio-mobile-actions fixed left-0 right-0 studio-bg-panel border-t studio-border z-[45] flex flex-col">
-                  <div className="flex items-stretch gap-2 px-3 pt-2 pb-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setToolsSheetOpen(true);
-                        playClick();
-                      }}
-                      aria-label="Open tools"
-                      aria-expanded={toolsSheetOpen}
-                      className={`w-12 shrink-0 min-h-[44px] flex flex-col items-center justify-center gap-0.5 border studio-border rounded-sm active:scale-95 transition-transform ${
-                        toolsSheetOpen || isRecording || isDictating || deepThinking || useSearch
-                          ? "text-amber-600 dark:text-amber-400 border-amber-500/40 bg-amber-500/10"
-                          : "studio-text-muted"
-                      }`}
-                    >
-                      <Settings size={14} strokeWidth={1.7} />
-                      <span className="font-mono text-[6px] uppercase tracking-[0.1em] font-bold leading-none">
-                        Tools
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isShapingBrief}
-                      onClick={handleShapeBrief}
-                      className="w-14 shrink-0 min-h-[44px] flex items-center justify-center border border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-mono uppercase tracking-wider font-extrabold rounded-sm active:scale-95 transition-transform"
-                    >
-                      {isShapingBrief ? <Loader2 size={13} className="animate-spin" /> : "Shape"}
-                    </button>
+              {/* Mobile CTA — in-flow, one primary action (no sticky Tools/Shape/Preview wall) */}
+              {isMobile && (
+                <div className="flex flex-col items-center gap-3 mt-6 mb-2 select-none shrink-0 z-10 w-full max-w-md">
+                  <button
+                    type="button"
+                    disabled={isThinking}
+                    onClick={() => {
+                      triggerAccession(false);
+                      playClick();
+                    }}
+                    className="w-full min-h-12 flex items-center justify-center gap-2 border studio-border studio-text-ink bg-transparent font-mono text-[10px] uppercase tracking-[0.22em] font-bold active:scale-[0.98] transition-transform disabled:opacity-60"
+                  >
+                    {isThinking ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <span aria-hidden="true">→</span>
+                    )}
+                    {isThinking ? "Developing…" : "Submit to issue"}
+                  </button>
+                  <div className="flex items-center gap-4">
                     <button
                       type="button"
                       disabled={isThinking}
@@ -2740,26 +2776,17 @@ ${finalInput}`;
                         triggerAccession(true);
                         playClick();
                       }}
-                      className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 border border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-300 text-[9px] font-mono uppercase tracking-widest font-extrabold rounded-sm active:scale-95 transition-transform"
+                      className="font-mono text-[9px] uppercase tracking-[0.18em] studio-text-muted hover:studio-text-ink underline underline-offset-4 decoration-dotted"
                     >
-                      <Eye size={12} strokeWidth={1.8} />
                       Preview
                     </button>
                     <button
                       type="button"
-                      disabled={isThinking}
-                      onClick={() => {
-                        triggerAccession(false);
-                        playClick();
-                      }}
-                      className="flex-[1.4] min-h-[44px] flex items-center justify-center gap-1.5 bg-stone-900 text-stone-50 dark:bg-[#FAF9F6] dark:text-black text-[9px] font-mono uppercase tracking-widest font-extrabold rounded-sm active:scale-95 transition-transform disabled:opacity-60"
+                      disabled={isShapingBrief}
+                      onClick={handleShapeBrief}
+                      className="font-mono text-[9px] uppercase tracking-[0.18em] studio-text-muted hover:studio-text-ink underline underline-offset-4 decoration-dotted"
                     >
-                      {isThinking ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        <BookOpen size={12} strokeWidth={1.8} />
-                      )}
-                      {isThinking ? "Developing" : "Develop"}
+                      {isShapingBrief ? "Shaping…" : "Shape brief"}
                     </button>
                   </div>
                 </div>
@@ -3630,61 +3657,76 @@ ${finalInput}`;
 
       </div>
 
-      {/* MOBILE BOTTOM NAV — focused, native-feeling primary navigation */}
-      {isMobile && (
-        <nav
-          aria-label="Studio navigation"
-          className="studio-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t studio-border studio-bg-tab"
+      {/* MOBILE INSTRUMENT RAIL — thin icon spine + brand (editorial middle ground) */}
+      {isMobile && !toolsSheetOpen && !moreSheetOpen && (
+        <footer
+          aria-label="Studio instruments"
+          className="studio-mobile-rail md:hidden fixed bottom-0 left-0 right-0 z-40 border-t studio-border studio-bg-panel"
         >
-          {(() => {
-            const composeActive = activePanel === null && mobileStudioView === "editor";
-            const navItems: {
-              key: string;
-              label: string;
-              icon: React.ReactNode;
-              active: boolean;
-              onClick: () => void;
-            }[] = [
-              {
-                key: "compose",
-                label: "Compose",
-                icon: <PenLine size={17} strokeWidth={1.7} />,
-                active: composeActive,
-                onClick: () => {
-                  setActivePanel(null);
-                  setMobileStudioView("editor");
+          <div className="flex items-center justify-center gap-1 px-2 pt-1.5 pb-1 overflow-x-auto no-scrollbar">
+            {(
+              [
+                {
+                  key: "tools",
+                  label: "Tools",
+                  icon: <LayoutGrid size={16} strokeWidth={1.4} />,
+                  active: toolsSheetOpen || isRecording || isDictating || deepThinking || useSearch,
+                  onClick: () => setToolsSheetOpen(true),
                 },
-              },
-              {
-                key: "anchors",
-                label: "Anchors",
-                icon: <Layers size={17} strokeWidth={1.7} />,
-                active: activePanel === "signal",
-                onClick: () => togglePanel("signal"),
-              },
-              {
-                key: "treatments",
-                label: "Treatments",
-                icon: <Paintbrush size={17} strokeWidth={1.7} />,
-                active: activePanel === "treatments",
-                onClick: () => togglePanel("treatments"),
-              },
-              {
-                key: "pocket",
-                label: "Pocket",
-                icon: <ShoppingBag size={17} strokeWidth={1.7} />,
-                active: activePanel === "procurement",
-                onClick: () => togglePanel("procurement"),
-              },
-              {
-                key: "more",
-                label: "More",
-                icon: <MoreHorizontal size={17} strokeWidth={1.7} />,
-                active: moreSheetOpen,
-                onClick: () => setMoreSheetOpen(true),
-              },
-            ];
-            return navItems.map((item) => (
+                {
+                  key: "attach",
+                  label: "Attach media",
+                  icon: <Paperclip size={16} strokeWidth={1.4} />,
+                  active: mediaFiles.length > 0,
+                  onClick: () => mediaInputRef.current?.click(),
+                },
+                {
+                  key: "compose",
+                  label: "Compose",
+                  icon: <PenLine size={16} strokeWidth={1.4} />,
+                  active: activePanel === null && mobileStudioView === "editor",
+                  onClick: () => {
+                    setActivePanel(null);
+                    setMobileStudioView("editor");
+                  },
+                },
+                {
+                  key: "cover",
+                  label: "Cover",
+                  icon: <Eye size={16} strokeWidth={1.4} />,
+                  active: mobileStudioView === "cover",
+                  onClick: () => setMobileStudioView("cover"),
+                },
+                {
+                  key: "ground",
+                  label: "Web grounding",
+                  icon: <Globe size={16} strokeWidth={1.4} />,
+                  active: useSearch,
+                  onClick: () => setUseSearch((v) => !v),
+                },
+                {
+                  key: "treatments",
+                  label: "Treatments",
+                  icon: <Paintbrush size={16} strokeWidth={1.4} />,
+                  active: activePanel === "treatments",
+                  onClick: () => togglePanel("treatments"),
+                },
+                {
+                  key: "anchors",
+                  label: "Anchors",
+                  icon: <Layers size={16} strokeWidth={1.4} />,
+                  active: activePanel === "signal",
+                  onClick: () => togglePanel("signal"),
+                },
+                {
+                  key: "more",
+                  label: "More",
+                  icon: <MoreHorizontal size={16} strokeWidth={1.4} />,
+                  active: moreSheetOpen,
+                  onClick: () => setMoreSheetOpen(true),
+                },
+              ] as const
+            ).map((item) => (
               <button
                 key={item.key}
                 type="button"
@@ -3693,19 +3735,22 @@ ${finalInput}`;
                   playClick();
                 }}
                 aria-label={item.label}
-                aria-current={item.active ? "page" : undefined}
-                className={`studio-mobile-nav-item flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
-                  item.active ? "is-active studio-text-ink" : "studio-text-muted"
+                aria-pressed={item.active || undefined}
+                className={`studio-mobile-rail-item min-w-11 min-h-11 w-11 h-11 flex items-center justify-center transition-colors ${
+                  item.active ? "studio-text-ink" : "studio-text-muted"
                 }`}
               >
                 {item.icon}
-                <span className="font-mono text-[7.5px] uppercase tracking-[0.12em] font-bold leading-none">
-                  {item.label}
-                </span>
               </button>
-            ));
-          })()}
-        </nav>
+            ))}
+          </div>
+          <div className="border-t border-dotted studio-border px-4 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] flex flex-col items-center leading-none select-none">
+            <span className="font-serif italic text-[17px] studio-text-ink tracking-[0.01em]">Mimi</span>
+            <span className="font-mono text-[7px] uppercase tracking-[0.32em] studio-text-muted mt-0.5 font-bold">
+              Studio
+            </span>
+          </div>
+        </footer>
       )}
 
       {/* MOBILE TOOLS SHEET */}
