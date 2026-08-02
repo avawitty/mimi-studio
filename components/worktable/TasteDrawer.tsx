@@ -1,4 +1,6 @@
 import React, { useEffect } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { resolveMotionVariant } from "@/lib/motion";
 import { AuraMeter, type AuraMood } from "./AuraMeter";
 
 export type TasteDrawerTab = "treatments" | "aura" | "context";
@@ -45,6 +47,9 @@ export const TasteDrawer: React.FC<TasteDrawerProps> = ({
   onOpenConsole,
   className = "",
 }) => {
+  const reduceMotion = Boolean(useReducedMotion());
+  const sheet = resolveMotionVariant("sheetEnter", reduceMotion);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -54,29 +59,37 @@ export const TasteDrawer: React.FC<TasteDrawerProps> = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
-
   return (
-    <div
-      data-specimen="WT-009"
-      className={`fixed inset-0 z-[80] flex flex-col justify-end ${className}`.trim()}
-    >
-      <button
-        type="button"
-        aria-label="Dismiss taste drawer"
-        className="absolute inset-0 bg-[var(--wt-ink,#111110)]/25 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          data-specimen="WT-009"
+          className={`fixed inset-0 z-[80] flex flex-col justify-end ${className}`.trim()}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={sheet.transition}
+        >
+          <button
+            type="button"
+            aria-label="Dismiss taste drawer"
+            className="absolute inset-0 bg-[var(--wt-ink,#111110)]/25 backdrop-blur-[2px]"
+            onClick={onClose}
+          />
 
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Taste drawer"
-        className="relative z-[1] w-full max-h-[min(70dvh,520px)] border-t border-[var(--wt-line,#d8d4c9)] bg-[var(--wt-paper,var(--mimi-manila-sheet,#f7f3e8))] shadow-[0_-8px_24px_rgba(17,17,16,0.08)] flex flex-col motion-safe:animate-[wt-sheet-up_0.28s_ease-out]"
-        style={{
-          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
-        }}
-      >
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Taste drawer"
+            initial={sheet.initial}
+            animate={sheet.animate}
+            exit={sheet.exit}
+            transition={sheet.transition}
+            className="relative z-[1] w-full max-h-[min(70dvh,520px)] border-t border-[var(--wt-line,#d8d4c9)] bg-[var(--wt-paper,var(--mimi-manila-sheet,#f7f3e8))] shadow-[0_-8px_24px_rgba(17,17,16,0.08)] flex flex-col"
+            style={{
+              paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+            }}
+          >
         <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-[var(--wt-line,#d8d4c9)]">
           <div className="flex items-center gap-3">
             <span
@@ -186,19 +199,9 @@ export const TasteDrawer: React.FC<TasteDrawerProps> = ({
             </div>
           )}
         </div>
-      </div>
-
-      <style>{`
-        @keyframes wt-sheet-up {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          [data-specimen="WT-009"] [role="dialog"] {
-            animation: none !important;
-          }
-        }
-      `}</style>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
