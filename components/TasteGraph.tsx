@@ -920,11 +920,11 @@ export const TasteGraph: React.FC = () => {
                   {/* TAB I: VECTOR MAP */}
                   {activeTab === 'map' && (
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-8 h-full items-center">
-                      <div className="md:col-span-7 aspect-square max-h-[440px] bg-stone-50 dark:bg-[#0d0d0d] border border-stone-200/60 dark:border-stone-850/60 p-4 relative flex items-center justify-center shadow-xs">
+                      <div className="order-2 md:order-1 md:col-span-7 aspect-square max-h-[440px] bg-stone-50 dark:bg-[#0d0d0d] border border-stone-200/60 dark:border-stone-850/60 p-4 relative flex items-center justify-center shadow-xs">
                         {renderCoordinateMapSVG()}
                       </div>
 
-                      <div className="md:col-span-5 space-y-5 text-left flex flex-col justify-center">
+                      <div className="order-1 md:order-2 md:col-span-5 space-y-5 text-left flex flex-col justify-center">
                         <div className="space-y-1.5 border-l-2 border-amber-500 pl-4">
                           <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-stone-400 block">COORDINATE MAPPING MODEL</span>
                           <h2 className="font-serif text-2xl font-semibold leading-tight">Latent Space Coordinate Vector Projection</h2>
