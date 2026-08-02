@@ -45,7 +45,7 @@ export const SurveillanceOverlay: React.FC<SurveillanceOverlayProps> = ({
     );
   }
 
-  if (family === "capture" || family === "services") {
+  if (family === "services") {
     return (
       <div
         aria-hidden
@@ -80,7 +80,7 @@ export const SurveillanceOverlay: React.FC<SurveillanceOverlayProps> = ({
     );
   }
 
-  if (family === "production") {
+  if (family === "production" || family === "capture") {
     return (
       <div
         aria-hidden
