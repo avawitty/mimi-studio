@@ -2,14 +2,13 @@
  * Residue Apify acquisition API — Phase 9.
  * GET  → availability (no secrets)
  * POST → live acquire (requires signed-in session + APIFY_TOKEN)
+ *
+ * Residue provider modules + Firebase Admin are loaded lazily — static imports
+ * of that graph crash Vercel isolates (FUNCTION_INVOCATION_FAILED).
  */
 
 import { cors, readJsonBody, sendError, sendJson } from "../lib/apiUtils.js";
 import { extractMimiSessionToken } from "../lib/mimiSessionToken.js";
-import { createApifySourceAcquisitionProvider } from "../services/residue/acquisition/providers/apify/apifySourceAcquisitionProvider.js";
-import { resolveResidueApifyActorId } from "../services/residue/acquisition/providers/apify/actorRegistry.js";
-import { normalizeSources } from "../services/residue/shared/normalizeSources.js";
-import { sourceAcquisitionRequestSchema } from "../services/residue/validation.js";
 
 const RESIDUE_APIFY_QUOTA_WINDOW_MS = 60 * 60 * 1000;
 const RESIDUE_APIFY_QUOTA_MAX = 6;
@@ -36,6 +35,13 @@ export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
 
   if (req.method === "GET") {
+    const [
+      { createApifySourceAcquisitionProvider },
+      { resolveResidueApifyActorId },
+    ] = await Promise.all([
+      import("../services/residue/acquisition/providers/apify/apifySourceAcquisitionProvider.js"),
+      import("../services/residue/acquisition/providers/apify/actorRegistry.js"),
+    ]);
     const provider = createApifySourceAcquisitionProvider();
     sendJson(res, 200, {
       available: provider.isAvailable(),
@@ -53,6 +59,18 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    const [
+      { createApifySourceAcquisitionProvider },
+      { resolveResidueApifyActorId },
+      { normalizeSources },
+      { sourceAcquisitionRequestSchema },
+    ] = await Promise.all([
+      import("../services/residue/acquisition/providers/apify/apifySourceAcquisitionProvider.js"),
+      import("../services/residue/acquisition/providers/apify/actorRegistry.js"),
+      import("../services/residue/shared/normalizeSources.js"),
+      import("../services/residue/validation.js"),
+    ]);
+
     const body = await readJsonBody(req);
     const parsed = sourceAcquisitionRequestSchema.safeParse({
       inquiry: body?.inquiry || body?.query || body?.experience,
