@@ -17,6 +17,8 @@ let initSettledDisabled = false;
 /** True after open threw — retry allowed after cooldown (Neon cold start / TLS blips). */
 let initFailed = false;
 let lastInitFailureAt = 0;
+/** Last open failure message (truncated) for /api/sovereign/status diagnostics. */
+let lastInitError: string | null = null;
 let initPromise: Promise<SovereignDriver | null> | null = null;
 
 /** Cooldown before retrying a failed Postgres/SQLite open in the same isolate. */
@@ -119,6 +121,7 @@ export const getSovereignDb = async (): Promise<SovereignDriver | null> => {
     .then((driver) => {
       driverInstance = driver;
       initFailed = false;
+      lastInitError = null;
       if (!driver) {
         // Disabled on this host — do not spin-retry every request.
         initSettledDisabled = true;
@@ -141,6 +144,10 @@ export const getSovereignDb = async (): Promise<SovereignDriver | null> => {
       driverInstance = null;
       initFailed = true;
       lastInitFailureAt = Date.now();
+      lastInitError =
+        error instanceof Error
+          ? error.message.slice(0, 240)
+          : String(error).slice(0, 240);
       return null;
     })
     .finally(() => {
@@ -161,5 +168,9 @@ export const resetSovereignDbForTests = async () => {
   initSettledDisabled = false;
   initFailed = false;
   lastInitFailureAt = 0;
+  lastInitError = null;
   initPromise = null;
 };
+
+/** Latest driver open failure (ops / status); null when healthy or never failed. */
+export const getSovereignLastInitError = (): string | null => lastInitError;
