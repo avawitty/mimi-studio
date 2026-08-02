@@ -133,7 +133,7 @@ Runtime verification for all rows: **Static only**.
 | `scry` | Routed | `ScryView` | Vector/web services; mock draft fallback | High | Not sidebar; flag unwired for gating |
 | `press` | Routed | `TheEdit` (~420 lines) | `product_interactions`; **MOCK_PRODUCTS** | High | Editorial/commerce with mock fallbacks |
 | `mimi-drop` | Routed | `MimiDrop` | `users/{uid}/drops` + local custom drops | High | Simulated scraper fallbacks |
-| `proscenium` | Routed | `ProsceniumView` | `public_transmissions` + mock gallery mix | High | Public stage |
+| `proscenium` | Routed | `ProsceniumView` (wings: stage / correspondents / cliques) | `public_transmissions` + connections + cliques; demo specimens labeled | High | Public stage + social circle |
 | `darkroom` | Routed | `DarkroomView` | Profile treatments; Pocket | High | Sidebar; flag exists, route not gated |
 | `sanctuary` | Routed | `SanctuaryView` | `localStorage` reflections | High | Not in sidebar |
 | `ward` | Routed | `TheWard` | Notifications/zines; embeds TasteGraph | High | Calibration ritual |
