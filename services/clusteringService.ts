@@ -3,6 +3,7 @@ import { db, auth } from "./firebaseInit";
 import { getClient } from "./geminiService";
 import { getAllShadowMemory } from "./vectorSearch";
 import { handleFirestoreError, OperationType } from "./firebaseUtils";
+import { cosineSimilarity } from "../lib/embeddingMath";
 
 export interface ThemeNode {
   id: string;
@@ -79,18 +80,6 @@ function kMeans(vectors: number[][], k: number, maxIterations = 50) {
   }
 
   return { centroids, assignments };
-}
-
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  let dotProduct = 0, magA = 0, magB = 0;
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    magA += vecA[i] * vecA[i];
-    magB += vecB[i] * vecB[i];
-  }
-  magA = Math.sqrt(magA); magB = Math.sqrt(magB);
-  if (magA === 0 || magB === 0) return 0;
-  return dotProduct / (magA * magB);
 }
 
 export const generateClusterAnchors = async () => {

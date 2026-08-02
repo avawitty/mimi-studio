@@ -12,6 +12,7 @@ import { fetchUserZines, fetchLatestLineageEntry } from "./firebaseUtils";
 import { getClient, withResilience, tryModels, ORACLE_PERSONA as CLIENT_PERSONA } from "./geminiClient";
 import { coerceToString } from "../lib/utils";
 import { isPaidPatronPlan } from "../constants";
+import { modelFor } from "./modelConfig";
 
 export { getClient, withResilience, tryModels };
 
@@ -614,10 +615,10 @@ Do not be poetic unless it improves clarity. Prioritize clarity, structure, and 
 
     const data = JSON.parse(response.text || "{}");
     
-    // Embed the structured text
+    // Embed the structured text (role-resolved; env-overridable via GEMINI_EMBEDDING_MODEL)
     const structuredText = JSON.stringify(data);
     const embeddingResponse = await ai.models.embedContent({
-      model: 'text-embedding-004',
+      model: modelFor("embedding", "gemini"),
       contents: [structuredText],
     });
     const embedding = embeddingResponse.embeddings?.[0]?.values || [];
@@ -857,10 +858,20 @@ function cleanAndParse(text: string | undefined): any {
   }
 }
 
+/** Resolve the Gemini embedding model id (env-overridable via GEMINI_EMBEDDING_MODEL). */
+export const embeddingModelId = (): string => modelFor("embedding", "gemini");
+
+/**
+ * Embed text parts via the Gemini client (proxied). When the server has an AI Gateway
+ * key, `/api/proxy/gemini` remaps embedContent through `embedGeminiContentViaGateway`
+ * and uses `modelFor("embedding", "gateway")` instead — so stored vectors may be
+ * OpenAI-width even though this call requests the Gemini role model. Callers that
+ * persist vectors should store `embedding_dims` and skip dim-mismatched compares.
+ */
 export const getEmbedding = async (content: Part[], apiKey?: string) => {
     return await withResilience(async (ai) => {
         const response = await ai.models.embedContent({
-            model: "gemini-embedding-2-preview",
+            model: embeddingModelId(),
             contents: content,
         });
         return response.embeddings?.[0]?.values;
