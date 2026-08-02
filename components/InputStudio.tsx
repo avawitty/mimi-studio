@@ -2020,7 +2020,14 @@ ${finalInput}`;
       {/* MAIN STUDIO AREA */}
       <div
         className="flex-1 w-full flex overflow-hidden relative pb-14 md:pb-14"
-        style={isMobile ? { paddingBottom: 'calc(44px + 64px + env(safe-area-inset-bottom, 0px))' } : undefined}
+        style={
+          isMobile
+            ? {
+                /* nav (~56) + slim action row (~56) + safe area */
+                paddingBottom: "calc(56px + 56px + env(safe-area-inset-bottom, 0px))",
+              }
+            : undefined
+        }
         {...(isMobile
           ? { onTouchStart: handleStudioTouchStart, onTouchEnd: handleStudioTouchEnd }
           : {})}
@@ -2686,112 +2693,34 @@ ${finalInput}`;
                 </div>
               )}
 
-              {/* Mobile Sticky Action Cluster (sits directly above the bottom nav) */}
-              {isMobile && (
+              {/* Mobile Sticky Action Cluster — slim primary row; tools live in sheet */}
+              {isMobile && !activePanel && !moreSheetOpen && !toolsSheetOpen && (
                 <div className="studio-mobile-actions fixed left-0 right-0 studio-bg-panel border-t studio-border z-[45] flex flex-col">
-                  {/* Floating scrollable tools toolbar */}
-                  <div className="flex items-center gap-0 overflow-x-auto no-scrollbar border-b studio-border px-2 py-1.5">
-                    {([
-                      {
-                        key: "attach",
-                        label: "Attach",
-                        icon: <Paperclip size={14} strokeWidth={1.6} />,
-                        active: false,
-                        onClick: () => { mediaInputRef.current?.click(); playClick(); },
-                      },
-                      {
-                        key: "voice",
-                        label: isRecording ? "Stop" : "Voice",
-                        icon: isTranscribing ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : isRecording ? (
-                          <Square size={13} fill="currentColor" />
-                        ) : (
-                          <Mic size={14} strokeWidth={1.6} />
-                        ),
-                        active: isRecording || isTranscribing,
-                        onClick: () => { startRecording(); playClick(); },
-                      },
-                      {
-                        key: "dictate",
-                        label: isDictating ? "Stop" : "Dictate",
-                        icon: <Radio size={14} strokeWidth={1.6} />,
-                        active: isDictating,
-                        onClick: () => { handleDictationToggle(); playClick(); },
-                      },
-                      {
-                        key: "title",
-                        label: "Title",
-                        icon: <Zap size={14} strokeWidth={1.6} />,
-                        active: false,
-                        onClick: () => { handleAutoGenerateTitle(); playClick(); },
-                      },
-                      {
-                        key: "spark",
-                        label: "Spark",
-                        icon: <Sparkles size={14} strokeWidth={1.6} />,
-                        active: isGeneratingPrompt,
-                        onClick: async () => {
-                          playClick();
-                          setIsGeneratingPrompt(true);
-                          try {
-                            const newPrompt = await generateAutoAwesomePrompt();
-                            setInput(newPrompt);
-                          } catch (e) {
-                            console.error(e);
-                          } finally {
-                            setIsGeneratingPrompt(false);
-                          }
-                        },
-                      },
-                      {
-                        key: "deep",
-                        label: "Deep",
-                        icon: <BrainCircuit size={14} strokeWidth={1.6} />,
-                        active: deepThinking,
-                        onClick: () => { setDeepThinking(!deepThinking); playClick(); },
-                      },
-                      {
-                        key: "web",
-                        label: "Web",
-                        icon: <Globe size={14} strokeWidth={1.6} />,
-                        active: useSearch,
-                        onClick: () => { setUseSearch(!useSearch); playClick(); },
-                      },
-                      {
-                        key: "tailor",
-                        label: "Tailor",
-                        icon: <Scissors size={14} strokeWidth={1.6} />,
-                        active: !useTailorProfile,
-                        onClick: () => { setUseTailorProfile(!useTailorProfile); playClick(); },
-                      },
-                    ] as { key: string; label: string; icon: React.ReactNode; active: boolean; onClick: () => void }[]).map((tool) => (
-                      <button
-                        key={tool.key}
-                        type="button"
-                        onClick={tool.onClick}
-                        aria-label={tool.label}
-                        className={`shrink-0 flex flex-col items-center justify-center gap-0.5 w-[52px] py-1.5 rounded-sm active:scale-95 transition-all ${
-                          tool.active
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "studio-text-muted"
-                        }`}
-                      >
-                        {tool.icon}
-                        <span className="font-mono text-[6px] uppercase tracking-[0.1em] font-bold leading-none truncate w-full text-center">
-                          {tool.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Primary action row */}
-                  <div className="flex items-stretch gap-2 px-3 pt-2 pb-3">
+                  <div className="flex items-stretch gap-2 px-3 pt-2 pb-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setToolsSheetOpen(true);
+                        playClick();
+                      }}
+                      aria-label="Open tools"
+                      aria-expanded={toolsSheetOpen}
+                      className={`w-12 shrink-0 min-h-[44px] flex flex-col items-center justify-center gap-0.5 border studio-border rounded-sm active:scale-95 transition-transform ${
+                        toolsSheetOpen || isRecording || isDictating || deepThinking || useSearch
+                          ? "text-amber-600 dark:text-amber-400 border-amber-500/40 bg-amber-500/10"
+                          : "studio-text-muted"
+                      }`}
+                    >
+                      <Settings size={14} strokeWidth={1.7} />
+                      <span className="font-mono text-[6px] uppercase tracking-[0.1em] font-bold leading-none">
+                        Tools
+                      </span>
+                    </button>
                     <button
                       type="button"
                       disabled={isShapingBrief}
                       onClick={handleShapeBrief}
-                      className="w-14 shrink-0 flex items-center justify-center border border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-mono uppercase tracking-wider font-extrabold rounded-sm active:scale-95 transition-transform"
+                      className="w-14 shrink-0 min-h-[44px] flex items-center justify-center border border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-mono uppercase tracking-wider font-extrabold rounded-sm active:scale-95 transition-transform"
                     >
                       {isShapingBrief ? <Loader2 size={13} className="animate-spin" /> : "Shape"}
                     </button>
@@ -2872,71 +2801,14 @@ ${finalInput}`;
 
         {/* COLUMN 3: COVER PROFILER / PREVIEW COLUMN */}
         {(!isMobile || mobileStudioView === "cover") && (
-          <div className={`w-full studio-bg-panel border-l studio-border flex flex-col shrink-0 relative min-h-0 ${isMobile ? "justify-start pb-44" : "justify-between"}`}
-            style={isMobile ? undefined : { width: coverPanelWidth }}>
-            <div className={`flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col p-6 md:pr-10 ${isMobile ? "" : ""}`}>
-            {isMobile && (
-              <div className="studio-mobile-actions fixed left-0 right-0 studio-bg-panel border-t studio-border z-[45] flex items-center justify-around gap-0 px-2 py-2">
-                {([
-                  {
-                    key: "optics",
-                    label: "Optics",
-                    icon: <Eye size={14} strokeWidth={1.6} />,
-                    active: activePanel === "telemetry",
-                    onClick: () => { togglePanel("telemetry"); playClick(); },
-                  },
-                  {
-                    key: "treatments",
-                    label: "Treatments",
-                    icon: <Paintbrush size={14} strokeWidth={1.6} />,
-                    active: activePanel === "treatments",
-                    onClick: () => { togglePanel("treatments"); playClick(); },
-                  },
-                  {
-                    key: "colophon",
-                    label: "Context",
-                    icon: <FileText size={14} strokeWidth={1.6} />,
-                    active: activePanel === "orchestrator",
-                    onClick: () => { togglePanel("orchestrator"); playClick(); },
-                  },
-                  {
-                    key: "doll",
-                    label: studioDoll.enabled ? "Doll: On" : "Doll",
-                    icon: studioDoll.loading ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Users size={14} strokeWidth={1.6} />
-                    ),
-                    active: studioDoll.enabled,
-                    onClick: () => { studioDoll.toggleDollInjection(!studioDoll.enabled); playClick(); },
-                  },
-                  {
-                    key: "reset",
-                    label: "Reset",
-                    icon: <RotateCcw size={14} strokeWidth={1.6} />,
-                    active: false,
-                    onClick: () => { setActiveThread(null); setInput(""); playClick(); },
-                  },
-                ] as { key: string; label: string; icon: React.ReactNode; active: boolean; onClick: () => void }[]).map((tool) => (
-                  <button
-                    key={tool.key}
-                    type="button"
-                    onClick={tool.onClick}
-                    aria-label={tool.label}
-                    className={`shrink-0 flex flex-col items-center justify-center gap-0.5 min-h-[44px] w-[56px] py-1.5 rounded-sm active:scale-95 transition-all ${
-                      tool.active
-                        ? "text-amber-600 dark:text-amber-400"
-                        : "studio-text-muted"
-                    }`}
-                  >
-                    {tool.icon}
-                    <span className="font-mono text-[6px] uppercase tracking-[0.1em] font-bold leading-none truncate w-full text-center">
-                      {tool.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+          <div
+            className={`w-full studio-bg-panel border-l studio-border flex flex-col shrink-0 relative min-h-0 ${
+              isMobile ? "pb-28" : ""
+            }`}
+            style={isMobile ? undefined : { width: coverPanelWidth }}
+          >
+            {/* Content-sized (not flex-1) so the colophon sits tight under the plate */}
+            <div className="overflow-y-auto no-scrollbar flex flex-col p-6 md:pr-10">
             <div className="space-y-6">
               {renderStudioPager()}
               {/* Zine Title Input Header */}
@@ -3835,7 +3707,7 @@ ${finalInput}`;
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.5 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black z-[60]"
+                className="fixed inset-0 bg-black z-[100]"
                 onClick={() => setToolsSheetOpen(false)}
               />
               <motion.div
@@ -3843,7 +3715,7 @@ ${finalInput}`;
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", stiffness: 340, damping: 34 }}
-                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[70] max-h-[80vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
+                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[110] max-h-[80vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
               >
                 <div className="sticky top-0 studio-bg-panel px-5 pt-3 pb-3 border-b studio-border">
                   <div className="w-10 h-1 rounded-full bg-current opacity-20 mx-auto mb-3" />
@@ -4034,7 +3906,7 @@ ${finalInput}`;
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.5 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black z-[60]"
+                className="fixed inset-0 bg-black z-[100]"
                 onClick={() => setMoreSheetOpen(false)}
               />
               <motion.div
@@ -4042,7 +3914,7 @@ ${finalInput}`;
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", stiffness: 340, damping: 34 }}
-                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[70] max-h-[70vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
+                className="studio-mobile-sheet fixed bottom-0 left-0 right-0 z-[110] max-h-[70vh] overflow-y-auto no-scrollbar rounded-t-2xl border-t studio-border studio-bg-panel shadow-2xl"
               >
                 <div className="sticky top-0 studio-bg-panel px-5 pt-3 pb-3 border-b studio-border">
                   <div className="w-10 h-1 rounded-full bg-current opacity-20 mx-auto mb-3" />
@@ -4217,13 +4089,13 @@ ${finalInput}`;
       <AnimatePresence>
         {activePanel && (
           <>
-            {/* Backdrop */}
+            {/* Backdrop — above bottom nav (z-40) so dismiss always works */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
               onClick={() => setActivePanel(null)}
-              className="fixed inset-0 bg-black/60 z-40 pointer-events-auto"
+              className="fixed inset-0 bg-black/60 z-[100] pointer-events-auto"
             />
 
             {/* Slide-Up/Modal Box */}
@@ -4235,7 +4107,7 @@ ${finalInput}`;
               transition={{ type: "spring", stiffness: 280, damping: 28 }}
               className={
                 isMobile
-                  ? "fixed bottom-0 left-0 right-0 w-full rounded-t-2xl border-t border-stone-800 max-h-[85vh] p-6 pb-12 overflow-y-auto bg-[#111111] z-50 pointer-events-auto shadow-[0_-12px_44px_rgba(0,0,0,0.5)] flex flex-col"
+                  ? "fixed bottom-0 left-0 right-0 w-full rounded-t-2xl border-t border-stone-800 max-h-[88vh] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] overflow-y-auto bg-[#111111] z-[110] pointer-events-auto shadow-[0_-12px_44px_rgba(0,0,0,0.5)] flex flex-col"
                   : "fixed bottom-16 left-1/2 -translate-x-1/2 w-[440px] max-h-[60vh] bg-[#12110F] border border-[#2B2925] rounded-none pointer-events-auto overflow-y-auto p-8 flex flex-col z-50 text-[#FAF9F6]"
               }
             >
@@ -4255,8 +4127,10 @@ ${finalInput}`;
                           : activePanel}
                   </h2>
                   <button
+                    type="button"
                     onClick={() => setActivePanel(null)}
-                    className="text-stone-400 hover:text-white transition-colors p-1 cursor-pointer"
+                    aria-label="Close panel"
+                    className="text-stone-400 hover:text-white transition-colors w-10 h-10 flex items-center justify-center cursor-pointer"
                   >
                     <X size={18} />
                   </button>
