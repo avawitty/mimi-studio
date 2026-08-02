@@ -1711,11 +1711,26 @@ export const UserProfileView: React.FC = () => {
           </div>
 
             <div className="flex-grow flex flex-col">
-            <h3 className="font-serif text-2xl italic mb-6">
-              Social Resonance
-            </h3>
+            <div className="flex items-end justify-between gap-4 mb-6">
+              <h3 className="font-serif text-2xl italic">
+                Social Resonance
+              </h3>
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("mimi:change_view", {
+                      detail: "proscenium/correspondents",
+                    }),
+                  )
+                }
+                className="font-sans text-[8px] uppercase tracking-[0.22em] font-semibold text-nous-subtle hover:text-nous-text transition-colors"
+              >
+                Open Proscenium →
+              </button>
+            </div>
             <div className="flex-grow overflow-y-auto no-scrollbar min-h-[150px]">
-              <ConnectionsManager />
+              <ConnectionsManager embedded />
               {profilePane === 'settings' && (
                 <>
                   <div className="p-4 mb-4 border border-nous-border bg-nous-base/40 text-nous-subtle text-xs font-mono leading-relaxed">

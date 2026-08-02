@@ -21,16 +21,12 @@ export default async function handler(req: any, res: any) {
         authenticatedUid = decoded.uid || null;
       } catch (sessionError: any) {
         const status = Number(sessionError?.status) || 401;
-        // Only hard-fail when Firebase Admin is unavailable mid-auth; otherwise
-        // continue without Apify privileges.
+        // Never hard-fail the route for auth/admin issues — skip billable Apify
+        // and continue into free providers (gateway / local demo).
         if (status === 503) {
-          sendError(
-            res,
-            503,
-            sessionError.message || "Authentication temporarily unavailable.",
-            sessionError.code || "FIREBASE_ADMIN_UNAVAILABLE",
+          console.warn(
+            "MIMI // Firebase Admin unavailable for you-search; continuing without Apify privileges.",
           );
-          return;
         }
         authenticatedUid = null;
       }

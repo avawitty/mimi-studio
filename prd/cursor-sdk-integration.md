@@ -77,6 +77,13 @@ Mimi Studio already has product AI (gateway + provider failover). The team also 
 | Cloud without GitHub connection | Startup error from cloud (`ERROR_GITHUB_NO_USER_CREDENTIALS`) — fix env, not code |
 | Resume later | Not in v1 scripts; use `Agent.resume` in a follow-up if scheduled triage is needed |
 
+## Follow-up shipped: bot comment autofix
+
+- Skill: `.cursor/skills/fix-bot-pr-comments/SKILL.md`
+- Script: `npm run cursor:fix-bot-comments` → `scripts/cursorFixBotComments.ts`
+- GitHub Action: `.github/workflows/fix-bot-pr-comments.yml` (needs `CURSOR_API_KEY`)
+- Cursor Automation recipe: `docs/automations/fix-bot-pr-comments.md`
+
 ## Open questions
 
 1. Should `cursor:cloud-review` become a GitHub Action on `pull_request`?

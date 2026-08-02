@@ -73,19 +73,32 @@ const isPaidMimiPlan = (planInput?: unknown) => {
   return ['initiation', 'optioning', 'atelier', 'lab', 'sovereign'].includes(plan);
 };
 
+/** Keep in sync with lib/mimiEntitlements.ts MIMI_PLAN_METADATA credits. */
+const ALLOWANCE_BY_PLAN: Record<MimiPlan, number> = {
+  free: 0,
+  trial: 150,
+  initiation: 500,
+  optioning: 1500,
+  atelier: 3000,
+  lab: 10000,
+  sovereign: 30000,
+};
+
+const PRICE_ID_PLAN_MAP: Record<string, MimiPlan> = {
+  price_1TfuI49AUz0q2nVCHuy4k4Sq: 'initiation',
+  price_1TgUdR9AUz0q2nVC1EoBOgBi: 'optioning',
+  price_1TgVQC9AUz0q2nVC5POSYpI7: 'atelier',
+  price_1TfwLC9AUz0q2nVCxNzPtunX: 'lab',
+  price_1Tzntj9AUz0q2nVCO66J6Wps: 'initiation',
+  price_1Tznti9AUz0q2nVC83IIz3KG: 'optioning',
+  price_1Tznti9AUz0q2nVCo7L96nzL: 'atelier',
+  price_1Tzntj9AUz0q2nVCsBYJKVze: 'lab',
+};
+
 const buildCreditGrant = (planInput?: unknown, interval: MimiBillingInterval = 'month') => {
   const plan = normalizeMimiPlan(planInput);
-  const allowanceByPlan: Record<MimiPlan, number> = {
-    free: 0,
-    trial: 25,
-    initiation: 100,
-    optioning: 250,
-    atelier: 500,
-    lab: 1200,
-    sovereign: 2500,
-  };
   const multiplier = interval === 'year' ? 12 : 1;
-  const allowance = allowanceByPlan[plan] * multiplier;
+  const allowance = ALLOWANCE_BY_PLAN[plan] * multiplier;
   const currentPeriodEnd = Date.now() + (interval === 'year' ? 365 : 30) * 24 * 60 * 60 * 1000;
   return {
     allowance,
@@ -163,13 +176,29 @@ const getStripe = () => {
 };
 
 const resolvePlanFromPrice = async (stripe: Stripe, priceId?: string | null, metadataPlan?: string | null) => {
-  if (metadataPlan) return { plan: normalizeMimiPlan(metadataPlan), interval: 'month' as MimiBillingInterval };
-  if (!priceId) return { plan: 'free' as MimiPlan, interval: 'month' as MimiBillingInterval };
-  const price = await stripe.prices.retrieve(priceId);
-  return {
-    plan: normalizeMimiPlan(price.metadata?.plan),
-    interval: price.recurring?.interval === 'year' ? 'year' as MimiBillingInterval : 'month' as MimiBillingInterval,
-  };
+  let plan: MimiPlan | null = metadataPlan ? normalizeMimiPlan(metadataPlan) : null;
+  let interval: MimiBillingInterval = 'month';
+
+  if (!plan && priceId && PRICE_ID_PLAN_MAP[priceId]) {
+    plan = PRICE_ID_PLAN_MAP[priceId];
+  }
+
+  if (priceId) {
+    try {
+      const price = await stripe.prices.retrieve(priceId);
+      interval = price.recurring?.interval === 'year' ? 'year' : 'month';
+      if (!plan && price.metadata?.plan) {
+        plan = normalizeMimiPlan(price.metadata.plan);
+      }
+      if (!plan && PRICE_ID_PLAN_MAP[price.id]) {
+        plan = PRICE_ID_PLAN_MAP[price.id];
+      }
+    } catch (error) {
+      console.warn('MIMI // Functions Stripe: failed to retrieve price', priceId, error);
+    }
+  }
+
+  return { plan: plan || 'free', interval };
 };
 
 app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {

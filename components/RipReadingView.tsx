@@ -11,6 +11,8 @@ interface RipReadingViewProps {
   publishing?: boolean;
   regenerating?: boolean;
   compact?: boolean;
+  /** Inside Studio chamber — skip duplicate mimi.rip eyebrow (chrome already brands). */
+  embedded?: boolean;
 }
 
 export const RipReadingView: React.FC<RipReadingViewProps> = ({
@@ -22,6 +24,7 @@ export const RipReadingView: React.FC<RipReadingViewProps> = ({
   publishing,
   regenerating,
   compact,
+  embedded,
 }) => {
   const accent =
     reading.oppositePalette.find((p) => p.startsWith("#")) || "#5c1a2e";
@@ -35,14 +38,26 @@ export const RipReadingView: React.FC<RipReadingViewProps> = ({
           "radial-gradient(ellipse at 20% 0%, #1a0f14 0%, #0a0a0c 45%, #050506 100%)",
       }}
     >
-      <div className={compact ? "p-6 space-y-6" : "max-w-3xl mx-auto px-6 py-10 space-y-8"}>
+      <div
+        className={
+          compact
+            ? "p-6 space-y-6"
+            : "max-w-3xl mx-auto px-5 sm:px-8 py-8 md:py-10 space-y-8"
+        }
+      >
         <header className="space-y-3 border-b border-white/10 pb-6">
-          <p className="font-mono text-[9px] uppercase tracking-[0.4em] text-rose-300/70">
-            mimi.rip · inverse taste projection
-          </p>
+          {!embedded ? (
+            <p className="font-mono text-[9px] tracking-[0.28em] text-rose-300/70">
+              mimi.rip · inverse taste projection
+            </p>
+          ) : (
+            <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-rose-300/70">
+              Inverse taste projection
+            </p>
+          )}
           <h1 className="font-serif text-3xl md:text-4xl tracking-tight">{reading.title}</h1>
           {handle ? (
-            <p className="font-mono text-[10px] uppercase tracking-widest text-stone-500">
+            <p className="font-mono text-[10px] tracking-widest text-stone-500">
               @{handle}
             </p>
           ) : null}
@@ -85,17 +100,17 @@ export const RipReadingView: React.FC<RipReadingViewProps> = ({
           </div>
         ) : null}
 
-        <section className="grid md:grid-cols-2 gap-6">
+        <section className="grid md:grid-cols-2 gap-6 md:gap-8">
           <div className="space-y-3">
             <h2 className="font-mono text-[9px] uppercase tracking-[0.3em] text-stone-500">
               Anti-motifs
             </h2>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2">
               {reading.antiMotifs.map((m) => (
                 <li
                   key={m}
-                  className="font-serif text-sm text-stone-200 border-l-2 pl-3"
-                  style={{ borderColor: accent }}
+                  className="font-serif text-sm text-stone-200 leading-relaxed border border-white/10 bg-white/[0.02] px-3.5 py-3 border-l-[3px]"
+                  style={{ borderLeftColor: accent }}
                 >
                   {m}
                 </li>
@@ -106,9 +121,12 @@ export const RipReadingView: React.FC<RipReadingViewProps> = ({
             <h2 className="font-mono text-[9px] uppercase tracking-[0.3em] text-stone-500">
               Things to avoid (source)
             </h2>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2">
               {reading.thingsToAvoid.map((m) => (
-                <li key={m} className="font-mono text-[11px] text-stone-400">
+                <li
+                  key={m}
+                  className="font-mono text-[11px] text-stone-400 leading-relaxed px-1 py-1"
+                >
                   — {m}
                 </li>
               ))}
@@ -116,39 +134,43 @@ export const RipReadingView: React.FC<RipReadingViewProps> = ({
           </div>
         </section>
 
-        <section className="grid md:grid-cols-3 gap-4">
-          <div className="border border-white/10 p-4 space-y-2">
+        <section className="grid md:grid-cols-3 gap-3 md:gap-4 md:items-start">
+          <div className="border border-white/10 px-4 py-3 space-y-2.5">
             <p className="font-mono text-[8px] uppercase tracking-widest text-stone-500">
               Opposite palette
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               {reading.oppositePalette.map((c) =>
                 c.startsWith("#") ? (
                   <span
                     key={c}
-                    className="w-8 h-8 border border-white/20"
+                    className="w-8 h-8 border border-white/20 shrink-0"
                     style={{ backgroundColor: c }}
                     title={c}
                   />
                 ) : (
-                  <span key={c} className="font-mono text-[10px] text-stone-300">
+                  <span key={c} className="font-serif italic text-sm text-stone-200 leading-snug">
                     {c}
                   </span>
                 ),
               )}
             </div>
           </div>
-          <div className="border border-white/10 p-4 space-y-2">
+          <div className="border border-white/10 px-4 py-3 space-y-2.5">
             <p className="font-mono text-[8px] uppercase tracking-widest text-stone-500">
               Opposite silhouette
             </p>
-            <p className="font-serif italic text-sm text-stone-200">{reading.oppositeSilhouette}</p>
+            <p className="font-serif italic text-sm text-stone-200 leading-snug">
+              {reading.oppositeSilhouette}
+            </p>
           </div>
-          <div className="border border-white/10 p-4 space-y-2">
+          <div className="border border-white/10 px-4 py-3 space-y-2.5">
             <p className="font-mono text-[8px] uppercase tracking-widest text-stone-500">
               Opposite register
             </p>
-            <p className="font-serif italic text-sm text-stone-200">{reading.oppositeRegister}</p>
+            <p className="font-serif italic text-sm text-stone-200 leading-snug">
+              {reading.oppositeRegister}
+            </p>
           </div>
         </section>
 

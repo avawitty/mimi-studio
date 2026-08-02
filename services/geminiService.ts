@@ -11,6 +11,7 @@ import { modulateSemioticContext } from "./semioticModulator";
 import { fetchUserZines, fetchLatestLineageEntry } from "./firebaseUtils";
 import { getClient, withResilience, tryModels, ORACLE_PERSONA as CLIENT_PERSONA } from "./geminiClient";
 import { coerceToString } from "../lib/utils";
+import { isPaidPatronPlan } from "../constants";
 
 export { getClient, withResilience, tryModels };
 
@@ -21,7 +22,7 @@ const ai = {
 };
 
 export const requirePatron = (profile: any) => {
-  if (profile?.planStatus !== 'lab' && profile?.planStatus !== 'pro') {
+  if (!isPaidPatronPlan(profile?.planStatus || profile?.mimiPlan || profile?.plan)) {
     window.dispatchEvent(new CustomEvent('mimi:upgrade_required', { detail: 'Advanced generation reporting requires an active Patron subscription.' }));
     // TODO: implement strict Stripe feature gating later
     console.warn('MIMI // Access Warning: Advanced generation reporting will require an active Patron subscription.');
