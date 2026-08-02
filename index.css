@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Public+Sans:wght@300;400;500&family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@300;400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;1,6..96,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Courier+Prime:wght@400;700&family=La+Belle+Aurore&family=Public+Sans:wght@300;400;500&family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@300;400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;1,6..96,400&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
@@ -40,6 +40,14 @@
     --mimi-manila-edge: #c9ba86;
     --mimi-manila-sheet: #f7f3e8;
     --mimi-manila-ink: #5c5334;
+    /* Atelier collage objects (Desk / Index) — never the public field fill */
+    --mimi-artifact-bone: #f4f1ea;
+    --mimi-newsprint: #ede9df;
+    --mimi-pencil: #8a877f;
+    --mimi-gridline: #d8d4c9;
+    --mimi-periwinkle: #b9c4e0;
+    --mimi-seal: #c33b32;
+    --mimi-ink-soft: #111110;
 
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
@@ -178,6 +186,13 @@
     --mimi-olive: #5a5a40;
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
+    --mimi-artifact-bone: #f4f1ea;
+    --mimi-newsprint: #ede9df;
+    --mimi-pencil: #8a877f;
+    --mimi-gridline: #d8d4c9;
+    --mimi-periwinkle: #b9c4e0;
+    --mimi-seal: #c33b32;
+    --mimi-ink-soft: #111110;
     color: var(--mimi-ink);
     background-color: var(--mimi-field);
   }
