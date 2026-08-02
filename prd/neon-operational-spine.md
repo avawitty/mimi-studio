@@ -91,7 +91,7 @@ Operation: `scribe.propose-atoms`
 - [ ] All chamber families use registered operations.
 - [ ] Legacy writes are disabled.
 - [ ] Neon preview-branch transaction tests run in CI.
-- [ ] The reservation sweeper is scheduled in the deployment platform.
+- [x] The reservation sweeper is configured as an authenticated Vercel Cron.
 - [ ] Membership, cost, and orphan reconciliation jobs are deployed.
 - [ ] Operational dashboards and alerts are live.
 

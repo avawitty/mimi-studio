@@ -112,6 +112,8 @@ and Stripe reconciliation. Drizzle schema and migrations live under
 - `npm run db:check`: validate migration metadata.
 - `npm run db:migrate`: apply migrations to the configured Neon branch.
 - `npm run credits:sweep`: release expired reservations without valid results.
+- Vercel invokes the same sweep every five minutes at
+  `/api/maintenance/credit-reservations`; configure `CRON_SECRET`.
 - `TEST_NEON_DATABASE_URL=... npm run test:neon`: run rollback-only repository
   transaction tests against a migrated disposable Neon branch.
 

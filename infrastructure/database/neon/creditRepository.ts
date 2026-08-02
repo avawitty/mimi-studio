@@ -134,7 +134,7 @@ export class NeonCreditLedgerRepository implements CreditLedgerRepository {
       ) {
         throw Object.assign(
           new Error("Idempotency key was already used for another credit grant."),
-          { code: "WORKFLOW_CONFLICT", status: 409 },
+          { code: "IDEMPOTENCY_KEY_REUSED", status: 409 },
         );
       }
       return mapCreditLedgerEntryRow(existing);
@@ -290,7 +290,7 @@ export class NeonCreditLedgerRepository implements CreditLedgerRepository {
       ) {
         throw Object.assign(
           new Error("Idempotency key was already used for another reservation."),
-          { code: "WORKFLOW_CONFLICT", status: 409 },
+          { code: "IDEMPOTENCY_KEY_REUSED", status: 409 },
         );
       }
       return mapCreditReservationRow(existing);
@@ -375,7 +375,7 @@ export class NeonCreditLedgerRepository implements CreditLedgerRepository {
       ) {
         throw Object.assign(
           new Error("Reservation was already committed with another payload."),
-          { code: "WORKFLOW_CONFLICT", status: 409 },
+          { code: "IDEMPOTENCY_KEY_REUSED", status: 409 },
         );
       }
       const existing = await this.db

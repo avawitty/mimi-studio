@@ -170,7 +170,7 @@ export class NeonMemoryRepository implements MemoryRepository {
       ) {
         throw Object.assign(
           new Error("Idempotency key was already used for another approval request."),
-          { code: "WORKFLOW_CONFLICT", status: 409 },
+          { code: "IDEMPOTENCY_KEY_REUSED", status: 409 },
         );
       }
       if (existingCommand.atomIds.length === 0) return [];

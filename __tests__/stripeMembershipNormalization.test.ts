@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { normalizeStripeMembershipEvent } from "../infrastructure/stripe/normalizeMembershipEvent.js";
 
 const initiationPrice = "price_1TfuI49AUz0q2nVCHuy4k4Sq";
+const labPrice = "price_1TfwLC9AUz0q2nVCxNzPtunX";
 
 function subscription(overrides: Record<string, unknown> = {}) {
   return {
@@ -12,7 +13,15 @@ function subscription(overrides: Record<string, unknown> = {}) {
     customer: "cus_123",
     status: "active",
     metadata: { firebaseUid: "firebase-user" },
-    items: { data: [{ price: { id: initiationPrice } }] },
+    items: {
+      data: [
+        {
+          price: { id: initiationPrice },
+          current_period_start: 1_785_600_000,
+          current_period_end: 1_788_192_000,
+        },
+      ],
+    },
     current_period_start: 1_785_600_000,
     current_period_end: 1_788_192_000,
     ...overrides,
@@ -39,8 +48,8 @@ function stripeMock(
 ) {
   return {
     prices: {
-      retrieve: vi.fn(async () => ({
-        id: initiationPrice,
+      retrieve: vi.fn(async (priceId: string) => ({
+        id: priceId,
         metadata: { plan: "initiation" },
         recurring: { interval },
       })),
@@ -77,6 +86,43 @@ describe("Stripe membership normalization", () => {
       providerSubscriptionId: "sub_123",
     });
     expect(normalized?.grant).toBeUndefined();
+  });
+
+  it("fails closed when subscription Checkout lacks a subscription reference", async () => {
+    await expect(
+      normalizeStripeMembershipEvent(
+        stripeMock(),
+        event("checkout.session.completed", {
+          id: "cs_missing_subscription",
+          mode: "subscription",
+          client_reference_id: "firebase-user",
+          customer: "cus_123",
+          subscription: null,
+          metadata: {},
+        }),
+      ),
+    ).rejects.toThrow("without a subscription reference");
+  });
+
+  it("uses the current price over stale subscription metadata", async () => {
+    const upgraded = subscription({
+      metadata: { firebaseUid: "firebase-user", plan: "initiation" },
+      items: {
+        data: [
+          {
+            price: { id: labPrice },
+            current_period_start: 1_785_600_000,
+            current_period_end: 1_788_192_000,
+          },
+        ],
+      },
+    });
+    const normalized = await normalizeStripeMembershipEvent(
+      stripeMock(upgraded),
+      event("customer.subscription.updated", upgraded),
+    );
+    expect(normalized?.plan).toBe("studio");
+    expect(normalized?.currentPeriodStart?.getTime()).toBe(1_785_600_000_000);
   });
 
   it("issues the exact legacy tier allowance from the paid invoice period", async () => {

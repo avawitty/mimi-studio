@@ -3,7 +3,9 @@ import { extractMimiSessionToken } from "./mimiSessionToken.js";
 
 export { extractMimiSessionToken } from "./mimiSessionToken.js";
 
-const require = createRequire(import.meta.url);
+const require = createRequire(
+  typeof __filename === "string" ? __filename : import.meta.url,
+);
 
 type AdminBundle = {
   auth: any | null;

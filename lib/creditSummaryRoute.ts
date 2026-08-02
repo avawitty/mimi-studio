@@ -52,9 +52,18 @@ export async function handleCreditSummaryRoute(req: any, res: any) {
     });
   } catch (error) {
     const status = Number((error as { status?: unknown })?.status);
-    const code = String(
+    const internalCode = String(
       (error as { code?: unknown })?.code || "CREDIT_SUMMARY_FAILED",
     );
+    const code = new Set([
+      "MISSING_MIMI_SESSION",
+      "INVALID_MIMI_SESSION",
+      "FIREBASE_ADMIN_UNAVAILABLE",
+      "SOURCE_ACCESS_DENIED",
+      "PAYMENT_STATE_UNRESOLVED",
+    ]).has(internalCode)
+      ? internalCode
+      : "CREDIT_SUMMARY_FAILED";
     const message =
       error instanceof Error ? error.message : "Credit summary is unavailable.";
     console.error("MIMI // Credit summary failed:", { code, message });

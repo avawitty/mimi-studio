@@ -59,6 +59,7 @@ export class WorkflowConflictError extends Error {
   constructor(
     readonly workflow: WorkflowRun,
     message = "An operation with this idempotency key is already in progress.",
+    readonly kind: "in_progress" | "idempotency_mismatch" = "in_progress",
   ) {
     super(message);
     this.name = "WorkflowConflictError";
@@ -70,6 +71,7 @@ export class OperationExecutionError extends Error {
     readonly code: GatewayErrorCode | string,
     message: string,
     readonly workflowRunId?: string,
+    readonly terminal = false,
   ) {
     super(message);
     this.name = "OperationExecutionError";
@@ -139,6 +141,8 @@ export class AiOperationService {
         decision.reason === "PAYMENT_STATE_UNRESOLVED"
           ? "Membership state requires reconciliation before this operation."
           : `The ${entitlement} entitlement is required.`,
+        undefined,
+        true,
       );
     }
     return membership;
@@ -154,6 +158,7 @@ export class AiOperationService {
       throw new WorkflowConflictError(
         workflow,
         "Idempotency key was already used for another operation request.",
+        "idempotency_mismatch",
       );
     }
     switch (workflow.status) {
@@ -208,12 +213,14 @@ export class AiOperationService {
           workflow.errorCode || "INTERNAL_ERROR",
           "The original operation failed. Use a new idempotency key to retry.",
           workflow.id,
+          true,
         );
       case "canceled":
         throw new OperationExecutionError(
           "WORKFLOW_CANCELED",
           "The original operation was canceled.",
           workflow.id,
+          true,
         );
       default: {
         const exhaustive: never = workflow.status;
@@ -228,12 +235,16 @@ export class AiOperationService {
       throw new OperationExecutionError(
         "INVALID_REQUEST",
         `Operation ${request.operationId} is not registered.`,
+        undefined,
+        true,
       );
     }
     if (request.operationId === "scribe.propose-atoms" && request.workspaceId) {
       throw new OperationExecutionError(
         "INVALID_REQUEST",
         "Scribe proposals currently support personal project scope only.",
+        undefined,
+        true,
       );
     }
     const registeredOperationId = definition.id as RegisteredOperationId;
@@ -242,6 +253,8 @@ export class AiOperationService {
       throw new OperationExecutionError(
         "INVALID_REQUEST",
         parsedInput.error.issues[0]?.message || "Operation input is invalid.",
+        undefined,
+        true,
       );
     }
     const input = parsedInput.data;
@@ -268,6 +281,7 @@ export class AiOperationService {
           "TIMEOUT",
           "The previous run expired and its credits were released. Retry with a new request.",
           existing.id,
+          true,
         );
       }
       await this.unitOfWork.transaction(async (repositories) => {
@@ -488,6 +502,7 @@ export class AiOperationService {
         gatewayError.code,
         gatewayError.message,
         workflowRunId,
+        true,
       );
     }
   }

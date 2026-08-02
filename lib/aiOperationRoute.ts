@@ -38,6 +38,20 @@ const PUBLIC_OPERATIONAL_CODES = new Set([
   "PAYMENT_STATE_UNRESOLVED",
   "WORKFLOW_CONFLICT",
 ]);
+const PUBLIC_EXECUTION_CODES = new Set([
+  "INVALID_REQUEST",
+  "UNAUTHORIZED",
+  "CONTENT_REJECTED",
+  "RATE_LIMITED",
+  "TIMEOUT",
+  "PROVIDER_UNAVAILABLE",
+  "INVALID_PROVIDER_OUTPUT",
+  "CONTEXT_TOO_LARGE",
+  "INTERNAL_ERROR",
+  "ENTITLEMENT_REQUIRED",
+  "PAYMENT_STATE_UNRESOLVED",
+  "WORKFLOW_CANCELED",
+]);
 
 function headerValue(value: unknown): string {
   return String(Array.isArray(value) ? value[0] : value || "").trim();
@@ -173,18 +187,31 @@ export async function handleAiOperationRoute(req: any, res: any) {
     }
     if (error instanceof WorkflowConflictError) {
       sendJson(res, 409, {
-        code: "WORKFLOW_CONFLICT",
+        code:
+          error.kind === "idempotency_mismatch"
+            ? "IDEMPOTENCY_KEY_REUSED"
+            : "WORKFLOW_CONFLICT",
         message: error.message,
         workflowRunId: error.workflow.id,
         status: error.workflow.status,
+        terminal: error.kind === "idempotency_mismatch",
       });
       return;
     }
     if (error instanceof OperationExecutionError) {
-      sendJson(res, statusForGatewayCode(error.code), {
-        code: error.code,
-        message: error.message,
+      const code = PUBLIC_EXECUTION_CODES.has(error.code)
+        ? error.code
+        : "INTERNAL_ERROR";
+      const status = statusForGatewayCode(code);
+      sendJson(res, status, {
+        code,
+        message: publicOperationalMessage(
+          status,
+          "Mimi's operational service is temporarily unavailable.",
+          error.message,
+        ),
         workflowRunId: error.workflowRunId,
+        terminal: error.terminal,
       });
       return;
     }

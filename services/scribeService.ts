@@ -431,6 +431,8 @@ export async function askScribeExplainable(
     throw Object.assign(new Error(message), {
       code: payload?.code,
       status: response.status,
+      terminal: payload?.terminal === true,
+      workflowRunId: payload?.workflowRunId,
     });
   }
   const parsedPayload = scribeOperationResponseSchema.safeParse(payload);

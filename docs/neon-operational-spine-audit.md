@@ -69,7 +69,7 @@ No destructive cleanup is part of this audit.
 - Migrate remaining AI call sites chamber by chamber.
 - Move artifacts, private sources, and approved memory reads to repositories.
 - Add a Neon preview-branch transaction test in CI.
-- Schedule the implemented reservation sweeper; add orphan, membership, and
-  cost reconciliation jobs.
+- Monitor the authenticated Vercel reservation cron; add orphan, membership,
+  and cost reconciliation jobs.
 - Add dashboards and alerts.
 - Disable legacy writes only after shadow comparison and rollback validation.

@@ -69,9 +69,18 @@ export async function handleMemoryApprovalRoute(req: any, res: any) {
     });
   } catch (error) {
     const status = Number((error as { status?: unknown })?.status);
-    const code = String(
+    const internalCode = String(
       (error as { code?: unknown })?.code || "MEMORY_APPROVAL_FAILED",
     );
+    const code = new Set([
+      "MISSING_MIMI_SESSION",
+      "INVALID_MIMI_SESSION",
+      "FIREBASE_ADMIN_UNAVAILABLE",
+      "SOURCE_ACCESS_DENIED",
+      "IDEMPOTENCY_KEY_REUSED",
+    ]).has(internalCode)
+      ? internalCode
+      : "MEMORY_APPROVAL_FAILED";
     const message =
       error instanceof Error
         ? error.message

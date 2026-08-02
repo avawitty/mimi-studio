@@ -51,11 +51,22 @@ const SUGGESTED_PROMPTS: { label: string; hint: string; query: string; icon: Rea
 type AnswerSection = "evidence" | "inferences" | "maneuvers" | "sources";
 
 function shouldRetainIdempotencyKey(error: unknown): boolean {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code || "")
+      : "";
+  const terminal =
+    typeof error === "object" &&
+    error !== null &&
+    "terminal" in error &&
+    (error as { terminal?: unknown }).terminal === true;
   const status =
     typeof error === "object" && error !== null && "status" in error
       ? Number((error as { status?: unknown }).status)
       : Number.NaN;
-  return !Number.isFinite(status) || status === 409;
+  if (terminal || code === "IDEMPOTENCY_KEY_REUSED") return false;
+  if (!Number.isFinite(status) || status >= 500) return true;
+  return status === 409;
 }
 
 export const ScribeAskPanel: React.FC = () => {

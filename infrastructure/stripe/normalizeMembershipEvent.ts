@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { STRIPE_PRICES, STRIPE_PRICES_ANNUAL } from "../../constants.js";
 import {
   canonicalPlanFromLegacy,
   PLAN_GRANTS,
@@ -10,6 +11,17 @@ import {
   normalizeMimiPlan,
   type MimiBillingInterval,
 } from "../../lib/mimiEntitlements.js";
+
+const CONFIGURED_PRICE_PLAN_MAP: Record<string, string> = {
+  [STRIPE_PRICES.core]: "initiation",
+  [STRIPE_PRICES.optioning]: "optioning",
+  [STRIPE_PRICES.pro]: "atelier",
+  [STRIPE_PRICES.lab]: "lab",
+  [STRIPE_PRICES_ANNUAL.core]: "initiation",
+  [STRIPE_PRICES_ANNUAL.optioning]: "optioning",
+  [STRIPE_PRICES_ANNUAL.pro]: "atelier",
+  [STRIPE_PRICES_ANNUAL.lab]: "lab",
+};
 
 function asId(
   value: string | { id: string } | null | undefined,
@@ -34,15 +46,20 @@ async function resolvePricePolicy(
   grantAmount: bigint;
 }> {
   let interval: MimiBillingInterval = "month";
-  let rawPlan = metadataPlan || (priceId ? MIMI_PRICE_ID_PLAN_MAP[priceId] : null);
+  let rawPlan = priceId
+    ? CONFIGURED_PRICE_PLAN_MAP[priceId] || MIMI_PRICE_ID_PLAN_MAP[priceId]
+    : null;
   if (priceId) {
     const price = await stripe.prices.retrieve(priceId);
     interval = price.recurring?.interval === "year" ? "year" : "month";
     rawPlan =
-      rawPlan ||
+      CONFIGURED_PRICE_PLAN_MAP[price.id] ||
+      MIMI_PRICE_ID_PLAN_MAP[price.id] ||
       price.metadata?.canonicalPlan ||
       price.metadata?.plan ||
-      MIMI_PRICE_ID_PLAN_MAP[price.id];
+      metadataPlan;
+  } else {
+    rawPlan = metadataPlan;
   }
   if (!rawPlan) {
     throw new Error(`Stripe price ${priceId || "unknown"} has no Mimi plan mapping.`);
@@ -83,13 +100,17 @@ function subscriptionPeriod(subscription: Stripe.Subscription): {
   start: Date | null;
   end: Date | null;
 } {
-  const period = subscription as Stripe.Subscription & {
+  const item = subscription.items.data[0] as Stripe.SubscriptionItem & {
+    current_period_start?: number;
+    current_period_end?: number;
+  };
+  const legacy = subscription as Stripe.Subscription & {
     current_period_start?: number;
     current_period_end?: number;
   };
   return {
-    start: fromUnix(period.current_period_start),
-    end: fromUnix(period.current_period_end),
+    start: fromUnix(item?.current_period_start ?? legacy.current_period_start),
+    end: fromUnix(item?.current_period_end ?? legacy.current_period_end),
   };
 }
 
@@ -163,6 +184,11 @@ export async function normalizeStripeMembershipEvent(
         // Subscription credits are granted by invoice.payment_succeeded.
         payloadReference: payloadReference(event),
       };
+    }
+    if (session.mode === "subscription") {
+      throw new Error(
+        `Checkout Session ${session.id} completed without a subscription reference.`,
+      );
     }
 
     const periodStart = eventCreatedAt(event);

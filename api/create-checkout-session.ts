@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type Stripe from "stripe";
 import { z } from "zod";
 import { readJsonBody, requireMethod, sendError, sendJson, validateBody } from "../lib/apiUtils.js";
 import {
@@ -21,6 +22,50 @@ const NON_TERMINAL_SUBSCRIPTION_STATUSES = new Set([
   "incomplete",
   "paused",
 ]);
+
+async function expireOpenSubscriptionSessions(
+  stripe: Stripe,
+  customerId: string,
+): Promise<string[]> {
+  const expiredIds: string[] = [];
+  let startingAfter: string | undefined;
+  do {
+    const page = await stripe.checkout.sessions.list({
+      customer: customerId,
+      status: "open",
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    const openSubscriptions = page.data.filter(
+      (session) => session.mode === "subscription",
+    );
+    for (const session of openSubscriptions) {
+      try {
+        await stripe.checkout.sessions.expire(session.id);
+        expiredIds.push(session.id);
+      } catch {
+        // It may have completed between list and expire. The authoritative
+        // subscription recheck below decides whether Checkout may continue.
+      }
+    }
+    startingAfter = page.has_more ? page.data.at(-1)?.id : undefined;
+  } while (startingAfter);
+  return expiredIds;
+}
+
+async function hasNonTerminalSubscription(
+  stripe: Stripe,
+  customerId: string,
+): Promise<boolean> {
+  const subscriptions = await stripe.subscriptions.list({
+    customer: customerId,
+    status: "all",
+    limit: 100,
+  });
+  return subscriptions.data.some((subscription) =>
+    NON_TERMINAL_SUBSCRIPTION_STATUSES.has(subscription.status),
+  );
+}
 
 export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
@@ -106,13 +151,9 @@ export default async function handler(req: any, res: any) {
       await userRef.set({ stripeCustomerId: customerId }, { merge: true });
     }
 
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "all",
-      limit: 10,
-    });
-    const hasActiveSubscription = subscriptions.data.some((subscription) =>
-      NON_TERMINAL_SUBSCRIPTION_STATUSES.has(subscription.status),
+    let hasActiveSubscription = await hasNonTerminalSubscription(
+      stripe,
+      customerId,
     );
 
     // Existing subscribers change plans via Customer Portal (proration / cancel)
@@ -126,8 +167,24 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    const expiredSessionIds = await expireOpenSubscriptionSessions(
+      stripe,
+      customerId,
+    );
+    hasActiveSubscription = await hasNonTerminalSubscription(stripe, customerId);
+    if (hasActiveSubscription) {
+      const portal = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${baseUrl}/memberships`,
+      });
+      sendJson(res, 200, { url: portal.url, mode: "portal" });
+      return;
+    }
+
     const checkoutKey = createHash("sha256")
-      .update(`${decoded.uid}:${priceId}:${interval}:${new Date().toISOString().slice(0, 10)}`)
+      .update(
+        `${customerId}:${expiredSessionIds.sort().join(",") || "initial"}`,
+      )
       .digest("hex");
     const session = await stripe.checkout.sessions.create({
       integration_identifier: "mimi_subs_qfjrmtaz",
@@ -165,6 +222,28 @@ export default async function handler(req: any, res: any) {
     sendJson(res, 200, { url: session.url, mode: "checkout" });
   } catch (error: any) {
     console.error("MIMI // Stripe checkout error:", error);
-    sendError(res, error?.status || 500, error?.message || "Failed to create checkout session");
+    const internalCode = String(error?.code || "");
+    const publicCode = new Set([
+      "MISSING_MIMI_SESSION",
+      "INVALID_MIMI_SESSION",
+      "FIREBASE_ADMIN_UNAVAILABLE",
+      "ANONYMOUS_USER",
+      "INVALID_PLAN",
+      "BILLING_UNAVAILABLE",
+    ]).has(internalCode)
+      ? internalCode
+      : "CHECKOUT_FAILED";
+    const status =
+      publicCode === "CHECKOUT_FAILED"
+        ? 502
+        : Number(error?.status) || 500;
+    sendError(
+      res,
+      status,
+      publicCode === "CHECKOUT_FAILED"
+        ? "Mimi could not open checkout. Please try again."
+        : error?.message || "Mimi billing is unavailable.",
+      publicCode,
+    );
   }
 }

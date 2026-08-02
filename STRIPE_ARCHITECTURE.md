@@ -64,6 +64,9 @@ so checkout and invoice events cannot double-mint.
 If the user already has an active paid subscription, `create-checkout-session` returns a
 **Customer Portal** session instead of a second Checkout Session. That avoids double
 subscriptions and lets Stripe handle proration, payment method updates, and cancellation.
+Before opening Checkout, the server also expires prior open subscription sessions,
+rechecks Stripe for non-terminal subscriptions, and uses a customer-scoped Stripe
+idempotency key so concurrent plan clicks cannot leave two billable sessions.
 
 Portal entry points:
 - Memberships page “Manage billing”
