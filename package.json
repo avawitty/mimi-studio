@@ -30,6 +30,7 @@
     "verify:residue": "tsx scripts/verifyResidueEngine.ts",
     "verify:collective": "tsx scripts/verifyCollectiveIntelligence.ts",
     "verify:celestial": "tsx scripts/verifyCelestialCalibration.ts",
+    "verify:forecast": "tsx scripts/verifyForecastChamber.ts",
     "verify:doll-engine": "tsx scripts/verifyDollEngine.ts",
     "verify:rip": "tsx scripts/verifyRipEngine.ts",
     "verify:fish": "tsx scripts/verifyFishShare.ts",

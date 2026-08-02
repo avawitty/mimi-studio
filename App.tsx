@@ -249,6 +249,9 @@ const ChamberMapView = lazy(() =>
 const AtelierChamber = lazy(() =>
   import("./components/chambers/AtelierChamber").then((m) => ({ default: m.AtelierChamber })),
 );
+const HouseChamber = lazy(() =>
+  import("./components/chambers/HouseChamber").then((m) => ({ default: m.HouseChamber })),
+);
 const ResidueChamber = lazy(() =>
   import("./components/chambers/ResidueChamber").then((m) => ({ default: m.ResidueChamber })),
 );
@@ -851,6 +854,7 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "archival",
   "architecture",
   "atelier",
+  "house",
   "aesthetic-tokens",
   "brand-intake",
   "brand-voice",
@@ -1295,6 +1299,10 @@ export const App: React.FC = () => {
   const pathParts = path.split("/").filter(Boolean);
   const isZineRoute = pathParts[0] === "zine" && pathParts[1];
   const urlZineId = isZineRoute ? pathParts[1] : null;
+  const houseIssueId =
+    pathParts[0] === "house" && pathParts[1] === "issue" && pathParts[2]
+      ? pathParts[2]
+      : null;
   const rawViewMode = pathParts[0] || "studio";
   const viewMode = isZineRoute ? "studio" : canonicalizeMimiRoute(rawViewMode);
   const isLegacyStyleLabRoute = [
@@ -2294,9 +2302,11 @@ export const App: React.FC = () => {
     architecture: "System Architecture",
     "chamber-map": "Chamber Registry",
     atelier: "Atelier",
+    house: "The House",
     residue: "Residue",
     observatory: "The Observatory",
     "mean-median-mode": "Mean Median Mode",
+    forecast: "Forecast",
     "celestial-calibration": "Celestial Calibration",
   };
 
@@ -2343,6 +2353,7 @@ export const App: React.FC = () => {
         "mimi-dolls",
         "mimi-rip",
         "atelier",
+        "house",
         "residue",
         "intel-hub",
       ].includes(mode)
@@ -2787,7 +2798,9 @@ export const App: React.FC = () => {
                         )}
                         {viewMode === "brand-intake" && <BrandIntakeView />}
                         {viewMode === "intel-hub" && <IntelHub />}
-                        {viewMode === "forecast" && <TheForecast />}
+                        {viewMode === "forecast" && (
+                          <TheForecast navigate={navigate} />
+                        )}
                         {viewMode === "qc_engine" && <ColorQCEngine />}
                         {viewMode === "scribe" && <ScribeChamber />}
                         {viewMode === "mimi-dolls" && (
@@ -2800,6 +2813,9 @@ export const App: React.FC = () => {
                           <ChamberMapView onNavigate={setViewMode} />
                         )}
                         {viewMode === "atelier" && <AtelierChamber />}
+                        {viewMode === "house" && (
+                          <HouseChamber issueId={houseIssueId} navigate={navigate} />
+                        )}
                         {viewMode === "residue" && (
                           <ResidueChamber navigate={navigate} />
                         )}

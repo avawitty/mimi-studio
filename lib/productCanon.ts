@@ -2,6 +2,9 @@ export type CanonLayer = "chamber" | "engine" | "artifact" | "infrastructure";
 
 export type CanonModuleStatus = "live" | "aliased" | "stub" | "missing";
 
+/** Optional product-maturity signal — distinct from route registration status. */
+export type CanonModuleMaturity = "prototype" | "evolving" | "established";
+
 export interface CanonModule {
   id: string;
   name: string;
@@ -9,6 +12,8 @@ export interface CanonModule {
   engine: string;
   priority: number;
   status: CanonModuleStatus;
+  /** Product maturity when known; omit when unset (no badge on Chamber Map). */
+  maturity?: CanonModuleMaturity;
   canonicalRoute: string;
   implementedMode?: string;
   component?: string;
@@ -66,6 +71,10 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   atelier: "atelier",
   objects: "atelier",
   "taste-objects": "atelier",
+  house: "house",
+  "the-house": "house",
+  floors: "house",
+  "editorial-house": "house",
   residue: "residue",
   "residue-engine": "residue",
   "cultural-residue": "residue",
@@ -73,6 +82,9 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   observatory: "observatory",
   "mean-median-mode": "mean-median-mode",
   "observatory-mmm": "mean-median-mode",
+  forecast: "forecast",
+  "the-forecast": "forecast",
+  "aesthetic-meteorology": "forecast",
   "celestial-calibration": "celestial-calibration",
   celestial: "celestial-calibration",
   natal: "celestial-calibration",
@@ -514,12 +526,38 @@ export const CANON_MODULES: CanonModule[] = [
     notes: "Distinct from the Atelier membership plan. Thimble=sourcing, Pocket=media, Atelier=commerce-as-taste. Soft cap 40; oldest references prune first.",
   },
   {
+    id: "house",
+    name: "The House",
+    layer: "chamber",
+    engine: "Four-Floor Editorial Loop",
+    priority: 7,
+    status: "live",
+    canonicalRoute: "/house",
+    implementedMode: "house",
+    component: "HouseChamber",
+    aliases: ["House", "Floors", "Editorial House", "Ascension"],
+    inputs: ["links", "text fragments", "image descriptions", "uploaded images"],
+    generations: [
+      "debris tagging",
+      "keep/refuse curation",
+      "aesthetic reading",
+      "generative plates",
+      "numbered issues",
+    ],
+    outputs: ["local debris archive", "plates", "issued editions (JSON)", "timeline chronicle"],
+    userFlow:
+      "Ascend Ingest → Curate → Plate → Penthouse. Refuse at least one thing, synthesize a reading, compose plates from your palette, bind a numbered edition. Undo/redo and night mode via keyboard.",
+    notes:
+      "Local-first House loop (mimi.studio.v2). Distinct from Atelier (commerce taste objects) and Chamber Map (registry). Nested /house/issue/:id opens the issue viewer.",
+  },
+  {
     id: "proscenium",
     name: "The Proscenium",
     layer: "chamber",
     engine: "Public Stage / Social Circle",
     priority: 8,
     status: "live",
+    maturity: "prototype",
     canonicalRoute: "/proscenium",
     implementedMode: "proscenium",
     component: "ProsceniumView",
@@ -589,6 +627,7 @@ export const CANON_MODULES: CanonModule[] = [
     engine: "Collective Perception",
     priority: 9,
     status: "live",
+    maturity: "prototype",
     canonicalRoute: "/observatory",
     implementedMode: "observatory",
     component: "ObservatoryChamber",
@@ -618,6 +657,7 @@ export const CANON_MODULES: CanonModule[] = [
     engine: "Collective Central Tendency",
     priority: 9.1,
     status: "live",
+    maturity: "prototype",
     canonicalRoute: "/mean-median-mode",
     implementedMode: "mean-median-mode",
     component: "ObservatoryChamber",
@@ -636,6 +676,35 @@ export const CANON_MODULES: CanonModule[] = [
       "Read the present atmosphere via literal mean, median, and mode — not a leaderboard. Stage on The Proscenium to contribute anonymized structure.",
     notes:
       "Collective Moods is a docs-only conceptual alias. Distinct from Residue per-run MeanMedianModeResult.",
+  },
+  {
+    id: "forecast",
+    name: "Forecast",
+    layer: "chamber",
+    engine: "Aesthetic Meteorology",
+    priority: 9.2,
+    status: "live",
+    canonicalRoute: "/forecast",
+    implementedMode: "forecast",
+    component: "TheForecast",
+    aliases: ["The Forecast", "Aesthetic Meteorology"],
+    inputs: [
+      "profile season",
+      "aesthetic DNA",
+      "GEO drift when calibrated",
+      "taste vector",
+      "optional You.com / AI Gateway for live content vectors",
+    ],
+    generations: [
+      "season / drift overview",
+      "content forecast synthesis (You.com → Mimi Gateway)",
+      "handoffs to Observatory / Residue / GEO",
+    ],
+    outputs: ["forecast overview", "live or empty content trends"],
+    userFlow:
+      "Read personal aesthetic meteorology from calibrated profile signals, then hand off to The Observatory for collective atmosphere or GEO for drift calibration.",
+    notes:
+      "Menu peer of Observatory; narrative child (Observatory’s “what next”). Content Forecasting uses live search/gateway paths with honest empty/offline states — never invent drift scores or costume trends.",
   },
   {
     id: "celestial-calibration",

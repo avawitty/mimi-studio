@@ -6,7 +6,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CANON_MODULES, CANON_ROUTE_ALIASES, canonicalizeMimiRoute } from "../lib/productCanon";
+import {
+  CANON_INFRASTRUCTURE,
+  CANON_MODULES,
+  CANON_ROUTE_ALIASES,
+  canonicalizeMimiRoute,
+} from "../lib/productCanon";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -34,10 +39,12 @@ const IMPLEMENTED_MODES = new Set([
   "mimi-rip",
   "chamber-map",
   "atelier",
+  "house",
   "proscenium",
   "residue",
   "observatory",
   "mean-median-mode",
+  "forecast",
   "celestial-calibration",
   "scry",
 ]);
@@ -52,8 +59,10 @@ const CHAMBER_COMPONENT_FILES: Record<string, string> = {
   TheEditChamber: "components/chambers/TheEditChamber.tsx",
   ThePressChamber: "components/chambers/ThePressChamber.tsx",
   AtelierChamber: "components/chambers/AtelierChamber.tsx",
+  HouseChamber: "components/chambers/HouseChamber.tsx",
   ResidueChamber: "components/chambers/ResidueChamber.tsx",
   ObservatoryChamber: "components/chambers/ObservatoryChamber.tsx",
+  TheForecast: "components/TheForecast.tsx",
   CelestialCalibrationChamber: "components/chambers/CelestialCalibrationChamber.tsx",
   ScryView: "components/ScryView.tsx",
   SignatureView: "components/SignatureView.tsx",
@@ -98,6 +107,10 @@ for (const module of CANON_MODULES) {
     failures.push(`${module.id}: status is missing`);
   }
 
+  if (!module.userFlow?.trim()) {
+    failures.push(`${module.id}: missing userFlow`);
+  }
+
   const componentName = module.component?.split(/[\s/]/)[0];
   if (componentName && CHAMBER_COMPONENT_FILES[componentName]) {
     const filePath = path.join(root, CHAMBER_COMPONENT_FILES[componentName]);
@@ -118,6 +131,10 @@ for (const [alias, target] of Object.entries(CANON_ROUTE_ALIASES)) {
 const liveCount = CANON_MODULES.filter((m) => m.status === "live").length;
 const aliasedCount = CANON_MODULES.filter((m) => m.status === "aliased").length;
 const missingCount = CANON_MODULES.filter((m) => m.status === "missing").length;
+const stubCount = CANON_MODULES.filter((m) => m.status === "stub").length;
+const infraLive = CANON_INFRASTRUCTURE.filter((i) => i.status === "live").length;
+const infraHardening = CANON_INFRASTRUCTURE.filter((i) => i.status === "hardening").length;
+const infraProposed = CANON_INFRASTRUCTURE.filter((i) => i.status === "proposed").length;
 
 if (failures.length > 0) {
   console.error("Canon route validation failed:\n");
@@ -128,4 +145,9 @@ if (failures.length > 0) {
 console.log(
   `Canon route validation passed (${CANON_MODULES.length} modules, ${Object.keys(CANON_ROUTE_ALIASES).length} aliases).`,
 );
-console.log(`  live: ${liveCount} · aliased: ${aliasedCount} · missing: ${missingCount}`);
+console.log(
+  `  live: ${liveCount} · aliased: ${aliasedCount} · stub: ${stubCount} · missing: ${missingCount}`,
+);
+console.log(
+  `  substrates: ${CANON_INFRASTRUCTURE.length} (live: ${infraLive} · hardening: ${infraHardening} · proposed: ${infraProposed})`,
+);

@@ -49,5 +49,5 @@ Use a **wide lockup** (`Mimi` wordmark + short line), not the cropped `mi` alone
 
 - [ ] App icon / favicon share the same crop family
 - [ ] Readable name surfaces say **`Mimi`**, not `mimi` / `MIMI`
-- [ ] Home-screen title / PWA short name can be `Mimi` (not `mimi zine`)
+- [x] Home-screen title / PWA short name can be `Mimi` (not `mimi zine`)
 - [ ] Manila / light-blue accents stay off the core glyph unless intentional

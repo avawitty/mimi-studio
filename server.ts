@@ -1884,7 +1884,7 @@ async function startServer() {
   function injectZineSEOMetadata(html: string, zine: { title: string; concept: string; coverImageUrl: string; userHandle: string }, pageUrl: string): string {
     let modifiedHtml = html;
     
-    const title = `${zine.title} | MimiZine Editorial`;
+    const title = `${zine.title} | Mimi`;
     modifiedHtml = modifiedHtml.replace(/<title>.*?<\/title>/gi, `<title>${title}</title>`);
     
     modifiedHtml = replaceMeta(modifiedHtml, 'description', zine.concept, false);

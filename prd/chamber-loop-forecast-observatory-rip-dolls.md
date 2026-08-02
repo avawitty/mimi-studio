@@ -110,11 +110,11 @@ flowchart LR
 - Replacing WeeklyDriftReport in Pocket
 
 ### Acceptance (Forecast)
-- [ ] Visible in main menu; searchable
-- [ ] Usable at 390px without horizontal crush
-- [ ] No random metrics
-- [ ] Auth empty/signed-out states match chamber patterns
-- [ ] `npm run review:mobile` spot-check passes Forecast
+- [x] Visible in main menu; searchable
+- [x] Usable at 390px without horizontal crush *(sidebar removed; segment tabs)*
+- [x] No random metrics
+- [x] Auth empty/signed-out states match chamber patterns
+- [x] Mobile 390px spot-check: no overflow, no `w-80` sidebar, menu lists Forecast, chamber shell + vector tabs present
 
 ---
 
@@ -155,10 +155,15 @@ Implementation sketch:
 | `/observatory` | Eye plate + three tiles: Mean Median Mode · Forecast · Mesopic (coming) |
 | `/mean-median-mode` | Full MMM panel (existing strips + methodology) |
 
-### B5. Non-goals
+### B5. Visual lock (from decisions §9)
+- **Dim** plate + quiet dark chrome (not Rip void).
+- **CSS/SVG aperture** as the living instrument; no generated hero eye in v1.
+
+### B6. Non-goals
 - Live Firestore corpus aggregation (keep demo path honest)
 - Mesopic full product
 - Replacing Residue per-run M/M/M
+- Generated/shader iris as the primary readout
 
 ### Acceptance (Observatory)
 - [ ] Overview ≠ identical to MMM route
@@ -181,7 +186,7 @@ Rip is the **dark public twin** of mimi.you. Build the connecting tissue so the 
 | Dolls → Rip | Chamber action + empty-state hint when a doll exists |
 | Rip → Dolls / Tailor | Already wired — keep |
 | Profile / mimi.you manage → Rip | Optional “Inverse reading” link when `publicRip` or doll exists |
-| Rip ↔ doll binding | **Doll picker** (default last-used / active studio doll, not `dolls[0]`) |
+| Rip ↔ doll binding | **Doll picker** (default active studio doll, not `dolls[0]`); one public card per handle — see §9.2 |
 | Public rip → you card | Keep; ensure reciprocal “See inverse” from you card when published |
 | Stand / Floor | Defer badge unless cheap: published-rip mark on shelf cell |
 

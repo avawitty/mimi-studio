@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-test.describe('Mimi Zine E2E Experience', () => {
+test.describe('Mimi E2E Experience', () => {
   const waitForStableUI = async (page: Page) => {
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('div.fixed.inset-0.z-\\[20000\\].cursor-wait')).toHaveCount(0, { timeout: 15000 });
