@@ -349,7 +349,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  price 
  } 
  };
- await updatePocketItem(item.userId, item.id, updates);
+ await updatePocketItem(item.id, updates);
  onUpdate(item.id, updates);
  setIsEditing(false);
  };
@@ -390,7 +390,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  refractionStyle: stylePrompt
  }
  };
- await updatePocketItem(item.userId, item.id, updates);
+ await updatePocketItem(item.id, updates);
  onUpdate(item.id, updates);
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Aesthetic Refraction Complete.", type: 'success' } }));
  } catch (err) {
@@ -762,6 +762,10 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const [searchResults, setSearchResults] = useState<{ id: string; type: string; relevanceScore: number }[]>([]);
  
  const fileInputRef = useRef<HTMLInputElement>(null);
+ // IDs ever observed in local pocket — used so event merges can drop deletes
+ // without also wiping cloud-only items that never touched local storage.
+ const seenLocalPocketIdsRef = useRef<Set<string>>(new Set());
+ const pocketIdentityKey = `${user?.uid ?? ""}:${user?.isAnonymous ? "anon" : "reg"}`;
 
  // Drag-and-drop + folder organization state
  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
@@ -769,10 +773,41 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const [isFileDropActive, setIsFileDropActive] = useState(false);
  const [showFolderPicker, setShowFolderPicker] = useState(false);
 
+ // Identity change must drop prior-account seen-local IDs even if the next
+ // loadPocket hits an IndexedDB miss before a successful snapshot.
+ useEffect(() => {
+   seenLocalPocketIdsRef.current = new Set();
+   setItems([]);
+ }, [pocketIdentityKey]);
+
  const loadPocket = useCallback(async (silent = false, opts?: { localOnly?: boolean }) => {
  if (!silent) setLoading(true);
  try {
- const localData = await getLocalPocket() || [];
+ const localSnapshot = await getLocalPocket();
+ // IndexedDB miss → null. Do not coerce to [] or reset seen-local; that would
+ // make later pocket_updated treat deleted local ids as cloud-only keepers.
+ if (localSnapshot === null) {
+   if (user && !user.isAnonymous && !opts?.localOnly) {
+     const cloudData = (await fetchPocketItems(user.uid)) || [];
+     setItems((prev) => {
+       const registry = new Map<string, PocketItem>();
+       prev.forEach((item) => {
+         if (item?.id) registry.set(item.id, item);
+       });
+       cloudData.forEach((item) => {
+         if (item?.id) registry.set(item.id, item);
+       });
+       return Array.from(registry.values()).sort((a, b) => b.savedAt - a.savedAt);
+     });
+   }
+   return;
+ }
+ const localData = localSnapshot;
+ // Fresh successful full loads reset the seen-local set for this session user.
+ if (!opts?.localOnly) seenLocalPocketIdsRef.current = new Set();
+ localData.forEach((item) => {
+   if (item?.id) seenLocalPocketIdsRef.current.add(item.id);
+ });
  let cloudData: PocketItem[] = [];
  // Event-driven refreshes stay local-only for registered users — onSnapshot /
  // initial load cover cloud; avoid doubling collection reads on every write.
@@ -789,18 +824,31 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  useEffect(() => {
  loadPocket();
  const handleShardAdded = (e: any) => {
+ if (e?.detail?.id) seenLocalPocketIdsRef.current.add(e.detail.id);
  setItems(prev => [e.detail, ...prev]);
  };
+ // Local pocket_updated: upsert local rows, drop ids removed from local, keep
+ // true cloud-only rows (never seen in local) so we don't re-fetch the collection.
  const handlePocketUpdate = async () => {
-   const localData = (await getLocalPocket()) || [];
+   const localData = await getLocalPocket();
+   // IndexedDB miss → null (not []). Do not treat as mass-delete.
+   if (localData === null) return;
+   localData.forEach((item) => {
+     if (item?.id) seenLocalPocketIdsRef.current.add(item.id);
+   });
+   const localMap = new Map<string, PocketItem>();
+   localData.forEach((item) => {
+     if (item?.id) localMap.set(item.id, item);
+   });
    setItems((prev) => {
      const registry = new Map<string, PocketItem>();
      prev.forEach((item) => {
-       if (item?.id) registry.set(item.id, item);
+       if (!item?.id) return;
+       // Previously local, now missing from local storage → deleted.
+       if (seenLocalPocketIdsRef.current.has(item.id) && !localMap.has(item.id)) return;
+       if (!localMap.has(item.id)) registry.set(item.id, item);
      });
-     localData.forEach((item) => {
-       if (item?.id) registry.set(item.id, item);
-     });
+     localMap.forEach((item, id) => registry.set(id, item));
      return Array.from(registry.values()).sort((a, b) => b.savedAt - a.savedAt);
    });
  };
@@ -964,7 +1012,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const existingTags = item.tags || [];
  const combined = Array.from(new Set([...existingTags, ...tagsToApply.map(t => t.trim().toUpperCase())]));
  if (user?.uid) {
- updatePocketItem(user.uid, item.id, { tags: combined }).catch(console.error);
+ updatePocketItem(item.id, { tags: combined }).catch(console.error);
  }
  return { ...item, tags: combined };
  }
@@ -1004,7 +1052,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const nextContent = { ...folder.content, itemIds: merged };
  setItems(prev => prev.map(i => i.id === folderId ? { ...i, content: nextContent } : i));
  try {
- if (user?.uid) await updatePocketItem(user.uid, folderId, { content: nextContent });
+ if (user?.uid) await updatePocketItem(folderId, { content: nextContent });
  } catch (err) { console.error('Add to folder failed', err); }
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message: `Added ${merged.length - existing.length} to ${folder.content.name || 'collection'}.`, icon: <FolderOpen size={14} /> } }));
  };
