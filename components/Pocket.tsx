@@ -775,8 +775,27 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const loadPocket = useCallback(async (silent = false, opts?: { localOnly?: boolean }) => {
  if (!silent) setLoading(true);
  try {
- const localData = await getLocalPocket() || [];
- // Fresh full loads reset the seen-local set for this session user.
+ const localSnapshot = await getLocalPocket();
+ // IndexedDB miss → null. Do not coerce to [] or reset seen-local; that would
+ // make later pocket_updated treat deleted local ids as cloud-only keepers.
+ if (localSnapshot === null) {
+   if (user && !user.isAnonymous && !opts?.localOnly) {
+     const cloudData = (await fetchPocketItems(user.uid)) || [];
+     setItems((prev) => {
+       const registry = new Map<string, PocketItem>();
+       prev.forEach((item) => {
+         if (item?.id) registry.set(item.id, item);
+       });
+       cloudData.forEach((item) => {
+         if (item?.id) registry.set(item.id, item);
+       });
+       return Array.from(registry.values()).sort((a, b) => b.savedAt - a.savedAt);
+     });
+   }
+   return;
+ }
+ const localData = localSnapshot;
+ // Fresh successful full loads reset the seen-local set for this session user.
  if (!opts?.localOnly) seenLocalPocketIdsRef.current = new Set();
  localData.forEach((item) => {
    if (item?.id) seenLocalPocketIdsRef.current.add(item.id);
