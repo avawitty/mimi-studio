@@ -1,9 +1,19 @@
 import { createRequire } from "module";
-import { extractMimiSessionToken, getServerFirebaseAdmin } from "./serverFirebaseAdmin.js";
+import { extractMimiSessionToken } from "./mimiSessionToken.js";
 import { isPaidMimiPlan, normalizeMimiPlan } from "./mimiEntitlements.js";
 import { proxyToFunctions } from "./proxyToFunctions.js";
 
 const require = createRequire(import.meta.url);
+
+async function loadAdmin(): Promise<{ auth: any | null; db: any | null }> {
+  try {
+    const { getServerFirebaseAdmin } = await import("./serverFirebaseAdmin.js");
+    return getServerFirebaseAdmin();
+  } catch (err) {
+    console.warn("MIMI // serverFirebaseAdmin unavailable:", err);
+    return { auth: null, db: null };
+  }
+}
 
 export type FundedGatewayAccess = {
   allowed: boolean;
@@ -86,7 +96,7 @@ export const resolveMimiFundedGatewayAccess = async (
   if (!token) return { allowed: false, billable: false, cost };
 
   try {
-    const { auth, db } = getServerFirebaseAdmin();
+    const { auth, db } = await loadAdmin();
     if (!auth || !db) {
       const proxied = await resolveAccessViaFunctions(token, cost);
       if (proxied) return proxied;
@@ -180,7 +190,7 @@ export const chargeMimiFundedGateway = async (
   if (!access.billable || !access.uid) return;
 
   try {
-    const { db } = getServerFirebaseAdmin();
+    const { db } = await loadAdmin();
     if (!db) {
       await proxyToFunctions("/api/funded-gateway/charge", {
         method: "POST",

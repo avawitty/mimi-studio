@@ -1,13 +1,14 @@
 import { createRequire } from "module";
-import type { Auth } from "firebase-admin/auth";
-import type { Firestore } from "firebase-admin/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
+import { extractMimiSessionToken } from "./mimiSessionToken.js";
+
+export { extractMimiSessionToken } from "./mimiSessionToken.js";
 
 const require = createRequire(import.meta.url);
 
 type AdminBundle = {
-  auth: Auth | null;
-  db: Firestore | null;
+  auth: any | null;
+  db: any | null;
 };
 
 let cached: AdminBundle | undefined;
@@ -41,17 +42,19 @@ const parseServiceAccount = () => {
  * Uses dynamic require so Vercel serverless functions that only need Admin for
  * optional credit checks do not crash at module-evaluation time when the
  * firebase-admin graph fails to load in the isolate.
+ *
+ * IMPORTANT: do not statically import anything from `firebase-admin/*` in this
+ * file (including `import type`) — Vercel's bundler has been observed to pull
+ * the Admin graph into the module init path and crash with
+ * FUNCTION_INVOCATION_FAILED before the handler runs.
  */
 export const getServerFirebaseAdmin = (): AdminBundle => {
   if (cached) return cached;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { cert, getApps, initializeApp } = require("firebase-admin/app") as typeof import("firebase-admin/app");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { getAuth } = require("firebase-admin/auth") as typeof import("firebase-admin/auth");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { getFirestore } = require("firebase-admin/firestore") as typeof import("firebase-admin/firestore");
+    const { cert, getApps, initializeApp } = require("firebase-admin/app");
+    const { getAuth } = require("firebase-admin/auth");
+    const { getFirestore } = require("firebase-admin/firestore");
 
     if (!getApps().length) {
       const serviceAccount = parseServiceAccount();
@@ -62,8 +65,8 @@ export const getServerFirebaseAdmin = (): AdminBundle => {
       initializeApp({ credential: cert(serviceAccount) });
     }
 
-    let auth: Auth | null = null;
-    let db: Firestore | null = null;
+    let auth: any | null = null;
+    let db: any | null = null;
 
     try {
       auth = getAuth();
@@ -84,20 +87,6 @@ export const getServerFirebaseAdmin = (): AdminBundle => {
     cached = { auth: null, db: null };
     return cached;
   }
-};
-
-export const extractMimiSessionToken = (headers: Record<string, any>) => {
-  const candidates = [headers["x-user-token"], headers.authorization].filter(Boolean);
-
-  for (const candidate of candidates) {
-    const value = Array.isArray(candidate) ? candidate[0] : candidate;
-    const text = String(value || "").trim();
-    if (!text) continue;
-    if (text.startsWith("Bearer ey")) return text.slice("Bearer ".length);
-    if (text.startsWith("ey")) return text;
-  }
-
-  return "";
 };
 
 export const verifyMimiSession = async (headers: Record<string, any>) => {
