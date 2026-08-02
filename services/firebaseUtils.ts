@@ -963,8 +963,10 @@ export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => vo
 /** @returns true when Firestore write ran; false when aborted (no auth / not owner). */
 export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolean> => {
   if (!auth.currentUser) {
-    console.warn("MIMI // updateZineMetadata: No current user");
-    return false;
+    console.warn("MIMI // updateZineMetadata: No current user — persisting locally only");
+    await saveZineLocally(metadata);
+    invalidateZineCache();
+    return true;
   }
   if (!metadata.userId) {
     console.error("MIMI // updateZineMetadata: metadata.userId is missing");

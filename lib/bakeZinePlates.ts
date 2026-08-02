@@ -44,17 +44,23 @@ async function mapPool<T, R>(
   return results;
 }
 
+/** Prevent unbounded provider cost from crafted oversized page arrays. */
+const MAX_BAKE_PLATES = 24;
+
 async function persistImage(
   ownerUid: string | undefined,
   image: string,
   pathPrefix: string,
-): Promise<string> {
-  if (!ownerUid || !image.startsWith("data:")) return image;
+): Promise<string | null> {
+  if (!image.startsWith("data:")) return image;
+  if (!ownerUid) return null;
   try {
-    return await archiveManager.uploadMedia(ownerUid, image, pathPrefix);
+    return await archiveManager.uploadMedia(ownerUid, image, pathPrefix, {
+      allowStorageFallback: false,
+    });
   } catch (error) {
-    console.warn("MIMI // bakeZinePlates: upload failed, keeping data URL", error);
-    return image;
+    console.warn("MIMI // bakeZinePlates: upload failed", error);
+    return null;
   }
 }
 
@@ -119,16 +125,23 @@ export async function bakeZineVisualPlates(
         artifacts,
         treatmentId,
       );
-      coverUrl = await persistImage(ownerUid, raw, "zines/hi-fi/hero");
-      next.hero_image_url = coverUrl;
-      bakedCover = true;
+      coverUrl = (await persistImage(ownerUid, raw, "zines/hi-fi/hero")) || undefined;
+      if (coverUrl) {
+        next.hero_image_url = coverUrl;
+        bakedCover = true;
+      } else {
+        failures.push("cover: storage upload failed (data URLs are not written to Firestore)");
+      }
     } catch (error) {
       failures.push(`cover: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   const pages = next.pages || [];
-  const bakeJobs = pages.map((page, index) => ({ page, index }));
+  if (pages.length > MAX_BAKE_PLATES) {
+    failures.push(`plates: baking first ${MAX_BAKE_PLATES} of ${pages.length} pages`);
+  }
+  const bakeJobs = pages.slice(0, MAX_BAKE_PLATES).map((page, index) => ({ page, index }));
   await mapPool(bakeJobs, concurrency, async ({ page, index }) => {
     if (page.image_url) return;
     const prompt = page.imagePrompt || next.visual_plates?.[index] || page.headline;
@@ -148,6 +161,10 @@ export async function bakeZineVisualPlates(
         treatmentId,
       );
       const url = await persistImage(ownerUid, raw, `zines/hi-fi/page_${index}`);
+      if (!url) {
+        failures.push(`plate ${index + 1}: storage upload failed (data URLs are not written to Firestore)`);
+        return;
+      }
       pages[index] = {
         ...page,
         image_url: url,
