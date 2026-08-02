@@ -141,7 +141,7 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow:
       "Ask a question or name a drift signal; inspect evidence by lane (archive, web, reading, shadow) before drafting.",
     notes:
-      "Lanes stay distinct — no shared result overwrite. Synthesis uses AI Gateway when available; Google Search grounding stays on Gemini.",
+      "Lanes stay distinct — no shared result overwrite. Empty ≠ complete; missing personal memory is empty not partial. Synthesis uses AI Gateway when available; Google Search grounding stays on Gemini. Mobile: one dark surface, query-led first viewport (Architecture Update 20).",
   },
   {
     id: "tailor",
@@ -221,9 +221,17 @@ export const CANON_MODULES: CanonModule[] = [
     aliases: ["Press", "Campaign/news surface"],
     inputs: ["Studio outputs", "fragments", "reports", "card decks"],
     generations: ["editorial compilation", "diagnostic framing", "strategy synthesis"],
-    outputs: ["strategy reports", "Aesthetic Census", "editorial briefings"],
-    userFlow: "Turn scattered material into an editorial read before publishing or exporting it.",
-    notes: "Legacy /press aliases here. Distinct from The Press export chamber.",
+    outputs: [
+      "strategy reports",
+      "Aesthetic Census",
+      "editorial briefings",
+      "hi-fi plate assets",
+      "spread composition metadata",
+    ],
+    userFlow:
+      "Turn scattered material into an editorial read, bake hi-fi plates, compose issue spreads, then publish or export.",
+    notes:
+      "Legacy /press aliases here. Distinct from The Press export chamber. Architecture Update 20: chamber now spans interpretive governance and artifact composition (Signal Edit vs Issue Edit canon split still open).",
   },
   {
     id: "the-press",
@@ -264,6 +272,8 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["local/cloud persistence", "folder mapping", "provenance preservation"],
     outputs: ["persistent archive", "source packs", "reusable context packs"],
     userFlow: "Save and retrieve references without losing source priority or provenance.",
+    notes:
+      "Ghost/anonymous path uses IndexedDB and suppresses Firestore Pocket listeners. Storage read failures must not be treated as intentional deletes. Identity changes cancel in-flight sync (Architecture Update 20).",
   },
   {
     id: "stand",
@@ -276,10 +286,12 @@ export const CANON_MODULES: CanonModule[] = [
     implementedMode: "stand",
     component: "TheStand",
     aliases: ["Showcase", "Published Works"],
-    inputs: ["published zines", "local archive", "community floor"],
-    generations: ["cover grid", "issue filtering", "comment threads"],
+    inputs: ["published zines", "local archive", "community floor", "Sovereign archive projections"],
+    generations: ["cover grid", "issue filtering", "comment threads", "hybrid Floor search"],
     outputs: ["personal showcase", "floor feed", "profile seed"],
     userFlow: "Browse your published issues and the community Floor without leaving the Stand.",
+    notes:
+      "When Sovereign is ready, Floor/Mine prefer owned archive + SSE over Firestore listeners. Stand vs Floor vs Mine vs Press ownership distinction remains an open canon question.",
   },
   {
     id: "mood-board",
@@ -443,7 +455,8 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["identity consistency tracking", "art-historical reinterpretation", "editorial portrait generation"],
     outputs: ["Mimi Shell portraits (shell-v1 staple)", "identity pack refs", "badges", "profile cards", "report covers"],
     userFlow: "Project taste onto a house porcelain-BJD shell — same species for every creator; wardrobe and motifs vary.",
-    notes: "Staple in services/dollEngine/staplePrompt.ts (prd/doll-staple-shell.md). Engine also: procedural aesthetic + identity pack + masks + companion. Public cards at /u/:handle.",
+    notes:
+      "Staple in services/dollEngine/staplePrompt.ts (prd/doll-staple-shell.md). Shell-first chamber plate; realtime shader lives in secondary Shader Lab tab (Architecture Update 20). Engine also: procedural aesthetic + identity pack + masks + companion. Public cards at /u/:handle.",
   },
   {
     id: "mimi-rip",
@@ -619,6 +632,64 @@ export const CANON_MODULES: CanonModule[] = [
       "Read the present atmosphere via literal mean, median, and mode — not a leaderboard. Stage on The Proscenium to contribute anonymized structure.",
     notes:
       "Collective Moods is a docs-only conceptual alias. Distinct from Residue per-run MeanMedianModeResult.",
+  },
+];
+
+/** Infrastructure substrates (not chamber routes). Not validated by validateCanonRoutes. */
+export interface CanonInfrastructure {
+  id: string;
+  name: string;
+  status: "live" | "hardening" | "proposed";
+  purpose: string;
+  owns: string[];
+  notes?: string;
+}
+
+export const CANON_INFRASTRUCTURE: CanonInfrastructure[] = [
+  {
+    id: "sovereign-data-plane",
+    name: "Sovereign Data Plane",
+    status: "hardening",
+    purpose: "Owned publication, discovery, and resilience persistence independent of Firestore quota",
+    owns: ["public zines", "profiles", "Pocket mirrors", "search projections", "SSE sync", "import/export"],
+    notes: "SQLite local/durable-host; Neon Postgres preferred on Vercel. Firebase remains identity + selected compatibility state.",
+  },
+  {
+    id: "sovereign-search",
+    name: "Sovereign Search",
+    status: "live",
+    purpose: "Hybrid keyword + Gateway embedding discovery over the owned archive",
+    owns: ["write-time card projections", "vector storage", "reindex route", "Floor search ranking"],
+  },
+  {
+    id: "ai-gateway-embeddings",
+    name: "AI Gateway Embeddings",
+    status: "live",
+    purpose: "Shared embedding pipeline with executed-model and dimension provenance",
+    owns: ["Scry", "Taste clustering", "Shadow Memory", "Sovereign search embeddings"],
+    notes: "Different dimensions are never compared; stored model reflects executed model.",
+  },
+  {
+    id: "shadow-memory-migration",
+    name: "Shadow Memory Migration",
+    status: "live",
+    purpose: "Detect and reindex embedding-incompatible personal memory vectors",
+    owns: ["dimension/model audit", "authenticated reindex", "ghost-identity denial"],
+  },
+  {
+    id: "gateway-entitlements",
+    name: "Gateway Entitlement Boundary",
+    status: "live",
+    purpose: "Funded Mimi plans use server-verified Gateway access rather than BYOK recovery prompts",
+    owns: ["Stripe verification", "credit grants", "promo redemption", "provider adapters"],
+  },
+  {
+    id: "serverless-lazy-graphs",
+    name: "Serverless Module Boundary",
+    status: "hardening",
+    purpose: "Load Node-heavy graphs only after cheap request checks on the active route",
+    owns: ["Firebase Admin", "Stripe", "Apify", "SQLite", "dossier prompts", "Gemini service lazy paths"],
+    notes: "CI dynamic-import invariants remain proposed.",
   },
 ];
 
