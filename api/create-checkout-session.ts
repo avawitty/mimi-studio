@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { readJsonBody, requireMethod, sendError, sendJson, validateBody } from "../lib/apiUtils.js";
 import {
+  getConfiguredStripePricePolicyMap,
   getMimiPlanForCheckout,
   getStripePriceForPlan,
   parseBillingInterval,
@@ -56,6 +57,18 @@ export default async function handler(req: any, res: any) {
     const stripe = getStripeClient();
     const mimiPlan = getMimiPlanForCheckout(plan);
     const priceId = getStripePriceForPlan(plan, interval);
+    const configuredPricePolicy =
+      getConfiguredStripePricePolicyMap()[priceId];
+    if (
+      !configuredPricePolicy ||
+      configuredPricePolicy.plan !== mimiPlan ||
+      configuredPricePolicy.interval !== interval
+    ) {
+      throw Object.assign(
+        new Error("Stripe price configuration is inconsistent."),
+        { code: "BILLING_UNAVAILABLE", status: 503 },
+      );
+    }
 
     const configuredBase = String(process.env.MIMI_PUBLIC_BASE_URL || "")
       .trim()

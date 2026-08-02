@@ -2,6 +2,7 @@
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import { normalizeStripeMembershipEvent } from "../infrastructure/stripe/normalizeMembershipEvent.js";
+import { getConfiguredStripePricePolicyMap } from "../lib/stripePlans.js";
 
 const initiationPrice = "price_1TfuI49AUz0q2nVCHuy4k4Sq";
 const initiationAnnualPrice = "price_1Tzntj9AUz0q2nVCO66J6Wps";
@@ -160,6 +161,50 @@ describe("Stripe membership normalization", () => {
     }
   });
 
+  it("rejects configured price collisions", () => {
+    const previousCore = process.env.STRIPE_PRICE_CORE;
+    const previousLab = process.env.STRIPE_PRICE_LAB;
+    process.env.STRIPE_PRICE_CORE = "price_collision";
+    process.env.STRIPE_PRICE_LAB = "price_collision";
+    try {
+      expect(() => getConfiguredStripePricePolicyMap()).toThrow(
+        "multiple Mimi plan policies",
+      );
+    } finally {
+      if (previousCore === undefined) delete process.env.STRIPE_PRICE_CORE;
+      else process.env.STRIPE_PRICE_CORE = previousCore;
+      if (previousLab === undefined) delete process.env.STRIPE_PRICE_LAB;
+      else process.env.STRIPE_PRICE_LAB = previousLab;
+    }
+  });
+
+  it("rejects configured cadence mismatches", async () => {
+    const previous = process.env.STRIPE_PRICE_LAB_ANNUAL;
+    process.env.STRIPE_PRICE_LAB_ANNUAL = "price_custom_annual_lab";
+    try {
+      const mismatched = subscription({
+        items: {
+          data: [
+            {
+              price: { id: "price_custom_annual_lab" },
+              current_period_start: 1_785_600_000,
+              current_period_end: 1_788_192_000,
+            },
+          ],
+        },
+      });
+      await expect(
+        normalizeStripeMembershipEvent(
+          stripeMock(mismatched, "month"),
+          event("customer.subscription.updated", mismatched),
+        ),
+      ).rejects.toThrow("cadence does not match");
+    } finally {
+      if (previous === undefined) delete process.env.STRIPE_PRICE_LAB_ANNUAL;
+      else process.env.STRIPE_PRICE_LAB_ANNUAL = previous;
+    }
+  });
+
   it("issues the exact legacy tier allowance from the paid invoice period", async () => {
     const normalized = await normalizeStripeMembershipEvent(
       stripeMock(),
@@ -186,9 +231,13 @@ describe("Stripe membership normalization", () => {
   });
 
   it("returns ended subscriptions to an active free membership", async () => {
+    const canceled = subscription({
+      status: "canceled",
+      items: { data: [{ price: { id: "price_retired_unmapped" } }] },
+    });
     const normalized = await normalizeStripeMembershipEvent(
-      stripeMock(subscription({ status: "canceled" })),
-      event("customer.subscription.deleted", subscription({ status: "canceled" })),
+      stripeMock(canceled),
+      event("customer.subscription.deleted", canceled),
     );
     expect(normalized).toMatchObject({
       plan: "free",

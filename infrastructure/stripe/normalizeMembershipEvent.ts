@@ -43,9 +43,21 @@ async function resolvePricePolicy(
     (priceId ? MIMI_PRICE_ID_PLAN_MAP[priceId] : null);
   if (priceId) {
     const price = await stripe.prices.retrieve(priceId);
-    interval =
-      configuredPolicy?.interval ??
-      (price.recurring?.interval === "year" ? "year" : "month");
+    if (
+      price.recurring?.interval !== "month" &&
+      price.recurring?.interval !== "year"
+    ) {
+      throw new Error(
+        `Stripe price ${price.id} is not a monthly or annual recurring Price.`,
+      );
+    }
+    const actualInterval: MimiBillingInterval = price.recurring.interval;
+    if (configuredPolicy && configuredPolicy.interval !== actualInterval) {
+      throw new Error(
+        `Stripe price ${price.id} cadence does not match its Mimi configuration.`,
+      );
+    }
+    interval = actualInterval;
     rawPlan =
       getConfiguredStripePricePolicyMap()[price.id]?.plan ||
       MIMI_PRICE_ID_PLAN_MAP[price.id] ||
@@ -254,6 +266,28 @@ export async function normalizeStripeMembershipEvent(
       event.type === "customer.subscription.updated"
         ? await stripe.subscriptions.retrieve(eventSubscription.id)
         : replacement || eventSubscription;
+    const ended =
+      (event.type === "customer.subscription.deleted" && !replacement) ||
+      subscription.status === "canceled" ||
+      subscription.status === "incomplete_expired";
+    if (ended) {
+      return {
+        eventId: event.id,
+        eventType: event.type,
+        userId:
+          subscription.metadata?.firebaseUid ||
+          subscription.metadata?.userId ||
+          null,
+        plan: "free",
+        status: "active",
+        providerCustomerId: asId(subscription.customer) || customerId,
+        providerSubscriptionId: subscription.id,
+        providerEventCreatedAt: eventCreatedAt(event),
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+        payloadReference: payloadReference(event),
+      };
+    }
     const item = subscription.items.data[0];
     const policy = await resolvePricePolicy(
       stripe,
@@ -261,10 +295,6 @@ export async function normalizeStripeMembershipEvent(
       subscription.metadata?.canonicalPlan || subscription.metadata?.plan,
     );
     const period = subscriptionPeriod(subscription);
-    const ended =
-      (event.type === "customer.subscription.deleted" && !replacement) ||
-      subscription.status === "canceled" ||
-      subscription.status === "incomplete_expired";
     return {
       eventId: event.id,
       eventType: event.type,
@@ -272,8 +302,8 @@ export async function normalizeStripeMembershipEvent(
         subscription.metadata?.firebaseUid ||
         subscription.metadata?.userId ||
         null,
-      plan: ended ? "free" : policy.plan,
-      status: ended ? "active" : subscriptionStatus(subscription.status),
+      plan: policy.plan,
+      status: subscriptionStatus(subscription.status),
       providerCustomerId: asId(subscription.customer) || customerId,
       providerSubscriptionId: subscription.id,
       providerEventCreatedAt: eventCreatedAt(event),

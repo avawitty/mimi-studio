@@ -51,6 +51,27 @@ export async function expireOpenSubscriptionSessions(
     }
     startingAfter = page.has_more ? page.data.at(-1)?.id : undefined;
   } while (startingAfter);
+
+  startingAfter = undefined;
+  do {
+    const remaining = await stripe.checkout.sessions.list({
+      customer: customerId,
+      status: "open",
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    if (
+      remaining.data.some((session) => session.mode === "subscription")
+    ) {
+      throw new Error(
+        "A pending subscription Checkout Session could not be retired.",
+      );
+    }
+    startingAfter = remaining.has_more
+      ? remaining.data.at(-1)?.id
+      : undefined;
+  } while (startingAfter);
+
   return {
     expiredIds,
     generationSeed: latestSubscriptionSessionId || "initial",

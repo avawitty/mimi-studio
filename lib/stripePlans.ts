@@ -80,10 +80,21 @@ export function getConfiguredStripePricePolicyMap(): Record<
     Record<string, ConfiguredStripePricePolicy>
   >((policies, plan) => {
     for (const interval of ["month", "year"] as const) {
-      policies[getStripePriceForPlan(plan, interval)] = {
+      const priceId = getStripePriceForPlan(plan, interval);
+      const next = {
         plan: PLAN_TO_MIMI_PLAN[plan],
         interval,
       };
+      const existing = policies[priceId];
+      if (
+        existing &&
+        (existing.plan !== next.plan || existing.interval !== next.interval)
+      ) {
+        throw new Error(
+          `Stripe price ${priceId} is configured for multiple Mimi plan policies.`,
+        );
+      }
+      policies[priceId] = next;
     }
     return policies;
   }, {});
