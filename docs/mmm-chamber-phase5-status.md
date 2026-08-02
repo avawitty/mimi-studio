@@ -43,8 +43,10 @@ Open: `/observatory`, `/mean-median-mode`
 
 ## Next
 
-- Phase 6 Mesopic Lens
-- Phase 7 RSS freshness spine
-- Phase 8 Forecast repair consuming `CentralTendencyProfile[]`
-- Live Firestore aggregation when consented corpus exists
-- Gate other `public_transmissions` broadcast paths with the same consent modal
+Phases 6–8 + remaining broadcast consent gates: see [`docs/mmm-chamber-phase6-8-status.md`](./mmm-chamber-phase6-8-status.md).
+
+Still open after that slice:
+
+- Live Mesopic / MMM Firestore aggregation when consented corpus exists
+- Approved-feed server ingest (Phase 7 ops)
+- Release tribunal docs

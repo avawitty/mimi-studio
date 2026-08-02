@@ -13,6 +13,12 @@ import {
   mayContributeToMeanMedianMode,
   contributePublicZineToMeanMedianMode,
   loadMeanMedianModeReport,
+  loadMesopicReport,
+  buildForecastReport,
+  buildConsentAwareTransmission,
+  transmissionMayContribute,
+  listApprovedFeeds,
+  loadApprovedFeedEntries,
   MMM_CONSENT_DISCLOSURE_VERSION,
   MMM_METHODOLOGY_VERSION,
   consentFieldsForZine,
@@ -25,6 +31,8 @@ import { collectiveSignalSchema } from "../schemas/collectiveIntelligenceContrac
 import {
   centralTendencyProfileSchema,
   meanMedianModeReportSchema,
+  mesopicReportSchema,
+  forecastReportSchema,
   safeParseProsceniumPublishConsent,
 } from "../schemas/collectiveIntelligenceContracts";
 import {
@@ -32,6 +40,7 @@ import {
   OBSERVATORY_CHAMBER_ROUTE,
   MEAN_MEDIAN_MODE_MODULE_ID,
   MEAN_MEDIAN_MODE_ROUTE,
+  OBSERVATORY_COPY,
 } from "../lib/observatoryChamberContract";
 import { CANON_MODULES, canonicalizeMimiRoute } from "../lib/productCanon";
 
@@ -278,6 +287,26 @@ function testConsent() {
   assert(unpub.isPublic === false && unpub.contributeToMeanMedianMode === false, "unpublish stops");
   assert(unpub.mmmContributionStatus === "withdrawn", "unpublish marks withdrawn");
   assert(typeof unpub.mmmWithdrawnAt === "number", "unpublish records withdrawnAt");
+
+  const { transmission } = buildConsentAwareTransmission(
+    {
+      userId: "u1",
+      userHandle: "ghost",
+      content: "Specimen",
+      type: "manifest",
+      artifactId: "z-broadcast-1",
+    },
+    true,
+  );
+  assert(transmission.disclosedAt > 0, "broadcast transmission has disclosure timestamp");
+  assert(transmission.disclosureVersion === MMM_CONSENT_DISCLOSURE_VERSION, "broadcast disclosure version");
+  assert(transmissionMayContribute(transmission), "consent-aware transmission may contribute");
+  assert(
+    !transmissionMayContribute({
+      contributeToMeanMedianMode: true,
+    }),
+    "silent transmission without disclosure must not contribute",
+  );
 }
 
 function testContributePipeline() {
@@ -332,6 +361,43 @@ function testContributePipeline() {
   );
   assert(!ok.signals.some((s) => s.contextExcerpt), "no private excerpts");
   assert(ok.receipt?.contributedSignalIds.length === ok.signals.length, "receipt ids");
+}
+
+function testMesopicAndForecast() {
+  const mesopic = loadMesopicReport("demonstration");
+  mesopicReportSchema.parse(mesopic);
+  assert(mesopic.demonstration === true, "mesopic demo labeled");
+  assert(mesopic.findings.some((f) => f.mode === "starry_eyed"), "starry-eyed findings");
+  assert(mesopic.findings.some((f) => f.mode === "shadow_fields"), "shadow fields findings");
+  assert(
+    mesopic.findings.every((f) => f.faintnessReason.length > 0),
+    "faintness reasons required",
+  );
+
+  const emptyMesopic = loadMesopicReport("empty");
+  assert(emptyMesopic.findings.length === 0 && emptyMesopic.status === "empty", "empty mesopic");
+
+  const mmm = loadMeanMedianModeReport("demonstration");
+  const forecast = buildForecastReport({
+    observed: mmm,
+    external: {
+      provider: "Unavailable",
+      synthesis: "offline",
+      trends: [],
+      simulated: false,
+    },
+    feedEntryCount: loadApprovedFeedEntries().length,
+  });
+  forecastReportSchema.parse(forecast);
+  assert(forecast.observed.length === mmm.profiles.length, "forecast consumes MMM profiles");
+  assert(forecast.demonstration === true, "forecast inherits demo label");
+  assert(forecast.feedEntryCount === 0, "approved RSS spine empty until Phase 7 ingest");
+  assert(listApprovedFeeds().length === 0, "no silent approved feeds");
+  assert(
+    forecast.whatMayBeMissing.some((m) => /RSS/i.test(m)),
+    "forecast names missing RSS spine",
+  );
+  assert(OBSERVATORY_COPY.mesopicThesis.length > 0, "mesopic thesis copy");
 }
 
 function testReportFixture() {
@@ -406,11 +472,18 @@ function testCanonAndFiles() {
     "schemas/collectiveIntelligenceContracts.ts",
     "services/collective/aggregateCentralTendency.ts",
     "services/collective/consent.ts",
+    "services/collective/broadcastTransmission.ts",
+    "services/collective/buildForecastReport.ts",
+    "services/collective/loadMesopicReport.ts",
+    "services/collective/approvedFeeds.ts",
     "components/chambers/ObservatoryChamber.tsx",
     "components/observatory/MeanMedianModePanel.tsx",
+    "components/observatory/MesopicLensPanel.tsx",
+    "components/forecast/ForecastObservedPanel.tsx",
     "components/proscenium/ProsceniumPublishConsentModal.tsx",
     "lib/observatoryChamberContract.ts",
     "fixtures/collective/demoMeanMedianModeReport.ts",
+    "fixtures/collective/demoMesopicReport.ts",
   ];
   for (const rel of requiredFiles) {
     assert(fs.existsSync(path.join(root, rel)), `missing ${rel}`);
@@ -419,6 +492,18 @@ function testCanonAndFiles() {
   const legal = fs.readFileSync(path.join(root, "components/LegalOverlay.tsx"), "utf8");
   assert(legal.includes("Mean Median Mode"), "legal names Mean Median Mode");
   assert(!legal.includes("Social Floor"), "legal drops Social Floor label");
+
+  const pocket = fs.readFileSync(path.join(root, "components/Pocket.tsx"), "utf8");
+  assert(pocket.includes("ProsceniumPublishConsentModal"), "Pocket gates broadcast with consent modal");
+  assert(pocket.includes("buildConsentAwareTransmission"), "Pocket uses consent-aware transmissions");
+
+  const analysis = fs.readFileSync(path.join(root, "components/AnalysisDisplay.tsx"), "utf8");
+  assert(analysis.includes("ProsceniumPublishConsentModal"), "AnalysisDisplay stages via consent modal");
+  assert(analysis.includes("buildConsentAwareTransmission"), "AnalysisDisplay consent-aware transmissions");
+
+  const savePath = fs.readFileSync(path.join(root, "services/firebaseUtils.ts"), "utf8");
+  assert(savePath.includes("mmmPublishConsent"), "saveZineToProfile accepts MMM consent");
+  assert(savePath.includes("refused silent public stage"), "saveZineToProfile refuses silent public");
 }
 
 function main() {
@@ -426,6 +511,7 @@ function main() {
   testConsent();
   testContributePipeline();
   testReportFixture();
+  testMesopicAndForecast();
   testNamespaceSeparation();
   testCanonAndFiles();
   console.log("verify:collective PASS");

@@ -13,6 +13,11 @@ import { ExportChamber } from './ExportChamber';
 import { SocialShareModal } from './SocialShareModal';
 import { ZineComments } from './ZineComments';
 import { ThreadGraph } from './ThreadGraph';
+import { ProsceniumPublishConsentModal } from './proscenium/ProsceniumPublishConsentModal';
+import {
+  buildConsentAwareTransmission,
+  publishToastMessage,
+} from '../services/collective/broadcastTransmission';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUser } from '../contexts/UserContext';
 import { resolveApiKey } from '../services/apiKeyService';
@@ -203,6 +208,7 @@ export const AnalysisDisplay: React.FC<{
  const [dialOpen, setDialOpen] = useState(false);
  const [isBroadcasting, setIsBroadcasting] = useState(false);
  const [isBroadcasted, setIsBroadcasted] = useState(false);
+ const [showBroadcastConsent, setShowBroadcastConsent] = useState(false);
  const [isEditing, setIsEditing] = useState(false);
  const [isExportingPDF, setIsExportingPDF] = useState(false);
  const [isDedicatedReadingMode, setIsDedicatedReadingMode] = useState(false);
@@ -1173,31 +1179,48 @@ export const AnalysisDisplay: React.FC<{
  }
  };
 
- const handleBroadcast = async () => {
+ const requestBroadcast = () => {
+ if (isBroadcasted || isBroadcasting) return;
+ setShowBroadcastConsent(true);
+ };
+
+ const handleBroadcastConsentConfirm = async (contributeToMeanMedianMode: boolean) => {
  if (isBroadcasted || isBroadcasting) return;
  setIsBroadcasting(true);
  window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: 'shimmer' } }));
  try {
  const { collection, addDoc } = await import('firebase/firestore');
  const { db } = await import('../services/firebase');
- 
+
  const displayTitle = metadata.content?.headlines?.[0] || metadata.title ||"Untitled";
- const transmission = {
+ const { transmission } = buildConsentAwareTransmission(
+ {
  userId: user?.uid || 'ghost',
  userHandle: profile?.handle || 'Ghost',
  content: displayTitle,
  imageUrl: metadata.coverImageUrl || metadata.content.hero_image_url || '',
- timestamp: Date.now(),
  type: 'manifest',
  likes: 0,
- zineData: metadata
- };
- 
+ zineData: metadata,
+ artifactId: metadata.id,
+ },
+ contributeToMeanMedianMode,
+ );
+
  const cleanTransmission = JSON.parse(JSON.stringify(transmission));
  await addDoc(collection(db, 'public_transmissions'), cleanTransmission);
- 
+
  setIsBroadcasted(true);
- window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Manifest Broadcasted to Proscenium.", icon: <Radio size={14} style={{ color: accentColor }} /> } }));
+ setShowBroadcastConsent(false);
+ window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+ detail: {
+ message: publishToastMessage({
+ contribute: contributeToMeanMedianMode,
+ handle: profile?.handle,
+ }),
+ icon: <Radio size={14} style={{ color: accentColor }} />,
+ },
+ }));
  } catch (e) {
  console.error("Broadcast failed", e);
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Broadcast Failed.", type: 'error' } }));
@@ -1355,6 +1378,15 @@ export const AnalysisDisplay: React.FC<{
  )}
  {showExport && <ExportChamber metadata={metadata} onClose={() => setShowExport(false)} />}
  {showShare && <SocialShareModal metadata={metadata} onClose={() => setShowShare(false)} />}
+ <ProsceniumPublishConsentModal
+ open={showBroadcastConsent}
+ artifactTitle={metadata.content?.headlines?.[0] || metadata.title || 'Untitled'}
+ busy={isBroadcasting}
+ onCancel={() => {
+ if (!isBroadcasting) setShowBroadcastConsent(false);
+ }}
+ onConfirm={handleBroadcastConsentConfirm}
+ />
  {showReorderModal && (
    <motion.div 
      initial={{ opacity: 0 }} 
@@ -2527,6 +2559,18 @@ export const AnalysisDisplay: React.FC<{
       <button onClick={handleShareLink} className="flex flex-col items-center gap-2 hover:text-[#1A1A1A] transition-colors group">
         <Share2 size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
         <span className="text-[7px] uppercase tracking-[0.2em] font-black">SHARE</span>
+      </button>
+
+      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
+
+      <button
+        onClick={requestBroadcast}
+        disabled={isBroadcasted || isBroadcasting}
+        className={`flex flex-col items-center gap-2 transition-colors group ${isBroadcasted ? 'text-green-700' : 'hover:text-[#1A1A1A]'} disabled:opacity-40`}
+        title={isBroadcasted ? 'Staged on The Proscenium' : 'Stage on The Proscenium · Mean Median Mode'}
+      >
+        <Radio size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+        <span className="text-[7px] uppercase tracking-[0.2em] font-black">{isBroadcasted ? 'STAGED' : 'STAGE'}</span>
       </button>
 
       <div className="w-[1px] h-6 bg-[#A19D94]/20"/>

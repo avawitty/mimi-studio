@@ -18,6 +18,11 @@ import {
   ArchiveContextPanel,
   type ArchiveWorkflowStep,
 } from './chambers/ArchiveChamberShell';
+import { ProsceniumPublishConsentModal } from './proscenium/ProsceniumPublishConsentModal';
+import {
+  buildConsentAwareTransmission,
+  publishToastMessage,
+} from '../services/collective/broadcastTransmission';
 
 // --- SUB-COMPONENTS ---
 
@@ -754,6 +759,8 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const [batchTagInput, setBatchTagInput] = useState('');
  const [newFolderName, setNewFolderName] = useState('');
  const [activeShard, setActiveShard] = useState<PocketItem | null>(null);
+ const [showBroadcastConsent, setShowBroadcastConsent] = useState(false);
+ const [isBroadcasting, setIsBroadcasting] = useState(false);
  
  // Search State
  const [searchQuery, setSearchQuery] = useState('');
@@ -893,6 +900,51 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  return isSelectionMode && selectedIds.size > 0 
  ? items.filter(i => selectedIds.has(i.id))
  : activeBoard ? items.filter(i => activeBoard.content.itemIds?.includes(i.id)) : [];
+ };
+
+ const handleBroadcastConsentConfirm = async (contributeToMeanMedianMode) => {
+ const targetItems = getSelection().filter((item) => item.type === 'image' || item.type === 'zine_card');
+ if (targetItems.length === 0 || isBroadcasting) return;
+ setIsBroadcasting(true);
+ window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: 'shimmer' } }));
+ try {
+ const { collection, addDoc } = await import('firebase/firestore');
+ const { db } = await import('../services/firebase');
+ for (const item of targetItems) {
+ const { transmission } = buildConsentAwareTransmission(
+ {
+ userId: user?.uid || 'ghost',
+ userHandle: profile?.handle || 'Ghost',
+ content: item.content.prompt || item.content.name || item.content.title || 'Untitled Fragment',
+ imageUrl: item.content.imageUrl || '',
+ type: 'signal',
+ likes: 0,
+ zineData: item.type === 'zine_card' ? item.content.analysis : null,
+ artifactId: item.id,
+ },
+ contributeToMeanMedianMode,
+ );
+ const cleanTransmission = JSON.parse(JSON.stringify(transmission));
+ await addDoc(collection(db, 'public_transmissions'), cleanTransmission);
+ }
+ window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+ detail: {
+ message: publishToastMessage({
+ contribute: contributeToMeanMedianMode,
+ handle: profile?.handle,
+ }),
+ icon: <Radio size={14} />,
+ },
+ }));
+ setIsSelectionMode(false);
+ setSelectedIds(new Set());
+ setShowBroadcastConsent(false);
+ } catch (e) {
+ console.error(e);
+ window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Broadcast Failed.", type: 'error' } }));
+ } finally {
+ setIsBroadcasting(false);
+ }
  };
 
  const handleDesignerAudit = async () => {
@@ -1889,38 +1941,12 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  <span className="font-sans text-[7px] uppercase tracking-widest font-black">Refract</span>
  </button>
  <button
- onClick={async () => {
+ onClick={() => {
  const targetItems = getSelection();
- if (targetItems.length === 0) return;
- window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: 'shimmer' } }));
- try {
- const { collection, addDoc } = await import('firebase/firestore');
- const { db } = await import('../services/firebase');
- for (const item of targetItems) {
- if (item.type === 'image' || item.type === 'zine_card') {
- const transmission = {
- userId: user?.uid || 'ghost',
- userHandle: profile?.handle || 'Ghost',
- content: item.content.prompt || item.content.name || item.content.title || 'Untitled Fragment',
- imageUrl: item.content.imageUrl || '',
- timestamp: Date.now(),
- type: 'signal',
- likes: 0,
- zineData: item.type === 'zine_card' ? item.content.analysis : null
- };
- const cleanTransmission = JSON.parse(JSON.stringify(transmission));
- await addDoc(collection(db, 'public_transmissions'), cleanTransmission);
- }
- }
- window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Fragments Broadcasted.", icon: <Radio size={14} /> } }));
- setIsSelectionMode(false);
- setSelectedIds(new Set());
- } catch (e) {
- console.error(e);
- window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Broadcast Failed.", type: 'error' } }));
- }
+ if (targetItems.length === 0 || isBroadcasting) return;
+ setShowBroadcastConsent(true);
  }}
- disabled={selectedIds.size === 0}
+ disabled={selectedIds.size === 0 || isBroadcasting}
  className="flex flex-col items-center gap-1 px-4 py-2 rounded-none text-nous-subtle hover:text-nous-subtle hover:bg-nous-base0/10 transition-all disabled:opacity-30"
  >
  <Radio size={18} />
@@ -1947,6 +1973,19 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  )}
  </AnimatePresence>,
  document.body)}
+ <ProsceniumPublishConsentModal
+ open={showBroadcastConsent}
+ artifactTitle={
+ getSelection().length === 1
+ ? (getSelection()[0].content?.title || getSelection()[0].content?.name || getSelection()[0].content?.prompt || 'Selected fragment')
+ : `${getSelection().length} selected fragments`
+ }
+ busy={isBroadcasting}
+ onCancel={() => {
+ if (!isBroadcasting) setShowBroadcastConsent(false);
+ }}
+ onConfirm={handleBroadcastConsentConfirm}
+ />
  </>
  );
 };

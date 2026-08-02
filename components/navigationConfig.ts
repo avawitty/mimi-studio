@@ -353,6 +353,9 @@ export const MENU_STRUCTURE: NavigationSection[] = [
           "central tendency",
           "atmosphere",
           "mesopic",
+          "mesopic lens",
+          "starry-eyed",
+          "shadow fields",
         ],
       },
       {
@@ -368,6 +371,7 @@ export const MENU_STRUCTURE: NavigationSection[] = [
           "collective moods",
           "central tendency",
           "observatory",
+          "mesopic lens",
         ],
       },
       {

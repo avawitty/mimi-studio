@@ -30,5 +30,13 @@ export const OBSERVATORY_COPY = {
   emptyBanner:
     "Not enough consented public signals in this window. Stage work on The Proscenium to contribute anonymized structure to Mean Median Mode.",
   mesopicComingSoon:
-    "Mesopic Lens (Starry-Eyed · Shadow Fields) — coming later. Weak signals will not be presented as certainty.",
+    "Mesopic Lens (Starry-Eyed · Shadow Fields) holds faint signals below Mean Median Mode thresholds — never as certainty.",
+  mesopicThesis:
+    "Twilight vision for the collective archive — dim correspondences before they become trends.",
+  mesopicRestraint:
+    "Starry-Eyed and Shadow Fields stay below promotion thresholds. Mean Median Mode only reads signals that clear central tendency.",
+  mesopicDemoBanner:
+    "Demonstration faint signals — not live Mesopic aggregates. Weak structure is labeled, never sold as atmosphere.",
+  mesopicEmptyBanner:
+    "No below-threshold consented signals in this window. Faint structure will appear here before it clears Mean Median Mode.",
 } as const;

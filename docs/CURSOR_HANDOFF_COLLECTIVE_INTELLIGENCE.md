@@ -10,8 +10,9 @@
 - Phase 2 spec → [`docs/COLLECTIVE_INTELLIGENCE_SPEC.md`](./COLLECTIVE_INTELLIGENCE_SPEC.md)
 - MMM chamber build sequence → [`docs/mmm-chamber-implementation-plan.md`](./mmm-chamber-implementation-plan.md)
 
-Phases 3–5 vertical slice landed on this planning branch — see [`docs/mmm-chamber-phase5-status.md`](./mmm-chamber-phase5-status.md).  
-Next: Mesopic / RSS / Forecast (Phases 6–8), plus remaining broadcast-path consent gates.
+Phases 3–5 vertical slice: [`docs/mmm-chamber-phase5-status.md`](./mmm-chamber-phase5-status.md).  
+Phases 6–8 + broadcast consent gates: [`docs/mmm-chamber-phase6-8-status.md`](./mmm-chamber-phase6-8-status.md).  
+Next: live aggregation, approved-feed ingest, release tribunal docs.
 
 ---
 

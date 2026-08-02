@@ -21,7 +21,11 @@ export const FORECAST_COPY = {
   contentUnavailableBanner:
     "Content forecast offline or empty — configure AI Gateway / You.com, or sign in with membership credits. No costume trends invented.",
   cultureAwaiting:
-    "Cultural shifts will draw from Observatory Mean Median Mode motifs. Open The Observatory for the collective atmosphere.",
+    "No observed Mean Median Mode profiles yet. Stage consented work on The Proscenium, then return for cultural trajectories.",
+  cultureObserved:
+    "Cultural vector reads Observatory Mean Median Mode baselines first, then optional research/RSS evidence — never costume shifts.",
+  cultureDemoBanner:
+    "Demonstration Observatory baselines — trajectories are derived from labeled specimens, not a live collective corpus.",
   brandScopeNote:
     "Brand OS scope reframes the same calibrated profile signals. Dedicated brand-guideline forecasting is not wired yet.",
   personalScopeNote:
