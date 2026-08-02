@@ -102,7 +102,7 @@ export interface SchemaOrgData {
   url: string;
 }
 
-export function injectJSONLD(viewMode: string, docUrl: string = "https://mimi.you") {
+export function injectJSONLD(viewMode: string, docUrl: string = "https://www.mimi.you") {
   let schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Organization",

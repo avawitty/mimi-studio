@@ -14,7 +14,7 @@
 // Gateway defaults live in lib/models.ts (newest verified IDs for text / image /
 // audio / video). Prefer modelFor(role, 'gateway') over hardcoded provider strings.
 
-import { GATEWAY_DEFAULT_MODELS } from '../lib/models';
+import { GATEWAY_DEFAULT_MODELS } from '../lib/models.js';
 
 export type LLMProviderId = 'gemini' | 'openai' | 'anthropic' | 'replicate' | 'openrouter' | 'gateway';
 
