@@ -9,6 +9,7 @@ Source of truth for aesthetic tokens and anti-drift rules. Specs: `prd/aesthetic
 - Product name: **`Mimi`** (title case) in Cormorant Garamond.
 - Never render brand as all-caps `MIMI` on public plates, entry compositions, Signature, Stand, or share cards.
 - Tracked uppercase is OK for system chrome only (`COLOPHON`, `ISSUE`, `MARK`).
+- App icon / favicon use a cropped **`mi`** mark (not a second spelling) — see [`brand-assets.md`](./brand-assets.md).
 
 ## Surfaces
 
