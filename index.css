@@ -244,6 +244,136 @@
     z-index: 1;
   }
 
+  /* Psychic Oracle Spy — chamber-aware surveillance atmosphere (Signal Underarchive nod) */
+  .mimi-surveillance {
+    overflow: hidden;
+  }
+
+  .mimi-surveillance--public {
+    opacity: 0.035;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        color-mix(in srgb, var(--mimi-cobalt, #9bb8ce) 18%, transparent) 3px,
+        color-mix(in srgb, var(--mimi-cobalt, #9bb8ce) 18%, transparent) 4px
+      );
+    mix-blend-mode: multiply;
+  }
+
+  .mimi-surveillance--whisper {
+    opacity: 0.03;
+  }
+
+  .mimi-surveillance--low {
+    opacity: 0.045;
+  }
+
+  .mimi-surveillance--mid {
+    opacity: 0.06;
+  }
+
+  .mimi-surveillance--high {
+    opacity: 0.08;
+  }
+
+  .mimi-surveillance__scan {
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(10, 10, 10, 0.035) 2px,
+        rgba(10, 10, 10, 0.035) 3px
+      );
+    mix-blend-mode: multiply;
+  }
+
+  .mimi-surveillance--dark .mimi-surveillance__scan {
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.03) 2px,
+        rgba(255, 255, 255, 0.03) 3px
+      );
+    mix-blend-mode: soft-light;
+  }
+
+  .mimi-surveillance__mist {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(
+        ellipse 55% 40% at 80% 12%,
+        color-mix(in srgb, var(--mimi-cobalt, #9bb8ce) 22%, transparent) 0%,
+        transparent 70%
+      );
+    opacity: 0.55;
+    mix-blend-mode: multiply;
+  }
+
+  .mimi-surveillance--dark .mimi-surveillance__mist,
+  .mimi-surveillance--public-dark .mimi-surveillance__mist {
+    background:
+      radial-gradient(
+        ellipse 50% 35% at 78% 10%,
+        color-mix(in srgb, var(--mimi-cobalt, #9bb8ce) 28%, transparent) 0%,
+        transparent 68%
+      );
+    mix-blend-mode: screen;
+    opacity: 0.35;
+  }
+
+  .mimi-surveillance--whisper .mimi-surveillance__mist {
+    opacity: 0.25;
+  }
+
+  .mimi-surveillance__corners {
+    position: absolute;
+    inset: 0.75rem;
+  }
+
+  .mimi-surveillance__corner {
+    position: absolute;
+    width: 0.85rem;
+    height: 0.85rem;
+    border-color: color-mix(in srgb, var(--mimi-cobalt, #9bb8ce) 55%, transparent);
+    display: block;
+  }
+
+  .mimi-surveillance__corner--tl {
+    top: 0;
+    left: 0;
+    border-top: 1px solid;
+    border-left: 1px solid;
+  }
+
+  .mimi-surveillance__corner--tr {
+    top: 0;
+    right: 0;
+    border-top: 1px solid;
+    border-right: 1px solid;
+  }
+
+  .mimi-surveillance__corner--bl {
+    bottom: 0;
+    left: 0;
+    border-bottom: 1px solid;
+    border-left: 1px solid;
+  }
+
+  .mimi-surveillance__corner--br {
+    bottom: 0;
+    right: 0;
+    border-bottom: 1px solid;
+    border-right: 1px solid;
+  }
+
   /* Full-bleed hero atmosphere — pale light-cobalt fog field */
   .mimi-cobalt-field {
     background:
