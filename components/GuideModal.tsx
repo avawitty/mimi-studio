@@ -86,6 +86,29 @@ const GUIDE_DATA: GuideItem[] = [
     keywords: ["lens", "clique", "analyze", "semiotic", "radar", "entropy", "density", "metrics", "directives", "audit"]
   },
   {
+    id: "chambers-proscenium",
+    title: "Observe: The Proscenium",
+    category: "chambers",
+    description: "The public arch — transmissions, correspondents, and named cliques in one stage.",
+    details: [
+      "Stage: Witness live (or clearly labeled demo) transmissions. Resonate, absorb, or refract with lineage.",
+      "Correspondents: Soft follows and mutual consonants — the people whose Stand you keep on the Floor.",
+      "Cliques: Invite-only circles (Follow → Clique → Collab seat) for shared boards and critique — not a feed."
+    ],
+    keywords: [
+      "proscenium",
+      "stage",
+      "correspondents",
+      "connections",
+      "cliques",
+      "resonate",
+      "transmit",
+      "social",
+      "circle",
+      "follow"
+    ]
+  },
+  {
     id: "studio-ingestion",
     title: "Input Studio: Media Ingestion",
     category: "input-studio",
