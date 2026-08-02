@@ -63,5 +63,10 @@ const forecastUi = fs.readFileSync(path.join(root, "components/TheForecast.tsx")
 assert.ok(forecastUi.includes("buildForecastReport"), "Forecast UI composes ForecastReport");
 assert.ok(forecastUi.includes("ForecastObservedPanel"), "Forecast culture uses observed panel");
 assert.ok(!forecastUi.includes("Math.random"), "Forecast UI has no random drift costume");
+assert.match(
+  forecastUi,
+  /if \(contentForecast \|\| !user\)/,
+  "culture vector must skip live synthesis for anonymous users",
+);
 
 console.log("verifyForecastChamber: ok");
