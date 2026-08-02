@@ -1084,8 +1084,6 @@ export const fetchCommunityZines = async (count: number) => {
     }
 
     if (!auth.currentUser) return [];
-    const take = Math.max(0, Math.min(count || 0, COMMUNITY_ZINE_READ_CAP));
-    if (take === 0) return [];
     try {
       const q = query(
         collection(db, "zines"),
