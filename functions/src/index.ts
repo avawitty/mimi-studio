@@ -108,6 +108,90 @@ const buildCreditGrant = (planInput?: unknown, interval: MimiBillingInterval = '
   };
 };
 
+const collectStripeCustomerIdCandidates = (
+  ...sources: Array<Record<string, unknown> | null | undefined>
+) => {
+  // Keep in sync with lib/verifyStripeEntitlement.ts (Functions can't import root lib).
+  const ids = new Set<string>();
+  for (const source of sources) {
+    if (!source) continue;
+    for (const key of ['stripeCustomerId', 'customerId'] as const) {
+      const value = String(source[key] || '').trim();
+      if (value.startsWith('cus_')) ids.add(value);
+    }
+    const nested = String((source as any).subscription?.stripeCustomerId || '').trim();
+    if (nested.startsWith('cus_')) ids.add(nested);
+  }
+  return [...ids];
+};
+
+/** Preserve stored allowance on period reload (mirrors lib/mimiFundedGateway). */
+const rollForwardMembershipGrant = (
+  grant: { allowance?: unknown; interval?: unknown } | null | undefined,
+  interval: MimiBillingInterval = 'month',
+  now = Date.now(),
+) => {
+  const normalizedInterval: MimiBillingInterval = interval === 'year' ? 'year' : 'month';
+  const allowance = Number(grant?.allowance ?? 0);
+  const periodMs = (normalizedInterval === 'year' ? 365 : 30) * 24 * 60 * 60 * 1000;
+  return {
+    allowance,
+    remaining: allowance,
+    used: 0,
+    interval: normalizedInterval,
+    periodStartedAt: now,
+    periodEndsAt: now + periodMs,
+    lastGrantedAt: now,
+  };
+};
+
+/**
+ * Verify cus_* against Stripe. Firestore docs are owner-writable (incl. billing/**
+ * via users catch-all), so never trust a stored stripeCustomerId alone.
+ */
+const verifyStripeCustomerEntitlement = async (
+  customerId: string,
+  uid: string,
+  email?: string,
+): Promise<boolean> => {
+  if (!customerId.startsWith('cus_')) return false;
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    console.warn('MIMI // STRIPE_SECRET_KEY missing; cannot verify billing entitlement');
+    return false;
+  }
+  try {
+    const stripe = new Stripe(key);
+    const customer = await stripe.customers.retrieve(customerId);
+    if ((customer as any).deleted) return false;
+    const metaUid = String((customer as any).metadata?.firebaseUid || (customer as any).metadata?.uid || '').trim();
+    if (metaUid && metaUid !== uid) return false;
+    const wantEmail = String(email || '').trim().toLowerCase();
+    const customerEmail = String((customer as any).email || '').trim().toLowerCase();
+    const hasUidBinding = Boolean(metaUid && metaUid === uid);
+    const hasEmailBinding = Boolean(wantEmail && customerEmail && customerEmail === wantEmail);
+    if (!hasUidBinding && !hasEmailBinding) return false;
+    const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
+    return subs.data.some((sub) =>
+      sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due',
+    );
+  } catch (err) {
+    console.warn('MIMI // Stripe entitlement verification failed:', err);
+    return false;
+  }
+};
+
+const resolveTrustedPaidBilling = async (
+  uid: string,
+  email: string | undefined,
+  sources: Array<Record<string, unknown> | null | undefined>,
+) => {
+  for (const customerId of collectStripeCustomerIdCandidates(...sources)) {
+    if (await verifyStripeCustomerEntitlement(customerId, uid, email)) return true;
+  }
+  return false;
+};
+
 const writeMembershipEntitlements = async ({
   uid,
   plan,
@@ -322,7 +406,9 @@ app.post('/api/funded-gateway/access', async (req, res) => {
     const profileRef = db.collection('profiles_public').doc(decoded.uid);
     const [userDoc, profileDoc] = await Promise.all([userRef.get(), profileRef.get()]);
     const data = { ...(profileDoc.data() || {}), ...(userDoc.data() || {}) };
-    const plan = normalizeMimiPlan(data.plan || data.planStatus || data.mimiPlan);
+    const plan = normalizeMimiPlan(
+      data.plan || data.planStatus || data.mimiPlan || data.membershipPlan,
+    );
     const paid = isPaidMimiPlan(plan);
 
     let remaining = 0;
@@ -334,18 +420,41 @@ app.post('/api/funded-gateway/access', async (req, res) => {
         return;
       }
 
-      let grant = data.membershipCredits || data.subscription?.credits;
-      const hasAllowance = grant?.allowance != null && Number.isFinite(Number(grant.allowance));
-      const hasRemaining = grant?.remaining != null && Number.isFinite(Number(grant.remaining));
-      const periodEndsAt = Number(grant?.periodEndsAt ?? 0);
-      const needsHeal =
-        grant == null ||
-        (!hasAllowance && !hasRemaining) ||
-        (Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < Date.now());
+      let billingData: Record<string, unknown> = {};
+      try {
+        const billingSnap = await userRef.collection('billing').doc('subscription').get();
+        billingData = (billingSnap.data() || {}) as Record<string, unknown>;
+      } catch {
+        billingData = {};
+      }
 
-      if (needsHeal) {
+      // Never trust top-level subscription.credits (owner-writable forge vector).
+      let grant = data.membershipCredits || billingData.credits;
+      const allowanceNum = Number(grant?.allowance);
+      const hasAllowance = Number.isFinite(allowanceNum) && allowanceNum > 0;
+      const periodEndsAt = Number(grant?.periodEndsAt ?? 0);
+      const now = Date.now();
+      const needsPeriodReload =
+        hasAllowance && Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
+      const needsMint = !hasAllowance;
+      const trustedBilling =
+        needsPeriodReload || needsMint
+          ? await resolveTrustedPaidBilling(
+              decoded.uid,
+              decoded.email,
+              [billingData, data as Record<string, unknown>],
+            )
+          : false;
+      const needsTrustedMint = needsMint && trustedBilling;
+
+      if ((needsPeriodReload && trustedBilling) || needsTrustedMint) {
         const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month') as MimiBillingInterval;
-        const credits = buildCreditGrant(plan, interval);
+        // Period reload preserves stored allowance; mint derives from plan.
+        const credits = needsPeriodReload
+          ? rollForwardMembershipGrant(grant, interval, now)
+          : periodEndsAt > now
+            ? { ...buildCreditGrant(plan, interval), periodEndsAt }
+            : buildCreditGrant(plan, interval);
         const healPatch = {
           membershipCredits: credits,
           subscriptionStatus: data.subscriptionStatus || 'active',
@@ -357,6 +466,8 @@ app.post('/api/funded-gateway/access', async (req, res) => {
         ]);
         grant = credits;
       }
+      // Expired period without Stripe verify: no refill, but leftover remaining
+      // credits below can still be spent.
 
       remaining = Number(grant?.remaining ?? 0);
     } else {
@@ -387,7 +498,9 @@ app.post('/api/funded-gateway/charge', async (req, res) => {
     const profileRef = db.collection('profiles_public').doc(access.uid);
     const userDoc = await userRef.get();
     const userData = userDoc.data() || {};
-    const paid = isPaidMimiPlan(userData.plan || userData.planStatus);
+    const paid = isPaidMimiPlan(
+      userData.plan || userData.planStatus || userData.mimiPlan || userData.membershipPlan,
+    );
     const field = paid ? 'membershipCredits' : 'trial';
     const cost = Number(access.cost || 1);
     const patch = {

@@ -26,6 +26,57 @@ service cloud.firestore {
     }
     function hasRequiredFields(fields) { return request.resource.data.keys().hasAll(fields); }
     function hasOnlyAllowedFields(fields) { return request.resource.data.keys().hasOnly(fields); }
+
+    // Hard-blocked paid entitlement keys — never owner-written (create or update).
+    // Includes top-level `subscription` (forgeable nested credits object).
+    function hardBlockedEntitlementKeys() {
+      return [
+        'stripeCustomerId',
+        'membershipCredits',
+        'subscriptionStatus',
+        'subscriptionInterval',
+        'isPatron',
+        'patronActivatedAt',
+        'patronKey',
+        'subscription'
+      ];
+    }
+    function isFreeTierPlanValue(value) {
+      return value in ['free', 'trial', 'ghost', 'expired'];
+    }
+    // Plan markers: owners may only move among free-tier values (e.g. trial→expired).
+    function ownerPlanFieldUpdateOk() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return (!affected.hasAny(['plan']) || (
+          isFreeTierPlanValue(resource.data.get('plan', 'free')) &&
+          isFreeTierPlanValue(request.resource.data.plan)
+        ))
+        && (!affected.hasAny(['planStatus']) || (
+          isFreeTierPlanValue(resource.data.get('planStatus', 'free')) &&
+          isFreeTierPlanValue(request.resource.data.planStatus)
+        ))
+        && (!affected.hasAny(['mimiPlan']) || (
+          isFreeTierPlanValue(resource.data.get('mimiPlan', 'free')) &&
+          isFreeTierPlanValue(request.resource.data.mimiPlan)
+        ))
+        && (!affected.hasAny(['membershipPlan']) || (
+          isFreeTierPlanValue(resource.data.get('membershipPlan', 'free')) &&
+          isFreeTierPlanValue(request.resource.data.membershipPlan)
+        ));
+    }
+    function ownerEntitlementUpdateOk() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(hardBlockedEntitlementKeys())
+        && ownerPlanFieldUpdateOk();
+    }
+    // Free-tier plan markers (free/trial/ghost/expired) are allowed on create for signup.
+    function ownerCreateWithoutPaidEntitlements() {
+      return !request.resource.data.keys().hasAny(hardBlockedEntitlementKeys())
+      && (!('plan' in request.resource.data) || isFreeTierPlanValue(request.resource.data.plan))
+      && (!('planStatus' in request.resource.data) || isFreeTierPlanValue(request.resource.data.planStatus))
+      && (!('mimiPlan' in request.resource.data) || isFreeTierPlanValue(request.resource.data.mimiPlan))
+      && (!('membershipPlan' in request.resource.data) || isFreeTierPlanValue(request.resource.data.membershipPlan));
+    }
     
     function validString(field, min, max) {
       return request.resource.data[field] is string && 
@@ -69,8 +120,8 @@ service cloud.firestore {
     match /memberships/{userId} {
       // Users can see their own membership status, admins can see all
       allow read: if isOwner(userId) || isAdmin();
-      // Allow owner to write for promo code fallback
-      allow write: if isOwner(userId) || isAdmin(); 
+      // Membership entitlements are Admin / webhook only (no client forge).
+      allow write: if isAdmin();
     }
 
     // MEMBERS
@@ -98,8 +149,11 @@ service cloud.firestore {
     // PROFILES (Public Read, Owner Write)
     match /profiles_public/{userId} {
       allow read, list: if true;
-      allow create: if isOwner(userId) || isAdmin();
-      allow update: if isOwner(userId) || isAdmin();
+      // Owner create: free-tier signup only — no delete/recreate paid forge path.
+      allow create: if isAdmin() || (isOwner(userId) && ownerCreateWithoutPaidEntitlements());
+      allow update: if isAdmin() || (
+        isOwner(userId) && ownerEntitlementUpdateOk()
+      );
       allow delete: if isOwner(userId) || isAdmin();
     }
 
@@ -320,8 +374,21 @@ service cloud.firestore {
     // USERS (Owner only - PATCHED FOR PRIVILEGE ESCALATION)
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == 'user' || isAdmin());
-      allow update: if (isOwner(userId) || isAdmin()) && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role || isAdmin());
+      // Owner create: free-tier only — block delete/recreate forge of paid fields.
+      allow create: if isAdmin() || (
+        isOwner(userId) &&
+        (!('role' in request.resource.data) || request.resource.data.role == 'user') &&
+        ownerCreateWithoutPaidEntitlements()
+      );
+      // Billing / entitlement fields are server-written (Stripe webhook / Admin).
+      // Owners must not self-set stripeCustomerId, membershipCredits, or patron markers.
+      // Free-tier planStatus transitions (trial→expired) remain allowed.
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) &&
+        ownerEntitlementUpdateOk()
+      );
       allow delete: if isOwner(userId) || isAdmin();
       
       match /dolls/{document=**} {
@@ -356,9 +423,17 @@ service cloud.firestore {
       match /residueMemoryProposals/{document=**} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
+
+      // Stripe / membership billing — Admin SDK / webhook only.
+      match /billing/{document=**} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isAdmin();
+      }
       
-      match /{document=**} {
-        allow read, write: if isOwner(userId);
+      // Owner subcollections except billing (matched above).
+      match /{subcollection}/{document=**} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId) && subcollection != 'billing';
       }
     }
     

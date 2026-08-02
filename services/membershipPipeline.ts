@@ -2,7 +2,6 @@ import { db } from './firebaseInit';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { logFirestoreError, OperationType } from './firebaseUtils';
 import { SubscriptionData, MembershipPlan } from '../types';
-import { buildCreditGrant } from '../lib/mimiEntitlements';
 
 export const fetchUserSubscription = async (uid: string): Promise<SubscriptionData | null> => {
   let retries = 3; // Reduced retries
@@ -48,75 +47,33 @@ export const syncMembershipStatus = async (uid: string, plan: MembershipPlan, su
 export const applyPromoCode = async (uid: string, code: string) => {
   const normalizedCode = code.trim().toUpperCase().replace(/\s+/g, '');
   if (normalizedCode === 'MIMIMUSE' || code === 'AQ.Ab8RN6Lb2tRMQaHqr8ew4UEKcGRZCTOfrhXjJ6FyiJNtSdIokA' || code === 'AQ.Ab8RN6IyzxKcsBHawVk9iETDEseYnhnPb7yjfXuvYGiUbZLTqw') {
-    const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
-    
-    try {
-      // Try to update via server first
-      const response = await fetch('/api/apply-promo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: uid, code })
-      });
-      
-      const data = await response.json();
-      if (!response.ok) {
-        // If server fails (e.g., no admin DB), fallback to client-side update
-        throw new Error(data.error || "Server update failed");
-      }
-      return data;
-    } catch (err) {
-      console.warn("Server promo update failed, falling back to client update:", err);
-      // Fallback to client-side update — include membershipCredits so funded
-      // AI Gateway does not treat the lab seat as credits_exhausted / BYOK-only.
-      const { credits: membershipCredits } = buildCreditGrant({
-        plan: 'lab',
-        interval: 'year',
-        currentPeriodEnd: oneYearFromNow,
-      });
-      const subRef = doc(db, 'users', uid, 'billing', 'subscription');
-      await setDoc(subRef, {
-        plan: 'lab',
-        status: 'active',
-        currentPeriodEnd: oneYearFromNow,
-        interval: 'year',
-        credits: membershipCredits,
-      }, { merge: true });
-
-      const userRef = doc(db, 'users', uid);
-      await setDoc(userRef, {
-        planStatus: 'lab',
-        plan: 'lab',
-        membershipPlan: 'lab',
-        mimiPlan: 'lab',
-        subscriptionStatus: 'active',
-        subscriptionInterval: 'year',
-        membershipCredits,
-      }, { merge: true });
-      
-      const profileRef = doc(db, 'profiles_public', uid);
-      await setDoc(profileRef, {
-        planStatus: 'lab',
-        plan: 'lab',
-        membershipPlan: 'lab',
-        mimiPlan: 'lab',
-        subscriptionStatus: 'active',
-        membershipCredits,
-      }, { merge: true });
-      
-      const membershipRef = doc(db, 'memberships', uid);
-      await setDoc(membershipRef, {
-        plan: 'lab',
-        mimiPlan: 'lab',
-        status: 'active',
-        currentPeriodEnd: oneYearFromNow,
-        stripeCustomerId: 'promo_code',
-        interval: 'year',
-        credits: membershipCredits,
-      }, { merge: true });
-      
-      return { success: true, message: "1-Year Lab Access Granted (Client Fallback)." };
+    const { auth } = await import('./firebaseInit');
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      throw new Error("Sign in required to redeem a promo.");
     }
-  } else {
-    throw new Error("Invalid cipher.");
+
+    const response = await fetch('/api/apply-promo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        'x-user-token': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userId: uid, code }),
+    });
+
+    const data = await response.json();
+    // Idempotent redeem: alreadyRedeemed returns applied:false with ok/success.
+    if (data.alreadyRedeemed === true && (data.ok === true || data.success === true)) {
+      return data;
+    }
+    if (!response.ok || data.applied === false) {
+      // Entitlement fields are Admin-only in Firestore rules — do not forge
+      // stripeCustomerId / membershipCredits from the client.
+      throw new Error(data.error || "Server promo redemption failed");
+    }
+    return data;
   }
+  throw new Error("Invalid cipher.");
 };

@@ -470,6 +470,27 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         msg.includes('database connection failed') ||
         (msg.includes('not-found') && msg.includes('database')) ||
         msg.includes('does not exist in project');
+      // AI Gateway credit / sign-in denials mention "billing period" and must NOT
+      // trip Simulated Mode — that was stacking System Dissonance toasts on Lab.
+      const isGatewayCreditNotice =
+        msg.includes('ai gateway') ||
+        msg.includes('membership credits') ||
+        msg.includes('plan credits') ||
+        msg.includes('credits reload') ||
+        msg.includes('billing period') ||
+        msg.includes('sign in to use mimi') ||
+        msg.includes('credits_exhausted') ||
+        msg.includes('oracle could not complete') ||
+        msg.includes('personal api keys are optional') ||
+        msg.includes('personal gateway key');
+
+      if (isGatewayCreditNotice) {
+        // Unstick false-positive Simulated Mode from older "billing period" matches.
+        setIsSimulatedMode(false);
+        setIsDatabaseMissing(false);
+        return;
+      }
+
       const isBillingOrLimit =
         msg.includes('dunning') ||
         msg.includes('billing') ||
@@ -1313,40 +1334,45 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const activatePatron = async (key: string) => {
     if (!profile || !user) return;
-    const { credits } = buildCreditGrant({ plan: 'lab', interval: 'year' });
-    const labPatch = {
-      planStatus: 'lab' as const,
-      plan: 'lab' as const,
-      mimiPlan: 'lab' as const,
+    const { applyPromoCode } = await import('../services/membershipPipeline');
+    const result = await applyPromoCode(user.uid, key);
+    // Prefer server credits (including restored grants). Never invent a full
+    // allowance when the API omitted membershipCredits — that desyncs UI vs spend.
+    const credits =
+      result?.membershipCredits ||
+      profile.membershipCredits ||
+      (result?.applied
+        ? buildCreditGrant({ plan: 'lab', interval: 'year' }).credits
+        : profile.membershipCredits);
+    // Server Admin already wrote entitlement fields — only refresh local state.
+    setProfile({
+      ...profile,
+      planStatus: 'lab',
+      plan: 'lab',
+      mimiPlan: 'lab',
       isPatron: true,
       patronActivatedAt: Date.now(),
       patronKey: key,
-      subscriptionStatus: 'active' as const,
-      subscriptionInterval: 'year' as const,
-      membershipCredits: credits,
-    };
-    try {
-      const { applyPromoCode } = await import('../services/membershipPipeline');
-      await applyPromoCode(user.uid, key);
-      
-      // Also update local profile state to reflect the change immediately
-      await updateProfile({ ...profile, ...labPatch });
-    } catch (e) {
-      console.warn("MIMI // Database write failed for patron, but treating as success locally for this session. Error:", e);
-      // Fallback: If DB is blocked due to security rules, enable it locally for the current session anyway 
-      // so the user can continue working without the backend connection.
-      setProfile({ ...profile, ...labPatch });
-    }
+      subscriptionStatus: 'active',
+      subscriptionInterval: 'year',
+      ...(credits ? { membershipCredits: credits } : {}),
+    });
   };
 
   const upgradePlan = async (plan: 'core' | 'optioning' | 'pro' | 'lab', interval?: 'month' | 'year') => {
     if (!profile) return;
-    try {
-      await updateProfile({ ...profile, planStatus: plan, plan, subscriptionInterval: interval || 'month', subscriptionStatus: 'active' });
-    } catch (e) {
-      console.error("MIMI // Failed to upgrade plan", e);
-      throw e;
-    }
+    // Entitlement fields are Admin / Stripe-webhook only in Firestore rules.
+    // Optimistic local UI after Checkout; durable grant arrives via webhook.
+    const updated = {
+      ...profile,
+      planStatus: plan,
+      plan,
+      subscriptionInterval: interval || 'month',
+      subscriptionStatus: 'active' as const,
+      lastActive: Date.now(),
+    };
+    setProfile(updated);
+    await saveProfileLocally(updated);
   };
 
   const incrementGeneration = async (cost: number = 2) => {
