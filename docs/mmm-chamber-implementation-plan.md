@@ -1,6 +1,6 @@
 # Mean Median Mode Chamber — Implementation Plan
 
-**Status:** Ready for Phase 3 (typed contracts)  
+**Status:** Phases 3–5 vertical slice implemented (see `docs/mmm-chamber-phase5-status.md`)  
 **Date:** 2026-08-02  
 **Product:** Collective **Mean Median Mode** under **The Observatory**  
 **Not in scope:** Residue per-run M/M/M (already shipped at `/residue`)  

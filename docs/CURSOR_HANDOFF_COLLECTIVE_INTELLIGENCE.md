@@ -10,7 +10,8 @@
 - Phase 2 spec → [`docs/COLLECTIVE_INTELLIGENCE_SPEC.md`](./COLLECTIVE_INTELLIGENCE_SPEC.md)
 - MMM chamber build sequence → [`docs/mmm-chamber-implementation-plan.md`](./mmm-chamber-implementation-plan.md)
 
-Next code PR: Phase 3 Zod contracts + `verify:collective` (see chamber plan PR **B**).
+Phases 3–5 vertical slice landed on this planning branch — see [`docs/mmm-chamber-phase5-status.md`](./mmm-chamber-phase5-status.md).  
+Next: Mesopic / RSS / Forecast (Phases 6–8), plus remaining broadcast-path consent gates.
 
 ---
 

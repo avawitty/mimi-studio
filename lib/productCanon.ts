@@ -70,6 +70,9 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   "residue-engine": "residue",
   "cultural-residue": "residue",
   "emotional-residue": "residue",
+  observatory: "observatory",
+  "mean-median-mode": "mean-median-mode",
+  "observatory-mmm": "mean-median-mode",
   // Social surfaces live on The Proscenium (wings via nested path).
   connections: "proscenium",
   correspondents: "proscenium",
@@ -560,7 +563,62 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow:
       "Run an offline-first cultural or emotional residue pass, inspect synthesis and evidence, review M/M/M and product proposals, then hand off to Intel Hub, Edit, Forecast, or Taste Graph. Optional signed-in Apify acquisition when configured.",
     notes:
-      "Emotional mode always shows the non-diagnostic safety notice. Memory / taste / edit outputs stay proposed until accepted elsewhere. Live Apify acquisition is Phase 9 (token + session gated).",
+      "Emotional mode always shows the non-diagnostic safety notice. Memory / taste / edit outputs stay proposed until accepted elsewhere. Live Apify acquisition is Phase 9 (token + session gated). Alias MMM here is per-run Residue analysis — collective Mean Median Mode is The Observatory.",
+  },
+  {
+    id: "observatory",
+    name: "The Observatory",
+    layer: "chamber",
+    engine: "Collective Perception",
+    priority: 9,
+    status: "live",
+    canonicalRoute: "/observatory",
+    implementedMode: "observatory",
+    component: "ObservatoryChamber",
+    aliases: ["Observatory", "Collective Intelligence"],
+    inputs: [
+      "consented public Proscenium artifacts",
+      "anonymized topic / motif / inquiry / form signals",
+    ],
+    generations: [
+      "central-tendency profiles",
+      "Mean Median Mode reports",
+      "methodology + uncertainty disclosure",
+    ],
+    outputs: [
+      "present-atmosphere readout",
+      "handoffs to Forecast / Proscenium / Residue",
+    ],
+    userFlow:
+      "Open The Observatory to read Mean Median Mode — mean, median, mode, and their joint profile over consented public signals. Per-run M/M/M stays in Residue.",
+    notes:
+      "Prototype may show labeled demonstration aggregates. Live contribution requires Proscenium publish disclosure. Do not alias this module as MMM (Residue keeps that short alias).",
+  },
+  {
+    id: "mean-median-mode",
+    name: "Mean Median Mode",
+    layer: "chamber",
+    engine: "Collective Central Tendency",
+    priority: 9.1,
+    status: "live",
+    canonicalRoute: "/mean-median-mode",
+    implementedMode: "mean-median-mode",
+    component: "ObservatoryChamber",
+    aliases: ["Mean Median Mode", "Collective Moods"],
+    inputs: [
+      "consented public signal aggregates",
+      "windowed intensity observations",
+    ],
+    generations: [
+      "mean / median / mode strip",
+      "summation interpretation",
+      "seeking-mode shares",
+    ],
+    outputs: ["MeanMedianModeReport", "CentralTendencyProfile[]"],
+    userFlow:
+      "Read the present atmosphere via literal mean, median, and mode — not a leaderboard. Stage on The Proscenium to contribute anonymized structure.",
+    notes:
+      "Collective Moods is a docs-only conceptual alias. Distinct from Residue per-run MeanMedianModeResult.",
   },
 ];
 

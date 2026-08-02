@@ -252,6 +252,11 @@ const AtelierChamber = lazy(() =>
 const ResidueChamber = lazy(() =>
   import("./components/chambers/ResidueChamber").then((m) => ({ default: m.ResidueChamber })),
 );
+const ObservatoryChamber = lazy(() =>
+  import("./components/chambers/ObservatoryChamber").then((m) => ({
+    default: m.ObservatoryChamber,
+  })),
+);
 const TheOracle = lazy(() =>
   import("./components/TheOracle").then((m) => ({ default: m.TheOracle })),
 );
@@ -874,6 +879,8 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "qc_engine",
   "quiet-studio",
   "residue",
+  "observatory",
+  "mean-median-mode",
   "sanctuary",
   "scribe",
   "scry",
@@ -2250,6 +2257,8 @@ export const App: React.FC = () => {
     "chamber-map": "Chamber Registry",
     atelier: "Atelier",
     residue: "Residue",
+    observatory: "The Observatory",
+    "mean-median-mode": "Mean Median Mode",
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
@@ -2289,7 +2298,8 @@ export const App: React.FC = () => {
       ].includes(mode)
     )
       return "signature";
-    if (["nebula", "proscenium"].includes(mode)) return "observe";
+    if (["nebula", "proscenium", "observatory", "mean-median-mode"].includes(mode))
+      return "observe";
     return "system";
   };
 
@@ -2742,6 +2752,12 @@ export const App: React.FC = () => {
                         {viewMode === "atelier" && <AtelierChamber />}
                         {viewMode === "residue" && (
                           <ResidueChamber navigate={navigate} />
+                        )}
+                        {viewMode === "observatory" && (
+                          <ObservatoryChamber navigate={navigate} focus="overview" />
+                        )}
+                        {viewMode === "mean-median-mode" && (
+                          <ObservatoryChamber navigate={navigate} focus="mmm" />
                         )}
                         {viewMode === "geo_engine" && (
                           <div className="h-full w-full overflow-y-auto">

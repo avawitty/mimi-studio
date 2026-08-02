@@ -27,6 +27,13 @@ import { useUser } from "../contexts/UserContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { db } from "../services/firebase";
 import { doc, updateDoc } from "firebase/firestore";
+import { ProsceniumPublishConsentModal } from "./proscenium/ProsceniumPublishConsentModal";
+import {
+  buildPublishConsent,
+  consentFieldsForZine,
+  publishToastMessage,
+  unpublishFieldsForZine,
+} from "../services/collective/consent";
 
 const TONE_STYLES: Record<
   string,
@@ -116,6 +123,8 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
     const [editPrompt, setEditPrompt] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const [showPublishConsent, setShowPublishConsent] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
     const [showProofPanel, setShowProofPanel] = useState(false);
     const [currentImageUrl, setCurrentImageUrl] = useState(
       zine.coverImageUrl || zine.content?.hero_image_url,
@@ -275,32 +284,53 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
     const handlePublishToggle = async (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!user || user.uid !== zine.userId) return;
-      const nextPublic = !zine.isPublic;
+      if (zine.isPublic) {
+        try {
+          await updateDoc(doc(db, "zines", zine.id), unpublishFieldsForZine());
+          window.dispatchEvent(
+            new CustomEvent("mimi:registry_alert", {
+              detail: {
+                message: "Unpublished · future Mean Median Mode contribution stopped.",
+                icon: <Radio size={14} />,
+              },
+            }),
+          );
+          window.dispatchEvent(new CustomEvent("mimi:artifact_finalized"));
+        } catch (err) {
+          console.error("Publish Toggle Failed", err);
+        }
+        return;
+      }
+      setShowPublishConsent(true);
+    };
+
+    const handlePublishConsentConfirm = async (contributeToMeanMedianMode: boolean) => {
+      if (!user || user.uid !== zine.userId) return;
+      setIsPublishing(true);
       try {
-        await updateDoc(doc(db, "zines", zine.id), {
-          isPublic: nextPublic,
-          // Bump both fields so Keep Tabs RSS windows (orderBy timestamp and
-          // orderBy publishedAt) include republished older drafts.
-          ...(nextPublic
-            ? { publishedAt: Date.now(), timestamp: Date.now() }
-            : {}),
+        const consent = buildPublishConsent({
+          artifactId: zine.id,
+          contributeToMeanMedianMode,
         });
+        await updateDoc(doc(db, "zines", zine.id), consentFieldsForZine(consent));
         const handle = zine.userHandle || profile?.handle;
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
             detail: {
-              message: nextPublic
-                ? handle
-                  ? `Published · Keep Tabs at /u/${handle}/feed.xml`
-                  : "Zine Published to Press."
-                : "Zine Unpublished.",
+              message: publishToastMessage({
+                contribute: contributeToMeanMedianMode,
+                handle,
+              }),
               icon: <Radio size={14} />,
             },
           }),
         );
         window.dispatchEvent(new CustomEvent("mimi:artifact_finalized"));
+        setShowPublishConsent(false);
       } catch (err) {
-        console.error("Publish Toggle Failed", err);
+        console.error("Publish Consent Failed", err);
+      } finally {
+        setIsPublishing(false);
       }
     };
 
@@ -545,12 +575,25 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
               <button
                 onClick={handlePublishToggle}
                 className={`p-2 rounded-none transition-all backdrop-blur-md ${zine.isPublic ? "bg-nous-text text-nous-base " : "bg-black/5 text-nous-text hover:bg-black/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"}`}
-                title={zine.isPublic ? "Unpublish from public feed" : "Publish · Keep Tabs"}
+                title={
+                  zine.isPublic
+                    ? "Unpublish from The Proscenium"
+                    : "Stage on The Proscenium · Mean Median Mode"
+                }
               >
                 {zine.isPublic ? <Radio size={12} /> : <EyeOff size={12} />}
               </button>
             </>
           )}
+          <ProsceniumPublishConsentModal
+            open={showPublishConsent}
+            artifactTitle={zine.title || zine.content?.headlines?.[0]}
+            busy={isPublishing}
+            onCancel={() => {
+              if (!isPublishing) setShowPublishConsent(false);
+            }}
+            onConfirm={handlePublishConsentConfirm}
+          />
           <button
             onClick={handleArchive}
             className={`p-2 rounded-none transition-all backdrop-blur-md ${isArchived ? "bg-nous-text text-nous-base " : "bg-black/5 text-nous-text hover:bg-black/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"}`}
