@@ -465,7 +465,7 @@ export const UserProfileView: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto no-scrollbar bg-nous-base text-nous-text p-4 md:p-8">
+    <div className="w-full h-full min-h-0 overflow-y-auto no-scrollbar bg-nous-base text-nous-text px-4 py-4 md:p-8">
       <AnimatePresence>
         {message && (
           <motion.div
@@ -590,7 +590,7 @@ export const UserProfileView: React.FC = () => {
         </section>
       )}
 
-      <main className={`w-full max-w-3xl mx-auto flex flex-col gap-8 pb-20 ${profilePane === 'share' ? 'opacity-90' : ''}`}>
+      <main className={`w-full max-w-3xl mx-auto flex flex-col gap-6 md:gap-8 pb-8 md:pb-12 ${profilePane === 'share' ? 'opacity-90' : ''}`}>
         {/* Clean Identity Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -1444,7 +1444,7 @@ export const UserProfileView: React.FC = () => {
                 value={tasteDefinition}
                 onChange={(e) => setTasteDefinition(e.target.value)}
                 placeholder="Describe your baseline era, inspirations, and scotopic preferences..."
-                className="font-serif text-lg leading-snug text-nous-subtle border border-nous-border rounded-none p-4 bg-nous-base /50 resize-none flex-grow focus:outline-none focus:ring-1 focus:ring-stone-400 w-full"
+                className="font-serif text-lg leading-snug text-nous-subtle border border-nous-border rounded-none p-4 bg-nous-base/50 resize-none min-h-[7rem] focus:outline-none focus:ring-1 focus:ring-stone-400 w-full"
               />
             </div>
           </div>
@@ -1455,7 +1455,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-white rounded-none border border-nous-border p-4 sm:p-6 md:p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1464,7 +1464,7 @@ export const UserProfileView: React.FC = () => {
             <UserCircle2 className="text-nous-subtle" size={16} />
           </div>
 
-          <div className="flex-grow flex flex-col justify-center py-2">
+          <div className="flex flex-col py-2">
             {isAddingPersona ? (
               <div className="space-y-4">
                 <input
@@ -1597,10 +1597,10 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-white rounded-none border border-nous-border p-4 sm:p-6 md:p-8"
         >
           {/* Patron Status Bar */}
-          <div className="mb-8 pb-8 border-b border-nous-border">
+          <div className="mb-6 md:mb-8 pb-6 md:pb-8 border-b border-nous-border">
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h3 className="font-serif text-2xl italic">Patron Status</h3>
@@ -1710,7 +1710,7 @@ export const UserProfileView: React.FC = () => {
             </div>
           </div>
 
-            <div className="flex-grow flex flex-col">
+            <div className="flex flex-col">
             <div className="flex items-end justify-between gap-4 mb-6">
               <h3 className="font-serif text-2xl italic">
                 Social Resonance
@@ -1729,11 +1729,12 @@ export const UserProfileView: React.FC = () => {
                 Open Proscenium →
               </button>
             </div>
-            <div className="flex-grow overflow-y-auto no-scrollbar min-h-[150px]">
+            {/* Natural height — flex-grow here used to leave a huge empty band on mobile */}
+            <div className="flex flex-col gap-4">
               <ConnectionsManager embedded />
               {profilePane === 'settings' && (
                 <>
-                  <div className="p-4 mb-4 border border-nous-border bg-nous-base/40 text-nous-subtle text-xs font-mono leading-relaxed">
+                  <div className="p-4 border border-nous-border bg-nous-base/40 text-nous-subtle text-xs font-mono leading-relaxed">
                     Optional BYOK vault. Prefer server AI Gateway for default flows; keep local keys only if you need sovereign override.
                   </div>
                   <ApiKeyRing />
@@ -1793,7 +1794,7 @@ export const UserProfileView: React.FC = () => {
         </motion.div>
       </main>
 
-      <footer className="max-w-7xl mx-auto mt-12 mb-8 flex flex-col md:flex-row justify-between items-center text-nous-subtle font-mono text-[9px] uppercase tracking-widest">
+      <footer className="max-w-7xl mx-auto mt-8 mb-4 md:mt-12 md:mb-8 flex flex-col md:flex-row justify-between items-center text-nous-subtle font-mono text-[9px] uppercase tracking-widest gap-3">
         <div>© {new Date().getFullYear()} Mimi Zine Logic Registry</div>
         <div className="flex gap-8 mt-4 md:mt-0">
           <a href="#" className="hover:text-nous-text">
