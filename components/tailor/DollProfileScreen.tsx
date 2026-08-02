@@ -172,9 +172,17 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         triggerSound('click');
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
-            detail: { message: `Portrait generated successfully for ${currentDoll.name}`, type: "success" },
+            detail: { message: `Mimi Shell projected for ${currentDoll.name}`, type: "success" },
           })
         );
+        setChatHistory((prev) => [
+          ...prev,
+          {
+            role: "system",
+            content: "Shell projection complete. Species locked. Begin conditioning.",
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
       } else {
         throw new Error(data?.error?.message || 'Empty image response');
       }
@@ -187,8 +195,8 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         new CustomEvent("mimi:registry_alert", {
           detail: {
             message: isQuota
-              ? `Portrait paused — provider quota/billing. ${errMsg.slice(0, 100)}`
-              : `Portrait generation failed: ${errMsg.slice(0, 140)}`,
+              ? `Shell projection paused — provider quota/billing. ${errMsg.slice(0, 100)}`
+              : `Shell projection failed: ${errMsg.slice(0, 140)}`,
             type: isQuota ? "warning" : "error",
           },
         })
@@ -198,6 +206,17 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
       setIsGeneratingPortrait(false);
     }
   };
+
+  // Cultish onboarding beat: first visit without a portrait auto-projects the house shell.
+  useEffect(() => {
+    if (autoShellProjectedRef.current) return;
+    if (currentDoll.generatedImageUrl) return;
+    if (isGeneratingPortrait) return;
+    autoShellProjectedRef.current = true;
+    void handleRegeneratePortrait();
+    // Intentionally one-shot per mount when shell image is missing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onboarding auto-project
+  }, [currentDoll.id, currentDoll.generatedImageUrl]);
 
   useEffect(() => {
     localStorage.setItem(`mimi_doll_equipped_${doll.id}`, JSON.stringify(equippedIds));
