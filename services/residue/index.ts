@@ -1,5 +1,5 @@
 /**
- * Mimi Residue Engine — public API (Phases 2–6).
+ * Mimi Residue Engine — public API (Phases 2–7).
  */
 
 export * from "./constants";
@@ -76,3 +76,33 @@ export {
   residueToIntelEvidenceItems,
   type ResidueIntelHubObject,
 } from "./adapters/intelHubAdapter";
+export {
+  adaptResidueToZinePages,
+  residueZineArtifactSchema,
+  type ResidueZineArtifact,
+} from "./adapters/zineAdapter";
+export {
+  adaptResidueToEditorialDirection,
+  residueEditorialDirectionSchema,
+  type ResidueEditorialDirection,
+} from "./adapters/editAdapter";
+export {
+  adaptResidueToForecast,
+  residueForecastArtifactSchema,
+  type ResidueForecastArtifact,
+} from "./adapters/forecastAdapter";
+export {
+  adaptResidueToTasteGraphDelta,
+  residueTasteGraphDeltaSchema,
+  type ResidueTasteGraphDelta,
+} from "./adapters/tasteGraphAdapter";
+export {
+  adaptResidueToMemoryAtomProposals,
+  persistMemoryAtomProposalsForRun,
+  residueMemoryAtomProposalSchema,
+  type ResidueMemoryAtomProposal,
+} from "./adapters/memoryAtomAdapter";
+export {
+  buildResidueProductOutputBundle,
+  persistPhase7ArtifactsForRun,
+} from "./adapters/productOutputsBundle";

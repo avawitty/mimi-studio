@@ -29,14 +29,21 @@ import {
   literalMode,
   meanMedianModeResultSchema,
   redactSensitiveText,
+  adaptResidueToEditorialDirection,
+  adaptResidueToForecast,
   adaptResidueToIntelligenceReport,
   adaptResidueToIntelHubObject,
   adaptResidueToMeanMedianMode,
+  adaptResidueToMemoryAtomProposals,
+  adaptResidueToTasteGraphDelta,
+  adaptResidueToZinePages,
   buildLiteralMeanMedianMode,
   buildResidueHubBundle,
+  buildResidueProductOutputBundle,
   createIntelProjectRunFromResidue,
   createResidueIntelHubRegistry,
   filterResidueIntelHubObjects,
+  persistPhase7ArtifactsForRun,
   persistReportArtifactForRun,
   runCulturalResidue,
   runEmotionalResidue,
@@ -726,7 +733,82 @@ async function main() {
     "run survives report artifact delete",
   );
 
-  console.log("OK — Residue Phase 2–6 checks passed.");
+  // --- Phase 7: product adapters (zine / edit / forecast / taste / memory proposals) ---
+  const zine = adaptResidueToZinePages(culturalEngine.result);
+  assert(zine.pages.length >= 3, "zine page count");
+  assert(zine.pages.every((p) => p.headline && p.bodyCopy && p.imagePrompt), "zine page fields");
+  assert(zine.title.toLowerCase().includes("indie"), "zine title topic");
+
+  const edit = adaptResidueToEditorialDirection(culturalEngine.result);
+  assert(edit.approvalState === "proposed", "edit approval proposed");
+  assert(edit.thesis.length > 0 && edit.lead.length > 0, "edit thesis/lead");
+  assert(edit.exclusions.length >= 2, "edit exclusions");
+  assert(!/you are/i.test(edit.thesis + edit.lead), "edit no diagnosis voice");
+
+  const forecast = adaptResidueToForecast(culturalEngine.result);
+  assert(forecast.scenarios.length >= 1, "forecast scenarios");
+  assert(forecast.counterScenarios.length >= 1, "forecast counters");
+  assert(forecast.disconfirmers.length >= 1, "forecast disconfirmers");
+  assert(/not researchService/i.test(forecast.provenanceNote), "forecast distinct from mocks");
+
+  const taste = adaptResidueToTasteGraphDelta(culturalEngine.result);
+  assert(taste.nodes.length >= 2, "taste nodes");
+  assert(taste.edges.length >= 1, "taste edges");
+  assert(taste.nodes.every((n) => n.userStatus === "suggested"), "taste suggested only");
+  assert(/accept/i.test(taste.curationNote), "taste curation note");
+
+  const memProps = adaptResidueToMemoryAtomProposals(culturalEngine.result, { maxProposals: 5 });
+  assert(memProps.length >= 1 && memProps.length <= 5, "memory proposal count");
+  assert(memProps.every((p) => p.approvalState === "proposed"), "memory proposals only");
+
+  const emotionalBundle = buildResidueProductOutputBundle(mindRead.result);
+  assert(emotionalBundle.zine.safetyNotice, "emotional zine safety");
+  assert(emotionalBundle.editorialDirection.safetyNotice, "emotional edit safety");
+  assert(
+    emotionalBundle.memoryAtomProposals.every(
+      (p) => !containsForbiddenEmotionalLanguage(p.atomicClaim),
+    ),
+    "memory proposals sanitized",
+  );
+  assert(
+    emotionalBundle.tasteGraphDelta.nodes.every((n) => n.userStatus === "suggested"),
+    "emotional taste suggested",
+  );
+
+  const phase7Store = createMemoryResidueStore();
+  await phase7Store.saveRun(
+    buildResidueRunDocument({
+      runId: culturalEngine.result.metadata.runId,
+      ownerUid: "user_p7",
+      mode: "cultural",
+      status: "complete",
+      retention: "persisted",
+      consentToStore: true,
+      inputHash: culturalEngine.result.metadata.inputHash,
+      queryOrExperience: culturalEngine.result.query,
+      sourceCount: culturalEngine.result.sources.length,
+      confidenceSummary: culturalEngine.result.confidenceSummary,
+    }),
+  );
+  const p7 = await persistPhase7ArtifactsForRun({
+    ownerUid: "user_p7",
+    result: culturalEngine.result,
+    store: phase7Store,
+  });
+  assert(p7.memoryAtomProposals.every((p) => p.approvalState === "proposed"), "persist proposals");
+  await phase7Store.deleteArtifact("user_p7", p7.zine.artifactId);
+  assert(
+    (await phase7Store.getRun("user_p7", culturalEngine.result.metadata.runId))?.runId ===
+      culturalEngine.result.metadata.runId,
+    "run survives phase7 artifact delete",
+  );
+  // Memory proposals must not be silently treated as approved memory atoms
+  assert(
+    [...phase7Store._debug.proposals.values()].every((p) => p.approvalState === "proposed"),
+    "no auto-approved memory",
+  );
+
+  console.log("OK — Residue Phase 2–7 checks passed.");
 }
 
 main().catch((err) => {
