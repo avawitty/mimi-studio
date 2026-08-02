@@ -1,0 +1,59 @@
+name: Kimi CLI watch
+
+# Daily check for new @moonshot-ai/kimi-code releases. When a newer version
+# appears on npm, opens (or refreshes) a single GitHub issue labeled
+# kimi-cli-watch so watchers get a GitHub notification. Issues are the state:
+# an open issue whose title contains the latest version means "already told".
+
+on:
+  schedule:
+    - cron: "17 13 * * *" # daily, off the top of the hour
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify on new kimi-code release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          LATEST="$(curl -fsSL https://registry.npmjs.org/@moonshot-ai/kimi-code/latest \
+            | python3 -c 'import sys, json; print(json.load(sys.stdin)["version"])')"
+          echo "Latest npm version: $LATEST"
+
+          gh label create kimi-cli-watch \
+            --description "Kimi Code CLI release notifications" --force >/dev/null
+
+          if gh issue list --state open --label kimi-cli-watch --limit 20 \
+              --json title --jq '.[].title' | grep -qF "$LATEST"; then
+            echo "Already notified for $LATEST — nothing to do."
+            exit 0
+          fi
+
+          {
+            echo "A new Kimi Code CLI version is out: **$LATEST**"
+            echo
+            echo 'Upgrade:'
+            echo '```sh'
+            echo 'kimi upgrade   # or: npm install -g @moonshot-ai/kimi-code@latest'
+            echo '```'
+            echo
+            gh api repos/MoonshotAI/kimi-code/releases/latest --jq '.body' 2>/dev/null \
+              || echo 'Release notes: https://github.com/MoonshotAI/kimi-code/releases'
+          } > release-issue.md
+
+          for N in $(gh issue list --state open --label kimi-cli-watch --limit 20 \
+              --json number --jq '.[].number'); do
+            gh issue close "$N" --comment "Superseded by $LATEST." || true
+          done
+
+          gh issue create \
+            --title "Kimi Code CLI $LATEST is available" \
+            --label kimi-cli-watch \
+            --body-file release-issue.md
