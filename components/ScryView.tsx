@@ -572,8 +572,8 @@ export const ScryView: React.FC = () => {
                     />
                     Latent retrieval
                   </p>
-                  <h2 className="font-serif italic text-4xl md:text-6xl leading-none archive-text-ink mb-3">
-                    Scry
+                  <h2 className="font-serif italic text-3xl md:text-5xl leading-none archive-text-ink mb-3">
+                    Ask the registry
                   </h2>
                   <p className="font-sans text-sm archive-text-muted max-w-md leading-relaxed mb-8">
                     Describe a texture, a mood, or a ghost. Evidence returns in four labeled
