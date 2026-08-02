@@ -594,6 +594,10 @@ app.get('/api/og/zine', async (req, res) => {
     }
 
     const zine = snap.data() || {};
+    if (zine.isPublic !== true || zine.publicProjectionVersion !== 1) {
+      res.status(404).send({ error: 'Zine not found' });
+      return;
+    }
     const title = String(zine.title || 'Untitled Manifestation');
     const description = String(zine.concept || zine.summary || 'Aesthetic zine created via Mimi Studio.');
     const imageUrl = String(

@@ -79,10 +79,38 @@ const firebaseUtils = readFileSync(
   "utf8",
 );
 assert.match(firebaseUtils, /collection\(db,\s*"zine_working"\)/);
+assert.match(firebaseUtils, /deleteDoc\(doc\(db,\s*"zine_working"/);
+assert.match(firebaseUtils, /Lazy migration for pre-split owner archives/);
+assert.match(
+  firebaseUtils,
+  /moveZineToFolder[\s\S]*updateZineMetadata/,
+  "folder moves must update owner working state through the projection boundary",
+);
 assert.match(
   firebaseUtils,
   /where\("publicProjectionVersion",\s*"==",\s*1\)/,
   "Firestore public fallbacks must query only safe projections",
+);
+[
+  "api/og/zine.ts",
+  "functions/src/index.ts",
+  "server.ts",
+].forEach((path) => {
+  const source = readFileSync(resolve(process.cwd(), path), "utf8");
+  assert.match(
+    source,
+    /publicProjectionVersion/,
+    `${path} must reject private or legacy Admin point reads`,
+  );
+});
+const embeddingService = readFileSync(
+  resolve(process.cwd(), "services/zineEmbeddingService.ts"),
+  "utf8",
+);
+assert.match(
+  embeddingService,
+  /doc\(db,\s*"zine_working"/,
+  "embedding vectors must remain owner-only",
 );
 
 const shopifyExport = readFileSync(

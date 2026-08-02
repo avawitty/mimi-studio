@@ -1019,7 +1019,7 @@ export const fetchUserZines = async (uid: string, forceRefresh = false) => {
       let q;
       devLog.info("MIMI // fetchUserZines: querying");
       if (auth.currentUser && uid === auth.currentUser.uid) {
-        q = query(collection(db, "zine_working"), where("userId", "==", uid));
+        q = query(collection(db, "zines"), where("userId", "==", uid));
       } else {
         q = query(
           collection(db, "zines"),
@@ -1121,7 +1121,7 @@ export const subscribeToUserZines = (
 
     let q;
     if (uid === auth.currentUser?.uid) {
-      q = query(collection(db, "zine_working"), where("userId", "==", uid));
+      q = query(collection(db, "zines"), where("userId", "==", uid));
     } else {
       q = query(
         collection(db, "zines"),
@@ -1409,8 +1409,23 @@ export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolea
 export const fetchZineById = async (id: string) => {
     try {
       const { fetchSovereignZineById } = await import("./sovereignClient");
-      const sovereign = await fetchSovereignZineById(id);
+      let sovereign = await fetchSovereignZineById(id);
       if (sovereign) {
+        if (auth.currentUser?.uid === sovereign.userId) {
+          const workingDoc = await getDoc(doc(db, "zine_working", id));
+          if (workingDoc.exists()) {
+            sovereign = workingDoc.data() as ZineMetadata;
+          } else {
+            const legacyDoc = await getDoc(doc(db, "zines", id));
+            if (legacyDoc.exists()) {
+              sovereign = legacyDoc.data() as ZineMetadata;
+              await setDoc(
+                doc(db, "zine_working", id),
+                sanitizeFirestoreData(sovereign),
+              );
+            }
+          }
+        }
         if (sovereign.content?.pagesJson && (!sovereign.content.pages || sovereign.content.pages.length === 0)) {
           try {
             sovereign.content.pages = JSON.parse(sovereign.content.pagesJson);
@@ -1433,6 +1448,12 @@ export const fetchZineById = async (id: string) => {
         const workingDoc = await getDoc(doc(db, "zine_working", id));
         if (workingDoc.exists()) {
           zine = workingDoc.data() as ZineMetadata;
+        } else {
+          // Lazy migration for pre-split owner archives.
+          await setDoc(
+            doc(db, "zine_working", id),
+            sanitizeFirestoreData(zine),
+          );
         }
       }
       
@@ -2284,7 +2305,16 @@ export const deleteZine = async (zineId: string): Promise<void> => {
   await deleteLocalZine(zineId);
   if (isFullyAuthenticated()) {
     try {
-      await deleteDoc(doc(db, "zines", zineId));
+      const [pagesSnap, artifactsSnap] = await Promise.all([
+        getDocs(collection(db, "zines", zineId, "pages")),
+        getDocs(collection(db, "zines", zineId, "artifacts")),
+      ]);
+      await Promise.all([
+        ...pagesSnap.docs.map((pageDoc) => deleteDoc(pageDoc.ref)),
+        ...artifactsSnap.docs.map((artifactDoc) => deleteDoc(artifactDoc.ref)),
+        deleteDoc(doc(db, "zines", zineId)),
+        deleteDoc(doc(db, "zine_working", zineId)),
+      ]);
     } catch (e: any) {
       handleFirestoreError(e, OperationType.DELETE, `zines/${zineId}`);
     }
@@ -2313,9 +2343,12 @@ export const moveZineToFolder = async (zineId: string, folderId: string | null):
 
     if (!isFullyAuthenticated()) return true; // If not authenticated, local update is enough
 
-    const zineRef = doc(db, "zines", zineId);
-    await updateDoc(zineRef, { folderId: folderId || null });
-    return true;
+    const existing = await fetchZineById(zineId);
+    if (!existing) return false;
+    return updateZineMetadata({
+      ...existing,
+      folderId: folderId || undefined,
+    });
   } catch (e) {
     console.error("MIMI // Error moving zine to folder:", e);
     return false;

@@ -88,6 +88,12 @@ export default async function handler(req: any, res: any) {
     }
 
     const zine = snap.data() || {};
+    if (
+      zine.isPublic !== true ||
+      zine.publicProjectionVersion !== 1
+    ) {
+      return sendJson(res, 404, { error: "Zine not found" });
+    }
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");

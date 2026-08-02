@@ -10,7 +10,7 @@ export const generateAndStoreZineEmbedding = async (zine: ZineMetadata) => {
 
         const embedding = await getEmbedding([{ text: textToEmbed.slice(0, 2000) }]);
         if (embedding?.length) {
-            await updateDoc(doc(db, "zines", zine.id), {
+            await updateDoc(doc(db, "zine_working", zine.id), {
                 embedding,
                 embedding_dims: embedding.length,
                 embedding_model: embeddingModelId(),

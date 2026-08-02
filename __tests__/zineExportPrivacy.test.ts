@@ -57,6 +57,28 @@ describe("zine export privacy and ownership", () => {
     metadata.editorialCompileMarkdown = "Private working compile";
     (metadata as ZineMetadata & { secretWorkingField?: string }).secretWorkingField =
       "must not survive";
+    const workingPages = JSON.parse(metadata.content.pagesJson || "[]");
+    workingPages[0].customLayout = {
+      elements: [
+        {
+          id: "private-image-seed",
+          type: "image",
+          content: workingPages[0].originalMediaUrl,
+          notes: "owner-only crop note",
+          negativePrompt: "private prompt",
+          style: {
+            top: 10,
+            left: 10,
+            width: 80,
+            height: 60,
+            backgroundImage: "url(https://private.example/texture.png)",
+          },
+        },
+      ],
+      readingOrder: ["private-image-seed"],
+      editTrace: [{ timestamp: 1, note: "private edit trace" }],
+    };
+    metadata.content.pagesJson = JSON.stringify(workingPages);
     metadata.usedContextSnapshots![1].visibility = {
       working: true,
       export: true,
@@ -72,9 +94,21 @@ describe("zine export privacy and ownership", () => {
     const publicPages = JSON.parse(publicZine.content.pagesJson || "[]");
     expect(publicPages[0].sourceIds).toEqual([]);
     expect(publicPages[1].sourceIds).toEqual([]);
+    expect(publicPages[0].originalMediaUrl).toBeUndefined();
+    expect(publicPages[0].imagePrompt).toBe("");
+    expect(publicPages[0].customLayout.editTrace).toBeUndefined();
+    expect(publicPages[0].customLayout.elements[0]).toMatchObject({
+      content: "https://cdn.example.test/developed-master.jpg",
+    });
+    expect(publicPages[0].customLayout.elements[0].notes).toBeUndefined();
+    expect(
+      publicPages[0].customLayout.elements[0].style.backgroundImage,
+    ).toBeUndefined();
     expect(
       publicZine.content.structure.pages[0].sourceIds,
     ).toEqual([]);
+    expect(publicZine.content.structure.hero_prompt).toBe("");
+    expect(publicZine.content.visual_guidance.negative_prompt).toBe("");
     expect(publicZine.artifacts).toBeUndefined();
     expect(publicZine.editorialCompileMarkdown).toBeUndefined();
     expect(publicZine).not.toHaveProperty("secretWorkingField");

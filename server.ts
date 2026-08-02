@@ -1795,6 +1795,12 @@ async function startServer() {
         if (snap.exists) {
           const data = snap.data();
           if (data) {
+            if (
+              data.isPublic !== true ||
+              data.publicProjectionVersion !== 1
+            ) {
+              return null;
+            }
             let coverImg = data.coverImageUrl;
             if (!coverImg && data.contentImages && Array.isArray(data.contentImages) && data.contentImages.length > 0) {
               coverImg = data.contentImages[0];
@@ -1828,6 +1834,12 @@ async function startServer() {
         const response = await axios.get(url, { timeout: 4000 });
         if (response.status === 200 && response.data?.fields) {
           const fields = response.data.fields;
+          if (
+            fields.isPublic?.booleanValue !== true ||
+            fields.publicProjectionVersion?.integerValue !== "1"
+          ) {
+            return null;
+          }
           
           const getStringValue = (field: any) => {
             if (!field) return undefined;
