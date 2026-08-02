@@ -462,6 +462,8 @@ export interface TailorLogicDraft {
     birthLocation?: string;
     astrologicalLineage?: string;
     seasonalAlignment?: string;
+    /** When true, chamber keeps a user-chosen sun sign instead of recomputing. */
+    zodiacLocked?: boolean;
   };
 
   materialityConfig?: MaterialityConfig;

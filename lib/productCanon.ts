@@ -73,6 +73,10 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   observatory: "observatory",
   "mean-median-mode": "mean-median-mode",
   "observatory-mmm": "mean-median-mode",
+  "celestial-calibration": "celestial-calibration",
+  celestial: "celestial-calibration",
+  natal: "celestial-calibration",
+  zodiac: "celestial-calibration",
   // Social surfaces live on The Proscenium (wings via nested path).
   connections: "proscenium",
   correspondents: "proscenium",
@@ -632,6 +636,38 @@ export const CANON_MODULES: CanonModule[] = [
       "Read the present atmosphere via literal mean, median, and mode — not a leaderboard. Stage on The Proscenium to contribute anonymized structure.",
     notes:
       "Collective Moods is a docs-only conceptual alias. Distinct from Residue per-run MeanMedianModeResult.",
+  },
+  {
+    id: "celestial-calibration",
+    name: "Celestial Calibration",
+    layer: "chamber",
+    engine: "Personal Timing Calibration",
+    priority: 11.5,
+    status: "live",
+    canonicalRoute: "/celestial-calibration",
+    implementedMode: "celestial-calibration",
+    component: "CelestialCalibrationChamber",
+    aliases: ["Celestial", "Natal", "Zodiac", "Sun Sign"],
+    inputs: [
+      "birth date",
+      "optional birth time (UTC in Phase 1)",
+      "optional birth location (stored for future rising/houses)",
+      "seasonal alignment + lineage notes",
+    ],
+    generations: [
+      "tropical Sun sign from mean solar longitude",
+      "astronomical season",
+      "timing phrase for Tailor / generation context",
+    ],
+    outputs: [
+      "tailorDraft.celestialCalibration",
+      "profile birth fields + zodiacSign",
+      "optional generation timing context",
+    ],
+    userFlow:
+      "Enter birth data, review derived tropical Sun and season, opt in to generation use, save into Tailor, then hand off to Worktable or Oracle.",
+    notes:
+      "Phase 1 does not compute rising, houses, or aspects. Distinct from The Observatory (collective Mean Median Mode) and from poetic zine field celestial_calibration.",
   },
 ];
 

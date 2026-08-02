@@ -13,5 +13,6 @@ export { TheEditChamber } from "./TheEditChamber";
 export { ThePressChamber } from "./ThePressChamber";
 export { AtelierChamber } from "./AtelierChamber";
 export { ResidueChamber } from "./ResidueChamber";
+export { CelestialCalibrationChamber } from "./CelestialCalibrationChamber";
 export { ChamberMapView } from "./ChamberMapView";
 export { AestheticIntelligenceChamber } from "./AestheticIntelligenceChamber";

@@ -120,7 +120,24 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "Tailor",
         note: "profile, evidence, style lab, diagnostics",
         keywords: ["tailor", "brand", "style", "physics", "aesthetic", "voice", "references", "art-style", "scryer", "patterns", "diagnostics", "telemetry", "chromatics"],
-      }
+      },
+      {
+        mode: "celestial-calibration",
+        label: "Celestial Calibration",
+        note: "tropical sun + seasonal timing for Tailor",
+        keywords: [
+          "celestial",
+          "calibration",
+          "zodiac",
+          "natal",
+          "birth chart",
+          "sun sign",
+          "astrology",
+          "season",
+          "timing",
+          "birth date",
+        ],
+      },
     ]
   },
   {
