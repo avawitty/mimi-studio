@@ -535,32 +535,27 @@
     border-left: 1px dotted var(--studio-divider);
   }
 
-  /* Mobile bottom navigation — native-feeling primary nav */
-  .studio-mobile-nav {
-    padding-bottom: env(safe-area-inset-bottom);
+  /* Mobile instrument rail — thin editorial spine (middle ground vs app-tab nav) */
+  .studio-mobile-rail {
     backdrop-filter: blur(8px);
   }
-  .studio-mobile-nav-item {
-    min-height: 56px;
+  .studio-mobile-rail-item {
     position: relative;
   }
-  .studio-mobile-nav-item.is-active::before {
+  .studio-mobile-rail-item[aria-pressed="true"]::after {
     content: "";
     position: absolute;
-    top: 0;
+    bottom: 4px;
     left: 50%;
     transform: translateX(-50%);
-    width: 26px;
-    height: 2px;
+    width: 12px;
+    height: 1px;
     background: var(--studio-tab-active, currentColor);
   }
-  .studio-mobile-nav-item.is-active {
-    background: color-mix(in srgb, var(--studio-tab-active) 8%, transparent);
-  }
 
-  /* Mobile action cluster sits directly above the nav */
+  /* Legacy sticky action cluster (kept for any residual markup) */
   .studio-mobile-actions {
-    bottom: calc(56px + env(safe-area-inset-bottom));
+    bottom: calc(72px + env(safe-area-inset-bottom));
     backdrop-filter: blur(8px);
   }
 

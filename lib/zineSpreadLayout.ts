@@ -1,11 +1,35 @@
-import type { EditorElement, ToneTag, ZineContent, ZinePage, ZinePageSpec } from "../types";
+import type {
+  EditorElement,
+  ToneTag,
+  ZineContent,
+  ZineIssueMode,
+  ZinePage,
+  ZinePageSpec,
+} from "../types";
+import { editorAssetUrl } from "./zine/zinePerformance";
 
-export type ZineIssueMode = "editorial" | "research" | "seasonal" | "oracle";
+export type { ZineIssueMode } from "../types";
 
 const HOUSE_SERIF = "Cormorant Garamond";
 
-function elementId(prefix: string): string {
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+function stableToken(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function elementId(prefix: string, page: ZinePageSpec): string {
+  const seed = [
+    page.id || "",
+    page.pageNumber,
+    page.headline,
+    page.bodyCopy,
+    prefix,
+  ].join(":");
+  return `${prefix}_${stableToken(seed)}`;
 }
 
 /** True when a page carries a composed freeform layout. */
@@ -16,7 +40,7 @@ export function pageHasCustomLayout(page: ZinePageSpec | ZinePage | undefined | 
 
 /** Map a persisted page into the editor's ZinePage shape. */
 export function toEditableZinePage(page: ZinePageSpec, fallbackImage?: string | null): ZinePage {
-  const image = page.image_url || page.originalMediaUrl || fallbackImage || undefined;
+  const image = editorAssetUrl(page) || fallbackImage || undefined;
   return {
     ...page,
     image_url: page.image_url || image,
@@ -33,12 +57,12 @@ export function buildDefaultSpreadElements(
   options?: { fontFamily?: string; imageUrl?: string | null },
 ): EditorElement[] {
   const fontFamily = options?.fontFamily || HOUSE_SERIF;
-  const imageUrl = options?.imageUrl || page.image_url || page.originalMediaUrl;
+  const imageUrl = options?.imageUrl || editorAssetUrl(page);
   const els: EditorElement[] = [];
 
   if (imageUrl) {
     els.push({
-      id: elementId("img"),
+      id: elementId("img", page),
       type: "image",
       content: imageUrl,
       style: {
@@ -57,7 +81,7 @@ export function buildDefaultSpreadElements(
 
   if (page.headline) {
     els.push({
-      id: elementId("headline"),
+      id: elementId("headline", page),
       type: "text",
       content: page.headline,
       style: {
@@ -80,7 +104,7 @@ export function buildDefaultSpreadElements(
 
   if (page.bodyCopy) {
     els.push({
-      id: elementId("body"),
+      id: elementId("body", page),
       type: "text",
       content: page.bodyCopy,
       style: {
