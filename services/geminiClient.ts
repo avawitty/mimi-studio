@@ -20,11 +20,15 @@ export const setGlobalKeyRing = (keys: string[]) => {
 const handleProxyError = async (res: Response): Promise<Error> => {
   const status = res.status;
   let errMessage = '';
+  let errCode: string | number = status;
   try {
     const text = await res.text();
     try {
       const errData = JSON.parse(text);
       errMessage = errData.error?.message || errData.error || errData.message || text;
+      if (typeof errMessage !== 'string') errMessage = String(errMessage);
+      const nestedCode = errData.error?.code ?? errData.code;
+      if (nestedCode != null && nestedCode !== '') errCode = nestedCode;
     } catch {
       if (text.includes('Starting Server') || text.includes('doctype html') || text.includes('<html')) {
         errMessage = 'MIMI // Secure Proxy is initializing or restarting. Please retry.';
@@ -42,7 +46,7 @@ const handleProxyError = async (res: Response): Promise<Error> => {
   
   const err = new Error(errMessage) as any;
   err.status = status;
-  err.code = status;
+  err.code = errCode;
   err.isTransient = status === 502 || status === 503 || status === 504 || errMessage.includes('initializing');
   return err;
 };
@@ -52,15 +56,17 @@ const buildGeminiProxyHeaders = async (key?: string): Promise<Record<string, str
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
-  if (key) {
-    headers['x-api-key'] = key;
-    return headers;
-  }
+  // Always attach the Firebase session so /api/proxy/gemini can authorize
+  // plan-funded AI Gateway. Do not skip the token when a personal Gemini key
+  // is present — that forced lab users into BYOK-only / "configure API keys".
   try {
     const { auth } = await import('./firebaseInit');
     const token = await auth.currentUser?.getIdToken();
     if (token) headers['x-user-token'] = `Bearer ${token}`;
   } catch {}
+  if (key) {
+    headers['x-api-key'] = key;
+  }
   return headers;
 };
 
@@ -350,19 +356,30 @@ export async function withResilience<T>(
       error.message?.includes('Failed to fetch') ||
       error.message?.includes('NetworkError');
     
+    const errCode = String(error.code || error.error?.code || "");
+    const originalMessage = String(error.message || "");
     const isCreditOrGatewayError =
-      error.message?.includes('credits') ||
-      error.message?.includes('Gateway') ||
-      error.message?.includes('prepayment') ||
-      error.message?.includes('RESOURCE_EXHAUSTED');
+      errCode === "credits_exhausted" ||
+      errCode === "sign_in_required" ||
+      errCode === "server_gateway_unconfigured" ||
+      errCode === "missing_personal_or_funded_key" ||
+      errCode === "access_denied" ||
+      originalMessage.includes("credits") ||
+      originalMessage.includes("Gateway") ||
+      originalMessage.includes("AI Gateway") ||
+      originalMessage.includes("billing period") ||
+      originalMessage.includes("prepayment") ||
+      originalMessage.includes("RESOURCE_EXHAUSTED") ||
+      // Legacy gemini-proxy denial — do not treat as BYOK key void.
+      originalMessage.includes("personal API key or MIMI_ENABLE_SERVER_AI");
 
     const isKeyError = 
       !isCreditOrGatewayError && (
         error.status === 403 || 
-        error.message?.includes('403') || 
-        error.message?.includes('PERMISSION_DENIED') ||
-        error.message?.includes('api-key-expired') ||
-        error.message?.includes('API_KEY_INVALID')
+        originalMessage.includes('403') || 
+        originalMessage.includes('PERMISSION_DENIED') ||
+        originalMessage.includes('api-key-expired') ||
+        originalMessage.includes('API_KEY_INVALID')
       );
 
     const hasMoreKeys = globalKeyRing.length > 0 && globalKeyRing.filter(k => !attemptedKeys.includes(k)).length > 0;
@@ -378,14 +395,47 @@ export async function withResilience<T>(
     }
     
     const originalMsg = error.message || "";
+    const isPlanCreditsExhausted =
+      errCode === "credits_exhausted" ||
+      originalMsg.includes("plan credits") ||
+      originalMsg.includes("billing period");
     const isCreditsDepleted =
       isCreditOrGatewayError ||
       originalMsg.includes("RESOURCE_EXHAUSTED") ||
       originalMsg.includes("prepayment credits") ||
       originalMsg.includes("depleted");
 
+    if (isPlanCreditsExhausted) {
+      if (!suppressGlobalEvents && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+          detail: {
+            type: "error",
+            message: originalMsg.includes("exhausted")
+              ? originalMsg
+              : "Mimi plan credits for AI Gateway are exhausted. Credits reload with your billing period.",
+          },
+        }));
+      }
+      const creditsError = new Error(
+        originalMsg ||
+          "Mimi plan credits for AI Gateway are exhausted. Credits reload with your billing period.",
+      ) as any;
+      creditsError.code = "credits_exhausted";
+      throw creditsError;
+    }
+
     if (isCreditsDepleted) {
-      const creditsError = new Error("MIMI // Oracle Status: Prepayment Credits Depleted. The associated AI Studio project has run out of credits or prepayment funds. TO RESOLVE: Go to AI Studio at https://ai.studio/projects or add a custom API key in the Sovereign Keychain.") as any;
+      if (!suppressGlobalEvents && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+          detail: {
+            type: "error",
+            message: "Oracle credits unavailable. Signed-in plan credits or AI Gateway configuration required — personal API keys are optional.",
+          },
+        }));
+      }
+      const creditsError = new Error(
+        "MIMI // Oracle Status: AI credits unavailable. Prefer a signed-in Mimi plan (AI Gateway) over personal provider keys.",
+      ) as any;
       creditsError.code = 'RESOURCE_EXHAUSTED';
       throw creditsError;
     }

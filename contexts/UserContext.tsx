@@ -20,6 +20,7 @@ import { hasAccess } from '../constants';
 import { fetchUserSubscription } from '../services/membershipPipeline';
 import { clearLegacyUsedContextState } from '../services/usedContextService';
 import { clearLegacyEditCompileState } from '../lib/editCompileExport';
+import { buildCreditGrant } from '../lib/mimiEntitlements';
 
 interface SystemStatus {
   auth: 'syncing' | 'anchored' | 'offline';
@@ -450,9 +451,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshHasApiKey();
     const handleKeyVoid = () => {
       setOracleStatus('unavailable');
+      // Personal BYOK is optional — plan-funded AI Gateway is the primary path.
+      // Do not tell lab/paid members they must enter API keys.
       window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
           detail: { 
-              message: "Oracle frequency saturated. Configure API Keys in Sovereign Profiles.", 
+              message: "Oracle connection failed. Retry, or check plan credits — personal API keys are optional for Lab / paid seats.", 
               type: 'error' 
           } 
       }));
@@ -1321,17 +1324,29 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const activatePatron = async (key: string) => {
     if (!profile || !user) return;
+    const { credits } = buildCreditGrant({ plan: 'lab', interval: 'year' });
+    const labPatch = {
+      planStatus: 'lab' as const,
+      plan: 'lab' as const,
+      mimiPlan: 'lab' as const,
+      isPatron: true,
+      patronActivatedAt: Date.now(),
+      patronKey: key,
+      subscriptionStatus: 'active' as const,
+      subscriptionInterval: 'year' as const,
+      membershipCredits: credits,
+    };
     try {
       const { applyPromoCode } = await import('../services/membershipPipeline');
       await applyPromoCode(user.uid, key);
       
       // Also update local profile state to reflect the change immediately
-      await updateProfile({ ...profile, planStatus: 'lab', plan: 'lab', isPatron: true, patronActivatedAt: Date.now(), patronKey: key });
+      await updateProfile({ ...profile, ...labPatch });
     } catch (e) {
       console.warn("MIMI // Database write failed for patron, but treating as success locally for this session. Error:", e);
       // Fallback: If DB is blocked due to security rules, enable it locally for the current session anyway 
       // so the user can continue working without the backend connection.
-      setProfile({ ...profile, planStatus: 'lab', plan: 'lab', isPatron: true, patronActivatedAt: Date.now(), patronKey: key });
+      setProfile({ ...profile, ...labPatch });
     }
   };
 

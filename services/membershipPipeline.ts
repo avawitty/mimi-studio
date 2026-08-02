@@ -2,6 +2,7 @@ import { db } from './firebaseInit';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { logFirestoreError, OperationType } from './firebaseUtils';
 import { SubscriptionData, MembershipPlan } from '../types';
+import { buildCreditGrant } from '../lib/mimiEntitlements';
 
 export const fetchUserSubscription = async (uid: string): Promise<SubscriptionData | null> => {
   let retries = 3; // Reduced retries
@@ -65,25 +66,52 @@ export const applyPromoCode = async (uid: string, code: string) => {
       return data;
     } catch (err) {
       console.warn("Server promo update failed, falling back to client update:", err);
-      // Fallback to client-side update
+      // Fallback to client-side update — include membershipCredits so funded
+      // AI Gateway does not treat the lab seat as credits_exhausted / BYOK-only.
+      const { credits: membershipCredits } = buildCreditGrant({
+        plan: 'lab',
+        interval: 'year',
+        currentPeriodEnd: oneYearFromNow,
+      });
       const subRef = doc(db, 'users', uid, 'billing', 'subscription');
       await setDoc(subRef, {
         plan: 'lab',
         status: 'active',
         currentPeriodEnd: oneYearFromNow,
-        interval: 'year'
+        interval: 'year',
+        credits: membershipCredits,
+      }, { merge: true });
+
+      const userRef = doc(db, 'users', uid);
+      await setDoc(userRef, {
+        planStatus: 'lab',
+        plan: 'lab',
+        membershipPlan: 'lab',
+        mimiPlan: 'lab',
+        subscriptionStatus: 'active',
+        subscriptionInterval: 'year',
+        membershipCredits,
       }, { merge: true });
       
       const profileRef = doc(db, 'profiles_public', uid);
-      await setDoc(profileRef, { planStatus: 'lab', plan: 'lab', membershipPlan: 'lab', subscriptionStatus: 'active' }, { merge: true });
+      await setDoc(profileRef, {
+        planStatus: 'lab',
+        plan: 'lab',
+        membershipPlan: 'lab',
+        mimiPlan: 'lab',
+        subscriptionStatus: 'active',
+        membershipCredits,
+      }, { merge: true });
       
       const membershipRef = doc(db, 'memberships', uid);
       await setDoc(membershipRef, {
         plan: 'lab',
+        mimiPlan: 'lab',
         status: 'active',
         currentPeriodEnd: oneYearFromNow,
         stripeCustomerId: 'promo_code',
-        interval: 'year'
+        interval: 'year',
+        credits: membershipCredits,
       }, { merge: true });
       
       return { success: true, message: "1-Year Lab Access Granted (Client Fallback)." };
