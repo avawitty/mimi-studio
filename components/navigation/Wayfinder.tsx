@@ -56,7 +56,7 @@ export const Wayfinder: React.FC<WayfinderProps> = ({
                 onClick={() => onNavigate(step.primaryMode)}
                 title={`${step.label}: ${step.note}`}
                 aria-current={active ? "step" : undefined}
-                className={`w-full text-left px-1.5 py-2 border transition-colors min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`w-full text-left px-1.5 py-2 border transition-colors min-h-12 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed ${
                   active
                     ? "border-[color:var(--mimi-cobalt,#9BB8CE)] bg-[color:var(--mimi-cobalt,#9BB8CE)]/10"
                     : passed
