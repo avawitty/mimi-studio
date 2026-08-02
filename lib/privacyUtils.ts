@@ -1,4 +1,8 @@
-import type { UsedContextSnapshot, ZineMetadata } from "../types";
+import type {
+  UsedContextSnapshot,
+  ZineMetadata,
+  ZineSourcePacket,
+} from "../types";
 
 /** Redact internal user IDs for display surfaces. */
 export function truncateUid(
@@ -53,7 +57,7 @@ export function sanitizeZineForPublicView(
       [],
   );
   const publicIds = new Set(snapshots.map((snapshot) => snapshot.atomId));
-  const sourcePacket = metadata.sourcePacket
+  const sourcePacket: ZineSourcePacket | undefined = metadata.sourcePacket
     ? {
         ...metadata.sourcePacket,
         fragmentIds: metadata.sourcePacket.fragmentIds.filter((id) =>

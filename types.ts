@@ -903,6 +903,7 @@ export interface ZineContent extends ZineSpec {
   designBrief?: string;
   hero_image_url?: string;
   hero_image_prompt?: string;
+  hypothesis_image_url?: string;
 }
 
 export interface ZineFolder {

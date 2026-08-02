@@ -194,7 +194,7 @@ export function sanitizeShopifyProvenance(
     ? candidate.usedContextSnapshots
     : [];
   const snapshots: UsedContextSnapshot[] = rawSnapshots
-    .map((raw) => {
+    .map((raw): UsedContextSnapshot | null => {
       const snapshot = raw as Partial<UsedContextSnapshot>;
       const atomId = text(snapshot.atomId, 255);
       if (!atomId) return null;
