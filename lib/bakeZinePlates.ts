@@ -2,6 +2,7 @@ import type { MediaFile, ZineContent } from "../types";
 import { generateZineImage } from "../services/geminiService";
 import { archiveManager } from "../services/archiveManager";
 import { shouldAutoDevelopPlates } from "./zineSpreadLayout";
+import { resolvePlateConcurrency } from "./zine/zinePerformance";
 
 export interface BakeZinePlatesOptions {
   content: ZineContent;
@@ -15,8 +16,10 @@ export interface BakeZinePlatesOptions {
   /** Existing studio/cover plate — skip hero bake when set. */
   existingCoverUrl?: string | null;
   ownerUid?: string;
-  /** Limit concurrent image jobs (default 2). */
+  /** Limit concurrent image jobs (defaults to 2 mobile / 3 desktop). */
   concurrency?: number;
+  /** Allows the queue to apply the lower mobile concurrency budget. */
+  isMobile?: boolean;
 }
 
 export interface BakeZinePlatesResult {
@@ -45,7 +48,7 @@ async function mapPool<T, R>(
 }
 
 /** Prevent unbounded provider cost from crafted oversized page arrays. */
-const MAX_BAKE_PLATES = 24;
+export const MAX_BAKE_PLATES = 24;
 
 async function persistImage(
   ownerUid: string | undefined,
@@ -80,7 +83,7 @@ export async function bakeZineVisualPlates(
     isLite,
     existingCoverUrl,
     ownerUid,
-    concurrency = 2,
+    concurrency,
   } = options;
 
   if (
@@ -142,7 +145,11 @@ export async function bakeZineVisualPlates(
     failures.push(`plates: baking first ${MAX_BAKE_PLATES} of ${pages.length} pages`);
   }
   const bakeJobs = pages.slice(0, MAX_BAKE_PLATES).map((page, index) => ({ page, index }));
-  await mapPool(bakeJobs, concurrency, async ({ page, index }) => {
+  const isMobile =
+    options.isMobile ??
+    (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
+  const poolConcurrency = resolvePlateConcurrency(concurrency, isMobile);
+  await mapPool(bakeJobs, poolConcurrency, async ({ page, index }) => {
     if (page.image_url) return;
     const prompt = page.imagePrompt || next.visual_plates?.[index] || page.headline;
     if (!prompt) {

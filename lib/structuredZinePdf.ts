@@ -2,6 +2,8 @@ import { jsPDF } from "jspdf";
 import type { EditorElement, ZineMetadata, ZinePageSpec } from "../types";
 import { resolveZineExportCoverUrl } from "./studioCoverExport";
 import { pageHasCustomLayout } from "./zineSpreadLayout";
+import { exportAssetUrl } from "./zine/zinePerformance";
+import { hydrateLegacyZineMetadata } from "./zine/zineMigrations";
 
 export type StructuredPdfSectionId =
   | "cover"
@@ -399,11 +401,12 @@ function drawDebris(doc: jsPDF, metadata: ZineMetadata): void {
 
 /** Summarize pages for export manifests (no geometry). */
 export function summarizePagesForExport(metadata: ZineMetadata): StructuredPdfPageSummary[] {
-  return (metadata.content.pages || []).map((page, i) => ({
+  const hydrated = hydrateLegacyZineMetadata(metadata);
+  return (hydrated.content.pages || []).map((page, i) => ({
     pageNumber: page.pageNumber ?? i + 1,
     headline: page.headline || `Plate ${i + 1}`,
     hasCustomLayout: pageHasCustomLayout(page),
-    imageUrl: page.image_url,
+    imageUrl: exportAssetUrl(page),
   }));
 }
 
@@ -415,6 +418,7 @@ export async function buildStructuredZinePdf(
   metadata: ZineMetadata,
   options: StructuredPdfOptions = {},
 ): Promise<jsPDF> {
+  const hydrated = hydrateLegacyZineMetadata(metadata);
   const sections = asSectionSet(options.sections);
   const includeCustomLayouts = options.includeCustomLayouts !== false;
   const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
@@ -431,28 +435,30 @@ export async function buildStructuredZinePdf(
 
   if (sections.has("cover")) {
     beginPage();
-    const coverUrl = await resolveZineExportCoverUrl(metadata);
+    const coverUrl = await resolveZineExportCoverUrl(hydrated);
     const cover = await fetchImageForPdf(coverUrl || undefined);
-    drawCover(doc, metadata, cover);
+    drawCover(doc, hydrated, cover);
   }
 
   if (sections.has("reading")) {
     beginPage();
-    drawReading(doc, metadata);
+    drawReading(doc, hydrated);
   }
 
-  if (sections.has("signals") && (metadata.content.semiotic_signals?.length || 0) > 0) {
+  if (sections.has("signals") && (hydrated.content.semiotic_signals?.length || 0) > 0) {
     beginPage();
-    drawSignals(doc, metadata);
+    drawSignals(doc, hydrated);
   }
 
-  if (sections.has("plates") && metadata.content.pages?.length) {
-    for (let i = 0; i < metadata.content.pages.length; i++) {
-      const page = metadata.content.pages[i];
+  if (sections.has("plates") && hydrated.content.pages?.length) {
+    for (let i = 0; i < hydrated.content.pages.length; i++) {
+      const page = hydrated.content.pages[i];
       beginPage();
       if (includeCustomLayouts && pageHasCustomLayout(page)) {
         const imageMap = new Map<string, { dataUrl: string; format: "JPEG" | "PNG" }>();
         const urls = new Set<string>();
+        const pageImageUrl = exportAssetUrl(page);
+        if (pageImageUrl) urls.add(pageImageUrl);
         if (page.image_url) urls.add(page.image_url);
         page.customLayout?.elements.forEach((el) => {
           if (el.type === "image" && el.content) urls.add(el.content);
@@ -465,28 +471,28 @@ export async function buildStructuredZinePdf(
         );
         drawComposedPlate(doc, page, i, imageMap);
       } else {
-        const img = await fetchImageForPdf(page.image_url);
+        const img = await fetchImageForPdf(exportAssetUrl(page));
         drawDefaultPlate(doc, page, i, img);
       }
     }
   }
 
-  if (sections.has("roadmap") && (metadata.content.roadmap || metadata.content.the_roadmap)) {
+  if (sections.has("roadmap") && (hydrated.content.roadmap || hydrated.content.the_roadmap)) {
     beginPage();
-    drawRoadmap(doc, metadata);
+    drawRoadmap(doc, hydrated);
   }
 
   if (
     sections.has("debris") &&
-    (metadata.originalInput || metadata.content.meta?.intent)
+    (hydrated.originalInput || hydrated.content.meta?.intent)
   ) {
     beginPage();
-    drawDebris(doc, metadata);
+    drawDebris(doc, hydrated);
   }
 
   if (!started) {
     // Empty selection — still emit a cover stub so download is never blank.
-    drawCover(doc, metadata, null);
+    drawCover(doc, hydrated, null);
   }
 
   return doc;
