@@ -10,6 +10,7 @@
  * Options:
  *   --limit=200
  *   --dry-run
+ *   --replace   (delete existing sovereign zines before import — true Floor swap)
  *   --out=./.data/firestore-export.json  (also writes JSON even when importing)
  */
 
@@ -19,6 +20,7 @@ import { config as loadEnv } from "dotenv";
 import { resetSovereignDbForTests } from "../lib/sovereign/db";
 import {
   importZines,
+  replaceAllZines,
   sovereignStatus,
   upsertProfile,
 } from "../lib/sovereign/store";
@@ -36,6 +38,7 @@ const hasFlag = (name: string) => process.argv.includes(`--${name}`);
 async function main() {
   const limit = Math.max(1, Math.min(Number(arg("limit") || 200), 2000));
   const dryRun = hasFlag("dry-run");
+  const replace = hasFlag("replace");
   const outPath = arg("out") || path.join(process.cwd(), ".data", "firestore-export.json");
 
   process.env.MIMI_SOVEREIGN_ENABLED = process.env.MIMI_SOVEREIGN_ENABLED || "1";
@@ -87,13 +90,34 @@ async function main() {
   for (const profile of profiles) {
     await upsertProfile(profile);
   }
-  const { imported, skipped } = await importZines(zines);
+
+  // --replace clears + imports in one transaction so a failed import cannot
+  // leave the Floor empty after a committed DELETE.
+  let cleared = 0;
+  let imported = 0;
+  let skipped = 0;
+  if (replace) {
+    const replaced = await replaceAllZines(zines);
+    cleared = replaced.cleared;
+    imported = replaced.imported;
+    skipped = replaced.skipped;
+    console.info(
+      `MIMI // --replace: cleared ${cleared} then imported ${imported} (skipped ${skipped}) atomically`,
+    );
+  } else {
+    const result = await importZines(zines);
+    imported = result.imported;
+    skipped = result.skipped;
+  }
+
   console.info(
     JSON.stringify(
       {
         ok: true,
         imported,
         skipped,
+        cleared,
+        replace,
         profilesUpserted: profiles.length,
         archive: await sovereignStatus(),
         outPath,

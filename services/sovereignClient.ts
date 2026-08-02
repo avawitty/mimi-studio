@@ -5,12 +5,19 @@ export type SovereignArchiveStatus = {
   enabled?: boolean;
   ready?: boolean;
   backend?: "sqlite" | "postgres" | null;
+  path?: string | null;
   publicCount?: number;
   zineCount?: number;
   profileCount?: number;
   pocketCount?: number;
   schemaVersion?: number | null;
   latencyMs?: number | null;
+  gatewayEmbed?: boolean;
+  embeddedCount?: number;
+  neonAuthConfigured?: boolean;
+  neonAuthReady?: boolean;
+  neonAuthLegacyStack?: boolean;
+  neonAuthHost?: string | null;
   message?: string;
 };
 
