@@ -248,18 +248,24 @@ export async function fetchApifyResearchLeads(params: {
     String(process.env.APIFY_ACTOR_ID || "").trim() || RAG_WEB_BROWSER_ACTOR_ID;
 
   const client = getApifyClient(token);
+  // Keep Actor wait well under the Vercel 60s budget so gateway/demo fallbacks
+  // can still run if Apify is slow or times out.
+  const waitSecs = Math.min(
+    35,
+    Math.max(10, Number(process.env.APIFY_WAIT_SECS) || 35),
+  );
   const run = await client.actor(actorId).call(
     {
       query: fullQuery,
-      maxResults,
+      maxResults: Math.min(maxResults, 3),
       outputFormats: ["markdown"],
-      requestTimeoutSecs: 45,
+      requestTimeoutSecs: 20,
       // Editorial fashion sites are often static; switch via env if scrapes come back empty.
       scrapingTool: String(process.env.APIFY_SCRAPING_TOOL || "raw-http").trim() || "raw-http",
-      dynamicContentWaitSecs: 8,
+      dynamicContentWaitSecs: 5,
       removeCookieWarnings: false,
     },
-    { waitSecs: 55 },
+    { waitSecs },
   );
 
   if (run.status !== "SUCCEEDED") {
@@ -327,6 +333,15 @@ const APIFY_QUOTA_WINDOW_MS = 60 * 60 * 1000;
 const APIFY_QUOTA_MAX_PER_WINDOW = 10;
 const apifyQuotaByUid = new Map<string, { windowStart: number; count: number }>();
 
+export function peekApifyQuota(uid: string, now = Date.now()): boolean {
+  const key = String(uid || "").trim();
+  if (!key) return false;
+  const existing = apifyQuotaByUid.get(key);
+  if (!existing || now - existing.windowStart >= APIFY_QUOTA_WINDOW_MS) return true;
+  return existing.count < APIFY_QUOTA_MAX_PER_WINDOW;
+}
+
+/** Record a successful Apify run against the per-uid hourly budget. */
 export function consumeApifyQuota(uid: string, now = Date.now()): boolean {
   const key = String(uid || "").trim();
   if (!key) return false;
@@ -385,12 +400,14 @@ export async function runYouSearch(params: {
   }
 
   // Billable Apify runs require a signed-in session + per-user quota.
+  // Quota is checked before the call but only consumed after a successful result
+  // so failed Actor runs do not burn the user's hourly budget.
   if (apifyToken) {
     if (!authenticatedUid) {
       console.warn(
         "MIMI // Skipping Apify research: authenticated session required for billable actor runs.",
       );
-    } else if (!consumeApifyQuota(authenticatedUid)) {
+    } else if (!peekApifyQuota(authenticatedUid)) {
       throw Object.assign(
         new Error(
           "Web Intelligence Apify quota exceeded for this hour. Try again later or use a personal You.com key.",
@@ -403,8 +420,9 @@ export async function runYouSearch(params: {
           token: apifyToken,
           query,
           includeDomains,
-          count: Math.min(count, 5),
+          count: Math.min(count, 3),
         });
+        consumeApifyQuota(authenticatedUid);
         return {
           results,
           sourceMode: "apify",
