@@ -11,7 +11,8 @@
 // MODELS[provider].text lets the same call route to whatever that provider's
 // current model is.
 //
-// Gateway defaults live in lib/models.ts (verified against ai-gateway.vercel.sh).
+// Gateway defaults live in lib/models.ts (newest verified IDs for text / image /
+// audio / video). Prefer modelFor(role, 'gateway') over hardcoded provider strings.
 
 import { GATEWAY_DEFAULT_MODELS } from '../lib/models';
 
@@ -73,6 +74,7 @@ export const MODELS: Record<LLMProviderId, RoleMap> = {
     image:     env('AI_GATEWAY_IMAGE_MODEL',      GATEWAY_DEFAULT_MODELS.image),
     imageEdit: env('AI_GATEWAY_IMAGE_EDIT_MODEL', GATEWAY_DEFAULT_MODELS.imageEdit),
     video:     env('AI_GATEWAY_VIDEO_MODEL',      GATEWAY_DEFAULT_MODELS.video),
+    tts:       env('AI_GATEWAY_TTS_MODEL',        GATEWAY_DEFAULT_MODELS.tts),
     embedding: env('AI_GATEWAY_EMBEDDING_MODEL',  GATEWAY_DEFAULT_MODELS.embedding),
   },
 };
