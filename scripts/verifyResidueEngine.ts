@@ -29,9 +29,29 @@ import {
   literalMode,
   meanMedianModeResultSchema,
   redactSensitiveText,
+  adaptResidueToEditorialDirection,
+  adaptResidueToForecast,
+  adaptResidueToIntelligenceReport,
+  adaptResidueToIntelHubObject,
+  adaptResidueToMeanMedianMode,
+  adaptResidueToMemoryAtomProposals,
+  adaptResidueToTasteGraphDelta,
+  adaptResidueToZinePages,
+  buildLiteralMeanMedianMode,
+  buildResidueHubBundle,
+  buildResidueProductOutputBundle,
+  createIntelProjectRunFromResidue,
+  createResidueIntelHubRegistry,
+  filterResidueIntelHubObjects,
+  persistPhase7ArtifactsForRun,
+  persistReportArtifactForRun,
+  runCulturalResidue,
+  runEmotionalResidue,
   safeParseCulturalResidueResult,
   sanitizeEmotionalStatement,
+  separateResearchFromCommunityReports,
   sourceQualityScore,
+  toMeanMedianMode,
 } from "../services/residue/index";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -44,12 +64,12 @@ function fixtureCultural() {
   const sources = [
     {
       sourceId: "src_1",
-      title: "Office Siren Explainer",
-      url: "https://example.com/office-siren",
+      title: "Indie Sleaze Explainer",
+      url: "https://example.com/indie-sleaze",
       sourceType: "journalism" as const,
       accessedAt: now,
       evidenceLayer: "B" as const,
-      excerpt: "The look migrated from niche TikTok edits into retail lookbooks.",
+      excerpt: "The look migrated from niche party blogs into short-form revival edits and retail capsules.",
     },
     {
       sourceId: "src_2",
@@ -57,7 +77,7 @@ function fixtureCultural() {
       sourceType: "reddit" as const,
       accessedAt: now,
       evidenceLayer: "C" as const,
-      excerpt: "People report seeing the silhouette everywhere at work.",
+      excerpt: "People report seeing flash photography and thrifted partywear everywhere again.",
     },
   ];
 
@@ -65,8 +85,8 @@ function fixtureCultural() {
     {
       evidenceId: "ev_1",
       sourceId: "src_1",
-      claimSupported: "Office siren amplified on short-form video platforms.",
-      excerpt: "migrated from niche TikTok edits",
+      claimSupported: "Indie sleaze amplified on short-form revival platforms.",
+      excerpt: "migrated from niche party blogs",
       evidenceStrength: "moderate" as const,
       sourceQualityScore: 0.7,
       relevanceScore: 0.9,
@@ -76,7 +96,7 @@ function fixtureCultural() {
     {
       evidenceId: "ev_2",
       sourceId: "src_2",
-      claimSupported: "Community reports workplace adoption.",
+      claimSupported: "Community reports nightlife revival adoption.",
       evidenceStrength: "weak" as const,
       sourceQualityScore: 0.4,
       relevanceScore: 0.6,
@@ -88,7 +108,7 @@ function fixtureCultural() {
   const definition = {
     claimId: "cl_def",
     statement:
-      "Office siren names a Y2K-adjacent corporate-sexy silhouette circulating on social platforms.",
+      "Indie sleaze names a 2010s-adjacent nightlife aesthetic circulating again across social platforms.",
     status: "interpretive" as const,
     evidenceIds: ["ev_1", "ev_2"],
     counterEvidenceIds: [] as string[],
@@ -108,7 +128,7 @@ function fixtureCultural() {
     metadata: createRunMetadata({
       runId: "run_cultural_fixture",
       mode: "cultural",
-      inputHash: hashResidueInput(["office siren", "cultural"]),
+      inputHash: hashResidueInput(["indie sleaze", "cultural"]),
       sourceCount: sources.length,
       warnings: [],
       status: "complete",
@@ -116,7 +136,7 @@ function fixtureCultural() {
       consentToStore: false,
       createdAt: now,
     }),
-    query: "office siren",
+    query: "indie sleaze",
     definition,
     origins: [],
     lineage: [
@@ -125,7 +145,7 @@ function fixtureCultural() {
         label: "Amplification",
         stage: "amplification",
         startYear: 2022,
-        description: "Short-form circulation increased visibility of the silhouette.",
+        description: "Short-form revival circulation increased visibility of the look.",
         evidenceIds: ["ev_1"],
         confidence: 0.55,
       },
@@ -135,8 +155,8 @@ function fixtureCultural() {
       {
         codeId: "code_1",
         category: "visual",
-        label: "Low-rise pencil skirt + thin knit",
-        description: "Recurring wardrobe code in look roundups.",
+        label: "Flash photography + thrifted partywear",
+        description: "Recurring visual codes in look roundups.",
         evidenceIds: ["ev_1"],
         confidence: 0.5,
       },
@@ -147,7 +167,7 @@ function fixtureCultural() {
     computationallyIntroducedMeanings: [
       {
         claimId: "cl_model",
-        statement: "Possible link to earlier secretary-chic media tropes (model-proposed).",
+        statement: "Possible link to earlier adjacent nightlife media tropes (model-proposed).",
         status: "model-proposed",
         evidenceIds: [],
         counterEvidenceIds: [],
@@ -301,7 +321,7 @@ async function main() {
   assert(literalMode(["a", "b", "a"])?.value === "a", "literal mode");
 
   const mmm = meanMedianModeResultSchema.parse({
-    subject: "office siren meanings",
+    subject: "indie sleaze meanings",
     analysisKind: "interpretive-metaphor",
     mean: {
       synthesis: "Blended center across journalism and community reports.",
@@ -309,12 +329,12 @@ async function main() {
       caveats: ["Interpretive metaphor, not a numeric average of culture."],
     },
     median: {
-      centralPosition: "Platform-amplified corporate-sexy silhouette.",
+      centralPosition: "Platform-amplified nightlife revival aesthetic.",
       excludedOrDownweightedOutliers: ["Fringe parody-only readings"],
       contributingSignalIds: ["ev_1"],
     },
     mode: {
-      dominantPattern: "TikTok-to-retail circulation narrative",
+      dominantPattern: "Short-form-to-retail circulation narrative",
       frequency: 2,
       contributingSignalIds: ["ev_1", "ev_2"],
     },
@@ -337,7 +357,7 @@ async function main() {
   // Acquisition stubs
   const manual = new ManualSourceProvider();
   const manualResult = await manual.acquire({
-    inquiry: "office siren",
+    inquiry: "indie sleaze",
     mode: "cultural",
     sourceUrls: ["https://example.com/a"],
     maxItems: 10,
@@ -346,7 +366,7 @@ async function main() {
 
   const apify = new ApifySourceAcquisitionProvider();
   const apifyResult = await apify.acquire({
-    inquiry: "office siren",
+    inquiry: "indie sleaze",
     mode: "cultural",
     maxItems: 10,
   });
@@ -363,7 +383,7 @@ async function main() {
     retention: "persisted",
     consentToStore: true,
     inputHash: hashResidueInput(["x"]),
-    queryOrExperience: "office siren",
+    queryOrExperience: "indie sleaze",
     sourceCount: 2,
     confidenceSummary: conf,
   });
@@ -409,10 +429,389 @@ async function main() {
   const badDisclosure = claimProvenanceDisclosure(bad.definition as typeof cultural.definition);
   assert(badDisclosure.isModelProposed, "no-evidence historical treated as under-supported");
 
-  console.log("OK — Residue Phase 2 checks passed.");
+  // --- Phase 3: Cultural Residue engine (offline / no gateway required) ---
+  const engineOut = await runCulturalResidue(
+    {
+      query: "indie sleaze",
+      researchQuestion: "How did indie sleaze travel from niche nightlife media into retail?",
+      sourceUrls: ["https://example.com/indie-sleaze-explainer"],
+      userNotes: [
+        "Indie sleaze emerged from party blogs and nightlife photography, then amplified on short-form revival feeds.",
+        "Retail lookbooks absorbed the thrifted partywear codes; some users now report fatigue and backlash.",
+        "Possible descent from earlier club-kid and digicam party cultures remains partly speculative.",
+      ],
+      analysisDepth: "standard",
+      retention: "temporary",
+      consentToStore: false,
+    },
+    {
+      llm: { offline: true },
+      runId: "run_indie_sleaze_offline",
+      now,
+    },
+  );
+
+  assert(engineOut.usedLlm === false, "offline engine does not call LLM");
+  assert(engineOut.result.query.toLowerCase().includes("indie sleaze"), "query preserved");
+  assert(engineOut.result.evidence.length > 0, "engine extracted evidence");
+  assert(engineOut.result.lineage.length > 0, "engine built lineage");
+  assert(engineOut.result.culturalCodes.length > 0, "engine detected cultural codes");
+  assert(
+    engineOut.result.computationallyIntroducedMeanings.some((c) => c.status === "model-proposed" || c.evidenceIds.length > 0),
+    "computational residue present",
+  );
+  assert(
+    engineOut.result.associations.some((a) => a.status === "model-proposed"),
+    "model-proposed associations remain labeled",
+  );
+  assert(engineOut.result.usedContext.length > 0, "used context built");
+  assert(
+    engineOut.result.confidenceSummary.summary.includes("not a diagnostic likelihood"),
+    "confidence narrative labeled",
+  );
+  assert(engineOut.partial.completedStages.includes("synthesize"), "synthesize stage completed");
+  assert(
+    culturalResidueResultSchema.safeParse(engineOut.result).success,
+    "engine result validates",
+  );
+
+  // Hallucinated citation prevention: unknown source IDs must not appear as evidence sources
+  const sourceIds = new Set(engineOut.result.sources.map((s) => s.sourceId));
+  for (const ev of engineOut.result.evidence) {
+    assert(sourceIds.has(ev.sourceId), `evidence source exists: ${ev.sourceId}`);
+  }
+
+  // --- Phase 4: Emotional Residue engine (offline / non-diagnostic) ---
+  const emotionalCases = [
+    "jealousy",
+    "feeling left behind",
+    "creative shame",
+    "I feel guilty when people like me",
+    "I cannot stop checking their Instagram",
+    "I think everyone secretly hates me",
+  ];
+
+  for (const experience of emotionalCases) {
+    const out = await runEmotionalResidue(
+      {
+        experience,
+        userNotes: [
+          "Forum posts mention checking profiles after seeing friends succeed.",
+          "A review article discusses social comparison without diagnosing readers.",
+        ],
+        sourceUrls: ["https://example.com/social-comparison-review"],
+        includeCommunitySources: true,
+        includeResearchSources: true,
+        retention: "temporary",
+        consentToStore: false,
+      },
+      {
+        llm: { offline: true },
+        runId: `run_em_${experience.slice(0, 12).replace(/\s+/g, "_")}`,
+        now,
+        sources: [
+          {
+            sourceId: "src_research_1",
+            title: "Social comparison review",
+            url: "https://example.com/social-comparison-review",
+            sourceType: "academic-research",
+            accessedAt: now,
+            evidenceLayer: "A",
+            excerpt:
+              "Research discusses social comparison processes and reported envy-adjacent experiences.",
+          },
+          {
+            sourceId: "src_forum_1",
+            title: "Forum thread",
+            sourceType: "forum",
+            accessedAt: now,
+            evidenceLayer: "C",
+            excerpt:
+              "People describing similar experiences often mention checking Instagram and feeling left behind.",
+            metadata: {
+              fullText:
+                "People describing similar experiences often mention checking Instagram. Creative shame shows up when posting work. Some say they feel guilty when people like them.",
+            },
+          },
+        ],
+      },
+    );
+
+    assert(out.usedLlm === false, `offline emotional (${experience})`);
+    assert(out.result.interpretiveNeighborhoods.length >= 2, `multiple neighborhoods (${experience})`);
+    assert(
+      out.result.safetyNotice.toLowerCase().includes("does not") ||
+        out.result.safetyNotice.toLowerCase().includes("diagnosis"),
+      `safety notice (${experience})`,
+    );
+    assert(
+      !containsForbiddenEmotionalLanguage(
+        out.result.interpretiveNeighborhoods.map((n) => n.description).join(" "),
+      ),
+      `no forbidden diagnosis language (${experience})`,
+    );
+    assert(
+      out.result.confidenceSummary.summary.includes("not a diagnostic likelihood"),
+      `confidence labeled (${experience})`,
+    );
+    assert(out.result.inputExperience === "[redacted-emotional-input]", `redacted input (${experience})`);
+
+    const split = separateResearchFromCommunityReports({
+      sources: out.result.sources,
+      evidence: out.result.evidence,
+    });
+    assert(split.researchEvidence.length >= 1, `research distinct (${experience})`);
+    assert(split.communityEvidence.length >= 1, `community distinct (${experience})`);
+  }
+
+  // Belief-validation guard: unsupported mind-reading stays non-confirmatory
+  const mindRead = await runEmotionalResidue(
+    {
+      experience: "I think everyone secretly hates me",
+      retention: "temporary",
+      consentToStore: false,
+      userNotes: ["No corroborating research in notes."],
+    },
+    { llm: { offline: true }, now },
+  );
+  const joined = [
+    ...mindRead.result.commonInterpretations.map((c) => c.statement),
+    ...mindRead.result.alternativeInterpretations.map((c) => c.statement),
+    ...mindRead.result.interpretiveNeighborhoods.map((n) => n.description),
+  ].join(" ");
+  assert(!/this proves|you are|reddit confirms/i.test(joined), "no belief-confirmation language");
+  assert(
+    mindRead.result.alternativeInterpretations.length +
+      mindRead.result.interpretiveNeighborhoods.length >=
+      2,
+    "offers alternatives / multiple neighborhoods",
+  );
+
+  // --- Phase 5: Mean / Median / Mode adapter ---
+  const culturalEngine = await runCulturalResidue(
+    {
+      query: "indie sleaze",
+      userNotes: [
+        "Indie sleaze revived on short-form feeds with flash photography codes.",
+        "Retail capsules absorbed thrifted partywear; fatigue and backlash appear in comments.",
+      ],
+      sourceUrls: ["https://example.com/indie-sleaze"],
+      retention: "temporary",
+      consentToStore: false,
+    },
+    { llm: { offline: true }, now },
+  );
+  const culturalMmm = adaptResidueToMeanMedianMode(culturalEngine.result, {
+    includeLiteralCompanion: true,
+  });
+  assert(culturalMmm.interpretive.analysisKind === "interpretive-metaphor", "cultural interpretive kind");
+  assert(
+    culturalMmm.interpretive.mean.caveats.some((c) => /not a literal/i.test(c)),
+    "interpretive mean labeled non-literal",
+  );
+  assert(culturalMmm.literal?.analysisKind === "literal-statistical", "cultural literal companion");
+  assert(
+    typeof culturalMmm.literal?.mean.numericValue === "number",
+    "literal mean has numericValue",
+  );
+  assert(culturalMmm.interpretive.counterMode.length >= 1, "cultural counter-mode present");
+  assert(toMeanMedianMode(culturalEngine.result).subject.includes("indie"), "toMeanMedianMode subject");
+
+  // Literal vs interpretive must not be blurred
+  const pureLiteral = buildLiteralMeanMedianMode({
+    subject: "confidence scores",
+    values: [0.2, 0.4, 0.4, 0.9],
+    signalIds: ["a", "b", "c", "d"],
+  });
+  assert(pureLiteral.analysisKind === "literal-statistical", "pure literal kind");
+  assert(pureLiteral.mean.numericValue !== undefined, "pure literal numeric");
+  assert(
+    pureLiteral.mean.caveats.some((c) => /literal statistical mean/i.test(c)),
+    "literal caveat",
+  );
+  assert(
+    String(pureLiteral.analysisKind) !== String(culturalMmm.interpretive.analysisKind),
+    "kinds remain distinct",
+  );
+
+  const emotionalMmm = adaptResidueToMeanMedianMode(mindRead.result, {
+    includeLiteralCompanion: true,
+  });
+  assert(emotionalMmm.interpretive.analysisKind === "interpretive-metaphor", "emotional interpretive");
+  assert(
+    emotionalMmm.interpretive.confidence.summary.includes("not a diagnostic likelihood"),
+    "mmm confidence non-diagnostic",
+  );
+  assert(
+    emotionalMmm.interpretive.mode.dominantPattern.length > 0,
+    "emotional mode pattern",
+  );
+
+  // --- Phase 6: Intel Hub + Intelligence Report adapters ---
+  const report = adaptResidueToIntelligenceReport(culturalEngine.result, {
+    researchQuestion: "How did indie sleaze travel into retail?",
+  });
+  assert(report.mode === "cultural", "report mode");
+  assert(report.executiveSummary.length > 0, "report executive summary");
+  assert(report.majorFindings.length > 0, "report findings");
+  assert(report.timeline.length > 0, "report timeline");
+  assert(report.meanMedianMode.analysisKind === "interpretive-metaphor", "report embeds MMM");
+  assert(report.sourceManifest.total >= 1, "report source manifest");
+  assert(report.recommendedNextResearchQuestions.length >= 2, "next questions");
+  assert(report.evidenceAudit.evidenceCount === culturalEngine.result.evidence.length, "audit count");
+
+  const emotionalReport = adaptResidueToIntelligenceReport(mindRead.result);
+  assert(emotionalReport.mode === "emotional", "emotional report mode");
+  assert(!!emotionalReport.safetyNotice, "emotional report safety notice");
+  assert(/diagnos/i.test(emotionalReport.safetyNotice || ""), "emotional report non-diagnostic");
+
+  const intel = adaptResidueToIntelHubObject(culturalEngine.result);
+  assert(intel.version === 1, "intel object version");
+  assert(intel.runId === culturalEngine.result.metadata.runId, "intel run link");
+  assert(intel.availableOutputs.includes("intelligence-report"), "intel can open report");
+  assert(intel.sourceIds.length === culturalEngine.result.sources.length, "intel source index");
+
+  const registryStore: Record<string, string> = {};
+  const registry = createResidueIntelHubRegistry({
+    getItem: (k) => registryStore[k] ?? null,
+    setItem: (k, v) => {
+      registryStore[k] = v;
+    },
+  });
+  registry.save(culturalEngine.result);
+  registry.save(mindRead.result, { pinned: true });
+  assert(registry.list().length === 2, "hub history size");
+  assert(registry.list({ mode: "emotional" }).length === 1, "hub filter mode");
+  assert(registry.list({ pinnedOnly: true }).length === 1, "hub filter pinned");
+  assert(
+    filterResidueIntelHubObjects(registry.list(), { topicIncludes: "indie" }).length === 1,
+    "hub topic filter",
+  );
+
+  const pinned = registry.pinFinding(intel.intelId, culturalEngine.result.definition.claimId);
+  assert(pinned?.pinnedFindingIds.includes(culturalEngine.result.definition.claimId), "pin finding");
+
+  const compare = registry.compare(
+    registry.list({ mode: "cultural" })[0].intelId,
+    registry.list({ mode: "emotional" })[0].intelId,
+  );
+  assert(!!compare && compare.modes.includes("cultural") && compare.modes.includes("emotional"), "compare runs");
+
+  const projectRun = createIntelProjectRunFromResidue(culturalEngine.result, 123);
+  assert(projectRun.projectName.includes("Residue"), "project run naming");
+  assert(projectRun.evidenceCount === culturalEngine.result.evidence.length, "project evidence count");
+  assert(projectRun.artifactPackId === culturalEngine.result.metadata.runId, "project links run");
+
+  const bundle = buildResidueHubBundle(culturalEngine.result);
+  assert(bundle.report.reportId.startsWith("report_"), "bundle report");
+  assert(bundle.evidenceItems.length > 0, "bundle evidence items");
+
+  // Artifact delete does not delete research run (report artifact path)
+  const memStore = createMemoryResidueStore();
+  const hubRunDoc = buildResidueRunDocument({
+    runId: culturalEngine.result.metadata.runId,
+    ownerUid: "user_hub",
+    mode: "cultural",
+    status: "complete",
+    retention: "persisted",
+    consentToStore: true,
+    inputHash: culturalEngine.result.metadata.inputHash,
+    queryOrExperience: culturalEngine.result.query,
+    sourceCount: culturalEngine.result.sources.length,
+    confidenceSummary: culturalEngine.result.confidenceSummary,
+  });
+  await memStore.saveRun(hubRunDoc);
+  const persistedReport = await persistReportArtifactForRun({
+    ownerUid: "user_hub",
+    result: culturalEngine.result,
+    store: memStore,
+  });
+  await memStore.deleteArtifact("user_hub", persistedReport.reportId);
+  assert(
+    (await memStore.getRun("user_hub", culturalEngine.result.metadata.runId))?.runId ===
+      culturalEngine.result.metadata.runId,
+    "run survives report artifact delete",
+  );
+
+  // --- Phase 7: product adapters (zine / edit / forecast / taste / memory proposals) ---
+  const zine = adaptResidueToZinePages(culturalEngine.result);
+  assert(zine.pages.length >= 3, "zine page count");
+  assert(zine.pages.every((p) => p.headline && p.bodyCopy && p.imagePrompt), "zine page fields");
+  assert(zine.title.toLowerCase().includes("indie"), "zine title topic");
+
+  const edit = adaptResidueToEditorialDirection(culturalEngine.result);
+  assert(edit.approvalState === "proposed", "edit approval proposed");
+  assert(edit.thesis.length > 0 && edit.lead.length > 0, "edit thesis/lead");
+  assert(edit.exclusions.length >= 2, "edit exclusions");
+  assert(!/you are/i.test(edit.thesis + edit.lead), "edit no diagnosis voice");
+
+  const forecast = adaptResidueToForecast(culturalEngine.result);
+  assert(forecast.scenarios.length >= 1, "forecast scenarios");
+  assert(forecast.counterScenarios.length >= 1, "forecast counters");
+  assert(forecast.disconfirmers.length >= 1, "forecast disconfirmers");
+  assert(/not researchService/i.test(forecast.provenanceNote), "forecast distinct from mocks");
+
+  const taste = adaptResidueToTasteGraphDelta(culturalEngine.result);
+  assert(taste.nodes.length >= 2, "taste nodes");
+  assert(taste.edges.length >= 1, "taste edges");
+  assert(taste.nodes.every((n) => n.userStatus === "suggested"), "taste suggested only");
+  assert(/accept/i.test(taste.curationNote), "taste curation note");
+
+  const memProps = adaptResidueToMemoryAtomProposals(culturalEngine.result, { maxProposals: 5 });
+  assert(memProps.length >= 1 && memProps.length <= 5, "memory proposal count");
+  assert(memProps.every((p) => p.approvalState === "proposed"), "memory proposals only");
+
+  const emotionalBundle = buildResidueProductOutputBundle(mindRead.result);
+  assert(emotionalBundle.zine.safetyNotice, "emotional zine safety");
+  assert(emotionalBundle.editorialDirection.safetyNotice, "emotional edit safety");
+  assert(
+    emotionalBundle.memoryAtomProposals.every(
+      (p) => !containsForbiddenEmotionalLanguage(p.atomicClaim),
+    ),
+    "memory proposals sanitized",
+  );
+  assert(
+    emotionalBundle.tasteGraphDelta.nodes.every((n) => n.userStatus === "suggested"),
+    "emotional taste suggested",
+  );
+
+  const phase7Store = createMemoryResidueStore();
+  await phase7Store.saveRun(
+    buildResidueRunDocument({
+      runId: culturalEngine.result.metadata.runId,
+      ownerUid: "user_p7",
+      mode: "cultural",
+      status: "complete",
+      retention: "persisted",
+      consentToStore: true,
+      inputHash: culturalEngine.result.metadata.inputHash,
+      queryOrExperience: culturalEngine.result.query,
+      sourceCount: culturalEngine.result.sources.length,
+      confidenceSummary: culturalEngine.result.confidenceSummary,
+    }),
+  );
+  const p7 = await persistPhase7ArtifactsForRun({
+    ownerUid: "user_p7",
+    result: culturalEngine.result,
+    store: phase7Store,
+  });
+  assert(p7.memoryAtomProposals.every((p) => p.approvalState === "proposed"), "persist proposals");
+  await phase7Store.deleteArtifact("user_p7", p7.zine.artifactId);
+  assert(
+    (await phase7Store.getRun("user_p7", culturalEngine.result.metadata.runId))?.runId ===
+      culturalEngine.result.metadata.runId,
+    "run survives phase7 artifact delete",
+  );
+  // Memory proposals must not be silently treated as approved memory atoms
+  assert(
+    [...phase7Store._debug.proposals.values()].every((p) => p.approvalState === "proposed"),
+    "no auto-approved memory",
+  );
+
+  console.log("OK — Residue Phase 2–7 checks passed.");
 }
 
 main().catch((err) => {
-  console.error("FAIL — Residue Phase 2 verification:", err);
+  console.error("FAIL — Residue verification:", err);
   process.exit(1);
 });

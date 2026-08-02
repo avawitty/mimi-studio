@@ -16,8 +16,15 @@ import { PublicDnaBadge } from "./components/PublicDnaBadge";
 import { MimiYouPublicRoute } from "./components/MimiYouPublicRoute";
 import { RipPublicRoute } from "./components/RipPublicRoute";
 import { RipLandingPage } from "./components/RipLandingPage";
+import { FishLandingPage } from "./components/FishLandingPage";
+import { FishShelfPage } from "./components/FishShelfPage";
 import { MimiShowcaseDirectory } from "./components/MimiShowcaseDirectory";
-import { getSiteSkin, parseRipPublicHandle } from "./lib/siteHost";
+import {
+  getSiteSkin,
+  parseFishShelfHandle,
+  parseFishShareId,
+  parseRipPublicHandle,
+} from "./lib/siteHost";
 import { StackView } from "./components/StackView";
 import { SubscriptionMatrix } from "./components/SovereignCommerceEngine";
 
@@ -301,16 +308,6 @@ const CommunityManifesto = lazy(() =>
     default: m.CommunityManifesto,
   })),
 );
-const ConnectionsManager = lazy(() =>
-  import("./components/ConnectionsManager").then((m) => ({
-    default: m.ConnectionsManager,
-  })),
-);
-const CliqueView = lazy(() =>
-  import("./components/CliqueView").then((m) => ({
-    default: m.CliqueView,
-  })),
-);
 const RegistryAlert = lazy(() =>
   import("./components/RegistryAlert").then((m) => ({
     default: m.RegistryAlert,
@@ -540,7 +537,13 @@ const NavigationDrawer: React.FC<{
                     <div className="flex flex-col">
                       <AnimatePresence mode="popLayout">
                         {section.items.map((item) => {
-                          const isActive = viewMode === canonicalizeMimiRoute(item.mode);
+                          const currentPath =
+                            typeof window !== "undefined"
+                              ? window.location.pathname.replace(/\/$/, "") || "/"
+                              : "";
+                          const isActive = item.mode.includes("/")
+                            ? currentPath === `/${item.mode}`
+                            : viewMode === canonicalizeMimiRoute(item.mode);
                           return (
                             <motion.button
                               layout
@@ -1311,14 +1314,32 @@ export const App: React.FC = () => {
     } else if (viewMode === "tailor" && !pathParts[1]) {
       // Evidence Intake is the default Tailor entry (step 0).
       navigate("/tailor/evidence", { replace: true });
+    } else if (
+      rawViewMode === "connections" ||
+      rawViewMode === "correspondents"
+    ) {
+      // Connections chamber lives on The Proscenium.
+      navigate("/proscenium/correspondents", { replace: true });
+    } else if (rawViewMode === "cliques" || rawViewMode === "clique") {
+      navigate("/proscenium/cliques", { replace: true });
     }
   }, [
     isLegacyDiagnosticsRoute,
     isLegacyStyleLabRoute,
     navigate,
     pathParts[1],
+    rawViewMode,
     viewMode,
   ]);
+
+  const prosceniumWing =
+    pathParts[1] === "correspondents" ||
+    pathParts[1] === "connections" ||
+    pathParts[1] === "circle"
+      ? ("correspondents" as const)
+      : pathParts[1] === "cliques" || pathParts[1] === "clique"
+        ? ("cliques" as const)
+        : ("stage" as const);
 
   const setViewMode = useCallback(
     (mode: string) => {
@@ -1328,6 +1349,14 @@ export const App: React.FC = () => {
       }
       if (["aesthetic-intelligence", "style-diagnostics"].includes(mode)) {
         navigate("/tailor/diagnostics");
+        return;
+      }
+      if (mode === "connections" || mode === "correspondents") {
+        navigate("/proscenium/correspondents");
+        return;
+      }
+      if (mode === "cliques" || mode === "clique") {
+        navigate("/proscenium/cliques");
         return;
       }
       // Nested chamber paths (e.g. tailor/evidence) skip alias flattening.
@@ -2084,7 +2113,7 @@ export const App: React.FC = () => {
     return <MimiShowcaseDirectory navigate={navigate} />;
   }
 
-  // mimi.rip host skin (or ?skin=rip) — inverse public readings
+  // mimi.rip / mimi.fish host skins (or ?skin=rip|fish)
   const siteSkin = getSiteSkin();
   if (siteSkin === "rip") {
     const path = window.location.pathname;
@@ -2096,6 +2125,22 @@ export const App: React.FC = () => {
       return <RipPublicRoute handle={ripHandle} navigate={navigate} />;
     }
     // /rip chamber and other app routes fall through on rip host
+  }
+
+  if (siteSkin === "fish") {
+    const path = window.location.pathname;
+    if (path === "/" || path === "") {
+      return <FishLandingPage navigate={navigate} />;
+    }
+    // /s/:id already handled above; map /zine/:id onto the public share plate
+    const fishShareId = parseFishShareId(path);
+    if (fishShareId && path.startsWith("/zine/")) {
+      return <PublicZineSharePage zineId={fishShareId} />;
+    }
+    const fishHandle = parseFishShelfHandle(path);
+    if (fishHandle) {
+      return <FishShelfPage handle={fishHandle} navigate={navigate} />;
+    }
   }
 
   if (
@@ -2122,9 +2167,12 @@ export const App: React.FC = () => {
   ) {
     const handle = window.location.pathname.split("/u/")[1]?.split("/")[0];
     if (handle) {
-      // Same-host QA: ?skin=rip flips /u/:handle to the inverse card
+      // Same-host QA: ?skin=rip|fish flips /u/:handle
       if (siteSkin === "rip") {
         return <RipPublicRoute handle={handle} navigate={navigate} />;
+      }
+      if (siteSkin === "fish") {
+        return <FishShelfPage handle={handle} navigate={navigate} />;
       }
       return <MimiYouPublicRoute handle={handle} navigate={navigate} />;
     }
@@ -2575,6 +2623,16 @@ export const App: React.FC = () => {
                         {viewMode === "mimi-drop" && <MimiDrop />}
                         {viewMode === "proscenium" && (
                           <ProsceniumView
+                            initialWing={prosceniumWing}
+                            onWingChange={(wing) => {
+                              if (wing === "stage") {
+                                navigate("/proscenium", { replace: true });
+                              } else {
+                                navigate(`/proscenium/${wing}`, {
+                                  replace: true,
+                                });
+                              }
+                            }}
                             onSelectZine={(z) => {
                               navigate("/zine/" + z.id);
                               setZineMetadata(z);
@@ -2647,8 +2705,6 @@ export const App: React.FC = () => {
                           </div>
                         )}
                         {viewMode === "manifesto" && <CommunityManifesto />}
-                        {viewMode === "connections" && <ConnectionsManager />}
-                        {viewMode === "cliques" && <CliqueView />}
                         {viewMode === "checkout-success" && checkoutPlan && (
                           <CheckoutSuccessView
                             plan={checkoutPlan}

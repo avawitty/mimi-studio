@@ -63,6 +63,11 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   atelier: "atelier",
   objects: "atelier",
   "taste-objects": "atelier",
+  // Social surfaces live on The Proscenium (wings via nested path).
+  connections: "proscenium",
+  correspondents: "proscenium",
+  cliques: "proscenium",
+  clique: "proscenium",
 };
 
 export const canonicalizeMimiRoute = (segment: string): string => {
@@ -198,9 +203,16 @@ export const CANON_MODULES: CanonModule[] = [
     aliases: ["Export Chamber", "Publisher Console"],
     inputs: ["approved artifacts", "manifest JSON", "media", "provenance notes"],
     generations: ["manifest resolution", "export diagnostics", "commerce/web formatting"],
-    outputs: ["PDF/DOCX", "share links", "product pages", "Shopify CSV/JSON-LD packs", "portfolio-ready exports", "Keep Tabs RSS (/u/:handle/feed.xml)"],
-    userFlow: "Package approved work into a shareable or portfolio-ready artifact. Making a zine public files it in the creator Keep Tabs feed for subscribe-once readers.",
-    notes: "Artifact-specific export exists inside AnalysisDisplay via ExportChamber; the canonical top-level route currently opens PublisherDashboard. Public issues also project to RSS via /api/feed?handle=.",
+    outputs: [
+      "PDF/DOCX",
+      "mimi.fish share plates (/s/:id)",
+      "product pages",
+      "Shopify CSV/JSON-LD packs",
+      "portfolio-ready exports",
+      "Keep Tabs RSS (/u/:handle/feed.xml)",
+    ],
+    userFlow: "Package approved work into a shareable or portfolio-ready artifact. Making a zine public files it in the creator Keep Tabs feed for subscribe-once readers. Share actions emit mimi.fish/s/:id attention plates.",
+    notes: "Artifact-specific export exists inside AnalysisDisplay via ExportChamber; the canonical top-level route currently opens PublisherDashboard. Public issues also project to RSS via /api/feed?handle=. Attention/share loop surface is mimi.fish (host skin over PublicZineSharePage).",
   },
   {
     id: "pocket",
@@ -446,9 +458,43 @@ export const CANON_MODULES: CanonModule[] = [
     inputs: ["zine commerce touchpoints", "Shopify-verified product metadata", "semiotic rationale"],
     generations: ["taste-signal persistence", "cross-issue object clustering"],
     outputs: ["pinned taste objects", "desire / buyer-orientation evidence"],
-    userFlow: "Pin semiotic commerce objects from a zine as taste signals, then revisit them here across issues. Not a wishlist or cart.",
-    notes: "Distinct from the Atelier membership plan. Local-first archive under mimi_atelier_objects::{uid}.",
-  }
+    userFlow: "Pin semiotic commerce objects from a zine as Desire or Reference taste signals, then revisit them here. Desire steers Studio/Tailor; reference stays light. Soft-capped archive, not a wishlist.",
+    notes: "Distinct from the Atelier membership plan. Thimble=sourcing, Pocket=media, Atelier=commerce-as-taste. Soft cap 40; oldest references prune first.",
+  },
+  {
+    id: "proscenium",
+    name: "The Proscenium",
+    layer: "chamber",
+    engine: "Public Stage / Social Circle",
+    priority: 8,
+    status: "live",
+    canonicalRoute: "/proscenium",
+    implementedMode: "proscenium",
+    component: "ProsceniumView",
+    aliases: ["Connections", "Cliques", "Correspondents", "Stage"],
+    inputs: [
+      "public transmissions",
+      "follow graph",
+      "friend requests",
+      "named cliques",
+      "vibe notes",
+    ],
+    generations: [
+      "resonance counts",
+      "wing routing (stage / correspondents / cliques)",
+      "demo specimen labeling",
+    ],
+    outputs: [
+      "witnessed transmissions",
+      "correspondent lists",
+      "clique membership",
+      "absorb / refract handoffs to Studio",
+    ],
+    userFlow:
+      "Enter the Stage to witness transmissions, open Correspondents for follows and connections, or manage invite-only Cliques — all under one arch.",
+    notes:
+      "Legacy /connections and /cliques redirect to /proscenium/correspondents and /proscenium/cliques. Local Echoes are demonstration specimens only.",
+  },
 ];
 
 export const CANON_MODULE_BY_ROUTE = CANON_MODULES.reduce<Record<string, CanonModule>>((acc, module) => {

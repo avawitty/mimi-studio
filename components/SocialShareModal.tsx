@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Copy, Check, Share2, Globe, Twitter, Instagram, Send, ExternalLink, Zap } from 'lucide-react';
 import { ZineMetadata } from '../types';
+import { getFishShareUrl } from '../lib/siteHost';
 
 interface SocialShareModalProps {
  metadata: ZineMetadata;
@@ -12,7 +13,7 @@ interface SocialShareModalProps {
 
 export const SocialShareModal: React.FC<SocialShareModalProps> = ({ metadata, onClose }) => {
  const [copied, setCopied] = useState(false);
- const imperialUrl = `${window.location.origin}/s/${metadata.id}`;
+ const imperialUrl = getFishShareUrl(metadata.id);
  
  // NARRATIVE POSITIONING
  const shareText = `Manifested a new refraction:"${metadata.title}". Audited by Mimi. Witness the aesthetic superintelligence:`;
@@ -66,7 +67,7 @@ export const SocialShareModal: React.FC<SocialShareModalProps> = ({ metadata, on
  <span className="font-sans text-[9px] uppercase tracking-[0.28em] font-semibold">Share</span>
  </div>
  <h2 className="font-serif text-3xl italic tracking-tight text-[var(--mimi-ink,#0a0a0a)]">Mimi</h2>
- <p className="font-serif italic text-lg text-[var(--mimi-stone,#78716c)]">Share this plate.</p>
+ <p className="font-serif italic text-lg text-[var(--mimi-stone,#78716c)]">Share this plate via mimi.fish.</p>
  </div>
  <button onClick={onClose} className="p-2 text-nous-subtle hover:text-nous-text hover:text-nous-text transition-all"><X size={20}/></button>
  </div>

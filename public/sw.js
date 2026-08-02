@@ -1,150 +1,220 @@
 // public/sw.js
-// Production-ready Service Worker for the Cult of Mimi
-// Implements a robust Stale-While-Revalidate caching strategy for aesthetic tokens,
-// UI assets, model definitions, and static assets to eliminate navigation latency.
+// Production Service Worker for Mimi — careful with hashed /assets/*.
+// Never cache HTML as JS/CSS (that causes 'text/html' is not a valid JavaScript MIME type).
 
-const CACHE_NAME = 'mimi-aesthetic-v2';
+const CACHE_NAME = "mimi-aesthetic-v3";
 
-// Essential static and UI assets to pre-cache
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
-  '/index.css',
-  '/favicon.svg',
-  '/logo.svg',
-  '/mimi-header.png',
-  '/mimi-app-icon.png',
-  '/mimi-logo-dark.png',
-  '/mimi-logo-light.png',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap'
+  "/",
+  "/favicon.svg",
+  "/favicon-32.png",
+  "/apple-touch-icon.png",
+  "/mimi-app-icon.png",
+  "/mimi-header.png",
 ];
 
-// Install Event - Pre-cache core assets
-self.addEventListener('install', (event) => {
+function isScriptOrStyle(requestUrl) {
+  return (
+    requestUrl.pathname.startsWith("/assets/") ||
+    requestUrl.pathname.endsWith(".js") ||
+    requestUrl.pathname.endsWith(".mjs") ||
+    requestUrl.pathname.endsWith(".css")
+  );
+}
+
+function contentTypeLooksLikeHtml(response) {
+  const ct = (response.headers.get("content-type") || "").toLowerCase();
+  return ct.includes("text/html");
+}
+
+function contentTypeOkForRequest(requestUrl, response) {
+  if (contentTypeLooksLikeHtml(response)) return false;
+  const ct = (response.headers.get("content-type") || "").toLowerCase();
+  if (requestUrl.pathname.endsWith(".css")) return ct.includes("text/css");
+  if (requestUrl.pathname.endsWith(".js") || requestUrl.pathname.endsWith(".mjs")) {
+    return ct.includes("javascript") || ct.includes("ecmascript");
+  }
+  return true;
+}
+
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[Mimi SW] Pre-caching critical aesthetic assets...');
-        return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-          console.warn('[Mimi SW] Some pre-cache assets could not be loaded on install, skipping failure:', err);
-        });
-      })
-      .then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then((cache) =>
+        cache.addAll(PRECACHE_ASSETS).catch((err) => {
+          console.warn("[Mimi SW] Pre-cache skipped some assets:", err);
+        }),
+      )
+      .then(() => self.skipWaiting()),
   );
 });
 
-// Activate Event - Clean up stale cache versions
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => {
-        return Promise.all(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
           keys.map((key) => {
             if (key !== CACHE_NAME) {
-              console.log('[Mimi SW] Purging obsolete cache layer:', key);
+              console.log("[Mimi SW] Purging obsolete cache:", key);
               return caches.delete(key);
             }
-          })
-        );
-      })
-      .then(() => self.clients.claim())
+            return undefined;
+          }),
+        ),
+      )
+      .then(() => self.clients.claim()),
   );
 });
 
-// Fetch Interception
-self.addEventListener('fetch', (event) => {
-  // Only process GET requests to avoid cache errors on mutations/POSTs
-  if (event.request.method !== 'GET') {
-    return;
-  }
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
 
   const requestUrl = new URL(event.request.url);
 
-  // Bypass caching in development/preview environments to prevent stale build chunks (white screens)
+  // Never intercept APIs, sockets, or HMR
   if (
-    requestUrl.hostname.includes('localhost') ||
-    requestUrl.hostname.includes('127.0.0.1') ||
-    requestUrl.hostname.includes('ais-dev') ||
-    requestUrl.hostname.includes('ais-pre') ||
-    requestUrl.hostname.includes('run.app')
+    requestUrl.pathname.startsWith("/api/") ||
+    requestUrl.pathname.includes("socket.io") ||
+    requestUrl.pathname.includes("hmr")
   ) {
     return;
   }
 
-  // NOTE: Do NOT cache '/api/' requests. Many API endpoints are authenticated and
-  // return user-specific data. A stale-while-revalidate cache keyed only by URL (no
-  // token/Vary awareness) would replay a previously-cached authenticated response to a
-  // different session after logout or account switch on a shared browser, bypassing the
-  // server's authorization check. API GETs must always pass through to the network.
-  const isAestheticAsset = requestUrl.pathname.includes('/components/chambers/') || 
-                           requestUrl.pathname.includes('/services/') ||
-                           requestUrl.pathname.includes('/lib/productCanon');
-  const isFontAsset = requestUrl.hostname.includes('fonts.googleapis.com') || 
-                      requestUrl.hostname.includes('fonts.gstatic.com');
-  const isStaticDoc = PRECACHE_ASSETS.includes(requestUrl.pathname) || 
-                      requestUrl.pathname.endsWith('.js') || 
-                      requestUrl.pathname.endsWith('.css') || 
-                      requestUrl.pathname.endsWith('.svg');
-
-  // Skip caching for live real-time sockets or internal tool actions
-  if (requestUrl.pathname.includes('socket.io') || requestUrl.pathname.includes('hmr')) {
+  // Bypass SW entirely in local / ephemeral hosts
+  if (
+    requestUrl.hostname.includes("localhost") ||
+    requestUrl.hostname.includes("127.0.0.1") ||
+    requestUrl.hostname.includes("ais-dev") ||
+    requestUrl.hostname.includes("ais-pre") ||
+    requestUrl.hostname.includes("run.app")
+  ) {
     return;
   }
 
-  // Handle with Stale-While-Revalidate caching strategy
-  if (isAestheticAsset || isFontAsset || isStaticDoc) {
+  // Hashed build assets: network-only. Caching them risks serving a prior
+  // deploy's chunk or (worse) an HTML SPA fallback with the wrong MIME.
+  if (requestUrl.pathname.startsWith("/assets/")) {
     event.respondWith(
-      caches.open(CACHE_NAME).then((cache) => {
-        return cache.match(event.request).then((cachedResponse) => {
-          // Trigger background fetch to update the cache
-          const fetchPromise = fetch(event.request)
-            .then((networkResponse) => {
-              if (networkResponse.status === 200 || networkResponse.status === 304) {
-                // Store clone in cache for subsequent navigation
-                cache.put(event.request, networkResponse.clone());
-              }
-              return networkResponse;
-            })
-            .catch((err) => {
-              console.log('[Mimi SW] Background sync failed (offline):', event.request.url);
-            });
+      fetch(event.request).then((networkResponse) => {
+        if (contentTypeLooksLikeHtml(networkResponse)) {
+          console.warn(
+            "[Mimi SW] Refusing HTML response for asset:",
+            requestUrl.pathname,
+          );
+          return new Response("Stale asset — reload required", {
+            status: 404,
+            statusText: "Stale Asset",
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        }
+        return networkResponse;
+      }),
+    );
+    return;
+  }
 
-          // Return the cached response immediately if available, otherwise wait for network
-          return cachedResponse || fetchPromise;
-        });
-      })
+  const isFont =
+    requestUrl.hostname.includes("fonts.googleapis.com") ||
+    requestUrl.hostname.includes("fonts.gstatic.com");
+  const isShell =
+    PRECACHE_ASSETS.includes(requestUrl.pathname) ||
+    requestUrl.pathname === "/index.html" ||
+    requestUrl.pathname.endsWith(".svg") ||
+    requestUrl.pathname.endsWith(".png") ||
+    requestUrl.pathname.endsWith(".jpg") ||
+    requestUrl.pathname.endsWith(".webp");
+
+  if (!isFont && !isShell) return;
+
+  event.respondWith(
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request)
+          .then((networkResponse) => {
+            if (
+              (networkResponse.status === 200 || networkResponse.status === 304) &&
+              !contentTypeLooksLikeHtml(networkResponse) &&
+              !isScriptOrStyle(requestUrl)
+            ) {
+              cache.put(event.request, networkResponse.clone());
+            } else if (
+              networkResponse.status === 200 &&
+              contentTypeOkForRequest(requestUrl, networkResponse) &&
+              !contentTypeLooksLikeHtml(networkResponse)
+            ) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          })
+          .catch(() => cachedResponse);
+
+        // Prefer network for navigations / shell so deploys land quickly
+        if (event.request.mode === "navigate") {
+          return fetchPromise.then((r) => r || cachedResponse);
+        }
+        return cachedResponse || fetchPromise;
+      }),
+    ),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (!event.data) return;
+
+  if (event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+
+  if (event.data.type === "PURGE_ALL_CACHES") {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))),
+    );
+    return;
+  }
+
+  if (event.data.type === "CONSOLE_ERROR_LOGGED") {
+    const errorMsg = String(event.data.error || "");
+    const looksStale =
+      /mime type|dynamically imported module|loading chunk|chunkloaderror/i.test(
+        errorMsg,
+      );
+
+    console.warn("[Mimi SW Self-Healing] Runtime signal:", errorMsg);
+
+    event.waitUntil(
+      (async () => {
+        if (looksStale) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+          console.log("[Mimi SW Self-Healing] Purged all caches after stale-asset signal");
+        } else {
+          const cache = await caches.open(CACHE_NAME);
+          const requests = await cache.keys();
+          await Promise.all(
+            requests
+              .filter(
+                (req) =>
+                  req.url.includes("/components/") ||
+                  req.url.includes("/services/") ||
+                  req.url.includes("/assets/"),
+              )
+              .map((req) => cache.delete(req)),
+          );
+        }
+
+        if (event.source) {
+          event.source.postMessage({
+            type: "SELF_HEALING_CORRECTION",
+            originalError: errorMsg,
+            purgedAll: looksStale,
+            timestamp: Date.now(),
+          });
+        }
+      })(),
     );
   }
 });
-
-// Listener for console/runtime errors to automate dynamic cache correction and "push patches"
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'CONSOLE_ERROR_LOGGED') {
-    const errorMsg = event.data.error || 'Unknown runtime malfunction';
-    console.warn('[Mimi SW Self-Healing] Intercepted runtime malfunction signal:', errorMsg);
-    
-    // Perform self-healing cache eviction / stale resource refresh
-    caches.open(CACHE_NAME).then((cache) => {
-      // Evict potential broken cache entries related to script errors or asset loads
-      cache.keys().then((requests) => {
-        requests.forEach((req) => {
-          if (req.url.includes('/components/chambers/') || req.url.includes('/services/')) {
-            cache.delete(req); // Dynamic cache pruning
-          }
-        });
-      });
-    }).then(() => {
-      console.log('[Mimi SW Self-Healing] Cache evicted. Deploying dynamic self-correction patch...');
-      
-      // Notify client that correction has been pushed successfully
-      if (event.source) {
-        event.source.postMessage({
-          type: 'SELF_HEALING_CORRECTION',
-          originalError: errorMsg,
-          timestamp: Date.now()
-        });
-      }
-    });
-  }
-});
-

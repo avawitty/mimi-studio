@@ -131,7 +131,7 @@ export const ElevatorLoader: React.FC<ElevatorLoaderProps> = ({ onComplete, onBy
             {/* HEADLINE */}
             <div className="text-center mb-10 md:mb-14">
               <h1 className="font-serif text-2xl md:text-4xl italic tracking-tight text-[#5C1A1A] dark:text-[#E89E9E]">Who are you when no one is watching?</h1>
-              <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 mt-2 block">MIMI // ANTIDOTE FOR BRAIN ROT</span>
+              <span className="font-mono text-[8px] tracking-widest text-stone-400 mt-2 block">Mimi // antidote for brain rot</span>
             </div>
 
             {/* CONSOLE & ELEVATOR OUTLINE */}
@@ -167,7 +167,7 @@ export const ElevatorLoader: React.FC<ElevatorLoaderProps> = ({ onComplete, onBy
                     >
                       ▲
                     </motion.span>
-                    <span className="font-mono text-[6.5px] uppercase tracking-widest text-stone-400 font-black">MIMI</span>
+                    <span className="font-mono text-[6.5px] tracking-widest text-stone-400 font-black">Mimi</span>
                   </div>
                 </motion.div>
               </div>
