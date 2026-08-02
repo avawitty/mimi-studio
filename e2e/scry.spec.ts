@@ -1,13 +1,44 @@
 import { test, expect, type Page } from "@playwright/test";
 
+async function dismissBlockingOverlays(page: Page) {
+  const onboarding = page.getByRole("button", { name: "Dismiss onboarding" });
+  if (await onboarding.count()) {
+    await onboarding.first().click({ force: true }).catch(() => {});
+    await expect(onboarding).toHaveCount(0, { timeout: 5000 }).catch(() => {});
+  }
+
+  const gateway = page.locator("div.fixed.inset-0.z-\\[200\\]");
+  if (await gateway.count()) {
+    const close = gateway.locator("button").first();
+    if (await close.count()) {
+      await close.click({ force: true }).catch(() => {});
+    } else {
+      await gateway.locator("div.absolute.inset-0").first().click({ force: true }).catch(() => {});
+    }
+    await expect(gateway).toHaveCount(0, { timeout: 5000 }).catch(() => {});
+  }
+}
+
 async function waitForStableUI(page: Page) {
   await page.waitForLoadState("domcontentloaded");
   await expect(page.locator("div.fixed.inset-0.z-\\[20000\\].cursor-wait")).toHaveCount(0, {
     timeout: 15000,
   });
+  await dismissBlockingOverlays(page);
+}
+
+async function seedQuietSession(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("mimi_core_loop_onboarded", "1");
+    } catch {
+      // ignore
+    }
+  });
 }
 
 async function openScry(page: Page) {
+  await seedQuietSession(page);
   await page.goto("/");
   await waitForStableUI(page);
   await page.evaluate(() => {
