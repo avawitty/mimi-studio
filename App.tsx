@@ -82,6 +82,7 @@ import { MENU_STRUCTURE } from "./components/navigationConfig";
 import { canonicalizeMimiRoute } from "./lib/productCanon";
 import { LegalDocumentPage } from "./components/LegalDocumentPage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import { legalTypeFromPath } from "./lib/legalContent";
 import { useTactileAudio } from "./hooks/useTactileAudio";
 import { useChamber } from "./hooks/useChamber";
 
@@ -950,8 +951,7 @@ const getRestorableRoute = (candidate: string): string | null => {
     pathname.startsWith("/u/") ||
     pathname.startsWith("/stacks/") ||
     pathname.startsWith("/auth/") ||
-    pathname === "/privacy" ||
-    pathname === "/terms" ||
+    legalTypeFromPath(pathname) != null ||
     pathname === "/showcase" ||
     pathname === "/success" ||
     pathname === "/canceled"
@@ -2259,17 +2259,16 @@ export const App: React.FC = () => {
     return <StackView stackId={stackId} />;
   }
 
-  if (
-    window.location.pathname === "/privacy" ||
-    window.location.pathname === "/terms"
-  ) {
-    const type = window.location.pathname === "/privacy" ? "privacy" : "terms";
-    return (
-      <>
-        <LegalDocumentPage type={type} />
-        <CookieConsentBanner />
-      </>
-    );
+  {
+    const legalType = legalTypeFromPath(window.location.pathname);
+    if (legalType) {
+      return (
+        <>
+          <LegalDocumentPage type={legalType} />
+          <CookieConsentBanner />
+        </>
+      );
+    }
   }
 
   if (isPatronMint) {
