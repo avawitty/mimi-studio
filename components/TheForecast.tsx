@@ -57,8 +57,22 @@ export const TheForecast: React.FC = () => {
   // Safely extract properties
   const dna = profile?.aestheticDNA || null;
   const geo = profile?.geoProfile || null;
-  const driftScore = geo?.driftScore || Math.floor(Math.random() * 30 + 10);
-  const driftDirection = driftScore > 50 ? 'Severe Turbulence' : 'Stable Micro-Climate';
+  const vectorEntropy = Number(
+    (profile as { aestheticVector?: { entropy?: number } } | null)?.aestheticVector
+      ?.entropy,
+  );
+  const driftScore =
+    typeof geo?.driftScore === "number" && Number.isFinite(geo.driftScore)
+      ? geo.driftScore
+      : Number.isFinite(vectorEntropy)
+        ? Math.round(Math.min(100, Math.max(0, vectorEntropy * 100)))
+        : null;
+  const driftDirection =
+    driftScore == null
+      ? "Insufficient Signal"
+      : driftScore > 50
+        ? "Severe Turbulence"
+        : "Stable Micro-Climate";
 
   return (
     <div className="flex-1 flex overflow-hidden bg-[#EAE8E4] text-nous-text">
@@ -172,7 +186,9 @@ export const TheForecast: React.FC = () => {
               <div className="relative z-10 mt-12 grid grid-cols-2 gap-4 border-t border-nous-border/50 pt-4">
                 <div>
                   <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">Drift Probability</span>
-                  <span className="font-sans text-xl tracking-tight">{driftScore}%</span>
+                  <span className="font-sans text-xl tracking-tight">
+                    {driftScore == null ? "—" : `${driftScore}%`}
+                  </span>
                 </div>
                 <div>
                   <span className="block font-mono text-[8px] uppercase tracking-widest text-nous-subtle mb-1">Atmospheric State</span>
@@ -323,7 +339,12 @@ export const TheForecast: React.FC = () => {
                  <div className="bg-nous-surface border border-nous-border p-6 flex flex-col gap-6">
                    <h3 className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle">Format Resonance Index</h3>
                    <div className="space-y-6">
-                     {contentForecast.trends.map((trend, idx) => (
+                     {contentForecast.trends.length === 0 ? (
+                       <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle leading-relaxed">
+                         No live format vectors yet. Connect You.com / AI Gateway credits and retry.
+                       </p>
+                     ) : (
+                       contentForecast.trends.map((trend, idx) => (
                        <div key={idx} className="space-y-2">
                          <div className="flex justify-between font-mono text-[9px] uppercase items-center">
                            <span className="font-bold text-[11px]">{trend.format}</span>
@@ -360,7 +381,8 @@ export const TheForecast: React.FC = () => {
                            </div>
                          )}
                        </div>
-                     ))}
+                     ))
+                     )}
                    </div>
                  </div>
                  <div className="bg-transparent border border-nous-border p-6 flex flex-col justify-between sticky top-4 h-fit">

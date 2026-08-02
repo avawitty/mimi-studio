@@ -181,6 +181,38 @@ export const getClient = (apiKeyOverride?: string, excludeKeys: string[] = []) =
             throw await handleProxyError(res);
           }
           return await safeJsonResponse(res);
+        },
+        downloadVideo: async (params: any) => {
+          const headers = await buildGeminiProxyHeaders(key);
+          const res = await window.fetch('/api/proxy/gemini', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              action: 'downloadVideo',
+              params
+            })
+          });
+          if (!res.ok) {
+            throw await handleProxyError(res);
+          }
+          return await safeJsonResponse(res);
+        }
+      },
+      operations: {
+        getVideosOperation: async (params: any) => {
+          const headers = await buildGeminiProxyHeaders(key);
+          const res = await window.fetch('/api/proxy/gemini', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              action: 'getVideosOperation',
+              params
+            })
+          });
+          if (!res.ok) {
+            throw await handleProxyError(res);
+          }
+          return await safeJsonResponse(res);
         }
       },
       live: realGenAi?.live ?? {

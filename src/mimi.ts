@@ -1,7 +1,19 @@
 import express, { Router, Request, Response } from "express";
 import { Anthropic } from "@anthropic-ai/sdk";
+import { randomUUID } from "crypto";
 
 export const mimiRouter: Router = express.Router();
+
+type MimiBrief = {
+  id: string;
+  title: string;
+  sourceMaterial: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Process-local brief store for MCP /api/mimi brief routes. */
+const briefStore = new Map<string, MimiBrief>();
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -71,9 +83,15 @@ Be conversational, thoughtful, and always defer final decisions to the creator.`
   }
 });
 
-// Example: POST route to create a brief
+mimiRouter.get("/brief", (_req: Request, res: Response) => {
+  const briefs = Array.from(briefStore.values()).sort((a, b) =>
+    b.updatedAt.localeCompare(a.updatedAt),
+  );
+  res.json({ status: "ok", briefs });
+});
+
 mimiRouter.post("/brief", (req: Request, res: Response) => {
-  const { title, sourceMaterial } = req.body;
+  const { title, sourceMaterial, id } = req.body || {};
 
   if (!title || !sourceMaterial) {
     return res.status(400).json({
@@ -81,28 +99,37 @@ mimiRouter.post("/brief", (req: Request, res: Response) => {
     });
   }
 
-  // TODO: Add brief creation logic
-  res.json({
-    status: "created",
-    brief: {
-      id: `brief-${Date.now()}`,
-      title,
-      sourceMaterial,
-    },
+  const now = new Date().toISOString();
+  const briefId = typeof id === "string" && id.trim() ? id.trim() : `brief-${randomUUID()}`;
+  const existing = briefStore.get(briefId);
+  const brief: MimiBrief = {
+    id: briefId,
+    title: String(title),
+    sourceMaterial: String(sourceMaterial),
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+  };
+  briefStore.set(briefId, brief);
+
+  res.status(existing ? 200 : 201).json({
+    status: existing ? "updated" : "created",
+    brief,
   });
 });
 
-// Example: GET route to retrieve a brief
 mimiRouter.get("/brief/:id", (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id || "");
+  const brief = briefStore.get(id);
 
-  // TODO: Add brief retrieval logic
+  if (!brief) {
+    return res.status(404).json({
+      error: "Brief not found",
+      id,
+    });
+  }
+
   res.json({
     status: "retrieved",
-    brief: {
-      id,
-      title: "Example brief",
-      sourceMaterial: "Example material",
-    },
+    brief,
   });
 });

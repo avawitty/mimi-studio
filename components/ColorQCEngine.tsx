@@ -7,6 +7,11 @@ import {
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import {
+  analyzeColorSample,
+  loadImageDataFromUrl,
+  type ColorQcAnalysisResult,
+} from '../lib/colorQcAnalysis';
 
 interface QCReport {
   status: 'passed' | 'flagged' | 'failed';
@@ -16,6 +21,15 @@ interface QCReport {
   issues: string[];
   suggestions: string[];
 }
+
+const toQcReport = (result: ColorQcAnalysisResult): QCReport => ({
+  status: result.status,
+  colorSpace: result.colorSpace,
+  dominance: result.dominance,
+  deltaE: result.deltaE,
+  issues: result.issues,
+  suggestions: result.suggestions,
+});
 
 interface ImageTask {
   id: string;
@@ -58,47 +72,77 @@ export const ColorQCEngine: React.FC = () => {
     setBrandReferenceName(file.name);
   };
 
-  const simulateAnalysis = async (taskId: string, forcePass = false) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'analyzing' } : t));
-    
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1500));
+  const runAnalysis = async (taskId: string, forcePass = false) => {
+    let previewUrl: string | null = null;
+    setTasks((prev) => {
+      const task = prev.find((t) => t.id === taskId);
+      previewUrl = task?.previewUrl ?? null;
+      return prev.map((t) => (t.id === taskId ? { ...t, status: "analyzing" } : t));
+    });
+    if (!previewUrl) return;
 
-    // Mock report generation based on color space
-    const isError = forcePass ? false : Math.random() > 0.5;
-    const mockReport: QCReport = {
-      status: isError ? 'flagged' : 'passed',
-      colorSpace: targetColorSpace === 'sRGB' ? 'sRGB (Web)' : targetColorSpace === 'CMYK' ? 'CMYK (SWOP)' : 'sRGB + CMYK',
-      dominance: [
-        { color: 'Primary Base', hex: '#E4E3E0', percentage: 65 },
-        { color: 'Shadow', hex: '#2A2A2A', percentage: 25 },
-        { color: 'Highlight', hex: '#FAFAFA', percentage: 10 }
-      ],
-      deltaE: isError ? +(Math.random() * 4 + 2).toFixed(2) : +(Math.random() * 1.5).toFixed(2),
-      issues: isError ? [
-        'Product color is significantly warmer than approved reference',
-        'Background has a slight yellow cast',
-        targetColorSpace === 'CMYK' || targetColorSpace === 'Both' ? 'Total ink limit exceeded in shadows' : 'sRGB profile tag missing'
-      ] : [],
-      suggestions: isError ? [
-        'Apply secondary color correction node to shadows (-2 Yellow)',
-        'Normalize background to true neutral (L:95 a:0 b:0)'
-      ] : ['File meets all QC parameters. Ready for export.']
-    };
+    try {
+      const image = await loadImageDataFromUrl(previewUrl);
+      const reference = brandReferenceUrl
+        ? await loadImageDataFromUrl(brandReferenceUrl)
+        : null;
+      const report = toQcReport(
+        analyzeColorSample({
+          data: image.data,
+          width: image.width,
+          height: image.height,
+          targetColorSpace,
+          reference,
+          forcePass,
+        }),
+      );
 
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'complete', report: mockReport, isFixed: forcePass } : t));
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? { ...t, status: "complete", report, isFixed: forcePass }
+            : t,
+        ),
+      );
+    } catch (err) {
+      console.error("MIMI // Color QC analysis failed:", err);
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                status: "complete",
+                report: {
+                  status: "failed",
+                  colorSpace:
+                    targetColorSpace === "sRGB"
+                      ? "sRGB (Web)"
+                      : targetColorSpace === "CMYK"
+                        ? "CMYK (estimated)"
+                        : "sRGB + CMYK",
+                  dominance: [],
+                  deltaE: 0,
+                  issues: ["Unable to decode image pixels for QC"],
+                  suggestions: ["Re-upload as JPEG or PNG and retry"],
+                },
+                isFixed: false,
+              }
+            : t,
+        ),
+      );
+    }
   };
 
   const processAll = async () => {
     setIsProcessingBulk(true);
     for (const task of tasks.filter(t => t.status === 'pending')) {
-      await simulateAnalysis(task.id);
+      await runAnalysis(task.id);
     }
     setIsProcessingBulk(false);
   };
 
   const handleApplyFixes = async (taskId: string) => {
-    await simulateAnalysis(taskId, true);
+    await runAnalysis(taskId, true);
   };
 
   const handleNavigate = (direction: -1 | 1) => {
@@ -118,7 +162,7 @@ export const ColorQCEngine: React.FC = () => {
     setIsProcessingBulk(true);
     const flaggedTasks = tasks.filter(t => t.report?.status === 'flagged' || t.report?.status === 'failed');
     for (const task of flaggedTasks) {
-      await simulateAnalysis(task.id, true);
+      await runAnalysis(task.id, true);
     }
     setIsProcessingBulk(false);
   };
@@ -416,7 +460,7 @@ export const ColorQCEngine: React.FC = () => {
                   <Target size={32} />
                   <p className="font-mono text-[10px] uppercase tracking-widest">Awaiting Analysis</p>
                   <button 
-                    onClick={() => simulateAnalysis(activeImage.id)}
+                    onClick={() => runAnalysis(activeImage.id)}
                     className="px-4 py-2 border border-nous-border hover:bg-nous-base transition-colors font-mono text-[9px] uppercase tracking-widest text-nous-text"
                   >
                     Analyze Image

@@ -25,10 +25,18 @@ import {
   generateGeminiContentViaGateway,
   generateGeminiImageViaGateway,
   generateGeminiImagesViaGateway,
+  generateGeminiVideoViaGateway,
+  pollGatewayVideoOperation,
   getServerAiGatewayKey,
   isGeminiImageRequest,
   openAiMessagesViaGateway,
 } from "./lib/aiGatewayCompat";
+import createZineHandler from "./api/mimi/create-zine";
+import analyzeImageHandler from "./api/mimi/analyze-image";
+import analyzeSignalsHandler from "./api/mimi/analyze-signals";
+import generateSpecHandler from "./api/mimi/generate-spec";
+import generateImageHandler from "./api/mimi/generate-image";
+import synthesizeDossierHandler from "./api/mimi/synthesize-dossier";
 import { fetchPinterestBoardPreview } from "./lib/pinterestBoardPreview";
 import { fetchLetterboxdFeed } from "./lib/letterboxdFeed";
 import { getShopifyConnectionStatus, publishShopifyDraft } from "./lib/shopifyAdmin";
@@ -712,12 +720,34 @@ async function startServer() {
           return res.json(await generateGeminiImagesViaGateway(params, gatewayKey));
         }
         if (action === "generateVideos") {
-          return res.status(501).json({
-            error: {
-              code: "GATEWAY_VIDEO_ADAPTER_PENDING",
-              message:
-                "Mimi video generation is not yet connected to the AI Gateway video runtime. Text, vision, embeddings, and image generation are connected.",
-            },
+          return res.json(await generateGeminiVideoViaGateway(params, gatewayKey));
+        }
+        if (action === "getVideosOperation") {
+          const jobId = String(params?.operation?._gatewayJobId || params?._gatewayJobId || "");
+          if (!jobId) {
+            return res.status(400).json({
+              error: { message: "Gateway video job ID is required for polling." },
+            });
+          }
+          return res.json(await pollGatewayVideoOperation(jobId, gatewayKey));
+        }
+        if (action === "downloadVideo") {
+          const uri = String(params?.uri || "");
+          if (!uri) {
+            return res.status(400).json({ error: { message: "Video download URI is required." } });
+          }
+          const videoResponse = await fetch(uri, {
+            headers: { Authorization: `Bearer ${gatewayKey}` },
+          });
+          if (!videoResponse.ok) {
+            return res.status(videoResponse.status).json({
+              error: { message: `Gateway video download failed: ${videoResponse.statusText}` },
+            });
+          }
+          const arrayBuffer = await videoResponse.arrayBuffer();
+          return res.json({
+            data: Buffer.from(arrayBuffer).toString("base64"),
+            mimeType: videoResponse.headers.get("content-type") || "video/mp4",
           });
         }
         return res.status(400).json({
@@ -912,6 +942,27 @@ async function startServer() {
       } else if (action === 'generateVideos') {
         result = await tempAi.models.generateVideos(params);
         return res.json(result);
+      } else if (action === 'getVideosOperation') {
+        result = await tempAi.operations.getVideosOperation(params);
+        return res.json(result);
+      } else if (action === 'downloadVideo') {
+        const uri = String(params?.uri || '');
+        if (!uri) {
+          return res.status(400).json({ error: { message: "Video download URI is required." } });
+        }
+        const videoResponse = await fetch(uri, {
+          headers: { 'x-goog-api-key': apiKey },
+        });
+        if (!videoResponse.ok) {
+          return res.status(videoResponse.status).json({
+            error: { message: `Video download failed: ${videoResponse.statusText}` },
+          });
+        }
+        const arrayBuffer = await videoResponse.arrayBuffer();
+        return res.json({
+          data: Buffer.from(arrayBuffer).toString('base64'),
+          mimeType: videoResponse.headers.get('content-type') || 'video/mp4',
+        });
       } else {
         return res.status(400).json({ error: { message: `Unsupported action: ${action}` } });
       }
@@ -1662,6 +1713,72 @@ async function startServer() {
       await embedHandler(req, res);
     } catch (error: any) {
       console.error("MIMI // Route error in /api/mimi/embed:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/create-zine", async (req, res) => {
+    try {
+      await createZineHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/create-zine:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/analyze-image", async (req, res) => {
+    try {
+      await analyzeImageHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/analyze-image:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/analyze-signals", async (req, res) => {
+    try {
+      await analyzeSignalsHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/analyze-signals:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/generate-spec", async (req, res) => {
+    try {
+      await generateSpecHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/generate-spec:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/generate-image", async (req, res) => {
+    try {
+      await generateImageHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/generate-image:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/synthesize-dossier", async (req, res) => {
+    try {
+      await synthesizeDossierHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/synthesize-dossier:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }

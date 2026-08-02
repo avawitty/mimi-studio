@@ -2787,11 +2787,131 @@ export const refineProposalSection = async (
   });
 };
 
-// --- STUBBED FUNCTIONS FOR BUILD INTEGRITY ---
-// These are placeholders for functions referenced in the codebase but whose logic was not fully provided in the request context.
-// In a production fix, these would be fully implemented.
+const bytesToBase64 = (bytes: Uint8Array): string => {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+};
 
-export const animateShardWithVeo = async (imageUrl: string, prompt: string, ratio: string) => "https://example.com/video_stub.mp4";
+const loadImageBytesForVideo = async (
+  imageUrl?: string | null,
+): Promise<{ imageBytes: string; mimeType: string } | null> => {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith("data:")) {
+    const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return null;
+    return { mimeType: match[1] || "image/jpeg", imageBytes: match[2] };
+  }
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const buffer = new Uint8Array(await blob.arrayBuffer());
+    return {
+      mimeType: blob.type || "image/jpeg",
+      imageBytes: bytesToBase64(buffer),
+    };
+  } catch (err) {
+    console.warn("MIMI // Unable to load catalyst image for Veo:", err);
+    return null;
+  }
+};
+
+/**
+ * Animate a still plate via Veo (Gemini direct or AI Gateway video runtime).
+ * Returns a playable blob: URL (preferred) or remote URI.
+ */
+export const animateShardWithVeo = async (
+  imageUrl: string,
+  prompt: string,
+  ratio: string,
+): Promise<string> => {
+  const { ai, keyUsed } = getClient();
+  const aspectRatio = ratio === "9:16" ? "9:16" : "16:9";
+  const catalyst = await loadImageBytesForVideo(imageUrl);
+
+  const videoParams: Record<string, unknown> = {
+    model: modelFor("video", "gemini"),
+    prompt:
+      prompt?.trim() ||
+      "Subtle cinematic motion, editorial atmosphere, restrained camera drift",
+    config: {
+      numberOfVideos: 1,
+      resolution: "720p",
+      aspectRatio,
+    },
+  };
+
+  if (catalyst) {
+    videoParams.image = {
+      imageBytes: catalyst.imageBytes,
+      mimeType: catalyst.mimeType,
+    };
+  }
+
+  let operation: any = await ai.models.generateVideos(videoParams);
+
+  let attempts = 0;
+  while (!operation?.done && attempts < 36) {
+    const jobId = operation?._gatewayJobId || operation?.name;
+    if (!jobId && !ai.operations?.getVideosOperation) break;
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    if (!ai.operations?.getVideosOperation) break;
+    operation = await ai.operations.getVideosOperation({
+      operation,
+      _gatewayJobId: operation?._gatewayJobId,
+    });
+    attempts += 1;
+  }
+
+  const downloadLink =
+    operation?.response?.generatedVideos?.[0]?.video?.uri ||
+    operation?.response?.generatedVideos?.[0]?.video?.url ||
+    "";
+
+  if (!downloadLink) {
+    throw new Error(
+      "Veo returned no video URI. Ensure AI Gateway video or a Gemini key with Veo access is configured.",
+    );
+  }
+
+  // Prefer proxy download so authenticated / CORS-gated URIs become local blobs.
+  if (typeof ai.models.downloadVideo === "function") {
+    try {
+      const downloaded = await ai.models.downloadVideo({ uri: downloadLink });
+      if (downloaded?.data) {
+        const mime = downloaded.mimeType || "video/mp4";
+        const binary = atob(downloaded.data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return URL.createObjectURL(new Blob([bytes], { type: mime }));
+      }
+    } catch (err) {
+      console.warn("MIMI // Video proxy download failed; using remote URI:", err);
+    }
+  }
+
+  // Direct Gemini download path when BYOK key is present in the browser.
+  if (keyUsed && keyUsed !== "Proxy" && downloadLink.includes("generativelanguage")) {
+    try {
+      const response = await fetch(downloadLink, {
+        headers: { "x-goog-api-key": keyUsed },
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+      }
+    } catch (err) {
+      console.warn("MIMI // Direct Veo download failed; using remote URI:", err);
+    }
+  }
+
+  return downloadLink;
+};
+
 export const transcribeAudio = async (base64: string, mimeType: string = 'audio/webm') => {
     return await withResilience(async (ai) => {
         const response = await ai.models.generateContent({
