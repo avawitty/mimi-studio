@@ -15,20 +15,60 @@ import {
   resolveIdentityViewUrl,
   writeStoredActiveDollId,
 } from "../../services/dollEngine";
+import {
+  isMimiYouTab,
+  mimiYouTabPath,
+  type MimiYouTab,
+} from "../../lib/mimiYouRoutes";
 
 interface MimiDollsChamberProps {
   navigate: (path: string) => void;
+  /** Second path segment under /mimi-dolls/… — drives shell/hub/shader + hub tabs. */
+  pathSegment?: string | null;
 }
 
 type ChamberView = "shell" | "shader" | "hub";
 
-export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({ navigate }) => {
+function viewFromSegment(segment: string | null | undefined): {
+  view: ChamberView;
+  hubTab: MimiYouTab;
+} {
+  if (!segment || segment === "shell") {
+    return { view: "shell", hubTab: "overview" };
+  }
+  if (segment === "shader") {
+    return { view: "shader", hubTab: "overview" };
+  }
+  if (segment === "universe" || isMimiYouTab(segment) || segment === "hub") {
+    const hubTab: MimiYouTab =
+      segment === "universe" || segment === "hub"
+        ? "overview"
+        : isMimiYouTab(segment)
+          ? segment
+          : "overview";
+    return { view: "hub", hubTab };
+  }
+  return { view: "shell", hubTab: "overview" };
+}
+
+export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
+  navigate,
+  pathSegment = null,
+}) => {
   const { user, profile } = useUser();
-  const [chamberView, setChamberView] = useState<ChamberView>("shell");
+  const routed = viewFromSegment(pathSegment);
+  const chamberView = routed.view;
+  const hubTab = routed.hubTab;
   const [dolls, setDolls] = useState<Doll[]>([]);
   const [boundDollId, setBoundDollId] = useState<string | null>(() => readStoredActiveDollId());
   const [openProfile, setOpenProfile] = useState(false);
   const [loadingDolls, setLoadingDolls] = useState(false);
+
+  const setChamberView = (view: ChamberView) => {
+    if (view === "shell") navigate("/mimi-dolls");
+    else if (view === "shader") navigate("/mimi-dolls/shader");
+    else navigate(mimiYouTabPath("overview"));
+  };
   const handle =
     profile?.handle ||
     user?.email?.split("@")[0]?.replace(/\s+/g, "-").toLowerCase() ||
@@ -345,7 +385,12 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({ navigate }) 
           </button>
         </div>
       ) : (
-        <MimiYouHub userId={user.uid} handle={handle} navigate={navigate} />
+        <MimiYouHub
+          userId={user.uid}
+          handle={handle}
+          navigate={navigate}
+          activeTab={hubTab}
+        />
       )}
     </ChamberShell>
   );

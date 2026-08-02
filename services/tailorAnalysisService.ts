@@ -34,6 +34,12 @@ import {
   updateGenerationJob,
   ensureDefaultDollMasks,
 } from './tailorService';
+import {
+  evaluateGenerationReadiness,
+  isGenerationBlocked,
+  isMarketingAssetType,
+} from './tailorReadiness';
+import { assertProjectGraphBinding } from './tailorProjection';
 
 const TAILOR_ANALYSIS_CONSTITUTION = `${ORACLE_PERSONA}
 
@@ -390,6 +396,23 @@ export async function generateCreativeDossierForProject(
     listCreativeLaws(userId, projectId),
   ]);
 
+  const readiness = evaluateGenerationReadiness({
+    action: 'dossier',
+    project,
+    evidenceCount: evidence.length,
+    patterns: clusters,
+    laws,
+  });
+  if (isGenerationBlocked(readiness)) {
+    const err = new Error(readiness.explanation) as Error & {
+      prerequisite: string;
+      recoveryAction: string;
+    };
+    err.prerequisite = readiness.prerequisite;
+    err.recoveryAction = readiness.recoveryAction;
+    throw err;
+  }
+
   const acceptedClusters = clusters.filter((c) => c.userStatus === 'accepted');
   const acceptedLaws = laws.filter((l) => l.userStatus === 'accepted');
   const rejectedClusters = clusters.filter((c) => c.userStatus === 'rejected');
@@ -466,12 +489,30 @@ export async function generateDollFromGraph(
 ): Promise<Doll> {
   const project = await getTailorProject(userId, projectId);
   if (!project?.tasteGraphId) throw new Error('Project not found');
+  assertProjectGraphBinding(project, project.tasteGraphId);
 
   const [clusters, laws, evidence] = await Promise.all([
     listPatternClusters(userId, projectId),
     listCreativeLaws(userId, projectId),
     listEvidenceNodes(userId, projectId),
   ]);
+
+  const readiness = evaluateGenerationReadiness({
+    action: 'doll',
+    project,
+    evidenceCount: evidence.length,
+    patterns: clusters,
+    laws,
+  });
+  if (isGenerationBlocked(readiness)) {
+    const err = new Error(readiness.explanation) as Error & {
+      prerequisite: string;
+      recoveryAction: string;
+    };
+    err.prerequisite = readiness.prerequisite;
+    err.recoveryAction = readiness.recoveryAction;
+    throw err;
+  }
 
   const acceptedLaws = laws.filter((l) => l.userStatus === 'accepted' || l.userStatus === 'suggested');
   const acceptedClusters = clusters.filter((c) => c.userStatus === 'accepted' || c.userStatus === 'suggested');
@@ -571,7 +612,41 @@ export async function generateMarketingAsset(
   assetType: MarketingAsset['assetType'],
   dollId?: string,
 ): Promise<MarketingAsset> {
-  const laws = await listCreativeLaws(userId, projectId);
+  const project = await getTailorProject(userId, projectId);
+  assertProjectGraphBinding(
+    project ?? { id: projectId, tasteGraphId: undefined },
+    tasteGraphId,
+  );
+
+  const [laws, clusters, evidence] = await Promise.all([
+    listCreativeLaws(userId, projectId),
+    listPatternClusters(userId, projectId),
+    listEvidenceNodes(userId, projectId),
+  ]);
+
+  const readiness = evaluateGenerationReadiness({
+    action: 'marketing_asset',
+    project,
+    evidenceCount: evidence.length,
+    patterns: clusters,
+    laws,
+    assetType,
+    expectedTasteGraphId: tasteGraphId,
+  });
+  if (isGenerationBlocked(readiness)) {
+    const err = new Error(readiness.explanation) as Error & {
+      prerequisite: string;
+      recoveryAction: string;
+    };
+    err.prerequisite = readiness.prerequisite;
+    err.recoveryAction = readiness.recoveryAction;
+    throw err;
+  }
+
+  if (!isMarketingAssetType(assetType)) {
+    throw new Error('invalid_asset_type');
+  }
+
   const accepted = laws.filter((l) => l.userStatus === 'accepted');
 
   const assetData = await withResilience(async (ai) => {

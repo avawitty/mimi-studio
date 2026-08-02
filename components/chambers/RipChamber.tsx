@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Sparkles } from "lucide-react";
 import { ChamberShell } from "./ChamberShell";
 import { useUser } from "../../contexts/UserContext";
-import { listDolls } from "../../services/tailorService";
+import { getDoll, listDolls } from "../../services/tailorService";
+import { readStoredActiveDollId } from "../../services/dollEngine";
 import {
   generateRipReading,
   listRipReadings,
@@ -35,8 +36,11 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
     setLoading(true);
     setError(null);
     try {
-      const dolls = await listDolls(user.uid);
-      const doll: Doll | null = dolls[0] || null;
+      const boundId = readStoredActiveDollId();
+      const doll: Doll | null = boundId
+        ? await getDoll(user.uid, boundId)
+        : (await listDolls(user.uid))[0] || null;
+      // Prefer explicitly bound doll + its project/graph ids — never invent a cross-join.
       const next = await generateRipReading({
         userId: user.uid,
         projectId: doll?.projectId,
@@ -68,16 +72,19 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
           setReading(existing[0]);
           return;
         }
-        // Auto-derive once when no reading exists
-        const dolls = await listDolls(user.uid);
+        // Auto-derive once when no reading exists — bind via stored doll id when present.
+        const boundId = readStoredActiveDollId();
+        const doll = boundId
+          ? await getDoll(user.uid, boundId)
+          : (await listDolls(user.uid))[0] || null;
         if (cancelled) return;
         const next = await generateRipReading({
           userId: user.uid,
-          projectId: dolls[0]?.projectId,
-          tasteGraphId: dolls[0]?.tasteGraphId,
+          projectId: doll?.projectId,
+          tasteGraphId: doll?.tasteGraphId,
           dossier: profile?.evidenceDossier || null,
           likeness: profile?.likenessManifest || null,
-          doll: dolls[0] || null,
+          doll,
           tailorDraft: profile?.tailorDraft || null,
         });
         if (!cancelled) setReading(next);

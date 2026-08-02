@@ -2,6 +2,16 @@ import type { Express, Request, Response } from 'express';
 import type { Firestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { searchMetMuseum, searchWikimedia, generateArtHistoryMatchesForProject } from '../services/artHistoryService';
+import { stripUndefined } from '../lib/stripUndefined';
+import {
+  addEvidenceBodySchema,
+  artHistoryBodySchema,
+  createMarketingJobBodySchema,
+  createProjectBodySchema,
+  parseBody,
+  patternPatchBodySchema,
+  tailorIntentSchema,
+} from '../services/tailorApiValidation';
 
 async function verifyUser(req: Request): Promise<string | null> {
   const token = req.headers.authorization?.split('Bearer ')[1];
@@ -19,9 +29,16 @@ export function registerTailorRoutes(app: Express, db: Firestore | null) {
     const uid = await verifyUser(req);
     if (!uid || !db) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { intent, title } = req.body as { intent?: string; title?: string };
-    if (!intent) return res.status(400).json({ error: 'intent required' });
+    const parsed = parseBody(createProjectBodySchema, req.body);
+    if (parsed.ok === false) return res.status(400).json({ error: parsed.error });
 
+    const intentResult = tailorIntentSchema.safeParse(parsed.data.intent);
+    if (!intentResult.success) {
+      return res.status(400).json({ error: 'intent: invalid TailoringIntent' });
+    }
+
+    const intent = intentResult.data;
+    const title = parsed.data.title;
     const id = crypto.randomUUID();
     const now = Date.now();
     const project = {
@@ -37,22 +54,24 @@ export function registerTailorRoutes(app: Express, db: Firestore | null) {
     };
 
     const graphId = crypto.randomUUID();
-    await db.doc(`users/${uid}/tailorProjects/${id}`).set(project);
-    await db.doc(`users/${uid}/tasteGraphs/${graphId}`).set({
-      id: graphId,
-      userId: uid,
-      projectId: id,
-      evidenceNodeIds: [],
-      observationIds: [],
-      patternClusterIds: [],
-      creativeLawIds: [],
-      fieldNoteIds: [],
-      dollIds: [],
-      dossierIds: [],
-      version: 1,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await db.doc(`users/${uid}/tailorProjects/${id}`).set(stripUndefined(project));
+    await db.doc(`users/${uid}/tasteGraphs/${graphId}`).set(
+      stripUndefined({
+        id: graphId,
+        userId: uid,
+        projectId: id,
+        evidenceNodeIds: [],
+        observationIds: [],
+        patternClusterIds: [],
+        creativeLawIds: [],
+        fieldNoteIds: [],
+        dollIds: [],
+        dossierIds: [],
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
     await db.doc(`users/${uid}/tailorProjects/${id}`).update({ tasteGraphId: graphId });
 
     res.json({ ...project, tasteGraphId: graphId });
@@ -63,17 +82,13 @@ export function registerTailorRoutes(app: Express, db: Firestore | null) {
     if (!uid || !db) return res.status(401).json({ error: 'Unauthorized' });
 
     const { projectId } = req.params;
-    const body = req.body as {
-      sourceType?: string;
-      title?: string;
-      uploadedFileUrl?: string;
-      thumbnailUrl?: string;
-      userCaption?: string;
-    };
+    const parsed = parseBody(addEvidenceBodySchema, req.body);
+    if (parsed.ok === false) return res.status(400).json({ error: parsed.error });
 
+    const body = parsed.data;
     const id = crypto.randomUUID();
     const now = Date.now();
-    const node = {
+    const node = stripUndefined({
       id,
       userId: uid,
       projectId,
@@ -85,7 +100,7 @@ export function registerTailorRoutes(app: Express, db: Firestore | null) {
       analysisStatus: 'pending',
       createdAt: now,
       updatedAt: now,
-    };
+    });
 
     await db.doc(`users/${uid}/tailorProjects/${projectId}/evidenceNodes/${id}`).set(node);
     res.json(node);
@@ -97,29 +112,81 @@ export function registerTailorRoutes(app: Express, db: Firestore | null) {
 
     const jobId = crypto.randomUUID();
     const now = Date.now();
-    await db.doc(`users/${uid}/generationJobs/${jobId}`).set({
-      id: jobId,
-      userId: uid,
-      projectId: req.params.projectId,
-      jobType: 'analyze',
-      status: 'pending',
-      createdAt: now,
-      updatedAt: now,
-    });
+    await db.doc(`users/${uid}/generationJobs/${jobId}`).set(
+      stripUndefined({
+        id: jobId,
+        userId: uid,
+        projectId: req.params.projectId,
+        jobType: 'analyze',
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
 
     res.json({ jobId, status: 'pending', message: 'Analysis queued. Run client-side for multimodal processing.' });
+  });
+
+  app.post('/api/tailor/:projectId/marketing-assets', async (req: Request, res: Response) => {
+    const uid = await verifyUser(req);
+    if (!uid || !db) return res.status(401).json({ error: 'Unauthorized' });
+
+    const parsed = parseBody(createMarketingJobBodySchema, req.body);
+    if (parsed.ok === false) return res.status(400).json({ error: parsed.error });
+
+    const projectId = req.params.projectId as string;
+    const projectSnap = await db.doc(`users/${uid}/tailorProjects/${projectId}`).get();
+    if (!projectSnap.exists) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    const project = projectSnap.data() as { tasteGraphId?: string };
+    if (!project.tasteGraphId || project.tasteGraphId !== parsed.data.tasteGraphId) {
+      return res.status(400).json({
+        error: 'tasteGraphId must match the Tailor project binding',
+        prerequisite: 'project_graph_mismatch',
+        recoveryAction: 'Pass the project’s tasteGraphId explicitly.',
+      });
+    }
+
+    const jobId = crypto.randomUUID();
+    const now = Date.now();
+    await db.doc(`users/${uid}/generationJobs/${jobId}`).set(
+      stripUndefined({
+        id: jobId,
+        userId: uid,
+        projectId,
+        jobType: 'asset',
+        status: 'pending',
+        assetType: parsed.data.assetType,
+        dollId: parsed.data.dollId,
+        tasteGraphId: parsed.data.tasteGraphId,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+
+    res.json({
+      jobId,
+      status: 'pending',
+      assetType: parsed.data.assetType,
+      tasteGraphId: parsed.data.tasteGraphId,
+    });
   });
 
   app.patch('/api/tailor/:projectId/patterns/:patternId', async (req: Request, res: Response) => {
     const uid = await verifyUser(req);
     if (!uid || !db) return res.status(401).json({ error: 'Unauthorized' });
 
+    const parsed = parseBody(patternPatchBodySchema, req.body);
+    if (parsed.ok === false) return res.status(400).json({ error: parsed.error });
+
     const { projectId, patternId } = req.params;
-    const patch = req.body as Record<string, unknown>;
-    await db.doc(`users/${uid}/tailorProjects/${projectId}/patternClusters/${patternId}`).update({
-      ...patch,
-      updatedAt: Date.now(),
-    });
+    await db.doc(`users/${uid}/tailorProjects/${projectId}/patternClusters/${patternId}`).update(
+      stripUndefined({
+        ...parsed.data,
+        updatedAt: Date.now(),
+      }),
+    );
     res.json({ ok: true });
   });
 
@@ -141,11 +208,10 @@ export function registerTailorRoutes(app: Express, db: Firestore | null) {
     const uid = await verifyUser(req);
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { searchQueries, patternClusterIds, creativeLawIds } = req.body as {
-      searchQueries?: string[];
-      patternClusterIds?: string[];
-      creativeLawIds?: string[];
-    };
+    const parsed = parseBody(artHistoryBodySchema, req.body);
+    if (parsed.ok === false) return res.status(400).json({ error: parsed.error });
+
+    const { searchQueries, patternClusterIds, creativeLawIds } = parsed.data;
 
     const matches = await generateArtHistoryMatchesForProject(
       uid,

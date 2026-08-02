@@ -150,7 +150,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
               navigate={navigate}
               onExportDraft={async (draft) => {
                 if (updateProfile && draft && profile) {
-                  await updateProfile({ ...profile, tailorDraft: draft as any });
+                  await updateProfile({ ...profile, tailorDraft: draft });
                 }
                 onOverridesConsumed?.();
                 selectPanel('blueprint');

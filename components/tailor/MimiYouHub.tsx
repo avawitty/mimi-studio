@@ -5,17 +5,26 @@ import { DollProfileScreen } from './DollProfileScreen';
 import { DollGalleryCard } from "./DollGalleryCard";
 import { FieldNotesScreen } from './FieldNotesScreen';
 import { ArtHistoryMirrorScreen } from './ArtHistoryMirrorScreen';
+import {
+  MIMI_YOU_TABS,
+  mimiYouTabPath,
+  type MimiYouTab,
+} from '../../lib/mimiYouRoutes';
 
 interface MimiYouHubProps {
   userId: string;
   handle: string;
   navigate: (path: string) => void;
+  /** Canonical tab from URL; required for deep link / refresh / Back parity. */
+  activeTab: MimiYouTab;
 }
 
-type Tab = 'overview' | 'dolls' | 'field-notes' | 'art-history';
-
-export const MimiYouHub: React.FC<MimiYouHubProps> = ({ userId, handle, navigate }) => {
-  const [tab, setTab] = useState<Tab>('overview');
+export const MimiYouHub: React.FC<MimiYouHubProps> = ({
+  userId,
+  handle,
+  navigate,
+  activeTab,
+}) => {
   const [dolls, setDolls] = useState<Doll[]>([]);
   const [projects, setProjects] = useState<TailorProject[]>([]);
   const [selectedDoll, setSelectedDoll] = useState<Doll | null>(null);
@@ -44,12 +53,16 @@ export const MimiYouHub: React.FC<MimiYouHubProps> = ({ userId, handle, navigate
     );
   }
 
-  const tabs: { id: Tab; label: string }[] = [
+  const tabs: { id: MimiYouTab; label: string }[] = [
     { id: 'overview', label: 'Universe' },
     { id: 'dolls', label: 'Dolls' },
     { id: 'field-notes', label: 'Field Notes' },
     { id: 'art-history', label: 'Art History' },
   ];
+
+  const selectTab = (tab: MimiYouTab) => {
+    navigate(mimiYouTabPath(tab));
+  };
 
   return (
     <div className="h-full min-h-0 overflow-y-auto bg-[#FDFBF7] dark:bg-[#0A0A0A]">
@@ -66,9 +79,9 @@ export const MimiYouHub: React.FC<MimiYouHubProps> = ({ userId, handle, navigate
           <button
             key={t.id}
             type="button"
-            onClick={() => setTab(t.id)}
+            onClick={() => selectTab(t.id)}
             className={`px-4 py-3 text-[10px] uppercase tracking-widest whitespace-nowrap border-b-2 -mb-px ${
-              tab === t.id ? 'border-nous-text text-nous-text' : 'border-transparent text-nous-subtle'
+              activeTab === t.id ? 'border-nous-text text-nous-text' : 'border-transparent text-nous-subtle'
             }`}
           >
             {t.label}
@@ -76,7 +89,7 @@ export const MimiYouHub: React.FC<MimiYouHubProps> = ({ userId, handle, navigate
         ))}
       </nav>
 
-      {tab === 'overview' && (
+      {activeTab === 'overview' && (
         <div className="max-w-3xl mx-auto px-6 py-10">
           <div className="grid grid-cols-3 gap-4 mb-10">
             <div className="border border-nous-border/30 p-5 text-center">
@@ -102,7 +115,7 @@ export const MimiYouHub: React.FC<MimiYouHubProps> = ({ userId, handle, navigate
         </div>
       )}
 
-      {tab === 'dolls' && (
+      {activeTab === 'dolls' && (
         <div className="max-w-5xl mx-auto px-6 py-10">
           <div className="grid gap-6 md:grid-cols-2">
             {dolls.map((doll) => (
@@ -134,10 +147,13 @@ export const MimiYouHub: React.FC<MimiYouHubProps> = ({ userId, handle, navigate
         </div>
       )}
 
-      {tab === 'field-notes' && <FieldNotesScreen userId={userId} />}
-      {tab === 'art-history' && (
-        <ArtHistoryMirrorScreen userId={userId} onBack={() => setTab('overview')} />
+      {activeTab === 'field-notes' && <FieldNotesScreen userId={userId} />}
+      {activeTab === 'art-history' && (
+        <ArtHistoryMirrorScreen userId={userId} onBack={() => selectTab('overview')} />
       )}
+
+      {/* Exhaustiveness guard for tab set drift */}
+      {!MIMI_YOU_TABS.includes(activeTab) && null}
     </div>
   );
 };

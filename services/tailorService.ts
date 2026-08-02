@@ -18,6 +18,13 @@ import {
   tailorProfileToLegacyDraft,
   type TailorProfile,
 } from './tailorProfileContract';
+import { stripUndefined } from '../lib/stripUndefined';
+import {
+  buildCurationEventPayload,
+  buildPatternClusterCurationPatch,
+} from './tailorCuration';
+import { validatePatternSplit, type PatternSplitPartition } from './tailorPatternSplit';
+import { assertProjectGraphBinding } from './tailorProjection';
 import type {
   TailorProject,
   TailoringIntent,
@@ -75,7 +82,7 @@ export async function createTailorProject(
   };
 
   try {
-    await setDoc(doc(db, `users/${userId}/tailorProjects/${id}`), project);
+    await setDoc(doc(db, `users/${userId}/tailorProjects/${id}`), stripUndefined(project));
     const graph = await createTasteGraph(userId, id);
     await updateDoc(doc(db, `users/${userId}/tailorProjects/${id}`), {
       tasteGraphId: graph.id,
@@ -263,7 +270,7 @@ export async function savePatternClusters(
       createdAt: now,
       updatedAt: now,
     };
-    await setDoc(doc(projectCol(userId, projectId, 'patternClusters'), id), full);
+    await setDoc(doc(projectCol(userId, projectId, 'patternClusters'), id), stripUndefined(full));
     saved.push(full);
     ids.push(id);
   }
@@ -293,10 +300,13 @@ export async function updatePatternCluster(
   patch: Partial<PatternCluster>,
 ): Promise<void> {
   try {
-    await updateDoc(doc(projectCol(userId, projectId, 'patternClusters'), clusterId), {
-      ...patch,
-      updatedAt: Date.now(),
-    });
+    await updateDoc(
+      doc(projectCol(userId, projectId, 'patternClusters'), clusterId),
+      stripUndefined({
+        ...patch,
+        updatedAt: Date.now(),
+      }),
+    );
   } catch (e) {
     handleFirestoreError(e, OperationType.WRITE, `patternClusters/${clusterId}`);
   }
@@ -354,10 +364,13 @@ export async function updateCreativeLaw(
   patch: Partial<CreativeLaw>,
 ): Promise<void> {
   try {
-    await updateDoc(doc(projectCol(userId, projectId, 'creativeLaws'), lawId), {
-      ...patch,
-      updatedAt: Date.now(),
-    });
+    await updateDoc(
+      doc(projectCol(userId, projectId, 'creativeLaws'), lawId),
+      stripUndefined({
+        ...patch,
+        updatedAt: Date.now(),
+      }),
+    );
   } catch (e) {
     handleFirestoreError(e, OperationType.WRITE, `creativeLaws/${lawId}`);
   }
@@ -383,7 +396,7 @@ export async function createTasteGraph(userId: string, projectId?: string): Prom
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(doc(userCol(userId, 'tasteGraphs'), id), graph);
+  await setDoc(doc(userCol(userId, 'tasteGraphs'), id), stripUndefined(graph));
   return graph;
 }
 
@@ -451,7 +464,7 @@ export async function createFieldNote(
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(doc(userCol(userId, 'fieldNotes'), id), full);
+  await setDoc(doc(userCol(userId, 'fieldNotes'), id), stripUndefined(full));
 
   if (note.projectId) {
     const project = await getTailorProject(userId, note.projectId);
@@ -495,7 +508,7 @@ export async function saveDoll(
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(doc(userCol(userId, 'dolls'), id), full);
+  await setDoc(doc(userCol(userId, 'dolls'), id), stripUndefined(full));
   await appendToTasteGraph(userId, doll.tasteGraphId, { dollIds: [id] });
   return full;
 }
@@ -662,7 +675,7 @@ export async function saveMarketingAsset(
 ): Promise<MarketingAsset> {
   const id = uid();
   const full: MarketingAsset = { ...asset, id, userId, createdAt: Date.now() };
-  await setDoc(doc(userCol(userId, 'marketingAssets'), id), full);
+  await setDoc(doc(userCol(userId, 'marketingAssets'), id), stripUndefined(full));
   return full;
 }
 
@@ -684,7 +697,7 @@ export async function createGenerationJob(
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(doc(userCol(userId, 'generationJobs'), id), job);
+  await setDoc(doc(userCol(userId, 'generationJobs'), id), stripUndefined(job));
   return job;
 }
 
@@ -693,13 +706,34 @@ export async function updateGenerationJob(
   jobId: string,
   patch: Partial<GenerationJob>,
 ): Promise<void> {
-  await updateDoc(doc(userCol(userId, 'generationJobs'), jobId), {
-    ...patch,
-    updatedAt: Date.now(),
-  });
+  await updateDoc(
+    doc(userCol(userId, 'generationJobs'), jobId),
+    stripUndefined({
+      ...patch,
+      updatedAt: Date.now(),
+    }),
+  );
 }
 
 // ─── Curation helpers ─────────────────────────────────────────────────────────
+
+export async function appendCurationEvent(
+  userId: string,
+  projectId: string,
+  event: Parameters<typeof buildCurationEventPayload>[0],
+): Promise<Record<string, unknown>> {
+  const payload = buildCurationEventPayload({
+    ...event,
+    userId,
+    projectId,
+  });
+  const eventId = String(payload.id);
+  await setDoc(
+    doc(projectCol(userId, projectId, 'curationEvents'), eventId),
+    payload,
+  );
+  return payload;
+}
 
 export async function curatePatternCluster(
   userId: string,
@@ -709,12 +743,29 @@ export async function curatePatternCluster(
   annotation?: string,
   weight?: UserWeight,
 ): Promise<void> {
-  const patch: Partial<PatternCluster> = { userStatus: action };
-  if (annotation) patch.userAnnotation = annotation;
-  if (weight) patch.userWeight = weight;
-  if (action === 'accepted') patch.claimType = 'user_confirmed';
-  if (action === 'rejected') patch.claimType = 'user_rejected';
-  await updatePatternCluster(userId, projectId, clusterId, patch);
+  const patch = buildPatternClusterCurationPatch(action, annotation, weight);
+  await updateDoc(
+    doc(projectCol(userId, projectId, 'patternClusters'), clusterId),
+    patch,
+  );
+
+  // Status-only events must persist even when annotation/weight are omitted.
+  await appendCurationEvent(userId, projectId, {
+    userId,
+    projectId,
+    targetType: 'pattern_cluster',
+    targetId: clusterId,
+    kind: action === 'renamed' ? 'rename' : 'status_change',
+    status: action,
+    claimType:
+      action === 'accepted' || action === 'renamed'
+        ? 'user_confirmed'
+        : action === 'rejected'
+          ? 'user_rejected'
+          : undefined,
+    annotation,
+    weight,
+  });
 
   if (action === 'rejected' && annotation) {
     await createFieldNote(userId, {
@@ -729,6 +780,76 @@ export async function curatePatternCluster(
       tags: ['curation'],
     });
   }
+}
+
+/**
+ * Split a pattern cluster into disjoint partitions. Rejects invalid splits.
+ * Both new clusters are persisted; the source cluster is marked `split`.
+ */
+export async function splitPatternCluster(
+  userId: string,
+  projectId: string,
+  clusterId: string,
+  partitions: PatternSplitPartition[],
+): Promise<PatternCluster[]> {
+  const clusters = await listPatternClusters(userId, projectId);
+  const source = clusters.find((c) => c.id === clusterId);
+  if (!source) {
+    throw new Error(`Pattern cluster not found: ${clusterId}`);
+  }
+
+  const validation = validatePatternSplit(source.observationIds, partitions);
+  if (validation.ok === false) {
+    throw new Error(validation.reason);
+  }
+
+  const created: PatternCluster[] = [];
+  for (const part of validation.partitions) {
+    const saved = await savePatternClusters(userId, projectId, [
+      {
+        name: part.name,
+        description: source.description,
+        category: source.category,
+        observationIds: part.observationIds,
+        supportingEvidenceNodeIds: source.supportingEvidenceNodeIds,
+        frequency: part.observationIds.length,
+        confidence: source.confidence,
+        possibleInterpretations: source.possibleInterpretations,
+        claimType: 'observed',
+        userStatus: 'suggested',
+        userWeight: source.userWeight ?? 'medium',
+      },
+    ]);
+    created.push(...saved);
+  }
+
+  await updatePatternCluster(userId, projectId, clusterId, {
+    userStatus: 'split',
+  });
+
+  await appendCurationEvent(userId, projectId, {
+    userId,
+    projectId,
+    targetType: 'pattern_cluster',
+    targetId: clusterId,
+    kind: 'split',
+    status: 'split',
+    annotation: created.map((c) => c.id).join(','),
+  });
+
+  return created;
+}
+
+/** List dolls bound to a project's taste graph — never "first of all dolls". */
+export async function listDollsForProject(
+  userId: string,
+  project: Pick<TailorProject, 'id' | 'tasteGraphId'>,
+): Promise<Doll[]> {
+  if (!project.tasteGraphId) {
+    throw new Error(`Tailor project ${project.id} has no tasteGraphId`);
+  }
+  assertProjectGraphBinding(project, project.tasteGraphId);
+  return listDolls(userId, project.tasteGraphId);
 }
 
 // ─── Compile canonical Tailor profile + legacy projection from graph ──────────
