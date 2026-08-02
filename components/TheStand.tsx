@@ -44,11 +44,6 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
 
 
   useEffect(() => {
-    // Identity change: drop prior account's Mine/Floor caches so Floor can settle again.
-    setCloudZines([]);
-    setCommunityZines([]);
-    setFloorSettled(false);
-
     let unsubUser = () => {};
     const load = async () => {
       setLoading(true);
