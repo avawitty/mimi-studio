@@ -14,6 +14,7 @@ describe("zine export privacy and ownership", () => {
     const manifest = buildExportManifest(makeLegacyZineMetadata());
 
     expect(manifest.usedContextSnapshots).toHaveLength(1);
+    expect(manifest.fragmentsUsed).toEqual(["atom-export"]);
     expect(manifest.usedContextSnapshots[0]).toMatchObject({
       atomId: "atom-export",
       title: "Exportable source",
@@ -55,6 +56,34 @@ describe("zine export privacy and ownership", () => {
     expect(publicZine.usedContextSnapshots?.[0].content).toBe(
       "Source body must still be redacted.",
     );
+    const publicPages = JSON.parse(publicZine.content.pagesJson || "[]");
+    expect(publicPages[0].sourceIds).toEqual([]);
+    expect(publicPages[1].sourceIds).toEqual([]);
+  });
+
+  it("prefers canonical source-packet visibility during export", () => {
+    const metadata = makeLegacyZineMetadata();
+    metadata.usedContextSnapshots = undefined;
+    metadata.sourcePacket = {
+      originalInput: metadata.originalInput,
+      fragmentIds: ["canonical-private"],
+      attachedAssets: [],
+      usedContextSnapshots: [
+        {
+          atomId: "canonical-private",
+          title: "Working only",
+          content: "Do not export",
+          visibility: { working: true, export: false, public: false },
+        },
+      ],
+    };
+
+    const manifest = buildExportManifest(metadata);
+    expect(manifest.fragmentsUsed).toEqual([]);
+    expect(manifest.usedContextSnapshots).toEqual([]);
+    const product = buildShopifyProductFromZine(metadata);
+    expect(product.provenance.fragmentsUsed).toEqual([]);
+    expect(product.provenance.usedContextSnapshots).toEqual([]);
   });
 
   it("redacts Shopify provenance on both client and server boundaries", () => {

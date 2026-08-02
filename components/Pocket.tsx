@@ -23,6 +23,7 @@ import {
   buildConsentAwareTransmission,
   publishToastMessage,
 } from '../services/collective/broadcastTransmission';
+import { sanitizeZineForPublicView } from '../lib/privacyUtils';
 
 // --- SUB-COMPONENTS ---
 
@@ -919,7 +920,10 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  imageUrl: item.content.imageUrl || '',
  type: 'signal',
  likes: 0,
- zineData: item.type === 'zine_card' ? item.content.analysis : null,
+ zineData:
+   item.type === 'zine_card' && item.content.analysis?.content
+     ? sanitizeZineForPublicView(item.content.analysis as ZineMetadata)
+     : null,
  artifactId: item.id,
  },
  contributeToMeanMedianMode,

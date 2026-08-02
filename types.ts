@@ -989,6 +989,8 @@ export interface ZineMetadata {
   revision?: number;
   revisions?: ZineRevision[];
   updatedAt?: number;
+  /** Marks a server-sanitized payload safe for unauthenticated public reads. */
+  publicProjectionVersion?: number;
 }
 
 export interface SemioticSignal {

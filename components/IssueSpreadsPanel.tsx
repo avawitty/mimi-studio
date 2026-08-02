@@ -101,6 +101,10 @@ export const IssueSpreadsPanel: React.FC = () => {
             ],
           })
         : artifact;
+      const unpublishForProof =
+        revisionRequired &&
+        (activeZine.isPublic ||
+          activeZine.publication?.visibility === "public");
       const pages = [...revisedArtifact.pages];
       const current = pages[composing.pageIndex];
       pages[composing.pageIndex] = {
@@ -119,6 +123,18 @@ export const IssueSpreadsPanel: React.FC = () => {
       const updated: ZineMetadata = withCanonicalZinePages(
         {
           ...activeZine,
+          isPublic: unpublishForProof ? false : activeZine.isPublic,
+          publishedAt: unpublishForProof
+            ? undefined
+            : activeZine.publishedAt,
+          publication: unpublishForProof
+            ? {
+                ...revisedArtifact.publication,
+                visibility: "private",
+                publishedAt: undefined,
+                revision: revisedArtifact.revision,
+              }
+            : activeZine.publication,
           artifactSchemaVersion: revisedArtifact.schemaVersion,
           lifecycleStatus: revisedArtifact.status,
           revision: revisedArtifact.revision,

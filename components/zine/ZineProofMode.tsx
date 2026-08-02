@@ -37,10 +37,13 @@ export function ZineProofMode({
     () => ({ ...artifact, pages: proofPages }),
     [artifact, proofPages],
   );
-  const diagnostics = useMemo(
-    () => buildZineProofDiagnostics(proofArtifact),
-    [proofArtifact],
-  );
+  const diagnostics = useMemo(() => {
+    const canonicalDiagnostics = buildZineProofDiagnostics(artifact);
+    const derivedDiagnostics = buildZineProofDiagnostics(proofArtifact).filter(
+      (diagnostic) => diagnostic.pageId?.endsWith(":derived"),
+    );
+    return [...canonicalDiagnostics, ...derivedDiagnostics];
+  }, [artifact, proofArtifact]);
   const summary = useMemo(
     () => summarizeZineProof(diagnostics),
     [diagnostics],

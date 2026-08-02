@@ -174,25 +174,28 @@ service cloud.firestore {
 
     // ZINES (Public Read if isPublic, Paying Subscriber Write)
     match /zines/{zineId} {
-      allow read: if resource.data.isPublic == true || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow read: if (
+        resource.data.isPublic == true &&
+        resource.data.publicProjectionVersion == 1
+      ) || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow create: if isPayingSubscriber() && request.resource.data.userId == request.auth.uid;
       allow update: if isPayingSubscriber() && resource.data.userId == request.auth.uid && ownerUnchanged();
       allow delete: if isPayingSubscriber() && resource.data.userId == request.auth.uid;
       
       match /pages/{pageId} {
-        allow read: if get(/databases/$(database)/documents/zines/$(zineId)).data.isPublic == true || (isAuthenticated() && get(/databases/$(database)/documents/zines/$(zineId)).data.userId == request.auth.uid);
+        allow read: if isAuthenticated() && get(/databases/$(database)/documents/zines/$(zineId)).data.userId == request.auth.uid;
         allow write: if isPayingSubscriber() && get(/databases/$(database)/documents/zines/$(zineId)).data.userId == request.auth.uid;
       }
       
       match /artifacts/{artifactId} {
-        allow read: if get(/databases/$(database)/documents/zines/$(zineId)).data.isPublic == true || (isAuthenticated() && get(/databases/$(database)/documents/zines/$(zineId)).data.userId == request.auth.uid);
+        allow read: if isAuthenticated() && get(/databases/$(database)/documents/zines/$(zineId)).data.userId == request.auth.uid;
         allow write: if isPayingSubscriber() && get(/databases/$(database)/documents/zines/$(zineId)).data.userId == request.auth.uid;
       }
     }
 
     // PUBLIC TRANSMISSIONS (Public Read, Authenticated Write)
     match /public_transmissions/{transmissionId} {
-      allow read: if true;
+      allow read: if resource.data.publicProjectionVersion == 1;
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 

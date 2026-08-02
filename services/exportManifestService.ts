@@ -41,15 +41,26 @@ export function buildExportManifest(
   snapshots?: UsedContextSnapshot[],
 ): ExportManifest {
   metadata = hydrateLegacyZineMetadata(metadata);
-  const usedContextSnapshots = sanitizeUsedContextForExport(
-    snapshots ||
-    metadata.usedContextSnapshots ||
-    (metadata.fragmentsUsed || []).map((id) => ({
-      atomId: id,
+  const fragmentIds =
+    metadata.sourcePacket?.fragmentIds || metadata.fragmentsUsed || [];
+  const contextSource =
+    snapshots ??
+    metadata.sourcePacket?.usedContextSnapshots ??
+    metadata.usedContextSnapshots ??
+    fragmentIds.map((atomId) => ({
+      atomId,
       title: "Fragment",
       content: "",
-      source: undefined as any,
-    })),
+      visibility: { working: true, export: true, public: false },
+    }));
+  const usedContextSnapshots = sanitizeUsedContextForExport(
+    contextSource,
+  );
+  const exportedContextIds = new Set(
+    usedContextSnapshots.map((snapshot) => snapshot.atomId),
+  );
+  const exportedFragmentIds = fragmentIds.filter((id) =>
+    exportedContextIds.has(id),
   );
 
   const metadataCompileMatchesOwner =
@@ -120,11 +131,11 @@ export function buildExportManifest(
       id: "used-context",
       label: "Used Context provenance",
       pass:
-        (metadata.fragmentsUsed?.length ?? 0) === 0 ||
+        fragmentIds.length === 0 ||
         usedContextSnapshots.some((s) => s.atomId),
       message:
-        (metadata.fragmentsUsed?.length ?? 0) > 0
-          ? `${metadata.fragmentsUsed!.length} scribe atom(s) referenced`
+        fragmentIds.length > 0
+          ? `${exportedFragmentIds.length} exportable scribe atom(s) referenced`
           : "No scribe atoms (optional)",
     },
     {
@@ -156,7 +167,7 @@ export function buildExportManifest(
     creatorHandle: metadata.userHandle,
     theme: metadata.theme,
     coverImageUrl: metadata.coverImageUrl,
-    fragmentsUsed: metadata.fragmentsUsed || [],
+    fragmentsUsed: exportedFragmentIds,
     usedContextSnapshots,
     editorialCompileMarkdown,
     editorialCompileCompiledAt,

@@ -55,14 +55,18 @@ export default async function handler(req: any, res: any) {
           includePrivate: Boolean(requester?.uid),
         });
         if (!zine) return sendError(res, 404, "Zine not found", "NOT_FOUND");
-        res.setHeader("Cache-Control", zine.isPublic
-          ? "public, s-maxage=120, stale-while-revalidate=600"
-          : "private, no-store");
-        res.setHeader("X-Mimi-Archive", "sovereign");
+        const ownerRequest = requester?.uid === zine.userId;
         const responseZine =
-          zine.isPublic && requester?.uid !== zine.userId
+          zine.isPublic && !ownerRequest
             ? sanitizeZineForPublicView(zine)
             : zine;
+        res.setHeader(
+          "Cache-Control",
+          zine.isPublic && !ownerRequest
+            ? "public, s-maxage=120, stale-while-revalidate=600"
+            : "private, no-store",
+        );
+        res.setHeader("X-Mimi-Archive", "sovereign");
         return sendJson(res, 200, { zine: responseZine });
       }
 

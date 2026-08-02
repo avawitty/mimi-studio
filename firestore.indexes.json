@@ -25,6 +25,14 @@
         { "fieldPath": "isPublic", "order": "ASCENDING" },
         { "fieldPath": "publishedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "public_transmissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "publicProjectionVersion", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

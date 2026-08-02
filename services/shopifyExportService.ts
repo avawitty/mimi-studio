@@ -215,12 +215,16 @@ export const buildShopifyProductFromZine = (
     brand: metadata.userHandle,
     sku: metadata.id,
   });
+  const fragmentIds =
+    metadata.sourcePacket?.fragmentIds || metadata.fragmentsUsed || [];
   const safeContext = sanitizeUsedContextForExport(
-    metadata.usedContextSnapshots ||
-      (metadata.fragmentsUsed || []).map((atomId) => ({
+    metadata.sourcePacket?.usedContextSnapshots ||
+      metadata.usedContextSnapshots ||
+      fragmentIds.map((atomId) => ({
         atomId,
         title: "Fragment",
         content: "",
+        visibility: { working: true, export: true, public: false },
       })),
   );
   const safeContextIds = new Set(
@@ -247,7 +251,7 @@ export const buildShopifyProductFromZine = (
       artifactId: metadata.id,
       tone: metadata.tone,
       creatorHandle: metadata.userHandle,
-      fragmentsUsed: (metadata.fragmentsUsed || []).filter((id) =>
+      fragmentsUsed: fragmentIds.filter((id) =>
         safeContextIds.has(id),
       ),
       usedContextSnapshots: safeContext,

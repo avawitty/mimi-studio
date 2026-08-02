@@ -54,6 +54,25 @@ assert.match(
   /sanitizeZineForPublicView/,
   "public sovereign reads must enforce public context visibility",
 );
+const sovereignStore = readFileSync(
+  resolve(process.cwd(), "lib/sovereign/store.ts"),
+  "utf8",
+);
+assert.match(
+  sovereignStore,
+  /sanitizeZineForPublicView/,
+  "Floor cards must use the same public projection",
+);
+const firestoreRules = readFileSync(
+  resolve(process.cwd(), "firestore.rules"),
+  "utf8",
+);
+assert.match(firestoreRules, /publicProjectionVersion == 1/);
+assert.doesNotMatch(
+  firestoreRules,
+  /match \/artifacts\/\{artifactId\}[\s\S]{0,240}isPublic == true/,
+  "public zines must not expose raw artifact subcollections",
+);
 
 const shopifyExport = readFileSync(
   resolve(process.cwd(), "services/shopifyExportService.ts"),

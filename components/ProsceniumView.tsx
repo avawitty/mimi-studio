@@ -17,6 +17,7 @@ import { useUser } from "../contexts/UserContext";
 import {
   collection,
   query,
+  where,
   orderBy,
   limit,
   onSnapshot,
@@ -214,6 +215,7 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
 
     const q = query(
       collection(db, "public_transmissions"),
+      where("publicProjectionVersion", "==", 1),
       orderBy("timestamp", "desc"),
       limit(100),
     );

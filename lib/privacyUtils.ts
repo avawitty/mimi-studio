@@ -1,6 +1,7 @@
 import type {
   UsedContextSnapshot,
   ZineMetadata,
+  ZinePageSpec,
   ZineSourcePacket,
 } from "../types";
 
@@ -51,38 +52,103 @@ export function selectPublicUsedContext(
 export function sanitizeZineForPublicView(
   metadata: ZineMetadata,
 ): ZineMetadata {
-  const snapshots = selectPublicUsedContext(
+  const publicSnapshots = selectPublicUsedContext(
     metadata.sourcePacket?.usedContextSnapshots ||
       metadata.usedContextSnapshots ||
       [],
   );
-  const publicIds = new Set(snapshots.map((snapshot) => snapshot.atomId));
+  const publicAssets = (metadata.sourcePacket?.attachedAssets || [])
+    .filter((asset) => asset.visibility?.public === true)
+    .map((asset) => ({
+      ...asset,
+      visibility: asset.visibility ? { ...asset.visibility } : undefined,
+    }));
+  const publicIds = new Set([
+    ...publicSnapshots.map((snapshot) => snapshot.atomId),
+    ...publicAssets.map((asset) => asset.id),
+  ]);
+  const sanitizePage = (page: ZinePageSpec): ZinePageSpec => ({
+    ...page,
+    sourceIds: page.sourceIds?.filter((id) => publicIds.has(id)),
+    threadData: undefined,
+    customLayout: page.customLayout
+      ? {
+          ...page.customLayout,
+          elements: page.customLayout.elements.map((element) => ({
+            ...element,
+            sourceRef:
+              element.sourceRef && publicIds.has(element.sourceRef)
+                ? element.sourceRef
+                : undefined,
+            style: { ...element.style },
+          })),
+        }
+      : undefined,
+  });
+  let persistedPages: ZinePageSpec[] = [];
+  if (metadata.content.pages?.length) {
+    persistedPages = metadata.content.pages.map(sanitizePage);
+  } else if (metadata.content.pagesJson) {
+    try {
+      const parsed = JSON.parse(metadata.content.pagesJson);
+      persistedPages = Array.isArray(parsed)
+        ? (parsed as ZinePageSpec[]).map(sanitizePage)
+        : [];
+    } catch {
+      persistedPages = [];
+    }
+  }
   const sourcePacket: ZineSourcePacket | undefined = metadata.sourcePacket
     ? {
         ...metadata.sourcePacket,
-        fragmentIds: metadata.sourcePacket.fragmentIds.filter((id) =>
+        fragmentIds: (metadata.sourcePacket.fragmentIds || []).filter((id) =>
           publicIds.has(id),
         ),
-        usedContextSnapshots: snapshots,
-        attachedAssets: metadata.sourcePacket.attachedAssets
-          .filter((asset) => asset.visibility?.public === true)
-          .map((asset) => ({
-            ...asset,
-            visibility: asset.visibility
-              ? { ...asset.visibility }
-              : undefined,
-          })),
+        usedContextSnapshots: publicSnapshots,
+        attachedAssets: publicAssets,
         linkedBoards: [],
       }
     : undefined;
 
   return {
     ...metadata,
+    publicProjectionVersion: 1,
     fragmentsUsed: (metadata.fragmentsUsed || []).filter((id) =>
       publicIds.has(id),
     ),
-    usedContextSnapshots: snapshots.length > 0 ? snapshots : undefined,
+    usedContextSnapshots:
+      publicSnapshots.length > 0 ? publicSnapshots : undefined,
     sourcePacket,
+    reading: metadata.reading
+      ? {
+          ...metadata.reading,
+          signals: metadata.reading.signals.map((signal) => ({
+            ...signal,
+            sourceIds: signal.sourceIds?.filter((id) => publicIds.has(id)),
+          })),
+          tensions: metadata.reading.tensions?.map((tension) => ({
+            ...tension,
+            sourceIds: tension.sourceIds?.filter((id) => publicIds.has(id)),
+          })),
+          uncertainty: metadata.reading.uncertainty?.map((uncertainty) => ({
+            ...uncertainty,
+            sourceIds: uncertainty.sourceIds?.filter((id) =>
+              publicIds.has(id),
+            ),
+          })),
+        }
+      : undefined,
+    content: {
+      ...metadata.content,
+      semiotic_signals: metadata.content.semiotic_signals?.map((signal) => ({
+        ...signal,
+        sourceIds: signal.sourceIds?.filter((id) => publicIds.has(id)),
+      })),
+      pages: persistedPages,
+      pagesJson: metadata.content.pagesJson
+        ? JSON.stringify(persistedPages)
+        : undefined,
+    },
     colophon: metadata.colophon
       ? {
           ...metadata.colophon,

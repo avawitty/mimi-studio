@@ -57,7 +57,10 @@ import {
   withCanonicalZinePages,
 } from '../lib/zine/zineMigrations';
 import { ZineProofMode } from './zine/ZineProofMode';
-import { selectPublicUsedContext } from '../lib/privacyUtils';
+import {
+  sanitizeZineForPublicView,
+  selectPublicUsedContext,
+} from '../lib/privacyUtils';
 import { reconcileZineReadingOrder } from '../lib/zine/zineReadingOrder';
 
 const THEMES = {
@@ -229,11 +232,18 @@ export const AnalysisDisplay: React.FC<{
    [metadata],
  );
  const visibleUsedContextSnapshots = useMemo(
-   () =>
+   () => {
+     const snapshots =
+       metadata.sourcePacket?.usedContextSnapshots ||
+       metadata.usedContextSnapshots ||
+       [];
+     return (
      isOwner
-       ? metadata.usedContextSnapshots || []
-       : selectPublicUsedContext(metadata.usedContextSnapshots || []),
-   [isOwner, metadata.usedContextSnapshots],
+       ? snapshots
+       : selectPublicUsedContext(snapshots)
+     );
+   },
+   [isOwner, metadata.sourcePacket?.usedContextSnapshots, metadata.usedContextSnapshots],
  );
  const visibleFragmentIds = useMemo(
    () =>
@@ -840,14 +850,28 @@ export const AnalysisDisplay: React.FC<{
    reason: string,
    changedPageIds: string[] = [],
  ) => {
-   const artifact = artifactRequiresRevision(normalizedArtifact.status)
+   const revisionRequired = artifactRequiresRevision(normalizedArtifact.status);
+   const artifact = revisionRequired
      ? createArtifactRevision(normalizedArtifact, {
          reason,
          changedPageIds,
        })
      : normalizedArtifact;
+   const unpublishForProof =
+     revisionRequired &&
+     (metadata.isPublic || metadata.publication?.visibility === 'public');
    const baseMetadata: ZineMetadata = {
      ...metadata,
+     isPublic: unpublishForProof ? false : metadata.isPublic,
+     publishedAt: unpublishForProof ? undefined : metadata.publishedAt,
+     publication: unpublishForProof
+       ? {
+           ...artifact.publication,
+           visibility: 'private',
+           publishedAt: undefined,
+           revision: artifact.revision,
+         }
+       : metadata.publication,
      artifactSchemaVersion: artifact.schemaVersion,
      lifecycleStatus: artifact.status,
      revision: artifact.revision,
@@ -1314,7 +1338,7 @@ export const AnalysisDisplay: React.FC<{
  imageUrl: metadata.coverImageUrl || metadata.content.hero_image_url || '',
  type: 'manifest',
  likes: 0,
- zineData: metadata,
+ zineData: sanitizeZineForPublicView(metadata),
  artifactId: metadata.id,
  },
  contributeToMeanMedianMode,

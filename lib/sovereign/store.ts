@@ -15,6 +15,7 @@ import {
 } from "./embeddings.js";
 import { emitSovereignEvent } from "./events.js";
 import { neonAuthStatusSnippet } from "./neonAuth.js";
+import { sanitizeZineForPublicView } from "../privacyUtils.js";
 
 const COMMUNITY_CAP = 60;
 const FLOOR_CACHE_TTL_MS = 30_000;
@@ -34,9 +35,10 @@ export type PublicZinePage = {
 
 /** Slim payload safe for Floor cards (no full pages / artifacts blobs). */
 export const slimZineForFloor = (zine: ZineMetadata): ZineMetadata => {
-  const content = zine.content || ({} as ZineMetadata["content"]);
+  const publicZine = sanitizeZineForPublicView(zine);
+  const content = publicZine.content || ({} as ZineMetadata["content"]);
   return {
-    ...zine,
+    ...publicZine,
     artifacts: undefined,
     embedding: undefined,
     content: {

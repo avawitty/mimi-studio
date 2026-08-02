@@ -100,10 +100,33 @@ describe("sovereign store", () => {
   });
 
   it("slims floor payloads (no pagesJson / threadData)", () => {
-    const slim = slimZineForFloor(sampleZine());
+    const slim = slimZineForFloor(
+      sampleZine({
+        fragmentsUsed: ["private", "public"],
+        usedContextSnapshots: [
+          {
+            atomId: "private",
+            title: "Private",
+            content: "hidden",
+            visibility: { working: true, export: false, public: false },
+          },
+          {
+            atomId: "public",
+            title: "Public",
+            content: "visible",
+            visibility: { working: true, export: true, public: true },
+          },
+        ],
+      }),
+    );
     expect(slim.content.pagesJson).toBeUndefined();
     expect(slim.content.pages?.[0]?.threadData).toBeUndefined();
     expect((slim.content.pages?.[0]?.bodyCopy as string).length).toBeLessThanOrEqual(400);
+    expect(slim.fragmentsUsed).toEqual(["public"]);
+    expect(slim.usedContextSnapshots?.map((snapshot) => snapshot.atomId)).toEqual([
+      "public",
+    ]);
+    expect(slim.publicProjectionVersion).toBe(1);
   });
 
   it("returns private zines only to the owner", async () => {

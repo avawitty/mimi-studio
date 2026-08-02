@@ -1963,11 +1963,12 @@ export const App: React.FC = () => {
         // Fetch recent transmissions to provide cultural context
         let transmissions: any[] = [];
         try {
-          const { collection, query, orderBy, limit, getDocs } =
+          const { collection, query, where, orderBy, limit, getDocs } =
             await import("firebase/firestore");
           const { db } = await import("./services/firebase");
           const q = query(
             collection(db, "public_transmissions"),
+            where("publicProjectionVersion", "==", 1),
             orderBy("timestamp", "desc"),
             limit(10),
           );

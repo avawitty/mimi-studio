@@ -24,6 +24,7 @@ export type ProsceniumTransmissionBase = {
 };
 
 export type ConsentAwareTransmission = ProsceniumTransmissionBase & {
+  publicProjectionVersion: 1;
   timestamp: number;
   artifactId: string;
   contributeToMeanMedianMode: boolean;
@@ -56,6 +57,7 @@ export function buildConsentAwareTransmission(
       likes: base.likes ?? 0,
       imageUrl: base.imageUrl || "",
       artifactId,
+      publicProjectionVersion: 1,
       timestamp: fields.timestamp,
       contributeToMeanMedianMode: fields.contributeToMeanMedianMode,
       disclosedAt: fields.disclosedAt,

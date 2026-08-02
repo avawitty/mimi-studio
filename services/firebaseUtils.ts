@@ -14,6 +14,7 @@ import { ZineContent, ZineMetadata, ToneTag, PocketItem, UserProfile, DossierFol
 import { saveZineLocally, savePocketItemLocally, getLocalProfile, getLocalPocket, getLocalZines, deleteLocalPocketItem, saveFolderLocally, getLocalFolders, saveArtifactLocally, getLocalArtifacts } from "./localArchive";
 import { syncToShadowMemory, deleteFromShadowMemory } from "./vectorSearch";
 import { StrategyAudit, Task } from "../types";
+import { sanitizeZineForPublicView } from "../lib/privacyUtils";
 
 export const saveStrategyAudit = async (userId: string, audit: StrategyAudit): Promise<void> => {
   if (!isFullyAuthenticated()) {
@@ -633,7 +634,16 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
       console.info("MIMI // saveZineToProfile: Saving zine to Firestore...");
       
       // 2. Save Zine without threadData and artifacts
-      await setDoc(doc(db, "zines", targetId), sanitizeFirestoreData(meta));
+      const publicMeta = stagedPublic
+        ? sanitizeZineForPublicView(meta)
+        : null;
+      const cloudMeta = publicMeta
+        ? {
+            ...publicMeta,
+            content: { ...publicMeta.content, pages: [] },
+          }
+        : meta;
+      await setDoc(doc(db, "zines", targetId), sanitizeFirestoreData(cloudMeta));
       
       // 3. Save threadData in subcollection
       for (const [pageNumber, threadData] of threadDataMap) {
@@ -693,7 +703,7 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
             imageUrl: coverUrl || (zine.pages && zine.pages[0]?.image_url) || '',
             type: 'manifest',
             likes: 0,
-            zineData: meta,
+            zineData: cloudMeta,
             artifactId: targetId,
           },
           consentFields.contributeToMeanMedianMode,
@@ -1298,9 +1308,18 @@ export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolea
     };
 
     // 2. Save Zine without threadData and artifacts
-    console.info("MIMI // updateZineMetadata: Calling updateDoc for:", metadata.id);
-    await updateDoc(doc(db, "zines", metadata.id), sanitizeFirestoreData(firestoreMetadata));
-    console.info("MIMI // updateZineMetadata: updateDoc successful");
+    console.info("MIMI // updateZineMetadata: Replacing zine document:", metadata.id);
+    const publicMetadata = firestoreMetadata.isPublic
+      ? sanitizeZineForPublicView(firestoreMetadata)
+      : null;
+    const cloudMetadata = publicMetadata
+      ? {
+          ...publicMetadata,
+          content: { ...publicMetadata.content, pages: [] },
+        }
+      : firestoreMetadata;
+    await setDoc(doc(db, "zines", metadata.id), sanitizeFirestoreData(cloudMetadata));
+    console.info("MIMI // updateZineMetadata: document replacement successful");
     
     // 3. Save threadData in subcollection
     for (const [pageNumber, threadData] of threadDataMap) {
@@ -1925,7 +1944,11 @@ export const commitGlobalHandshake = async (uid: string, newHandle: string, newA
     );
 
     // 2. Update Public Transmissions
-    const transQuery = query(collection(db, "public_transmissions"), where("userId", "==", uid));
+    const transQuery = query(
+      collection(db, "public_transmissions"),
+      where("userId", "==", uid),
+      where("publicProjectionVersion", "==", 1),
+    );
     const transSnap = await getDocs(transQuery);
     const transUpdates = transSnap.docs.map(d => {
       const data = d.data();

@@ -49,6 +49,11 @@ const analysisDisplay = readFileSync(
     `${reason} must use the revision-aware mutation path`,
   );
 });
+assert.match(
+  analysisDisplay,
+  /unpublishForProof[\s\S]*isPublic:\s*unpublishForProof\s*\?\s*false/,
+  "post-publication edits must become private proof revisions",
+);
 
 console.log("✓ Mimi zine revision history verified");
 console.log("  - approved edits create a child proof revision");
