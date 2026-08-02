@@ -17,16 +17,16 @@ const assert = (condition: boolean, message: string) => {
   }
 };
 
-const base = "https://mimi.you";
+const base = "https://www.mimi.you";
 const handle = "atelier-test";
 
 assert(getCreatorFeedPath(handle) === "/u/atelier-test/feed.xml", "pretty feed path");
 assert(
-  getCreatorFeedUrl("@Atelier-Test", base) === "https://mimi.you/u/atelier-test/feed.xml",
+  getCreatorFeedUrl("@Atelier-Test", base) === "https://www.mimi.you/u/atelier-test/feed.xml",
   "absolute feed URL normalizes handle",
 );
 assert(
-  getZineCanonicalUrl("zine_abc", base) === "https://mimi.you/zine/zine_abc",
+  getZineCanonicalUrl("zine_abc", base) === "https://www.mimi.you/zine/zine_abc",
   "canonical zine URL",
 );
 
@@ -60,7 +60,7 @@ assert(xml.includes(escapeXml("Manila Heat & <Signal>")), "title escaped");
 assert(xml.includes("<![CDATA[A dossier on reciprocal gaze & evidence.]]>"), "description cdata");
 assert(xml.includes(toRfc822(item.pubDateMs)), "rfc822 pubDate");
 assert(xml.includes('enclosure url="https://cdn.example.com/cover.jpg"'), "cover enclosure");
-assert(xml.includes("https://mimi.you/zine/zine_1"), "item link");
+assert(xml.includes("https://www.mimi.you/zine/zine_1"), "item link");
 
 const emptyXml = buildRssXml({
   title: "@empty · public issues",

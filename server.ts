@@ -85,9 +85,11 @@ try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     initializeApp({ credential: cert(serviceAccount) });
-    db = process.env.FIREBASE_FIRESTORE_DATABASE_ID
-      ? getFirestore(process.env.FIREBASE_FIRESTORE_DATABASE_ID)
-      : getFirestore();
+    // Named DB matches firebase-applet-config; `(default)` does not exist on mimistudios.
+    const databaseId =
+      process.env.FIREBASE_FIRESTORE_DATABASE_ID ||
+      'ai-studio-mimi-4c383b50-c596-4b43-8a2e-61d0645e590a';
+    db = getFirestore(databaseId);
     console.log('Firebase Admin initialized successfully.');
   } else {
     console.log('FIREBASE_SERVICE_ACCOUNT not provided. Firebase Admin will not be initialized.');

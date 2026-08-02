@@ -6,7 +6,7 @@ import { X, Smartphone, QrCode } from 'lucide-react';
 
 export const ManifestSignet: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
  // DYNAMIC ANCHOR: Uses the current origin to avoid manual forwarding rituals.
- const IMPERIAL_URL = typeof window !== 'undefined' ? window.location.origin : 'https://mimi.you';
+ const IMPERIAL_URL = typeof window !== 'undefined' ? window.location.origin : 'https://www.mimi.you';
 
  if (!isOpen) return null;
 
