@@ -65,3 +65,9 @@
 .house-landing h1 {
   letter-spacing: -0.03em;
 }
+
+.house-vertical-rl {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 0.28em;
+}
