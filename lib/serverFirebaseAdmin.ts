@@ -1,7 +1,17 @@
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { createRequire } from "module";
 import firebaseConfig from "../firebase-applet-config.json";
+import { extractMimiSessionToken } from "./mimiSessionToken.js";
+
+export { extractMimiSessionToken } from "./mimiSessionToken.js";
+
+const require = createRequire(import.meta.url);
+
+type AdminBundle = {
+  auth: any | null;
+  db: any | null;
+};
+
+let cached: AdminBundle | undefined;
 
 /**
  * Named DB from client config; `(default)` does not exist on mimistudios.
@@ -27,33 +37,56 @@ const parseServiceAccount = () => {
   }
 };
 
-export const getServerFirebaseAdmin = () => {
-  if (!getApps().length) {
-    const serviceAccount = parseServiceAccount();
-    if (!serviceAccount) {
-      return { auth: null, db: null };
+/**
+ * Lazily initialize Firebase Admin for server routes.
+ * Uses dynamic require so Vercel serverless functions that only need Admin for
+ * optional credit checks do not crash at module-evaluation time when the
+ * firebase-admin graph fails to load in the isolate.
+ *
+ * IMPORTANT: do not statically import anything from `firebase-admin/*` in this
+ * file (including `import type`) — Vercel's bundler has been observed to pull
+ * the Admin graph into the module init path and crash with
+ * FUNCTION_INVOCATION_FAILED before the handler runs.
+ */
+export const getServerFirebaseAdmin = (): AdminBundle => {
+  if (cached) return cached;
+
+  try {
+    const { cert, getApps, initializeApp } = require("firebase-admin/app");
+    const { getAuth } = require("firebase-admin/auth");
+    const { getFirestore } = require("firebase-admin/firestore");
+
+    if (!getApps().length) {
+      const serviceAccount = parseServiceAccount();
+      if (!serviceAccount) {
+        cached = { auth: null, db: null };
+        return cached;
+      }
+      initializeApp({ credential: cert(serviceAccount) });
     }
-    initializeApp({ credential: cert(serviceAccount) });
+
+    let auth: any | null = null;
+    let db: any | null = null;
+
+    try {
+      auth = getAuth();
+    } catch (err) {
+      console.warn("MIMI // Firebase Auth init failed:", err);
+    }
+
+    try {
+      db = getFirestore(resolveMimiFirestoreDatabaseId());
+    } catch (err) {
+      console.warn("MIMI // Firestore init failed:", err);
+    }
+
+    cached = { auth, db };
+    return cached;
+  } catch (err) {
+    console.warn("MIMI // Firebase Admin unavailable:", err);
+    cached = { auth: null, db: null };
+    return cached;
   }
-
-  return {
-    auth: getAuth(),
-    db: getFirestore(resolveMimiFirestoreDatabaseId()),
-  };
-};
-
-export const extractMimiSessionToken = (headers: Record<string, any>) => {
-  const candidates = [headers["x-user-token"], headers.authorization].filter(Boolean);
-
-  for (const candidate of candidates) {
-    const value = Array.isArray(candidate) ? candidate[0] : candidate;
-    const text = String(value || "").trim();
-    if (!text) continue;
-    if (text.startsWith("Bearer ey")) return text.slice("Bearer ".length);
-    if (text.startsWith("ey")) return text;
-  }
-
-  return "";
 };
 
 export const verifyMimiSession = async (headers: Record<string, any>) => {

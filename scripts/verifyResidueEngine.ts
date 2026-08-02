@@ -1,5 +1,5 @@
 /**
- * Residue Engine Phase 2 verification — schemas, scoring, provenance, safety, storage.
+ * Residue Engine Phase 2–8 verification — schemas, scoring, provenance, safety, storage, UI contract.
  * Run: npx tsx scripts/verifyResidueEngine.ts
  * No Firebase / Apify network required.
  */
@@ -8,6 +8,7 @@ import {
   APIFY_ACTOR_CANDIDATES,
   ApifySourceAcquisitionProvider,
   ManualSourceProvider,
+  EMOTIONAL_SAFETY_NOTICE,
   RESIDUE_SCHEMA_VERSION,
   buildConfidenceSummary,
   buildResidueRunDocument,
@@ -53,6 +54,19 @@ import {
   sourceQualityScore,
   toMeanMedianMode,
 } from "../services/residue/index";
+import {
+  RESIDUE_CHAMBER_MODE,
+  RESIDUE_CHAMBER_MODULE_ID,
+  RESIDUE_CHAMBER_ROUTE,
+  RESIDUE_ENGINE_TABS,
+  RESIDUE_HANDOFF_TARGETS,
+  RESIDUE_RESULT_TABS,
+  RESIDUE_UI_SAFETY_NOTICE,
+} from "../lib/residueChamberContract";
+import { CANON_MODULES, canonicalizeMimiRoute } from "../lib/productCanon";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -808,7 +822,57 @@ async function main() {
     "no auto-approved memory",
   );
 
-  console.log("OK — Residue Phase 2–7 checks passed.");
+  // --- Phase 8: Residue UI chamber contract ---
+  assert(RESIDUE_CHAMBER_MODULE_ID === "residue", "chamber module id");
+  assert(RESIDUE_CHAMBER_MODE === "residue", "chamber mode");
+  assert(RESIDUE_CHAMBER_ROUTE === "/residue", "chamber route");
+  assert(canonicalizeMimiRoute("residue") === "residue", "route alias residue");
+  assert(canonicalizeMimiRoute("residue-engine") === "residue", "route alias residue-engine");
+  assert(
+    RESIDUE_ENGINE_TABS.includes("cultural") && RESIDUE_ENGINE_TABS.includes("emotional"),
+    "engine tabs",
+  );
+  assert(
+    RESIDUE_RESULT_TABS.includes("synthesis") &&
+      RESIDUE_RESULT_TABS.includes("evidence") &&
+      RESIDUE_RESULT_TABS.includes("mmm") &&
+      RESIDUE_RESULT_TABS.includes("products") &&
+      RESIDUE_RESULT_TABS.includes("history"),
+    "result tabs",
+  );
+  assert(RESIDUE_UI_SAFETY_NOTICE === EMOTIONAL_SAFETY_NOTICE, "UI safety matches constant");
+  assert(RESIDUE_UI_SAFETY_NOTICE === emotionalSafetyNotice(), "UI safety matches helper");
+  assert(
+    /does not determine what is true about you|not.*diagnosis/i.test(RESIDUE_UI_SAFETY_NOTICE),
+    "safety non-diagnostic",
+  );
+  assert(
+    RESIDUE_HANDOFF_TARGETS.some((t) => t.view === "intel-hub") &&
+      RESIDUE_HANDOFF_TARGETS.some((t) => t.view === "the-edit"),
+    "handoff targets",
+  );
+
+  const residueModule = CANON_MODULES.find((m) => m.id === "residue");
+  assert(residueModule?.status === "live", "canon residue live");
+  assert(residueModule?.implementedMode === "residue", "canon residue mode");
+  assert(residueModule?.component === "ResidueChamber", "canon residue component");
+
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const chamberPath = path.join(__dirname, "..", "components/chambers/ResidueChamber.tsx");
+  const panelsPath = path.join(__dirname, "..", "components/residue/ResiduePanels.tsx");
+  const bannerPath = path.join(__dirname, "..", "components/residue/ResidueSafetyBanner.tsx");
+  assert(fs.existsSync(chamberPath), "ResidueChamber file");
+  assert(fs.existsSync(panelsPath), "ResiduePanels file");
+  assert(fs.existsSync(bannerPath), "ResidueSafetyBanner file");
+
+  const chamberSrc = fs.readFileSync(chamberPath, "utf8");
+  assert(chamberSrc.includes("ResidueSafetyBanner"), "chamber mounts safety banner");
+  assert(chamberSrc.includes("runCulturalResidue"), "chamber runs cultural engine");
+  assert(chamberSrc.includes("runEmotionalResidue"), "chamber runs emotional engine");
+  assert(chamberSrc.includes("buildResidueProductOutputBundle"), "chamber surfaces products");
+  assert(chamberSrc.includes("adaptResidueToMeanMedianMode"), "chamber surfaces MMM");
+
+  console.log("OK — Residue Phase 2–8 checks passed.");
 }
 
 main().catch((err) => {

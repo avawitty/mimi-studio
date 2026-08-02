@@ -8,6 +8,7 @@ import {
   MimiImageResponse,
 } from "./mimiImageTypes.js";
 import { modelFor } from "../services/modelConfig.js";
+import { generateGatewayImageBytesForModel } from "./aiGatewayCompat.js";
 
 const DATA_URL_RE = /^data:([^;]+);base64,(.+)$/;
 
@@ -206,20 +207,6 @@ export const compileMimiImagePrompt = (request: MimiImageRequest) => {
     .join("\n\n");
 };
 
-const aspectRatioToOpenAiSize = (aspectRatio?: string) => {
-  if (aspectRatio === "16:9" || aspectRatio === "3:2" || aspectRatio === "landscape") return "1536x1024";
-  if (aspectRatio === "9:16" || aspectRatio === "2:3" || aspectRatio === "portrait") return "1024x1536";
-  return "1024x1024";
-};
-
-const safeJson = (text: string) => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-};
-
 export const generateMimiImageServer = async (
   request: MimiImageRequest,
   options: { apiKey: string; provider?: MimiImageProvider },
@@ -248,58 +235,24 @@ export const generateMimiImageServer = async (
     const compiledPrompt = compileMimiImagePrompt({ ...request, prompt });
 
     const startedAt = Date.now();
-    const gatewayBody: Record<string, unknown> = {
+    // Gemini image models must use chat+modalities; gpt-image/Imagen/Flux use
+    // /images/generations. Shared helper routes both (see aiGatewayCompat).
+    const { base64, mimeType } = await generateGatewayImageBytesForModel({
+      apiKey,
       model,
       prompt: compiledPrompt,
-      n: 1,
-      response_format: "b64_json",
-    };
-    // The OpenAI-compatible endpoint accepts `size` for OpenAI image models,
-    // while BFL models use their own sizing behavior. Avoid sending an
-    // unsupported OpenAI-only parameter to Flux.
-    if (!model.startsWith("bfl/")) {
-      gatewayBody.size = aspectRatioToOpenAiSize(request.aspectRatio);
-      gatewayBody.quality = process.env.AI_GATEWAY_IMAGE_QUALITY || "medium";
-    }
-
-    const upstream = await fetch("https://ai-gateway.vercel.sh/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(gatewayBody),
+      aspectRatio: request.aspectRatio,
+      references: request.references,
     });
-
-    const raw = await upstream.text();
-    const payload = safeJson(raw);
-    if (!upstream.ok) {
-      const providerCode = payload?.error?.code || "GATEWAY_IMAGE_FAILED";
-      const providerMessage = payload?.error?.message || "Vercel AI Gateway image generation failed.";
-      throw Object.assign(new Error(providerMessage), {
-        status: upstream.status,
-        code: providerCode,
-        providerStatus: upstream.status,
-      });
-    }
-
-    const first = payload?.data?.[0] || {};
-    const base64 = first.b64_json || "";
-    const imageUrl = base64 ? `data:image/png;base64,${base64}` : first.url;
-    if (!imageUrl) {
-      throw Object.assign(new Error("Vercel AI Gateway did not return an image."), {
-        status: 502,
-        code: "NO_IMAGE_RETURNED",
-      });
-    }
+    const imageUrl = `data:${mimeType || "image/png"};base64,${base64}`;
 
     return {
       ok: true,
       provider: "gateway",
       model,
       imageUrl,
-      base64: base64 || undefined,
-      mimeType: "image/png",
+      base64,
+      mimeType: mimeType || "image/png",
       compiledPrompt,
       warnings: [],
       metadata: {
