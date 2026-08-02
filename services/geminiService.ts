@@ -10,8 +10,10 @@ import {
 import { modulateSemioticContext } from "./semioticModulator";
 import { fetchUserZines, fetchLatestLineageEntry } from "./firebaseUtils";
 import { getClient, withResilience, tryModels, ORACLE_PERSONA as CLIENT_PERSONA } from "./geminiClient";
+import { modelFor } from "./modelConfig";
 import { coerceToString } from "../lib/utils";
 import { isPaidPatronPlan } from "../constants";
+import { modelFor } from "./modelConfig";
 
 export { getClient, withResilience, tryModels };
 
@@ -614,10 +616,10 @@ Do not be poetic unless it improves clarity. Prioritize clarity, structure, and 
 
     const data = JSON.parse(response.text || "{}");
     
-    // Embed the structured text
+    // Embed the structured text (role-resolved; env-overridable via GEMINI_EMBEDDING_MODEL)
     const structuredText = JSON.stringify(data);
     const embeddingResponse = await ai.models.embedContent({
-      model: 'text-embedding-004',
+      model: modelFor("embedding", "gemini"),
       contents: [structuredText],
     });
     const embedding = embeddingResponse.embeddings?.[0]?.values || [];
@@ -857,14 +859,43 @@ function cleanAndParse(text: string | undefined): any {
   }
 }
 
+/** Resolve the Gemini embedding model id (env-overridable via GEMINI_EMBEDDING_MODEL). */
+export const embeddingModelId = (): string => modelFor("embedding", "gemini");
+
+/**
+ * Embed text parts via the Gemini client (proxied). When the server has an AI Gateway
+ * key, `/api/proxy/gemini` remaps embedContent through `embedGeminiContentViaGateway`
+ * and uses `modelFor("embedding", "gateway")` instead — so stored vectors may be
+ * OpenAI-width even though this call requests the Gemini role model. Callers that
+ * persist vectors should store `embedding_dims` and skip dim-mismatched compares.
+ */
+export interface EmbeddingResult {
+  values: number[] | undefined;
+  model: string;
+}
+
+export const getEmbeddingWithMeta = async (content: Part[], apiKey?: string): Promise<EmbeddingResult> => {
+  return await withResilience(async (ai) => {
+    const response = await ai.models.embedContent({
+      model: embeddingModelId(),
+      contents: content,
+    });
+    const fromResponse =
+      (response as { modelVersion?: string }).modelVersion ||
+      (response as { model?: string }).model;
+    // When the Gemini proxy remaps to Gateway, prefer the actual gateway embedding id
+    // over the requested Gemini role label (text-embedding-004).
+    const fallback =
+      (response as { provider?: string }).provider === "vercel-ai-gateway"
+        ? modelFor("embedding", "gateway")
+        : embeddingModelId();
+    return { values: response.embeddings?.[0]?.values, model: fromResponse || fallback };
+  }, apiKey);
+};
+
 export const getEmbedding = async (content: Part[], apiKey?: string) => {
-    return await withResilience(async (ai) => {
-        const response = await ai.models.embedContent({
-            model: "gemini-embedding-2-preview",
-            contents: content,
-        });
-        return response.embeddings?.[0]?.values;
-    }, apiKey);
+  const { values } = await getEmbeddingWithMeta(content, apiKey);
+  return values;
 };
 
 export const compressImage = async (base64: string, quality = 0.7, maxWidth = 1024): Promise<string> => {
@@ -2349,7 +2380,7 @@ export const generateScribeReading = async (profile: UserProfile | null, context
     return await withResilience(async (ai) => {
         const profileData = sanitizeProfile(profile);
         const response = await ai.models.generateContent({
-            model: 'gemini-3.5-flash',
+            model: modelFor('textFast', 'gemini'),
             contents: `You are "The Scribe", an ancient but chic editorial oracle. 
             Generate a profound, poetic reading based on the user's aesthetic profile and the provided context.
             
@@ -2989,8 +3020,9 @@ export const identifyAestheticInstant = async (base64: string, mimeType: string,
 };
 export const scryWebSignals = async (query: string) => {
   return await withResilience(async (ai) => {
+    // Google Search tool requires native Gemini (Gateway chat drops tools — see geminiClient).
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: modelFor("textFast", "gemini"),
       contents: [{ text: `Act as a high-end cultural semiotician. Search the web for the most avant-garde, emerging cultural insights, aesthetic trends, and semiotic shifts related to: "${query}". Provide a curated, pretentious list of findings with titles, snippets, and source URLs. Focus on visual references and trend-setting signals.` }],
       config: {
         tools: [{ googleSearch: {} }],
@@ -3659,8 +3691,9 @@ export const generateSovereignIdentityCard = async (tasteProfile: TasteProfile) 
 
 export const generateOracleResearch = async (topic: string, profile: any) => {
   return await withResilience(async (ai) => {
+    // Google Search tool requires native Gemini (Gateway chat drops tools — see geminiClient).
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: modelFor('textFast', 'gemini'),
       contents: `Act as a 'Cultural Alchemist' and Trend Forecaster for Mimi Zine.
       Perform 'Deep Scrying' on the topic: ${topic}.
       
