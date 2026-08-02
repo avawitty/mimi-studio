@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import type { Doll } from "../../types";
+import { resolveIdentityViewUrl, type DollIdentityView } from "../../services/dollEngine";
 
 const DollPortraitScene = lazy(() =>
   import("./DollPortraitScene").then((m) => ({ default: m.DollPortraitScene })),
@@ -9,9 +10,15 @@ const DollPortraitScene = lazy(() =>
 interface DollPortraitStageProps {
   doll: Doll;
   className?: string;
+  view?: DollIdentityView;
 }
 
-export const DollPortraitStage: React.FC<DollPortraitStageProps> = ({ doll, className = "" }) => {
+export const DollPortraitStage: React.FC<DollPortraitStageProps> = ({
+  doll,
+  className = "",
+  view = "portrait",
+}) => {
+  const identityUrl = resolveIdentityViewUrl(doll, view);
   const accent = doll.palette[0] || "#a8b79f";
   const secondary = doll.palette[1] || "#525252";
 
@@ -32,9 +39,9 @@ export const DollPortraitStage: React.FC<DollPortraitStageProps> = ({ doll, clas
       >
         <DollPortraitScene accent={accent} secondary={secondary} seed={seed} />
       </Suspense>
-      {(doll.identityReferences?.portraitUrl || doll.generatedImageUrl) ? (
+      {identityUrl ? (
         <img
-          src={doll.identityReferences?.portraitUrl || doll.generatedImageUrl}
+          src={identityUrl}
           alt=""
           className="absolute inset-0 w-full h-full object-cover mix-blend-lighten opacity-70 pointer-events-none"
           referrerPolicy="no-referrer"

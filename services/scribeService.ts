@@ -107,13 +107,10 @@ export async function retrieveScribeContext(
 
   const candidates: ScribeContextItem[] = [];
 
-  // 0. Active Doll companion (Phase 3 identity injection)
-  if (dolls.length > 0) {
-    const preferredId = readClientActiveDollId();
-    const activeDoll =
-      (preferredId && dolls.find((d) => d.id === preferredId)) ||
-      (projectId && dolls.find((d) => d.projectId === projectId)) ||
-      dolls[0];
+  // 0. Active Doll companion — only when Studio/chamber explicitly activated a doll
+  const preferredId = readClientActiveDollId();
+  if (preferredId && dolls.length > 0) {
+    const activeDoll = dolls.find((d) => d.id === preferredId);
     if (activeDoll) {
       const masks = await listDollMasks(userId, activeDoll.id).catch(
         (): Awaited<ReturnType<typeof listDollMasks>> => [],

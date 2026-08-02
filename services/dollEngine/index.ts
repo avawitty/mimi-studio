@@ -28,6 +28,11 @@ export {
   mergeIdentityReference,
   identityPackCompleteness,
 } from "./identityPack";
+export {
+  fetchDollIdentityMedia,
+  fetchDollImageReferencesAsMedia,
+  resolveIdentityViewUrl,
+} from "./mediaRefs";
 export { defaultMaskSeedsForDoll, pickActiveMask } from "./masks";
 export {
   buildDollCompanionBundle,

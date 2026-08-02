@@ -598,7 +598,11 @@ GUIDELINES FOR THE RESPONSE:
                   transform: isConstructShifting ? `translateX(${chromaticOffset}px) scale(${1 + Math.abs(chromaticOffset) * 0.005})` : 'none'
                 }}
               >
-                <DollPortraitStage doll={currentDoll} className="w-full h-full" />
+                <DollPortraitStage
+                  doll={currentDoll}
+                  view={identityView}
+                  className="w-full h-full"
+                />
               </motion.div>
 
               {/* Construct Shift Glitch Overlay */}
