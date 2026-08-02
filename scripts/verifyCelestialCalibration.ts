@@ -93,8 +93,19 @@ function testCuspFlag() {
 
 function testReadoutAndGeneration() {
   const inactive = compileCelestialReadout({ enabled: false });
-  assert(inactive.timingPhrase.includes("inactive"), "inactive copy");
+  assert(inactive.timingPhrase.toLowerCase().includes("inactive"), "inactive copy");
   assert(celestialTimingForGeneration({ enabled: false }) === null, "no gen string when off");
+
+  const preview = compileCelestialReadout({
+    enabled: false,
+    birthDate: "1990-06-01",
+  });
+  assert(preview.sun?.sign === "gemini", "preview derives while disabled");
+  assert(
+    preview.timingPhrase.includes("Gemini") &&
+      preview.timingPhrase.toLowerCase().includes("not used in generation"),
+    "preview phrase shows derived Sun without claiming generation use",
+  );
 
   const active = compileCelestialReadout({
     enabled: true,

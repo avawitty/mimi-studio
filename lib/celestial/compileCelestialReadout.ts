@@ -53,17 +53,24 @@ export function compileCelestialReadout(
     draft?.seasonalAlignment?.trim() ||
     defaultSeasonalAlignmentPhrase(season);
 
-  let timingPhrase = "Celestial calibration inactive.";
-  if (enabled && sun) {
-    const seasonBit = season
-      ? ASTRONOMICAL_SEASON_LABELS[season]
-      : "Season unset";
-    const cuspBit = sun.onCusp && sun.cuspNeighbor
+  const seasonBit = season
+    ? ASTRONOMICAL_SEASON_LABELS[season]
+    : "Season unset";
+  const cuspBit =
+    sun?.onCusp && sun.cuspNeighbor
       ? ` · cusp toward ${ZODIAC_SIGN_LABELS[sun.cuspNeighbor]}`
       : "";
-    timingPhrase = `Tropical Sun in ${ZODIAC_SIGN_LABELS[sun.sign]}${cuspBit} · ${seasonBit}`;
+  const derivedPhrase = sun
+    ? `Tropical Sun in ${ZODIAC_SIGN_LABELS[sun.sign]}${cuspBit} · ${seasonBit}`
+    : null;
+
+  let timingPhrase = "Celestial calibration inactive — enter a birth date.";
+  if (enabled && derivedPhrase) {
+    timingPhrase = derivedPhrase;
   } else if (enabled && !sun) {
     timingPhrase = "Enabled — enter a birth date to derive tropical Sun.";
+  } else if (!enabled && derivedPhrase) {
+    timingPhrase = `${derivedPhrase} · not used in generation yet`;
   }
 
   return {
