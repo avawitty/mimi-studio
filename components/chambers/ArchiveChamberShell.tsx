@@ -33,6 +33,8 @@ export interface ArchiveChamberShellProps {
   compactHeader?: boolean;
   /** On narrow screens, hide chamber title (app chrome already names the mode) and keep guide control only. */
   mobileGuideOnly?: boolean;
+  /** Extra classes on the chamber root (e.g. mobile ink surface for Scry). */
+  surfaceClassName?: string;
 }
 
 export const ArchiveContextPanel: React.FC<{
@@ -85,6 +87,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   headerNote,
   compactHeader = false,
   mobileGuideOnly = false,
+  surfaceClassName,
 }) => {
   const module = getCanonModule(moduleId);
   const isNarrow = useIsNarrow();
@@ -142,7 +145,11 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   ) : null;
 
   return (
-    <div className="archive-chamber binder-portfolio relative flex flex-col h-full min-h-0">
+    <div
+      className={`archive-chamber binder-portfolio relative flex flex-col h-full min-h-0${
+        surfaceClassName ? ` ${surfaceClassName}` : ""
+      }`}
+    >
       {/* Desktop / non-guide-only header. Mobile guide-only chambers hide this entirely. */}
       <header
         className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${

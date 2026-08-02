@@ -1,4 +1,4 @@
-import type { EditorElement, ToneTag, ZinePage, ZinePageSpec } from "../types";
+import type { EditorElement, ToneTag, ZineContent, ZinePage, ZinePageSpec } from "../types";
 
 export type ZineIssueMode = "editorial" | "research" | "seasonal" | "oracle";
 
@@ -150,4 +150,25 @@ export function shouldAutoDevelopPlates(meta: {
 
 export function defaultEditorTone(tone: ToneTag | string | undefined): ToneTag {
   return (tone as ToneTag) || "editorial";
+}
+
+/** Reconstruct pages[] from pagesJson when list/fetch payloads omit them. */
+export function hydrateZineContentPages<T extends { content?: ZineContent }>(zine: T): T {
+  const content = zine.content;
+  if (!content) return zine;
+  if (content.pages?.length) return zine;
+  if (!content.pagesJson) return zine;
+  try {
+    const pages = JSON.parse(content.pagesJson);
+    if (!Array.isArray(pages)) return zine;
+    return {
+      ...zine,
+      content: {
+        ...content,
+        pages,
+      },
+    };
+  } catch {
+    return zine;
+  }
 }

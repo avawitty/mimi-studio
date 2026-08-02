@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useEffect, useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import { subscribeToUserZines, fetchCommunityZines } from '../services/firebaseUtils';
+import { fetchSovereignStatus, type SovereignArchiveStatus } from '../services/sovereignClient';
 import { getLocalZines } from '../services/localArchive';
 import { ZineMetadata } from '../types';
 import { useUser } from '../contexts/UserContext';
@@ -19,6 +20,7 @@ import { PressReveal } from './motion/PressReveal';
 /**
  * The Stand — published-issues shelf / open profile showcase.
  * Column-ruled grid, quiet typography — not a profile dashboard (PRD-03 / PRD-07).
+ * Floor reads from the sovereign archive when available.
  */
 export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> = ({ onSelectZine }) => {
   const { user, profile } = useUser();
@@ -26,15 +28,30 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   const [cloudZines, setCloudZines] = useState<ZineMetadata[]>([]);
   const [communityZines, setCommunityZines] = useState<ZineMetadata[]>([]);
   const [loading, setLoading] = useState(true);
+  const [floorLoading, setFloorLoading] = useState(false);
+  const [floorLoaded, setFloorLoaded] = useState(false);
+  const [archive, setArchive] = useState<SovereignArchiveStatus | null>(null);
   const [mode, setMode] = useState<'mine' | 'floor'>('mine');
   const [searchQuery, setSearchQuery] = useState('');
   const [commentZineId, setCommentZineId] = useState<string | null>(null);
+
+  // Identity change must resettle Floor — don't keep another account's shelf / empty quota state.
+  useEffect(() => {
+    setFloorLoaded(false);
+    setCommunityZines([]);
+    setCloudZines([]);
+  }, [user?.uid, user?.isAnonymous]);
+
 
   useEffect(() => {
     let unsubUser = () => {};
     const load = async () => {
       setLoading(true);
       try {
+        void fetchSovereignStatus().then((status) => {
+          if (status) setArchive(status);
+        });
+
         const local = (await getLocalZines()) || [];
         setLocalZines(local.filter((z) => z && z.id && z.content));
         setLoading(false);
@@ -50,13 +67,6 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
               setLoading(false);
             },
           );
-        }
-
-        try {
-          const community = await fetchCommunityZines(40);
-          setCommunityZines(community || []);
-        } catch (e) {
-          console.warn('Mimi // Stand community feed unavailable', e);
         }
       } catch (e) {
         console.error(e);
@@ -77,6 +87,53 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     };
   }, [user]);
 
+  // Lazy-load Floor (sovereign archive first) only when the tab is opened.
+  useEffect(() => {
+    if (mode !== 'floor' || floorLoaded) return;
+    let cancelled = false;
+    (async () => {
+      setFloorLoading(true);
+      try {
+        const community = await fetchCommunityZines(40);
+        if (!cancelled) {
+          setCommunityZines(community || []);
+          const status = await fetchSovereignStatus(true);
+          if (status) setArchive(status);
+        }
+      } catch (e) {
+        console.warn('Mimi // Stand community feed unavailable', e);
+      } finally {
+        if (!cancelled) {
+          setFloorLoaded(true); // settle even when empty / failed — no refetch storm
+          setFloorLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, floorLoaded]);
+
+  // Server-side Floor search when sovereign is ready; restore full shelf when cleared.
+  useEffect(() => {
+    if (mode !== 'floor' || !floorLoaded || !archive?.ready) return;
+    const q = searchQuery.trim();
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      try {
+        const { fetchSovereignCommunityZines } = await import('../services/sovereignClient');
+        const results = await fetchSovereignCommunityZines(40, q);
+        if (!cancelled && results) setCommunityZines(results);
+      } catch {
+        // keep client filter
+      }
+    }, q ? 220 : 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [searchQuery, mode, floorLoaded, archive?.ready]);
+
   const myZines = useMemo(() => {
     const merged = [...localZines, ...cloudZines];
     return Array.from(new Map(merged.map((z) => [z.id, z])).values()).sort(
@@ -86,7 +143,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
 
   const filteredZines = useMemo(() => {
     const source = mode === 'mine' ? myZines : communityZines;
-    if (!searchQuery.trim()) return source;
+    if (!searchQuery.trim() || (mode === 'floor' && archive?.ready)) return source;
     const q = searchQuery.toLowerCase();
     return source.filter(
       (z) =>
@@ -95,11 +152,14 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
         z.userHandle?.toLowerCase().includes(q) ||
         z.content?.headlines?.[0]?.toLowerCase().includes(q),
     );
-  }, [mode, myZines, communityZines, searchQuery]);
+  }, [mode, myZines, communityZines, searchQuery, archive?.ready]);
 
   const handle = profile?.handle ? `@${profile.handle}` : null;
   const displayName = profile?.displayName || profile?.handle || 'The Stand';
   const showFullLoader = loading && mode === 'mine' && myZines.length === 0;
+  const floorMark = archive?.ready
+    ? `House archive · ${communityZines.length}`
+    : `Floor · ${communityZines.length}`;
 
   return (
     <>
@@ -120,13 +180,20 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
                   <p className="font-serif italic text-lg text-[var(--mimi-stone)] max-w-xl leading-relaxed">
                     Issues on the stand — covers as plates, quiet as an open shelf.
                   </p>
-                  <PressMark
-                    label={
-                      mode === 'mine'
-                        ? `${myZines.length} issues`
-                        : `Floor · ${communityZines.length}`
-                    }
-                  />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <PressMark
+                      label={
+                        mode === 'mine'
+                          ? `${myZines.length} issues`
+                          : floorMark
+                      }
+                    />
+                    {archive?.ready && (
+                      <span className="font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone)]">
+                        Sovereign
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -198,18 +265,22 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
           </PressReveal>
 
           <div className="px-4 md:px-12">
-            {showFullLoader ? (
+            {showFullLoader || (mode === 'floor' && floorLoading && communityZines.length === 0) ? (
               <div className="py-48 flex flex-col items-center justify-center gap-6 opacity-50">
                 <Loader2 size={32} className="animate-spin text-[var(--mimi-stone)]" />
                 <span className="font-sans text-[9px] uppercase tracking-[0.3em]">
-                  Loading stand…
+                  {mode === 'floor' ? 'Opening floor…' : 'Loading stand…'}
                 </span>
               </div>
             ) : filteredZines.length === 0 ? (
               <div className="py-16 md:py-24 flex flex-col items-center justify-center gap-5 text-center px-6">
                 <Ghost size={36} className="text-[var(--mimi-stone)]" />
                 <p className="font-serif italic text-xl md:text-2xl text-[var(--mimi-ink)]">
-                  {mode === 'mine' ? 'No issues on your stand yet.' : 'No signal on this frequency.'}
+                  {mode === 'mine'
+                    ? 'No issues on your stand yet.'
+                    : archive?.ready
+                      ? 'The house shelf is waiting for a first public issue.'
+                      : 'No signal on this frequency.'}
                 </p>
                 {mode === 'mine' && (
                   <PublicCTA
@@ -219,6 +290,11 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
                   >
                     Compose first issue
                   </PublicCTA>
+                )}
+                {mode === 'floor' && archive?.ready && (
+                  <p className="font-sans text-[10px] uppercase tracking-[0.2em] text-[var(--mimi-stone)] max-w-sm">
+                    Publish an issue — it lands in your archive, not a rented free tier.
+                  </p>
                 )}
               </div>
             ) : (
@@ -246,30 +322,22 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
             )}
           </div>
 
-          <footer className="mt-12 md:mt-24 border-t border-[var(--mimi-hairline)] py-8 md:py-12 text-center">
+          <footer className="mt-12 md:mt-24 border-t border-[var(--mimi-hairline)] py-8 md:py-12 text-center space-y-2">
             <p className="font-serif italic text-sm text-[var(--mimi-stone)]">
               Your stand is your open profile in waiting.
             </p>
+            {archive?.ready && (
+              <p className="font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone)]/80">
+                Sovereign archive · {archive.publicCount || 0} public
+              </p>
+            )}
           </footer>
         </div>
       </PublicField>
 
       <AnimatePresence>
         {commentZineId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/40 flex items-end md:items-center justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
-            onClick={() => setCommentZineId(null)}
-          >
-            <div
-              className="bg-[var(--mimi-field)] w-full max-w-lg max-h-[80vh] overflow-y-auto border border-[var(--mimi-ink)] rounded-t-xl md:rounded-none"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ZineComments zineId={commentZineId} onClose={() => setCommentZineId(null)} />
-            </div>
-          </motion.div>
+          <ZineComments zineId={commentZineId} onClose={() => setCommentZineId(null)} />
         )}
       </AnimatePresence>
     </>

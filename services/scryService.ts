@@ -6,7 +6,7 @@
 
 import { auth } from "./firebaseInit";
 import { searchGrounding } from "./searchService";
-import { scryShadowMemory } from "./vectorSearch";
+import { scryShadowMemoryLane } from "./vectorSearch";
 import {
   scryWebSignals,
   generateScribeReading,
@@ -64,8 +64,13 @@ export async function generateViaGateway(options: {
   }
 }
 
-function mapArchiveHits(raw: unknown[]): ResearchResult[] {
-  return (raw || []).slice(0, 12).map((item: any, index) => ({
+/** Coerce model/provider payloads to arrays — truthy non-arrays must not throw. */
+export function asUnknownArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+export function mapArchiveHits(raw: unknown): ResearchResult[] {
+  return asUnknownArray(raw).slice(0, 12).map((item: any, index) => ({
     id: item?.id || `archive-${index}`,
     type: item?.type || "archive",
     title: item?.title || item?.content?.title || item?.content?.prompt || "Archive specimen",
@@ -78,8 +83,8 @@ function mapArchiveHits(raw: unknown[]): ResearchResult[] {
   }));
 }
 
-function mapWebHits(raw: unknown[], groundingChunks: unknown[] = []): ResearchResult[] {
-  const fromResults = (raw || []).slice(0, 12).map((item: any, index) => ({
+export function mapWebHits(raw: unknown, groundingChunks: unknown = []): ResearchResult[] {
+  const fromResults = asUnknownArray(raw).slice(0, 12).map((item: any, index) => ({
     id: item?.url || `web-${index}`,
     type: "web",
     title: item?.title || "Web signal",
@@ -88,7 +93,7 @@ function mapWebHits(raw: unknown[], groundingChunks: unknown[] = []): ResearchRe
     relevance: item?.relevance,
     sourceLane: "web" as const,
   }));
-  const fromGrounding = (groundingChunks || []).slice(0, 8).map((chunk: any, index) => ({
+  const fromGrounding = asUnknownArray(groundingChunks).slice(0, 8).map((chunk: any, index) => ({
     id: chunk?.web?.uri || `ground-${index}`,
     type: "grounding",
     title: chunk?.web?.title || "Grounded insight",
@@ -105,8 +110,8 @@ function mapWebHits(raw: unknown[], groundingChunks: unknown[] = []): ResearchRe
   });
 }
 
-function mapShadowHits(raw: unknown[]): ResearchResult[] {
-  return (raw || []).slice(0, 12).map((item: any, index) => ({
+export function mapShadowHits(raw: unknown): ResearchResult[] {
+  return asUnknownArray(raw).slice(0, 12).map((item: any, index) => ({
     id: item?.id || `shadow-${index}`,
     type: item?.type || "shadow",
     title:
@@ -193,7 +198,7 @@ export async function runSpecimenScry(options: {
       settleLane("personalMemory", () => searchGrounding(query)),
       settleLane("web", () => scryWebSignals(query)),
       settleLane("generatedReading", () => laneReading(profile, query, geminiKey)),
-      settleLane("shadowMemory", () => scryShadowMemory(query)),
+      settleLane("shadowMemory", () => scryShadowMemoryLane(query)),
     ]);
 
   if (archiveSettled.ok === true) {
@@ -201,7 +206,7 @@ export async function runSpecimenScry(options: {
       results?: unknown[];
       summary?: string;
     };
-    const hits = mapArchiveHits(data.results || []);
+    const hits = mapArchiveHits(data.results);
     run.sources.personalMemory = hits;
     const summary = (data.summary || "").trim();
     // Summary-only / sign-in / error copy is not live evidence — never mark
@@ -233,10 +238,10 @@ export async function runSpecimenScry(options: {
 
   if (webSettled.ok === true) {
     const data = webSettled.value as {
-      results?: unknown[];
-      groundingChunks?: unknown[];
+      results?: unknown;
+      groundingChunks?: unknown;
     };
-    const hits = mapWebHits(data.results || [], data.groundingChunks || []);
+    const hits = mapWebHits(data.results, data.groundingChunks);
     run.sources.web = hits;
     run.laneStatus.web = hits.length > 0 ? "success" : "empty";
   } else {
@@ -272,9 +277,30 @@ export async function runSpecimenScry(options: {
   }
 
   if (shadowSettled.ok === true) {
-    const hits = mapShadowHits(shadowSettled.value as unknown[]);
+    const lane = shadowSettled.value as Awaited<ReturnType<typeof scryShadowMemoryLane>>;
+    const hits = mapShadowHits(lane.hits);
     run.sources.shadowMemory = hits;
     run.laneStatus.shadowMemory = hits.length > 0 ? "success" : "empty";
+    if (lane.audit.needsReindex) {
+      run.shadowIndexHint = {
+        needsReindex: true,
+        incompatible: lane.audit.incompatible,
+        missingVector: lane.audit.missingVector,
+        reindexable: lane.audit.reindexable,
+        searchable: lane.audit.searchable,
+        shadowDocs: lane.audit.shadowDocs,
+        referenceDims: lane.audit.referenceDims,
+        referenceModel: lane.audit.referenceModel,
+      };
+      if (hits.length === 0 && lane.audit.reindexable > 0) {
+        run.failures.push({
+          provider: "scryShadowMemory",
+          lane: "shadowMemory",
+          message: `${lane.audit.reindexable} shadow vector${lane.audit.reindexable === 1 ? "" : "s"} need re-index for the current embedding space (${lane.audit.referenceDims ?? "?"} dims).`,
+          at: Date.now(),
+        });
+      }
+    }
   } else {
     run.laneStatus.shadowMemory = "failed";
     run.failures.push({

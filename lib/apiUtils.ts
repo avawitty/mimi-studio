@@ -69,7 +69,10 @@ export const sendText = (res: any, status: number, text: string, contentType = "
 export const cors = (req: any, res: any) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-user-token, anthropic-version");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, x-api-key, x-user-token, x-user-id, x-mimi-ingest-key, anthropic-version",
+  );
   if (req.method === "OPTIONS") {
     res.statusCode = 204;
     res.end();

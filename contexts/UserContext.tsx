@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { UserProfile, UserPreferences, Persona, TailorLogicDraft, NarrativeThread } from '../types';
-import { getLocalProfile, saveProfileLocally } from '../services/localArchive';
+import { getLocalProfile, getLocalPocket, saveProfileLocally } from '../services/localArchive';
 import { 
   bootstrapAuth, ensureAuth, getUserProfile, saveUserProfile, commitGlobalHandshake,
   anchorIdentity, linkIdentity, handleAuthRedirect, startGhostSession, 
@@ -20,6 +20,7 @@ import { hasAccess } from '../constants';
 import { fetchUserSubscription } from '../services/membershipPipeline';
 import { clearLegacyUsedContextState } from '../services/usedContextService';
 import { clearLegacyEditCompileState } from '../lib/editCompileExport';
+import { buildCreditGrant } from '../lib/mimiEntitlements';
 
 interface SystemStatus {
   auth: 'syncing' | 'anchored' | 'offline';
@@ -436,10 +437,31 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const initStarted = useRef(false);
   const reconciliationInProgress = useRef<string | null>(null);
+  const pocketSyncGeneration = useRef(0);
 
   const refreshHasApiKey = useCallback(async () => {
     // Sovereign Gating Disabled as per user request
     setHasApiKey(true);
+  }, []);
+
+  const attachLocalPocketSync = useCallback(() => {
+    if (unsubscribePocket.current) unsubscribePocket.current();
+    const gen = ++pocketSyncGeneration.current;
+
+    const hydrateLocalPocket = async () => {
+      const items = await getLocalPocket();
+      if (pocketSyncGeneration.current !== gen) return;
+      setPocket(items || []);
+    };
+
+    void hydrateLocalPocket();
+    const onLocalPocketUpdate = () => {
+      void hydrateLocalPocket();
+    };
+    window.addEventListener("mimi:pocket_updated", onLocalPocketUpdate);
+    unsubscribePocket.current = () => {
+      window.removeEventListener("mimi:pocket_updated", onLocalPocketUpdate);
+    };
   }, []);
 
   const setOracleStatus = (status: SystemStatus['oracle']) => {
@@ -449,24 +471,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     refreshHasApiKey();
     const handleKeyVoid = () => {
+      // Mark oracle unavailable, but never toast "configure API keys".
+      // Plan-funded AI Gateway is the primary path; personal BYOK is optional.
       setOracleStatus('unavailable');
-      window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
-          detail: { 
-              message: "Oracle frequency saturated. Configure API Keys in Sovereign Profiles.", 
-              type: 'error' 
-          } 
-      }));
     };
 
     const handleKeyBlocked = () => {
       setOracleStatus('unavailable');
       setKeyBlocked(true);
-      window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
-          detail: { 
-              message: "Oracle blocked by credentials. See Sovereignty controls.", 
-              type: 'error' 
-          } 
-      }));
+      // Same rule: do not push users into Sovereign Profiles for BYOK.
     };
     
     const handleRegistryAlert = (e: any) => {
@@ -478,6 +491,27 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         msg.includes('database connection failed') ||
         (msg.includes('not-found') && msg.includes('database')) ||
         msg.includes('does not exist in project');
+      // AI Gateway credit / sign-in denials mention "billing period" and must NOT
+      // trip Simulated Mode — that was stacking System Dissonance toasts on Lab.
+      const isGatewayCreditNotice =
+        msg.includes('ai gateway') ||
+        msg.includes('membership credits') ||
+        msg.includes('plan credits') ||
+        msg.includes('credits reload') ||
+        msg.includes('billing period') ||
+        msg.includes('sign in to use mimi') ||
+        msg.includes('credits_exhausted') ||
+        msg.includes('oracle could not complete') ||
+        msg.includes('personal api keys are optional') ||
+        msg.includes('personal gateway key');
+
+      if (isGatewayCreditNotice) {
+        // Unstick false-positive Simulated Mode from older "billing period" matches.
+        setIsSimulatedMode(false);
+        setIsDatabaseMissing(false);
+        return;
+      }
+
       const isBillingOrLimit =
         msg.includes('dunning') ||
         msg.includes('billing') ||
@@ -558,12 +592,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
+    // Key includes anon/registered so linking the same uid re-runs listeners.
+    const reconcileKey = `${uid}:${fbUser.isAnonymous ? "a" : "r"}`;
     console.info("MIMI // Reconciling Profile for:", uid, fbUser.isAnonymous ? "(Ghost)" : "(Swan)");
-    if (reconciliationInProgress.current === uid) {
-      console.info("MIMI // Reconciliation already in progress for this UID. Skipping.");
+    if (reconciliationInProgress.current === reconcileKey) {
+      console.info("MIMI // Reconciliation already in progress for this identity. Skipping.");
       return;
     }
-    reconciliationInProgress.current = uid;
+    reconciliationInProgress.current = reconcileKey;
     setSystemStatus(prev => ({ ...prev, auth: 'syncing' }));
 
     // Clear existing listeners to prevent duplication
@@ -633,22 +669,36 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       [cloudProfileSnap, cloudPrefsSnap] = await Promise.race([cloudSyncPromise, timeoutPromise]) as any;
       
-      if (reconciliationInProgress.current !== uid) {
+      if (reconciliationInProgress.current !== reconcileKey) {
           console.info("MIMI // User changed during reconciliation. Aborting.");
           return;
       }
 
-      // Fetch subscription data with a race to prevent hanging
-      const subPromise = fetchUserSubscription(uid);
-      const subTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 4000));
-      const subscription = await Promise.race([subPromise, subTimeout]) as any;
+      // Prefer live auth identity — fbUser can be stale if account was linked mid-flight.
+      const liveIsAnonymous = () => auth.currentUser?.isAnonymous ?? !!fbUser.isAnonymous;
+
+      // Fetch subscription data with a race to prevent hanging.
+      // Anonymous ghosts don't have billing docs — skip the read.
+      let subscription: any = null;
+      if (!liveIsAnonymous()) {
+        const subPromise = fetchUserSubscription(uid);
+        const subTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 4000));
+        subscription = await Promise.race([subPromise, subTimeout]) as any;
+      }
       
       // 2. Setup Real-time Listeners
       unsubscribeProfile.current = subscribeToUserProfile(uid, async (pData) => {
          try {
-             const subscription = await fetchUserSubscription(uid);
+             // Ghosts never carry billing — clear explicitly (null ?? prev would keep stale sub).
+             const isGhost = liveIsAnonymous();
+             const nextSub = isGhost ? null : await fetchUserSubscription(uid);
              setProfile(prev => {
-                 const merged = { ...(prev || {}), ...pData, uid: uid, subscription } as UserProfile;
+                 const merged = {
+                   ...(prev || {}),
+                   ...pData,
+                   uid: uid,
+                   subscription: isGhost ? null : (nextSub ?? prev?.subscription ?? null),
+                 } as UserProfile;
                  return ensurePersonas(merged);
              });
          } catch (e) {
@@ -658,9 +708,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       unsubscribePrefs.current = subscribeToUserPreferences(uid, async (prefsData) => {
          try {
-             const subscription = await fetchUserSubscription(uid);
+             const isGhost = liveIsAnonymous();
+             const nextSub = isGhost ? null : await fetchUserSubscription(uid);
              setProfile(prev => {
-                 const merged = { ...(prev || {}), ...prefsData, subscription } as UserProfile;
+                 const merged = {
+                   ...(prev || {}),
+                   ...prefsData,
+                   subscription: isGhost ? null : (nextSub ?? prev?.subscription ?? null),
+                 } as UserProfile;
                  return ensurePersonas(merged);
              });
          } catch (e) {
@@ -668,9 +723,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
          }
       });
 
-      unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
-        setPocket(items);
-      });
+      // Pocket live sync is for registered sessions; ghosts stay on local pocket.
+      // Re-check live auth in case identity upgraded during cloud fetch.
+      if (!liveIsAnonymous()) {
+        pocketSyncGeneration.current += 1;
+        unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
+          setPocket(items);
+        });
+      } else {
+        attachLocalPocketSync();
+      }
       
       // Construct initial state from one-time fetch to unblock UI immediately
       // (Listeners will follow up with updates)
@@ -795,8 +857,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (local) setProfile(ensurePersonas(local));
       }
     } finally {
-      setLoading(false);
-      reconciliationInProgress.current = null;
+      // Only clear the guard if this invocation still owns it — an aborted
+      // mid-flight reconcile must not wipe a newer reconcile's in-progress key.
+      if (reconciliationInProgress.current === reconcileKey) {
+        reconciliationInProgress.current = null;
+        setLoading(false);
+      }
       document.body.classList.add('hydrated');
     }
   }, [isEnvironmentRestricted]);
@@ -831,10 +897,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await saveProfileLocally(safeSpeedProfile);
     setProfile(safeSpeedProfile);
     setUser({ uid: ghostUid, isAnonymous: true });
+    attachLocalPocketSync();
     setLoading(false);
     setSystemStatus(prev => ({ ...prev, auth: 'offline' }));
     document.body.classList.add('hydrated');
-  }, []);
+  }, [attachLocalPocketSync]);
 
   const ghostLogin = useCallback(async () => {
     setElevatorLoading(true);
@@ -1321,28 +1388,45 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const activatePatron = async (key: string) => {
     if (!profile || !user) return;
-    try {
-      const { applyPromoCode } = await import('../services/membershipPipeline');
-      await applyPromoCode(user.uid, key);
-      
-      // Also update local profile state to reflect the change immediately
-      await updateProfile({ ...profile, planStatus: 'lab', plan: 'lab', isPatron: true, patronActivatedAt: Date.now(), patronKey: key });
-    } catch (e) {
-      console.warn("MIMI // Database write failed for patron, but treating as success locally for this session. Error:", e);
-      // Fallback: If DB is blocked due to security rules, enable it locally for the current session anyway 
-      // so the user can continue working without the backend connection.
-      setProfile({ ...profile, planStatus: 'lab', plan: 'lab', isPatron: true, patronActivatedAt: Date.now(), patronKey: key });
-    }
+    const { applyPromoCode } = await import('../services/membershipPipeline');
+    const result = await applyPromoCode(user.uid, key);
+    // Prefer server credits (including restored grants). Never invent a full
+    // allowance when the API omitted membershipCredits — that desyncs UI vs spend.
+    const credits =
+      result?.membershipCredits ||
+      profile.membershipCredits ||
+      (result?.applied
+        ? buildCreditGrant({ plan: 'lab', interval: 'year' }).credits
+        : profile.membershipCredits);
+    // Server Admin already wrote entitlement fields — only refresh local state.
+    setProfile({
+      ...profile,
+      planStatus: 'lab',
+      plan: 'lab',
+      mimiPlan: 'lab',
+      isPatron: true,
+      patronActivatedAt: Date.now(),
+      patronKey: key,
+      subscriptionStatus: 'active',
+      subscriptionInterval: 'year',
+      ...(credits ? { membershipCredits: credits } : {}),
+    });
   };
 
   const upgradePlan = async (plan: 'core' | 'optioning' | 'pro' | 'lab', interval?: 'month' | 'year') => {
     if (!profile) return;
-    try {
-      await updateProfile({ ...profile, planStatus: plan, plan, subscriptionInterval: interval || 'month', subscriptionStatus: 'active' });
-    } catch (e) {
-      console.error("MIMI // Failed to upgrade plan", e);
-      throw e;
-    }
+    // Entitlement fields are Admin / Stripe-webhook only in Firestore rules.
+    // Optimistic local UI after Checkout; durable grant arrives via webhook.
+    const updated = {
+      ...profile,
+      planStatus: plan,
+      plan,
+      subscriptionInterval: interval || 'month',
+      subscriptionStatus: 'active' as const,
+      lastActive: Date.now(),
+    };
+    setProfile(updated);
+    await saveProfileLocally(updated);
   };
 
   const incrementGeneration = async (cost: number = 2) => {

@@ -30,12 +30,15 @@ Zines are structured AI issues, but Visual Plates render as a fixed L/R template
 - **Structured archival PDF** via `lib/structuredZinePdf.ts` — ExportChamber PDF no longer html2canvas-rasters `#export-target`.
 - **Edit issue-spreads panel** — The Edit compile surfaces recent issues with Compose entry points.
 - Export manifest carries `pages[]` summaries + `pdfMode: "structured"`.
+- **Hi-fi plate bake at generate** — `bakeZineVisualPlates` runs before `saveZineToProfile` for hi-fi (non-lite) issues.
+- **In-Edit compose** — Issue spreads expands plate list and opens `ZineLayoutEditor` without leaving The Edit.
 
 ## Acceptance
 
 - Owner on `/zine/:id` can Compose a plate, save, reload, and see the composed spread.
 - Non-owners / public share still render saved `customLayout` read-only.
-- `npm run verify:zine-spread-compose`, `npm run verify:structured-zine-pdf`, and `npm run verify:zine-visual-policy` pass.
-- Hi-fi + non-lite issues pass `autoDevelop` to Visualizer for hero/plates.
+- `npm run verify:zine-spread-compose`, `npm run verify:structured-zine-pdf`, `npm run verify:bake-zine-plates`, and `npm run verify:zine-visual-policy` pass.
+- Hi-fi + non-lite issues pass `autoDevelop` to Visualizer for hero/plates **and** attempt generate-time bake.
 - Signature Takeaways plate has no `#F5F2EA` cream fill.
 - ExportChamber PDF path calls `downloadStructuredZinePdf` (no html2canvas in that branch).
+- The Edit → Compose spreads can save `customLayout` via `updateZineMetadata`.

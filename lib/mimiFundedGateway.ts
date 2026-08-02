@@ -1,7 +1,112 @@
 import { createRequire } from "module";
 import { extractMimiSessionToken } from "./mimiSessionToken.js";
-import { isPaidMimiPlan, normalizeMimiPlan } from "./mimiEntitlements.js";
+import {
+  buildCreditGrant,
+  isPaidMimiPlan,
+  normalizeMimiPlan,
+  type MimiBillingInterval,
+} from "./mimiEntitlements.js";
 import { proxyToFunctions } from "./proxyToFunctions.js";
+import {
+  collectStripeCustomerIdCandidates,
+  verifyStripeCustomerEntitlement,
+} from "./verifyStripeEntitlement.js";
+
+/**
+ * Stripe-verified paid entitlement. Candidate cus_* ids may come from
+ * user/profile/billing docs, but only Stripe confirmation grants trust.
+ */
+export async function resolveTrustedPaidBilling(opts: {
+  uid: string;
+  email?: string | null;
+  sources: Array<Record<string, unknown> | null | undefined>;
+}): Promise<boolean> {
+  const candidates = collectStripeCustomerIdCandidates(...opts.sources);
+  for (const customerId of candidates) {
+    if (
+      await verifyStripeCustomerEntitlement({
+        customerId,
+        uid: opts.uid,
+        email: opts.email,
+      })
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Period rollover: an existing grant with allowance whose period has ended.
+ * Safe to rewrite — the user already had a server-issued grant.
+ */
+export function needsMembershipPeriodReload(
+  grant: { remaining?: unknown; allowance?: unknown; periodEndsAt?: unknown } | null | undefined,
+  now = Date.now(),
+): boolean {
+  if (grant == null || typeof grant !== "object") return false;
+  const allowance = Number(grant.allowance);
+  const hasAllowance = Number.isFinite(allowance) && allowance > 0;
+  if (!hasAllowance) return false;
+  const periodEndsAt = Number(grant.periodEndsAt ?? 0);
+  return Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
+}
+
+/**
+ * Missing/malformed grant — only heal when a trusted billing signal exists.
+ * Never mint paid credits from client-writable plan fields alone.
+ * `remaining: 0` without a positive allowance is malformed (not "spent").
+ */
+export function needsMembershipCreditMint(
+  grant: { remaining?: unknown; allowance?: unknown; periodEndsAt?: unknown } | null | undefined,
+): boolean {
+  if (grant == null || typeof grant !== "object") return true;
+  const allowance = Number(grant.allowance);
+  const hasAllowance = Number.isFinite(allowance) && allowance > 0;
+  return !hasAllowance;
+}
+
+/** @deprecated Use needsMembershipPeriodReload / needsMembershipCreditMint. */
+export function needsMembershipCreditHeal(
+  grant: { remaining?: unknown; allowance?: unknown; periodEndsAt?: unknown } | null | undefined,
+  now = Date.now(),
+): boolean {
+  return needsMembershipCreditMint(grant) || needsMembershipPeriodReload(grant, now);
+}
+
+export function isPaidSubscriptionActive(subscriptionStatus: unknown): boolean {
+  const status = String(subscriptionStatus || "active").trim().toLowerCase();
+  return status !== "inactive" && status !== "canceled" && status !== "cancelled";
+}
+
+/**
+ * Synchronous shape check only — NEVER use this alone to mint/reload credits.
+ * Firestore user/profile/billing docs are owner-writable; cus_* can be forged.
+ * Call `resolveTrustedPaidBilling` (Stripe-verified) before healing.
+ */
+export function hasTrustedPaidBillingSignal(data: Record<string, unknown>): boolean {
+  return String(data.stripeCustomerId || "").trim().startsWith("cus_");
+}
+
+/** Roll an expired grant forward without re-deriving allowance from client plan. */
+export function rollForwardMembershipGrant(
+  grant: { allowance?: unknown; interval?: unknown } | null | undefined,
+  interval: MimiBillingInterval = "month",
+  now = Date.now(),
+) {
+  const normalizedInterval: MimiBillingInterval = interval === "year" ? "year" : "month";
+  const allowance = Number(grant?.allowance ?? 0);
+  const periodMs = (normalizedInterval === "year" ? 365 : 30) * 24 * 60 * 60 * 1000;
+  return {
+    allowance,
+    remaining: allowance,
+    used: 0,
+    interval: normalizedInterval,
+    periodStartedAt: now,
+    periodEndsAt: now + periodMs,
+    lastGrantedAt: now,
+  };
+}
 
 const require = createRequire(import.meta.url);
 
@@ -114,10 +219,10 @@ export const resolveMimiFundedGatewayAccess = async (
           return { allowed: false, billable: false, cost };
         }
       }
-      return softAllow(undefined, cost);
+      return { allowed: false, billable: false, cost };
     }
 
-    let decoded: { uid: string };
+    let decoded: { uid: string; email?: string };
     try {
       decoded = await auth.verifyIdToken(token);
     } catch {
@@ -138,16 +243,80 @@ export const resolveMimiFundedGatewayAccess = async (
       const [userDoc, profileDoc] = await Promise.all([userRef.get(), profileRef.get()]);
       const data = { ...(profileDoc.data() || {}), ...(userDoc.data() || {}) };
 
-      const plan = normalizeMimiPlan(data.plan || data.planStatus);
+      const plan = normalizeMimiPlan(
+        data.plan || data.planStatus || data.mimiPlan || data.membershipPlan,
+      );
       const isPaid = isPaidMimiPlan(plan);
       let remaining = 0;
 
       if (isPaid) {
-        const active = data.subscriptionStatus !== "inactive" && data.subscriptionStatus !== "canceled";
-        const grant = data.membershipCredits || data.subscription?.credits;
-        remaining = Number(grant?.remaining ?? 0);
+        // Missing subscriptionStatus is common for patron-activated / manually
+        // granted lab seats — treat as active unless explicitly canceled.
+        const active = isPaidSubscriptionActive(data.subscriptionStatus);
+        if (!active) {
+          return { allowed: false, billable: false, uid: decoded.uid, cost };
+        }
 
-        if (!active || remaining < cost) {
+        // Stripe customer id often lives on billing/subscription, not the user root.
+        let billingData: Record<string, unknown> = {};
+        try {
+          const billingSnap = await userRef.collection("billing").doc("subscription").get();
+          billingData = (billingSnap.data() || {}) as Record<string, unknown>;
+        } catch (err) {
+          console.warn("MIMI // billing/subscription read failed during credit heal:", err);
+        }
+
+        // Never trust top-level `subscription.credits` — owners can forge that
+        // object. Only Admin-written membershipCredits + billing/** credits.
+        let grant = data.membershipCredits || billingData.credits;
+        const shouldReloadPeriod = needsMembershipPeriodReload(grant);
+        const needsMint = needsMembershipCreditMint(grant);
+        // Only hit Stripe when a heal would actually run.
+        const trustedBilling =
+          shouldReloadPeriod || needsMint
+            ? await resolveTrustedPaidBilling({
+                uid: decoded.uid,
+                email: decoded.email,
+                sources: [billingData, data as Record<string, unknown>],
+              })
+            : false;
+        const shouldMintMissing = needsMint && trustedBilling;
+
+        if ((shouldReloadPeriod && trustedBilling) || shouldMintMissing) {
+          const interval = (data.subscriptionInterval || "month") as MimiBillingInterval;
+          const existingPeriodEnd = Number(grant?.periodEndsAt ?? 0);
+          // Period reload preserves stored allowance; mint derives from plan.
+          const credits = shouldReloadPeriod
+            ? rollForwardMembershipGrant(grant, interval)
+            : buildCreditGrant({
+                plan,
+                interval,
+                // Preserve a still-valid period window when minting a partial grant.
+                currentPeriodEnd:
+                  existingPeriodEnd > Date.now() ? existingPeriodEnd : undefined,
+              }).credits;
+          const healPatch = {
+            membershipCredits: credits,
+            subscriptionStatus: data.subscriptionStatus || "active",
+            mimiPlan: plan,
+          };
+          await Promise.all([
+            userRef.set(healPatch, { merge: true }),
+            profileRef.set(healPatch, { merge: true }),
+          ]);
+          grant = credits;
+          console.info("MIMI // Healed membership credits for funded gateway", {
+            uid: decoded.uid,
+            plan,
+            remaining: credits.remaining,
+            reason: shouldReloadPeriod ? "period_reload" : "trusted_mint",
+          });
+        }
+        // Expired period without Stripe verify: do not refill, but still allow
+        // spending any leftover remaining credits below.
+
+        remaining = Number(grant?.remaining ?? 0);
+        if (!Number.isFinite(remaining) || remaining < cost) {
           return { allowed: false, billable: false, uid: decoded.uid, cost };
         }
       } else {
@@ -176,12 +345,14 @@ export const resolveMimiFundedGatewayAccess = async (
 
       return { allowed: true, billable: true, uid: decoded.uid, cost };
     } catch (err) {
+      // JWT already verified — soft-allow this uid when credit docs are unreachable.
       console.warn("MIMI // Credit lookup failed; soft-allowing verified user:", err);
       return softAllow(decoded.uid, cost);
     }
   } catch (err) {
-    console.warn("MIMI // resolveMimiFundedGatewayAccess failed:", err);
-    return softAllow(undefined, cost);
+    // Never soft-allow without a verified session — deny on unexpected failures.
+    console.warn("MIMI // resolveMimiFundedGatewayAccess failed; denying:", err);
+    return { allowed: false, billable: false, cost };
   }
 };
 
@@ -212,7 +383,9 @@ export const chargeMimiFundedGateway = async (
     const profileRef = db.collection("profiles_public").doc(access.uid);
     const userDoc = await userRef.get();
     const userData = userDoc.data() || {};
-    const plan = normalizeMimiPlan(userData.plan || userData.planStatus);
+    const plan = normalizeMimiPlan(
+      userData.plan || userData.planStatus || userData.mimiPlan || userData.membershipPlan,
+    );
     const isPaid = isPaidMimiPlan(plan);
 
     const creditUpdate: Record<string, unknown> = isPaid

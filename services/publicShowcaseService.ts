@@ -6,6 +6,17 @@ import { getUserByHandle } from "./firebaseUtils";
 export const fetchPublicZinesForUser = async (uid: string): Promise<ZineMetadata[]> => {
   if (!uid) return [];
   try {
+    const { fetchSovereignUserZines, isSovereignOnline } = await import("./sovereignClient");
+    const sovereign = await fetchSovereignUserZines(uid, { publicOnly: true, limit: 60 });
+    if (sovereign !== null && ((await isSovereignOnline()) || sovereign.length > 0)) {
+      return [...sovereign].sort(
+        (a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0),
+      );
+    }
+  } catch {
+    // fall through
+  }
+  try {
     const q = query(
       collection(db, "zines"),
       where("userId", "==", uid),
@@ -22,6 +33,15 @@ export const fetchPublicZinesForUser = async (uid: string): Promise<ZineMetadata
 };
 
 export const fetchFeaturedPublicZines = async (count = 24): Promise<ZineMetadata[]> => {
+  try {
+    const { fetchSovereignCommunityZines, isSovereignOnline } = await import("./sovereignClient");
+    const sovereign = await fetchSovereignCommunityZines(count);
+    if (sovereign !== null && ((await isSovereignOnline()) || sovereign.length > 0)) {
+      return sovereign.slice(0, count);
+    }
+  } catch {
+    // fall through
+  }
   try {
     const q = query(collection(db, "zines"), where("isPublic", "==", true), limit(Math.min(count * 3, 60)));
     const snap = await getDocs(q);

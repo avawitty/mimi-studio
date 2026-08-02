@@ -1,11 +1,12 @@
 import { cors, requireMethod, sendError } from "../lib/apiUtils.js";
 import { getPublicBaseUrl } from "../lib/publicBaseUrl.js";
 import { buildCreatorRssFeed, normalizeFeedHandle } from "../lib/publicFeedQuery.js";
+import { buildCreatorRssFeedFromSovereign } from "../lib/sovereign/feed.js";
 import { getServerFirebaseAdmin } from "../lib/serverFirebaseAdmin.js";
 
 /**
  * Creator public-issue RSS feed ("Keep Tabs").
- * Query: `handle` (preferred). Also accepts path-style via rewrite `/u/:handle/feed.xml`.
+ * Prefers the sovereign archive; falls back to Firestore Admin when needed.
  */
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
@@ -19,17 +20,28 @@ export default async function handler(req: any, res: any) {
       return sendError(res, 400, "handle query parameter required", "MISSING_HANDLE");
     }
 
+    const baseUrl = getPublicBaseUrl(req);
+    const sovereignFeed = await buildCreatorRssFeedFromSovereign(handle, baseUrl);
+    if (sovereignFeed) {
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+      res.setHeader("X-Mimi-Feed-Items", String(sovereignFeed.itemCount));
+      res.setHeader("X-Mimi-Archive", "sovereign");
+      res.end(sovereignFeed.xml);
+      return;
+    }
+
     const { db } = getServerFirebaseAdmin();
     if (!db) {
       return sendError(
         res,
         503,
-        "Public feeds require server Firebase configuration.",
-        "FIREBASE_ADMIN_UNAVAILABLE",
+        "Public feeds require sovereign archive or server Firebase configuration.",
+        "ARCHIVE_UNAVAILABLE",
       );
     }
 
-    const baseUrl = getPublicBaseUrl(req);
     const feed = await buildCreatorRssFeed(db, handle, baseUrl);
     if (!feed) {
       return sendError(res, 404, `No public profile for @${handle}`, "HANDLE_NOT_FOUND");
@@ -39,6 +51,7 @@ export default async function handler(req: any, res: any) {
     res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
     res.setHeader("X-Mimi-Feed-Items", String(feed.itemCount));
+    res.setHeader("X-Mimi-Archive", "firestore");
     res.end(feed.xml);
   } catch (error: any) {
     sendError(res, 500, error?.message || String(error));

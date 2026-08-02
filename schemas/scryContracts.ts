@@ -74,6 +74,21 @@ export interface ScryRun {
     label: string;
   };
   latencyMs?: number;
+  /**
+   * When shadow docs exist but sit in a different embedding width than the
+   * current query (legacy Gemini vs Gateway OpenAI), Scry can offer reindex.
+   */
+  shadowIndexHint?: {
+    needsReindex: boolean;
+    incompatible: number;
+    missingVector: number;
+    /** Broken docs that have embeddable text (actionable re-index count). */
+    reindexable: number;
+    searchable: number;
+    shadowDocs: number;
+    referenceDims: number | null;
+    referenceModel?: string | null;
+  };
 }
 
 export interface TrendCluster {
@@ -135,4 +150,20 @@ export function assessScryCoverage(run: ScryRun): ScryRun["confidence"] {
     score,
     label: `${live} of ${lanes.length} evidence lanes returned`,
   };
+}
+
+/** Honest toast / status copy — never claim "complete" when no lane returned evidence. */
+export function describeScryOutcome(run: ScryRun): string {
+  if (run.confidence?.label) return run.confidence.label;
+  const lanes: ScryLaneId[] = [
+    "personalMemory",
+    "web",
+    "generatedReading",
+    "shadowMemory",
+  ];
+  const failed = lanes.filter((lane) => run.laneStatus[lane] === "failed").length;
+  if (failed > 0) {
+    return `Scry finished — no live evidence (${failed} lane${failed === 1 ? "" : "s"} failed).`;
+  }
+  return "Scry finished — no evidence returned.";
 }
