@@ -10,6 +10,7 @@ import {
 import { modulateSemioticContext } from "./semioticModulator";
 import { fetchUserZines, fetchLatestLineageEntry } from "./firebaseUtils";
 import { getClient, withResilience, tryModels, ORACLE_PERSONA as CLIENT_PERSONA } from "./geminiClient";
+import { modelFor } from "./modelConfig";
 import { coerceToString } from "../lib/utils";
 import { isPaidPatronPlan } from "../constants";
 import { modelFor } from "./modelConfig";
@@ -2379,7 +2380,7 @@ export const generateScribeReading = async (profile: UserProfile | null, context
     return await withResilience(async (ai) => {
         const profileData = sanitizeProfile(profile);
         const response = await ai.models.generateContent({
-            model: 'gemini-3.5-flash',
+            model: modelFor('textFast', 'gemini'),
             contents: `You are "The Scribe", an ancient but chic editorial oracle. 
             Generate a profound, poetic reading based on the user's aesthetic profile and the provided context.
             
@@ -3019,8 +3020,9 @@ export const identifyAestheticInstant = async (base64: string, mimeType: string,
 };
 export const scryWebSignals = async (query: string) => {
   return await withResilience(async (ai) => {
+    // Google Search tool requires native Gemini (Gateway chat drops tools — see geminiClient).
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: modelFor("textFast", "gemini"),
       contents: [{ text: `Act as a high-end cultural semiotician. Search the web for the most avant-garde, emerging cultural insights, aesthetic trends, and semiotic shifts related to: "${query}". Provide a curated, pretentious list of findings with titles, snippets, and source URLs. Focus on visual references and trend-setting signals.` }],
       config: {
         tools: [{ googleSearch: {} }],
@@ -3689,8 +3691,9 @@ export const generateSovereignIdentityCard = async (tasteProfile: TasteProfile) 
 
 export const generateOracleResearch = async (topic: string, profile: any) => {
   return await withResilience(async (ai) => {
+    // Google Search tool requires native Gemini (Gateway chat drops tools — see geminiClient).
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: modelFor('textFast', 'gemini'),
       contents: `Act as a 'Cultural Alchemist' and Trend Forecaster for Mimi Zine.
       Perform 'Deep Scrying' on the topic: ${topic}.
       
