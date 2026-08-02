@@ -6,11 +6,17 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DossierProvider,
   useDossierContext,
 } from "../components/studio-os/DossierContext";
+
+vi.mock("../contexts/UserContext", () => ({
+  useUser: vi.fn(() => ({ user: { uid: "user-a", isAnonymous: false } })),
+}));
+
+import { useUser } from "../contexts/UserContext";
 
 const TEST_STORAGE_KEY = "test:mimi:studio-context";
 
@@ -116,5 +122,38 @@ describe("DossierContext", () => {
     );
 
     window.removeEventListener("mimi:route-request", onRouteRequest);
+  });
+
+  it("scopes persisted dossiers to the active user", async () => {
+    vi.mocked(useUser).mockReturnValue({
+      user: { uid: "user-a", isAnonymous: false },
+    } as ReturnType<typeof useUser>);
+
+    const { unmount } = render(
+      <DossierProvider>
+        <DossierProbe />
+      </DossierProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Seed dossier" }));
+    await waitFor(() =>
+      expect(
+        window.localStorage.getItem("mimi:studio-context:v1::user-a"),
+      ).toContain("The architecture of quiet interfaces"),
+    );
+
+    unmount();
+
+    vi.mocked(useUser).mockReturnValue({
+      user: { uid: "user-b", isAnonymous: false },
+    } as ReturnType<typeof useUser>);
+
+    render(
+      <DossierProvider>
+        <DossierProbe />
+      </DossierProvider>,
+    );
+
+    expect(screen.getByTestId("dossier-title")).toHaveTextContent("Loose Desk");
   });
 });
