@@ -1,0 +1,31 @@
+# fly launch / fly deploy — durable sovereign archive on a volume
+#   fly volumes create mimi_data --size 1 --region <region>
+#   fly secrets set MIMI_SOVEREIGN_DATABASE_URL=...   # optional Postgres instead of volume SQLite
+
+app = "mimi-studio"
+primary_region = "sjc"
+
+[build]
+
+[env]
+  PORT = "3000"
+  MIMI_SOVEREIGN_ENABLED = "1"
+  MIMI_SOVEREIGN_DB = "/data/sovereign.sqlite"
+  MIMI_SOVEREIGN_SEED_DEMO = "0"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[mounts]]
+  source = "mimi_data"
+  destination = "/data"
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
