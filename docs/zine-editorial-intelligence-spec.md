@@ -193,6 +193,8 @@ interface ZineWorkingCopy {
   contentHash: string;
   issuePlanDraftRef?: VersionedRef;
   pageDrafts: ZinePageSpecV2[];
+  copyCompressionResult?: CompressionResult;
+  copyCompressionDigest?: string;
   updatedAt: number;
   updatedBy: string;
 }
@@ -781,7 +783,7 @@ Before either plan kind can be realized, runtime validation requires:
 4. every source, asset, direction, and embedded-local reference resolving;
 5. every spread containing valid participating pages exactly once;
 6. rhythm arrays matching the exact page order;
-7. all deterministic non-waivable `EARN-*`, `ARC-*`, `RHY-*`, and `SPREAD-*` checks passing;
+7. every deterministic non-waivable check whose rule-table stage includes `plan` passing; realized/projection-only checks such as `RHY-008` run at their later gates;
 8. an approval-candidate plan having no provisional ref, and a provisional plan having exactly one unexpired ref bound to the same working copy.
 
 ### 6.5 Plan and realization evaluations
@@ -822,6 +824,7 @@ interface ZineRealizationEvaluation
   measuredRhythm: IssueRhythm;
   pageSummaries: RealizedPageCompositionSummary[];
   copyCompression: CompressionResult;
+  copyCompressionDigest: string;
   critiques: CompositionCritique[];
   appliedOverrideRefs: VersionedRef<"editorial-rule-override">[];
   inputDigest: string;
@@ -1107,13 +1110,15 @@ type RealizeIssuePlanResult =
 
 The request contains exactly one of `planApprovalRef` or `provisionalSelectionRef`, plus a current budget approval and reservation. It contains exactly one job per plan page in plan order; a colophon job is deterministic and cannot consume an image job. Success/partial results preserve the same page IDs and order. A provider fallback may change execution path but not page function, count, claim/source refs, or order. If it cannot honor the plan, it returns `blocked`.
 
-### Stage 8.75 — Freeze the reviewed candidate
+### Stage 8.75 — Copy-compress and freeze the reviewed candidate
 
 ```ts
 interface FreezeZineCandidateRequest {
   workingCopyId: string;
   workingCopyHeadToken: string;
   workingCopyContentHash: string;
+  copyCompressionResult: CompressionResult;
+  copyCompressionDigest: string;
   planRef: VersionedRef<"zine-issue-plan">;
   parentArtifactRef?: VersionedRef<"zine-artifact-revision">;
   expectedArtifactHeadRef?: VersionedRef<"zine-artifact-revision">;
@@ -1123,21 +1128,25 @@ interface FreezeZineCandidateResult {
   artifactRef: VersionedRef<"zine-artifact-revision">;
   planRef: VersionedRef<"zine-issue-plan">;
   frozenWorkingCopyHash: string;
+  copyCompressionDigest: string;
 }
 ```
 
-The freeze verifies CAS and creates immutable content without setting the artifact head. In Express, it first freezes an `approval-candidate` child plan from the provisional plan, then freezes the native artifact against that child. Guided/standard use the existing approval-candidate plan. All evaluations, snapshots, and proof in Stage 9 reference the returned artifact hash.
+After realization, Mimi measures the mutable working copy, runs copy compression, applies accepted copy-only edits to `pageDrafts`, and recomputes its head token and content hash. A proposed page removal, merge, split, or reorder changes the issue plan and returns to structural compression in Stage 5 instead of mutating the approved topology. The compression result and digest must describe the exact working-copy hash. Only then may the freeze verify CAS and create immutable content without setting the artifact head.
 
-### Stage 9 — Realize and re-measure
+In Express, the freeze first creates an `approval-candidate` child plan from the provisional plan, then freezes the native artifact against that child. Guided/standard use the existing approval-candidate plan. All evaluations, snapshots, and proof in Stage 9 reference the returned artifact hash and compression digest.
 
-After copy/layout realization and candidate freeze:
+### Stage 9 — Evaluate the frozen candidate
 
-1. compute measured density, visual intensity, text-image ratio, alignment, accents, and asset fingerprints;
-2. run copy compression;
+After pre-freeze copy compression and candidate freeze:
+
+1. recompute measured density, visual intensity, text-image ratio, alignment, accents, and asset fingerprints from the immutable candidate;
+2. verify the recorded copy-compression result/digest against the frozen copy;
 3. run realized-stage deterministic rules and the semantic critic;
 4. persist `ZineRealizationEvaluation`, copy/visual snapshots, and technical proof against the frozen artifact;
-5. resolve any allowed finding through pre-proof rule-exception approval, override, and a new realization-evaluation revision;
-6. create `ArtifactProofCandidate` with every applied override/approval and present that exact hash for copy, visual, and artifact-proof approval.
+5. if a finding requires copy, layout, or asset mutation, create a child working copy and repeat Stages 8.5–9; if it changes page topology or sequence, create a new issue-plan revision and return to Stage 5; never edit the frozen candidate;
+6. resolve any non-mutating allowed finding through pre-proof rule-exception approval, override, and a new realization-evaluation revision;
+7. create `ArtifactProofCandidate` with every applied override/approval and present that exact hash for copy, visual, and artifact-proof approval.
 
 The Press later realizes a destination projection, runs projection composition/privacy/rights/technical evaluations, creates `ProjectionProofCandidate`, and requires projection-proof approval before publication.
 
@@ -1302,7 +1311,9 @@ The transform and rationale must be recorded in asset custody.
 Compression runs twice:
 
 1. **Structural compression** before issue-plan approval.
-2. **Copy compression** after copy drafting and before proof approval.
+2. **Copy compression** after copy drafting, on the mutable working copy, before candidate freeze and proof approval.
+
+Copy compression may inspect a frozen candidate but cannot mutate it. Any accepted post-freeze copy-only suggestion forks a child working copy and produces a new candidate, evaluation, snapshots, and proof. A page removal, merge, split, or reorder also requires a new issue-plan revision and structural compression pass.
 
 ```ts
 interface RepeatedClaim {
@@ -2923,8 +2934,8 @@ Replanning a legacy issue creates a new revision and leaves the original readabl
 ### Phase C — Realization and critic
 
 - Generate copy and plates from an approved plan.
-- Measure realized rhythm.
-- Run copy compression and semantic critique.
+- Measure and copy-compress the mutable realization before candidate freeze.
+- Run semantic critique against the frozen candidate; route mutating fixes through a child working copy.
 - Apply local repair patches with revision history.
 - Separate composition critiques from export diagnostics in UI and manifests.
 
@@ -2963,6 +2974,7 @@ No phase may require destructive migration of existing zines.
 - [ ] A high-density evidence page without release produces `RHY-003`.
 - [ ] An unearned dark plate produces `RHY-006`.
 - [ ] Unchanged cover reuse produces `RHY-008`.
+- [ ] Plan-stage validation does not run `RHY-008` before realized asset fingerprints exist.
 - [ ] Strong images front-loaded into the opening produce `RHY-007`.
 - [ ] The final editorial page must release or leave honest residue.
 - [ ] Spread relationships remain legible in mobile order.
@@ -2975,6 +2987,7 @@ No phase may require destructive migration of existing zines.
 - [ ] Overloaded pages can be proposed for split without automatically increasing total length.
 - [ ] Composition critiques are stored separately from technical proof diagnostics.
 - [ ] Accepted critic repairs create decision-log entries and a new plan or artifact revision.
+- [ ] Copy compression mutates only a working copy before freeze; an accepted post-freeze suggestion creates a child candidate.
 
 ### Approval and authorship
 
@@ -3043,8 +3056,11 @@ No phase may require destructive migration of existing zines.
 | Five centered pages | `COMP-001` / `COMP-002` |
 | Black plate used only for style | `RHY-006` |
 | Cover image repeated on page 2 | `RHY-008` |
+| Plan has no realized asset fingerprints | Plan gate skips `RHY-008`; realized gate remains required |
 | Strongest evidence after application | `NAR-003` |
 | False solved ending over unresolved sources | `RHY-010` |
+| Draft copy compression changes page copy | Working-copy hash is recomputed before candidate freeze |
+| Frozen candidate receives a compression suggestion | Original stays immutable; child working copy/candidate is created |
 | Evidence/reading spread on mobile | Correct sequential relationship bridge |
 | Unknown-rights Pinterest image | Public reproduction blocked; link-only/private remedies offered |
 | Express workflow final review | Seven scoped approval records share a bundle ID |
