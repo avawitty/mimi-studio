@@ -82,6 +82,8 @@ export interface ScryRun {
     needsReindex: boolean;
     incompatible: number;
     missingVector: number;
+    /** Broken docs that have embeddable text (actionable re-index count). */
+    reindexable: number;
     searchable: number;
     shadowDocs: number;
     referenceDims: number | null;

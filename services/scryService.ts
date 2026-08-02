@@ -286,16 +286,17 @@ export async function runSpecimenScry(options: {
         needsReindex: true,
         incompatible: lane.audit.incompatible,
         missingVector: lane.audit.missingVector,
+        reindexable: lane.audit.reindexable,
         searchable: lane.audit.searchable,
         shadowDocs: lane.audit.shadowDocs,
         referenceDims: lane.audit.referenceDims,
         referenceModel: lane.audit.referenceModel,
       };
-      if (hits.length === 0 && (lane.audit.incompatible > 0 || lane.audit.missingVector > 0)) {
+      if (hits.length === 0 && lane.audit.reindexable > 0) {
         run.failures.push({
           provider: "scryShadowMemory",
           lane: "shadowMemory",
-          message: `${lane.audit.incompatible + lane.audit.missingVector} shadow vectors need re-index for the current embedding space (${lane.audit.referenceDims ?? "?"} dims).`,
+          message: `${lane.audit.reindexable} shadow vector${lane.audit.reindexable === 1 ? "" : "s"} need re-index for the current embedding space (${lane.audit.referenceDims ?? "?"} dims).`,
           at: Date.now(),
         });
       }

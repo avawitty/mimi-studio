@@ -410,6 +410,7 @@ export const ScryView: React.FC = () => {
             needsReindex: true,
             incompatible: result.auditAfter.incompatible,
             missingVector: result.auditAfter.missingVector,
+            reindexable: result.auditAfter.reindexable,
             searchable: result.auditAfter.searchable,
             shadowDocs: result.auditAfter.shadowDocs,
             referenceDims: result.auditAfter.referenceDims,
@@ -837,11 +838,9 @@ export const ScryView: React.FC = () => {
                       data-testid="shadow-reindex-hint"
                     >
                       <p className="font-sans text-sm text-white/65 leading-relaxed mb-2">
-                        {run.shadowIndexHint.incompatible + run.shadowIndexHint.missingVector}{" "}
+                        {run.shadowIndexHint.reindexable}{" "}
                         shadow signal
-                        {run.shadowIndexHint.incompatible + run.shadowIndexHint.missingVector === 1
-                          ? ""
-                          : "s"}{" "}
+                        {run.shadowIndexHint.reindexable === 1 ? "" : "s"}{" "}
                         need rewriting for this embedding space
                         {run.shadowIndexHint.referenceDims
                           ? ` (${run.shadowIndexHint.referenceDims}-d)`
@@ -993,11 +992,9 @@ export const ScryView: React.FC = () => {
                         Shadow index drift
                       </p>
                       <p className="font-sans text-sm archive-text-ink leading-relaxed mb-3">
-                        {run.shadowIndexHint.incompatible + run.shadowIndexHint.missingVector}{" "}
+                        {run.shadowIndexHint.reindexable}{" "}
                         saved vector
-                        {run.shadowIndexHint.incompatible + run.shadowIndexHint.missingVector === 1
-                          ? ""
-                          : "s"}{" "}
+                        {run.shadowIndexHint.reindexable === 1 ? "" : "s"}{" "}
                         sit outside the current embedding space
                         {run.shadowIndexHint.referenceDims
                           ? ` (${run.shadowIndexHint.referenceDims}-d)`
