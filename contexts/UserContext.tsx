@@ -450,26 +450,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     refreshHasApiKey();
     const handleKeyVoid = () => {
+      // Mark oracle unavailable, but never toast "configure API keys".
+      // Plan-funded AI Gateway is the primary path; personal BYOK is optional.
       setOracleStatus('unavailable');
-      // Personal BYOK is optional — plan-funded AI Gateway is the primary path.
-      // Do not tell lab/paid members they must enter API keys.
-      window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
-          detail: { 
-              message: "Oracle connection failed. Retry, or check plan credits — personal API keys are optional for Lab / paid seats.", 
-              type: 'error' 
-          } 
-      }));
     };
 
     const handleKeyBlocked = () => {
       setOracleStatus('unavailable');
       setKeyBlocked(true);
-      window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
-          detail: { 
-              message: "Oracle blocked by credentials. See Sovereignty controls.", 
-              type: 'error' 
-          } 
-      }));
+      // Same rule: do not push users into Sovereign Profiles for BYOK.
     };
     
     const handleRegistryAlert = (e: any) => {

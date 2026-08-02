@@ -370,11 +370,22 @@ export async function withResilience<T>(
       originalMessage.includes("billing period") ||
       originalMessage.includes("prepayment") ||
       originalMessage.includes("RESOURCE_EXHAUSTED") ||
+      originalMessage.includes("signed-in Mimi plan") ||
+      originalMessage.includes("plan-funded") ||
       // Legacy gemini-proxy denial — do not treat as BYOK key void.
-      originalMessage.includes("personal API key or MIMI_ENABLE_SERVER_AI");
+      originalMessage.includes("personal API key or MIMI_ENABLE_SERVER_AI") ||
+      originalMessage.includes("Gemini requires");
+
+    // Personal-key failures only — proxy/session traffic must not look like BYOK void.
+    const usingFundedProxyPath =
+      keyUsed === "Proxy" ||
+      keyUsed === "" ||
+      source === "Secure Server Proxy" ||
+      globalKeyRing.length === 0;
 
     const isKeyError = 
-      !isCreditOrGatewayError && (
+      !isCreditOrGatewayError &&
+      !usingFundedProxyPath && (
         error.status === 403 || 
         originalMessage.includes('403') || 
         originalMessage.includes('PERMISSION_DENIED') ||
@@ -444,7 +455,7 @@ export async function withResilience<T>(
       if (!suppressGlobalEvents) {
         window.dispatchEvent(new CustomEvent('mimi:show_quota_shield'));
       }
-      const quotaError = new Error("Oracle frequency saturated. All available keys are throttled.") as any;
+      const quotaError = new Error("Oracle is rate-limited right now. Retry shortly — personal API keys are not required.") as any;
       quotaError.code = 'QUOTA_EXCEEDED';
       throw quotaError;
     }
@@ -454,6 +465,27 @@ export async function withResilience<T>(
       overloadError.code = 'OVERLOADED';
       throw overloadError;
     }
+
+    // Funded proxy / session failures that look like 403s must not become BYOK nags.
+    if (
+      usingFundedProxyPath &&
+      (error.status === 403 || originalMessage.includes("403") || originalMessage.includes("PERMISSION_DENIED"))
+    ) {
+      if (!suppressGlobalEvents && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+          detail: {
+            type: "error",
+            message: "Oracle could not complete this request via AI Gateway. Retry shortly.",
+          },
+        }));
+      }
+      const proxyError = new Error(
+        originalMsg || "Oracle connection failed via AI Gateway.",
+      ) as any;
+      proxyError.code = errCode || "gateway_proxy_denied";
+      proxyError.status = error.status || 403;
+      throw proxyError;
+    }
     
     if (isKeyError) {
       const originalMsg = error.message || "";
@@ -461,21 +493,37 @@ export async function withResilience<T>(
                         originalMsg.includes("Service Blocked") || 
                         originalMsg.includes("PERMISSION_DENIED") ||
                         originalMsg.includes("blocked");
-      
+      // Proxy / session path is plan-funded AI Gateway — never demand BYOK.
+      const usingFundedProxy =
+        keyUsed === "Proxy" ||
+        keyUsed === "" ||
+        source === "Secure Server Proxy" ||
+        globalKeyRing.length === 0;
+
       if (!suppressGlobalEvents) {
-        if (isBlocked) {
+        if (usingFundedProxy) {
+          window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+            detail: {
+              type: "error",
+              message: "Oracle could not complete this request via AI Gateway. Retry shortly.",
+            },
+          }));
+        } else if (isBlocked) {
           window.dispatchEvent(new CustomEvent('mimi:key_blocked', { detail: { message: originalMsg } }));
         } else {
           window.dispatchEvent(new CustomEvent('mimi:key_void'));
         }
       }
-      const genericMsg = "Oracle connection failed: Invalid API Key. Please verify your registry credentials.";
+      const genericMsg = usingFundedProxy
+        ? "Oracle connection failed via AI Gateway."
+        : "Oracle connection failed: Invalid API Key. Please verify your registry credentials.";
       const isCustomMsg = originalMsg.includes("API_KEY_SERVICE_BLOCKED") || 
                           originalMsg.includes("Service Blocked") || 
                           originalMsg.includes("GCP") ||
                           originalMsg.includes("PERMISSION_DENIED") ||
                           originalMsg.includes("blocked") ||
-                          originalMsg.includes("MIMI");
+                          originalMsg.includes("MIMI") ||
+                          originalMsg.includes("AI Gateway");
       throw new Error(isCustomMsg ? originalMsg : `${genericMsg} (${originalMsg})`);
     }
     
