@@ -615,7 +615,10 @@ async function main() {
     pureLiteral.mean.caveats.some((c) => /literal statistical mean/i.test(c)),
     "literal caveat",
   );
-  assert(pureLiteral.analysisKind !== culturalMmm.interpretive.analysisKind, "kinds remain distinct");
+  assert(
+    String(pureLiteral.analysisKind) !== String(culturalMmm.interpretive.analysisKind),
+    "kinds remain distinct",
+  );
 
   const emotionalMmm = adaptResidueToMeanMedianMode(mindRead.result, {
     includeLiteralCompanion: true,
