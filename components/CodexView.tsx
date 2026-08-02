@@ -75,32 +75,32 @@ const codexPrinciples: CodexPrinciple[] = [
   {
     id: 'cognitive-sequence',
     title: 'The Cognitive Sequence',
-    thesis: 'Create → Reflect → Refine',
-    operationalMeaning: 'Raw expression should exist before it is judged, interpretation should occur before strategy.',
-    readContent: 'The architecture of Mimi is intentionally divided into six chambers: Create, Reflect, Refine, Signature, Observe, System.\n\nThis order is functional. It is based on the idea that users do not think in menus. They think in phases. A person begins by making or collecting something. Then they try to understand what it means. Then they decide what to do with it. That is the primary loop.\n\nThe Mimi loop prevents two common failures: premature strategy (optimizing before having enough material) and endless reflection (getting trapped in interpretation without converting insight into action).',
+    thesis: 'Collect → Organize → Edit → Create → Publish',
+    operationalMeaning: 'Gather before you structure; structure before you publish. Menu sections match this loop — not six invented chamber names.',
+    readContent: 'The live menu is organized by phase: Collect, Organize, Edit, Create, Publish, then All Chambers for identity and house tools.\n\nUsers do not think in feature lists. They move through phases: bring material in (Scry, Scribe, Darkroom), catalog it (Pocket, Wardrobe), shape the editorial angle (The Edit), fabricate (Worktable, Mood Board, Tailor), then export and surface (The Press, Front Page, The Stand).\n\nDo not treat route aliases or chamber wings as extra chambers. Threads lives inside Scribe. Correspondents and Cliques are Proscenium wings. Listing them again in the menu or this manual creates false product surface area.\n\nThe loop prevents two failures: premature strategy (optimizing before enough material) and endless reflection (interpreting without converting insight into publishable form).',
     diagnostics: {
-      healthy: 'Fluid movement between making, interpreting, and deciding.',
-      overdone: 'Premature strategy or endless reflection without action.',
-      currentRead: 'You are currently in the Create phase. Gathering raw material.'
+      healthy: 'Fluid movement Collect → Organize → Edit → Create → Publish.',
+      overdone: 'Premature strategy, or gathering forever without an Edit/Press handoff.',
+      currentRead: 'You are early in Collect/Organize — gather before refining.'
     },
     actions: [
       { label: 'Analyze this board', icon: <Search size={14} /> },
       { label: 'Generate a critique', icon: <MessageSquare size={14} /> }
     ],
     cases: [
-      { title: 'Case Study: The Shift', description: 'Moving from endless gathering to decisive refinement.' }
+      { title: 'Case Study: The Shift', description: 'Moving from endless gathering to decisive Edit → Press.' }
     ]
   },
   {
     id: 'refine',
-    title: 'Refine',
-    thesis: 'Interpretation should occur before strategy.',
-    operationalMeaning: 'Taste becomes useful when it can move into action.',
-    readContent: 'Refine is where interpretation becomes direction. Once signal has been recognized, the user can act with more precision. This chamber is for adjustment, planning, selection, and execution. It is less ceremonial than Reflect and more exacting in tone.\n\nAlign outputs with declared identity, generate direction from observed pattern, organize strategic action, support procurement, sourcing, selection, and curation decisions.',
+    title: 'Edit & Publish',
+    thesis: 'Interpretation becomes direction in The Edit; packaging happens in The Press.',
+    operationalMeaning: 'Taste becomes useful when it can move into a compile, then an export — not when it stays in notes.',
+    readContent: 'The Edit is where fragments become thesis and layout. The Press is where that compile becomes an export pack or publishable artifact. These are adjacent phases, not synonyms — do not collapse Press into Edit, and do not re-list Threads or Lens as if they were separate top-level chambers.\n\nAlign outputs with Tailor identity, organize strategic action in Intel Hub when needed, and keep GEO packaging under the GEO Engine chamber rather than repeating it as a free-floating principle everywhere.',
     diagnostics: {
       healthy: 'Precise, structured, editorial, strategic.',
-      overdone: 'Rigid, overly polished, losing the original raw instinct.',
-      currentRead: 'Needs more structure. The raw materials are present but lack editorial direction.'
+      overdone: 'Rigid polish that erases the original raw instinct.',
+      currentRead: 'Materials exist; editorial direction and export path are still open.'
     },
     actions: [
       { label: 'Analyze this board', icon: <Search size={14} /> },
@@ -109,45 +109,45 @@ const codexPrinciples: CodexPrinciple[] = [
       { label: 'Rewrite as editorial thesis', icon: <FileText size={14} /> }
     ],
     cases: [
-      { title: 'Editorial Edit', description: 'Applying the refine principle to a chaotic moodboard.' }
+      { title: 'Editorial Edit', description: 'Applying compile discipline to a chaotic moodboard, then handing off to The Press.' }
     ]
   },
   {
     id: 'geo',
-    title: 'Generative Engine Optimization (GEO)',
+    title: 'GEO Engine (AI Visibility)',
     thesis: 'Making the brand legible to machine intelligence.',
-    operationalMeaning: 'Brands must structure their aesthetic language and metadata so LLMs understand who they are.',
-    readContent: 'Generative Engine Optimization (GEO) is the practice of packing a brand’s visual and textual identity into machine-readable structures. LLMs and AIs don’t "view" websites; they read data structures. To ensure brand accuracy across AI searches and generative tools, you must inject JSON-LD, specific metadata schemas, and machine-readable context into your digital properties.\n\nBy leveraging the Brand OS, users export a GEO Manifest containing exactly what to append to their website <head>. This controls the AI narrative before generation even begins.',
+    operationalMeaning: 'Structure aesthetic language so models cite you accurately — owned by the GEO Engine chamber, not duplicated as Archive/Signals siblings.',
+    readContent: 'Generative Engine Optimization packs visual and textual identity into machine-readable structures. Models do not “view” UI; they read data. Export a GEO manifest (JSON-LD, retrieval tokens, headers) from the GEO Engine chamber so external AI search cites the brand correctly.\n\nThis principle describes that chamber’s job. It is not a second menu item named Signals, Archive Lens, or Brand OS.',
     diagnostics: {
-      healthy: 'Brand identity is accurately cited and reflected in AI search outputs.',
-      overdone: 'Metadata stuffing leading to hallucinated context connections.',
-      currentRead: 'Aesthetic signals are strong internally but lack structured external markers.'
+      healthy: 'Brand identity is accurately cited in AI search outputs.',
+      overdone: 'Metadata stuffing that hallucinates context.',
+      currentRead: 'Internal taste is strong; external machine markers may still be thin.'
     },
     actions: [
       { label: 'Generate GEO Schema', icon: <Database size={14} /> },
       { label: 'Export to Web Header', icon: <ArrowUpRight size={14} /> }
     ],
     cases: [
-      { title: 'Shopify JSON-LD', description: 'Injecting a product schema so LLMs understand specific aesthetic keywords.' }
+      { title: 'Shopify JSON-LD', description: 'Injecting product schema so models understand aesthetic keywords.' }
     ]
   },
   {
     id: 'vector-embeddings',
     title: 'Vector Embeddings & Spatial Taste',
-    thesis: 'Aesthetic identity is not random; it is mathematically calculated through high-dimensional analysis.',
-    operationalMeaning: 'Mimi uses vector embeddings to map the exact coordinates of your artifacts, discovering latent connections rather than assigning rigid archetypes.',
-    readContent: 'Vector Embeddings form the core neural architecture of Mimi. Each artifact you save—whether image, text, or reference—is parsed into a high-dimensional vector. This mathematical representation captures the texture, mood, and thematic substance of the piece.\n\nRather than forcing you into a predefined lifestyle bucket (e.g., "Dark Academia" or "Minimalist"), Mimi plots your artifacts in spatial relation to one another. By calculating the "Center of Gravity" among these points, the system understands your true aesthetic trajectory. This method prevents arbitrary corralment, allowing the system to recommend adjacencies that are mathematically and emotionally resonant to your specific coordinate space.',
+    thesis: 'Aesthetic identity is plotted, not bucketed.',
+    operationalMeaning: 'Taste Graph and Scry use embeddings; do not invent a separate Archive chamber for the same map.',
+    readContent: 'Saved artifacts become high-dimensional vectors. Taste Graph shows clusters; Scry searches across tags, embeddings, and the web. Together they replace lifestyle buckets (“Dark Academia”) with coordinate space.\n\nPocket holds the registry; Darkroom holds raw media; Scribe holds atoms. Those are distinct Collect/Organize chambers — not three names for one Archive module.',
     diagnostics: {
-      healthy: 'A dense, distinct cluster of related signals forming a strong center of gravity.',
-      overdone: 'Too many fragmented signals diluting the coordinate map into noise.',
-      currentRead: 'Your spatial map is forming. The coordinates are establishing your baseline.'
+      healthy: 'A dense cluster with a clear center of gravity.',
+      overdone: 'Fragmented signals diluting the map into noise.',
+      currentRead: 'The spatial map is forming; baseline coordinates are establishing.'
     },
     actions: [
       { label: 'Calculate Center of Gravity', icon: <Activity size={14} /> },
       { label: 'View Latent Distance', icon: <Search size={14} /> }
     ],
     cases: [
-      { title: 'The Latent Map', description: 'Visualizing the exact mathematical distance between a brutalist artifact and a romantic poet.' }
+      { title: 'The Latent Map', description: 'Distance between a brutalist specimen and a romantic poet in Taste Graph space.' }
     ]
   }
 ];
@@ -155,104 +155,104 @@ const codexPrinciples: CodexPrinciple[] = [
 const mimiModules: MimiModule[] = [
   {
     id: 'studio',
-    name: 'The Studio (Create / Zine Layout / Fabricator)',
-    badge: 'Digital & Physical Fabrication',
-    tagline: 'Translating scattered visual and textual debris into pristine, publication-grade zine spreads and sensory product releases.',
-    whyText: 'Modern digital formats favor volume over visual integrity. Standard page generators yield generic, sterile templates. The Studio is rooted in structural layout layout design: treating digital spreads as atmospheric objects that cultivate a brand’s intellectual aura and convert viewers into owners.',
-    howText: 'Creators load basic product elements—like name, allocation limits, and price—or drop raw reference links into the Sovereign Ingest bar. Mimi crawls the source metadata, parses the style indices, and auto-generates luxurious, highly customized taglines, sensory calibrators, and psychographic objection reconciles.',
-    forWhatText: 'Bespoke zine blueprints, immersive desktop layout spreads with interactive WebAudio sound escapes, and complete transactional brand Altars.',
+    name: 'Worktable (Create)',
+    badge: 'Zine Fabrication',
+    tagline: 'Turn references and prompts into publication-grade zine spreads — menu label Worktable, not a second Studio chamber.',
+    whyText: 'Generic page generators favor volume over visual integrity. Worktable treats spreads as atmospheric objects so fabrication stays editorial, not template-driven.',
+    howText: 'Load cues, references, and Tailor context on the Worktable. Brief Calibration presets and Quiet Studio are variants of this surface — not separate Create products. Input Studio tools live here for intake and grounding.',
+    forWhatText: 'Zine blueprints, cover structures, prompt packets, and handoffs into The Edit / The Press.',
     useCaseTitle: 'The Ceramic Shard Release',
-    useCaseDescription: 'A custom stoneware sculptor drops three unedited studio snapshots and prompts "brutalist asymmetry." The Studio instantly fabricates a five-spread editorial zine called "Hydrated Silicate Core No. 01," auto-generating high-contrast gallery product illustrations and drafting a checkout button directly into the layout.',
+    useCaseDescription: 'A sculptor drops three studio snapshots and prompts "brutalist asymmetry." Worktable fabricates a five-spread zine and stages a checkout path via Drop when commerce is in scope.',
     diagnostics: {
-      input: 'Style cues, pricing matrices, physical supply bounds, reference files.',
-      engine: 'Gemini 3.5 Synthesis Protocol + Responsive CSS Layout Engines.',
-      output: 'Archival Zines, interactive brand altars, sensory copywriting.',
-      moat: 'High-concept spatial margins that reject template-driven clutter.'
+      input: 'Style cues, references, Tailor constraints, Pocket/Darkroom fragments.',
+      engine: 'Provider-routed synthesis + layout engines.',
+      output: 'Zines, briefs, image prompts, instruction packets.',
+      moat: 'Spatial margins and Tailor-aware context over template clutter.'
     }
   },
   {
     id: 'tailor',
-    name: 'The Tailor (Taste Profiler)',
-    badge: 'Central Identity Moat',
-    tagline: 'The mathematical register of your brand’s core coordinates, visual taxonomies, and negative spaces.',
-    whyText: 'Predefined demographic boxes fail high-concept brands. Modern relevance is defined entirely by aesthetic accuracy. Without a strict, dynamically calibrated database of your aesthetic constraints, any generative tool will collapse into sterile trend-chasing noise.',
-    howText: 'The Tailor continuously reads files saved in your Archive or Pocket, calculating dominant color percentages, design motifs, and tone tags. It plots your center of gravity on an editable graph where you can lock in brand constraints or specify "Negative Spaces" (styles to strictly avoid).',
-    forWhatText: 'A living Brand Taste Profile that acts as a secure, reusable metadata guide for all future content, designs, and copy generation.',
+    name: 'Tailor (Create)',
+    badge: 'Taste Profile',
+    tagline: 'The register of coordinates, taxonomies, and negative space that keeps generation on-brand.',
+    whyText: 'Without locked aesthetic constraints, generative tools collapse into trend noise. Tailor is the Create-phase constraint engine — not a synonym for Signature or Taste Graph.',
+    howText: 'Reads evidence and Pocket/Darkroom material, plots center of gravity, locks traits and exclusions. Art Style Scryer / diagnostics fold into Tailor rather than appearing as sibling menu chambers.',
+    forWhatText: 'A living taste profile reused by Worktable, Edit, GEO, and identity surfaces.',
     useCaseTitle: 'Anchoring "incense oxide steel"',
-    useCaseDescription: 'An independent fragrance house imports ten mood photos of weathered metals. The Tailor anchors their center of gravity around "incense cold smoke & raw steel." From that day, the platform automatically guides all zine copy to stay within an austere, mineral tone, immediately warning the creator of any "saccharine sweet" stylistic drift.',
+    useCaseDescription: 'A fragrance house imports ten metal mood photos. Tailor anchors "incense cold smoke & raw steel" and warns when copy drifts sweet.',
     diagnostics: {
-      input: 'Scraped files, locked traits, negative keywords, brand exclusions.',
-      engine: 'High-dimensional centroid calculations & Exclusion taxonomies.',
-      output: 'Unified Brand Taste Profiles, prompt guidance variables.',
-      moat: 'Rigid brand safety thresholds preventing aesthetic compromise.'
+      input: 'Evidence files, locked traits, negative keywords.',
+      engine: 'Centroid + exclusion taxonomies.',
+      output: 'Taste profiles, prompt guidance variables.',
+      moat: 'Hard brand-safety thresholds against aesthetic compromise.'
     }
   },
   {
-    id: 'archive',
-    name: 'The Archive (Memory Library & Lens)',
-    badge: 'Computer Vision & Scraping',
-    tagline: 'A robust visual repository that crawls raw digital references and analyzes layout details with deep photographic lenses.',
-    whyText: 'Creatives spend hours saving scattered inspiration across desktop directories and phone screens, only to lose them in unindexed folders. The Archive establishes an active ecosystem that turns raw files into structured creative data.',
-    howText: 'Drag in static mockups or paste debris urls (such as Pinterest board feeds or newsletters). Mimi’s server scrapes the page contents and extracts core images. The Lens then executes custom vision algorithms, detailing precise spatial alignments, photographic grain weight, and lighting cast.',
-    forWhatText: 'A searchable reference database. Every item is indexed with taxonomic metadata and immediately mapped to coordinates in your Taste Graph.',
-    useCaseTitle: 'Systematic Pinterest Ingestion',
-    useCaseDescription: 'A curator links a messy Pinterest board containing architectural facades. The scraper grabs thirty references, and the Lens instantly tags each item with detailed attributes ("35mm tri-x film grain, raw concrete aggregates, heavy shadows"). These items are immediately ready to fuel future layout generations.',
+    id: 'collect',
+    name: 'Collect (Scry · Scribe · Darkroom)',
+    badge: 'Intake',
+    tagline: 'Three Collect chambers with distinct jobs — not one fictional Archive.',
+    whyText: 'Inspiration dies in unindexed folders. Splitting search (Scry), memory atoms (Scribe), and raw media (Darkroom) keeps intake honest instead of inventing an Archive/Lens mega-chamber.',
+    howText: 'Scry queries tags, embeddings, and the web. Scribe captures atoms and hosts Threads as a tab (route aliases /threads → Scribe). Darkroom stages uploads before they graduate to Pocket or Worktable.',
+    forWhatText: 'Search hits, memory atoms, and unprocessed media ready for Organize/Create.',
+    useCaseTitle: 'Board → Atoms → Worktable',
+    useCaseDescription: 'A curator Scrys a facade motif, saves citations in Scribe, parks raw shots in Darkroom, then pulls approved atoms into Worktable Used Context.',
     diagnostics: {
-      input: 'Image files, drag-and-drop file inputs, raw Pinterest/Article URLs.',
-      engine: 'Page Scraper microservices + photographic metadata lens parser.',
-      output: 'Indexed aesthetic references, curated memory nodes.',
-      moat: 'Dissection of raw pixel files into technical photographic tags.'
+      input: 'Queries, notes, uploads, URLs.',
+      engine: 'Search/grounding + memoryService + media staging.',
+      output: 'Atoms, tagged media, specimen hits.',
+      moat: 'Clear Collect ownership — no duplicate Archive listing.'
     }
   },
   {
-    id: 'threads',
-    name: 'Threads (Taste Constellation & Paths)',
-    badge: 'Relational Vector Mapping',
-    tagline: 'Visualizing relational distances, cognitive sequences, and emerging stylistic clusters.',
-    whyText: 'Traditional software visualizes files in rows and folders, hiding the rich, unspoken intersections forming in the user’s subconscious. Threads treat aesthetic assets as relational nodes, visualizing how separate ideas interact.',
-    howText: 'By representing archived items as multidimensional vector numbers, Threads projects their exact similarity as relational distances on a 2D biaxial grid. Relational paths light up when items share consistent conceptual space.',
-    forWhatText: 'Interactive structural maps, cosine similarity indices, and automatic cluster generators.',
-    useCaseTitle: 'The "Unmarked Concrete" Convergence',
-    useCaseDescription: 'A curator reviews their graph and notes that several unreleased raw concrete room designs and analogue synth audio loops are placed in a tight cluster. Recognizing this intersection, Mimi’s daemon recommends drafting an impromptu zine called "Late-Stage Analogue," automatically assembling the core ingredients.',
+    id: 'taste-graph',
+    name: 'Taste Graph (Identity)',
+    badge: 'Spatial Clusters',
+    tagline: 'Cluster map of saved taste — distinct from Scribe Threads and from GEO packaging.',
+    whyText: 'Folders hide intersections. Taste Graph shows relational distance so creators see durable clusters without re-listing Threads as its own All Chambers entry.',
+    howText: 'Vectors from saved material project onto a cluster map. Narrative Threads remain a Scribe tab; this chamber is the taste map, not a second semantic portal.',
+    forWhatText: 'Cluster views, adjacency reads, trajectory cues into Tailor/Signature.',
+    useCaseTitle: 'Late-Stage Analogue',
+    useCaseDescription: 'Concrete interiors and analogue synth loops sit in one cluster; the creator opens Worktable with that constellation as Used Context.',
     diagnostics: {
-      input: 'Aesthetic raw vectors cached in client-side profile states.',
-      engine: 'Interactive spatial canvas compilers & proximity calculations.',
-      output: 'Interactive taste constellations, auto-linked project groups.',
-      moat: 'Calculative relational pathways mapping abstract feelings into space.'
+      input: 'Saved vectors and pocketed references.',
+      engine: 'Proximity / cluster projection.',
+      output: 'Taste constellations and cluster labels.',
+      moat: 'Relational mapping without menu duplication.'
     }
   },
   {
     id: 'signals',
-    name: 'Signals & GEO Engine (AI Visibility)',
-    badge: 'Generative Search Optimization',
-    tagline: 'Formatting and packaging complex taste profiles so your brand is accurately indexed and recommended by AI crawlers.',
-    whyText: 'AI systems and conversational search layers (like Perplexity and Gemini Grounding) do not view visual UI layouts. They crawl metadata. To ensure a brand is accurately categorized and cited when users query AI, its identity must be packaged into machine-readable headers.',
-    howText: 'The GEO Engine compresses your living Taste Profile into structured JSON-LD schemas, semantic retrieval tokens, and SEO tags optimized for machine indexation.',
-    forWhatText: 'A web-ready metadata head file, copyable JSON-LD structures, and an AI Retrieval Simulator validating model perception.',
+    name: 'GEO Engine (House)',
+    badge: 'AI Visibility',
+    tagline: 'Package Tailor identity for machine citation — one chamber, one menu row.',
+    whyText: 'Conversational search crawls metadata, not layouts. Brands need a single packaging surface, not parallel "Signals" and "GEO" names.',
+    howText: 'Compress Taste Profile into JSON-LD, retrieval tokens, and header-ready manifests from GEO Engine.',
+    forWhatText: 'Copyable schemas, AI-readable heads, citation checks.',
     useCaseTitle: 'Intercepting Generative Recommendations',
-    useCaseDescription: 'An independent tailor implements a GEO schema on their portal. When a future buyer asks Perplexity, "Recommend limited-run labels focusing on raw Japanese denim with minimal brutalist finishes," the brand is citationally recommended based on its structured web headers.',
+    useCaseDescription: 'A denim label ships GEO headers; a buyer asking an AI for brutalist Japanese denim gets a structured citation.',
     diagnostics: {
-      input: 'Taste Profile variables, brand category targets, key visual motifs.',
-      engine: 'JSON-LD schema compilers + generative citation simulators.',
-      output: 'AI-readable indexing structures, verified citation matrices.',
-      moat: 'Mathematical translation of luxury aesthetics into indexing tokens.'
+      input: 'Taste Profile, category targets, motifs.',
+      engine: 'JSON-LD / retrieval token compilers.',
+      output: 'Indexing structures and citation matrices.',
+      moat: 'Aesthetic → machine-token translation in one place.'
     }
   },
   {
     id: 'altar',
-    name: 'The Altar / Mimi Drop (Sovereign Commerce)',
-    badge: 'Conversion Psychology Portal',
-    tagline: 'Weaving elite transactional psychology and visceral sensory elements onto the zine-editing canvas.',
-    whyText: 'Generic e-commerce software is an assembly line that strips products of their mystique. High-concept drops require ritualistic environments that build tension, emphasize limited allocations, and reward customer devotion.',
-    howText: 'The Altar mounts physical or digital drops with bespoke sensory controls (e.g., aroma descriptions and 60Hz hum sound switches), tactile stock indicators ("Allocation: 14/50 remaining"), and deliberate delay notices prior to opening a brutalist sliding Checkout drawer.',
-    forWhatText: 'Dynamic editorial checkouts, purchase sandbox registers, and local verification key certificates.',
-    useCaseTitle: 'The Waxed Linen Dust Coat Drop',
-    useCaseDescription: 'A slow-fashion designer configures a custom waxed jacket on the Altar. Rather than buying instantly, visitors are met with atmospheric room-frequency acoustic controls and checkout friction warnings. Upon purchase, a secure cryptographic Token Shard is saved into the buyer\'s private pocket.',
+    name: 'Drop (House)',
+    badge: 'Commerce',
+    tagline: 'Product/checkout surface — menu label Drop; Atelier holds taste-signal pins, not checkout.',
+    whyText: 'High-concept releases need ritual checkout without confusing Drop with Atelier pins or Memberships plan tiers.',
+    howText: 'Configure allocation, sensory framing, and checkout. Desire pins from zines live in Atelier; plan access lives under Memberships.',
+    forWhatText: 'Editorial checkouts and drop configurations.',
+    useCaseTitle: 'Waxed Linen Dust Coat',
+    useCaseDescription: 'A designer mounts a limited coat drop with friction and atmosphere; the buyer’s receipt can mirror into Pocket without renaming Drop as Altar in the menu.',
     diagnostics: {
-      input: 'Drop parameters, allocation ceilings, WebAudio hum values.',
-      engine: 'WebAudio frequency nodes + safe local checkout controllers.',
-      output: 'Interactive transaction gates, cryptographically signed keys.',
-      moat: 'Atmospheric conversion designs replacing sterile retail structures.'
+      input: 'Drop parameters, allocation, commerce config.',
+      engine: 'Checkout + presentation controllers.',
+      output: 'Transactional drop surfaces.',
+      moat: 'Commerce separated from Atelier pins and memberships.'
     }
   }
 ];
@@ -362,11 +362,11 @@ const ModuleCard = ({ m, index }: { m: MimiModule; index: number }) => {
 
   // Helper map for icons
   const getIcon = (id: string) => {
-    switch(id) {
+    switch (id) {
       case 'studio': return <Layers size={16} className="text-nous-text" />;
       case 'tailor': return <Cpu size={16} className="text-nous-text" />;
-      case 'archive': return <HardDrive size={16} className="text-nous-text" />;
-      case 'threads': return <Compass size={16} className="text-nous-text" />;
+      case 'collect': return <HardDrive size={16} className="text-nous-text" />;
+      case 'taste-graph': return <Compass size={16} className="text-nous-text" />;
       case 'signals': return <Shield size={16} className="text-nous-text" />;
       case 'altar': return <Landmark size={16} className="text-nous-text" />;
       default: return <BookOpen size={16} className="text-nous-text" />;
