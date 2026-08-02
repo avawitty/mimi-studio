@@ -37,11 +37,13 @@ export const SurveillanceOverlay: React.FC<SurveillanceOverlayProps> = ({
   }
 
   const intensity =
-    chamber === "reflect" || face === "void"
+    chamber === "intelligence" || face === "void"
       ? "high"
-      : chamber === "observe" || isDark
+      : chamber === "publishing" || isDark
         ? "mid"
-        : chamber === "signature" || chamber === "refine"
+        : chamber === "identity" ||
+            chamber === "library" ||
+            chamber === "services"
           ? "low"
           : "whisper";
 
