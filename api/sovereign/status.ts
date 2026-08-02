@@ -7,13 +7,13 @@ export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
   if (!requireMethod(req, res, "GET")) return;
 
-  const status = sovereignStatus();
+  const status = await sovereignStatus();
   return sendJson(res, 200, {
     ...status,
     enabledFlag: isSovereignEnabled(),
-    path: isSovereignEnabled() ? resolveSovereignDbPath() : null,
+    path: status.path ?? (isSovereignEnabled() ? resolveSovereignDbPath() : null),
     message: status.ready
-      ? "Sovereign archive online"
+      ? `Sovereign archive online (${status.backend || "unknown"})`
       : "Sovereign archive offline — Floor may fall back to Firestore",
   });
 }

@@ -1,7 +1,7 @@
 import { cors, sendJson } from "../lib/apiUtils.js";
 import { sovereignStatus } from "../lib/sovereign/store.js";
 
-export default function handler(req: any, res: any) {
+export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
   const serverAiEnabled =
     process.env.MIMI_ENABLE_SERVER_AI === "true" ||
@@ -25,7 +25,7 @@ export default function handler(req: any, res: any) {
       gateway: aiGatewayAvailable,
       replicate: serverAiEnabled && Boolean(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY),
     },
-    sovereign: sovereignStatus(),
+    sovereign: await sovereignStatus(),
     timestamp: new Date().toISOString(),
   });
 }

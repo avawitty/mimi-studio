@@ -972,7 +972,7 @@ async function startServer() {
   });
 
   // API Routes
-  app.get("/api/health", (req, res) => {
+  app.get("/api/health", async (req, res) => {
     const serverAiEnabled =
       process.env.MIMI_ENABLE_SERVER_AI === "true" ||
       process.env.MIMI_ENABLE_SERVER_AI === "1";
@@ -990,7 +990,7 @@ async function startServer() {
         aiGateway: serverAiEnabled && Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
         replicate: serverAiEnabled && Boolean(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY),
       },
-      sovereign: sovereignStatus(),
+      sovereign: await sovereignStatus(),
       timestamp: new Date().toISOString(),
     });
   });

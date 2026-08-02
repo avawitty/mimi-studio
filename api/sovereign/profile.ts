@@ -40,16 +40,16 @@ export default async function handler(req: any, res: any) {
       const withZines = String(req.query?.withZines || "") === "1";
 
       const profile = handle
-        ? getProfileByHandle(handle)
+        ? await getProfileByHandle(handle)
         : uid
-          ? getProfileByUid(uid)
+          ? await getProfileByUid(uid)
           : null;
 
       if (!profile) return sendError(res, 404, "Profile not found", "NOT_FOUND");
 
       const payload: Record<string, unknown> = { profile };
       if (withZines && profile.uid) {
-        payload.zines = listUserZines(profile.uid, { publicOnly: true, limit: 40 });
+        payload.zines = await listUserZines(profile.uid, { publicOnly: true, limit: 40 });
       }
       res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
       res.setHeader("X-Mimi-Archive", "sovereign");
@@ -64,7 +64,7 @@ export default async function handler(req: any, res: any) {
       if (auth.ok === false) {
         return sendError(res, auth.status, auth.message, auth.code);
       }
-      upsertProfile(parsed.profile);
+      await upsertProfile(parsed.profile);
       return sendJson(res, 200, { ok: true, uid: parsed.profile.uid, via: auth.via });
     }
 

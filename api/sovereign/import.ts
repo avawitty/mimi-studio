@@ -62,17 +62,17 @@ export default async function handler(req: any, res: any) {
     let profilesUpserted = 0;
     for (const profile of parsed.profiles || []) {
       if (!profile?.uid) continue;
-      upsertProfile(profile);
+      await upsertProfile(profile);
       profilesUpserted += 1;
     }
 
-    const { imported, skipped } = importZines(parsed.zines || []);
+    const { imported, skipped } = await importZines(parsed.zines || []);
     return sendJson(res, 200, {
       ok: true,
       imported,
       skipped,
       profilesUpserted,
-      archive: sovereignStatus(),
+      archive: await sovereignStatus(),
     });
   } catch (error: any) {
     return sendError(res, 500, error?.message || String(error), "SOVEREIGN_IMPORT_FAILED");

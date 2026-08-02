@@ -54,19 +54,21 @@ const sampleZine = (overrides: Partial<ZineMetadata> = {}): ZineMetadata =>
   }) as ZineMetadata;
 
 describe("sovereign store", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     fs.mkdirSync(tmpRoot, { recursive: true });
     const dbPath = path.join(tmpRoot, `${Date.now()}-${Math.random()}.sqlite`);
     process.env.MIMI_SOVEREIGN_ENABLED = "1";
     process.env.MIMI_SOVEREIGN_DB = dbPath;
     delete process.env.VERCEL;
     delete process.env.MIMI_SOVEREIGN_SEED_DEMO;
-    resetSovereignDbForTests();
+    delete process.env.MIMI_SOVEREIGN_DATABASE_URL;
+    delete process.env.MIMI_SOVEREIGN_USE_DATABASE_URL;
+    await resetSovereignDbForTests();
     cacheClear();
   });
 
-  afterEach(() => {
-    resetSovereignDbForTests();
+  afterEach(async () => {
+    await resetSovereignDbForTests();
     cacheClear();
     try {
       fs.rmSync(tmpRoot, { recursive: true, force: true });
@@ -75,21 +77,22 @@ describe("sovereign store", () => {
     }
   });
 
-  it("upserts and lists public zines by timestamp", () => {
-    upsertZine(sampleZine({ id: "z1", timestamp: 100, title: "Older" }));
-    upsertZine(sampleZine({ id: "z2", timestamp: 200, title: "Newer" }));
-    upsertZine(sampleZine({ id: "z3", timestamp: 300, title: "Private", isPublic: false }));
+  it("upserts and lists public zines by timestamp", async () => {
+    await upsertZine(sampleZine({ id: "z1", timestamp: 100, title: "Older" }));
+    await upsertZine(sampleZine({ id: "z2", timestamp: 200, title: "Newer" }));
+    await upsertZine(sampleZine({ id: "z3", timestamp: 300, title: "Private", isPublic: false }));
 
-    const listed = listPublicZines(10);
+    const listed = await listPublicZines(10);
     expect(listed.map((z) => z.id)).toEqual(["z2", "z1"]);
-    expect(sovereignStatus().publicCount).toBe(2);
+    expect((await sovereignStatus()).publicCount).toBe(2);
+    expect((await sovereignStatus()).backend).toBe("sqlite");
   });
 
-  it("searches public zines by title/handle", () => {
-    upsertZine(sampleZine({ id: "z1", title: "Velvet Press", userHandle: "ava" }));
-    upsertZine(sampleZine({ id: "z2", title: "Other", userHandle: "nori" }));
-    expect(listPublicZines(10, "velvet").map((z) => z.id)).toEqual(["z1"]);
-    expect(listPublicZines(10, "nori").map((z) => z.id)).toEqual(["z2"]);
+  it("searches public zines by title/handle", async () => {
+    await upsertZine(sampleZine({ id: "z1", title: "Velvet Press", userHandle: "ava" }));
+    await upsertZine(sampleZine({ id: "z2", title: "Other", userHandle: "nori" }));
+    expect((await listPublicZines(10, "velvet")).map((z) => z.id)).toEqual(["z1"]);
+    expect((await listPublicZines(10, "nori")).map((z) => z.id)).toEqual(["z2"]);
   });
 
   it("slims floor payloads (no pagesJson / threadData)", () => {
@@ -99,21 +102,25 @@ describe("sovereign store", () => {
     expect((slim.content.pages?.[0]?.bodyCopy as string).length).toBeLessThanOrEqual(400);
   });
 
-  it("returns private zines only to the owner", () => {
-    upsertZine(sampleZine({ id: "priv", isPublic: false, userId: "owner" }));
-    expect(getZineById("priv")).toBeNull();
-    expect(getZineById("priv", { requesterUid: "owner", includePrivate: true })?.id).toBe("priv");
-    expect(listUserZines("owner", { publicOnly: false }).map((z) => z.id)).toEqual(["priv"]);
-    expect(listUserZines("owner", { publicOnly: true })).toEqual([]);
+  it("returns private zines only to the owner", async () => {
+    await upsertZine(sampleZine({ id: "priv", isPublic: false, userId: "owner" }));
+    expect(await getZineById("priv")).toBeNull();
+    expect(
+      (await getZineById("priv", { requesterUid: "owner", includePrivate: true }))?.id,
+    ).toBe("priv");
+    expect((await listUserZines("owner", { publicOnly: false })).map((z) => z.id)).toEqual([
+      "priv",
+    ]);
+    expect(await listUserZines("owner", { publicOnly: true })).toEqual([]);
   });
 
-  it("stores profiles and pocket items", () => {
-    upsertProfile({
+  it("stores profiles and pocket items", async () => {
+    await upsertProfile({
       uid: "user_1",
       handle: "Ava",
       displayName: "Ava",
     } as UserProfile);
-    expect(getProfileByHandle("ava")?.displayName).toBe("Ava");
+    expect((await getProfileByHandle("ava"))?.displayName).toBe("Ava");
 
     const item = {
       id: "pocket_1",
@@ -122,14 +129,14 @@ describe("sovereign store", () => {
       savedAt: 10,
       content: { note: "hello" },
     } as PocketItem;
-    upsertPocketItem(item);
-    expect(listPocketItems("user_1")).toHaveLength(1);
-    expect(deletePocketItem("pocket_1", "user_1")).toBe(true);
-    expect(listPocketItems("user_1")).toHaveLength(0);
+    await upsertPocketItem(item);
+    expect(await listPocketItems("user_1")).toHaveLength(1);
+    expect(await deletePocketItem("pocket_1", "user_1")).toBe(true);
+    expect(await listPocketItems("user_1")).toHaveLength(0);
   });
 
-  it("imports batches and can seed demo shelf", () => {
-    const { imported, skipped } = importZines([
+  it("imports batches and can seed demo shelf", async () => {
+    const { imported, skipped } = await importZines([
       sampleZine({ id: "i1" }),
       { id: "", userId: "" } as ZineMetadata,
     ]);
@@ -137,7 +144,6 @@ describe("sovereign store", () => {
     expect(skipped).toBe(1);
 
     process.env.MIMI_SOVEREIGN_SEED_DEMO = "1";
-    // Already has public content — seed should no-op
-    expect(seedDemoShelfIfEmpty()).toBe(0);
+    expect(await seedDemoShelfIfEmpty()).toBe(0);
   });
 });

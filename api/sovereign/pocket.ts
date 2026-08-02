@@ -41,7 +41,7 @@ export default async function handler(req: any, res: any) {
       if (auth.ok === false) {
         return sendError(res, auth.status, auth.message, auth.code);
       }
-      const items = listPocketItems(userId);
+      const items = await listPocketItems(userId);
       res.setHeader("Cache-Control", "private, no-store");
       return sendJson(res, 200, { items, count: items.length });
     }
@@ -54,7 +54,7 @@ export default async function handler(req: any, res: any) {
       if (auth.ok === false) {
         return sendError(res, auth.status, auth.message, auth.code);
       }
-      upsertPocketItem(parsed.item);
+      await upsertPocketItem(parsed.item);
       return sendJson(res, 200, { ok: true, id: parsed.item.id, via: auth.via });
     }
 
@@ -66,7 +66,7 @@ export default async function handler(req: any, res: any) {
       if (auth.ok === false) {
         return sendError(res, auth.status, auth.message, auth.code);
       }
-      const deleted = deletePocketItem(id, userId);
+      const deleted = await deletePocketItem(id, userId);
       return sendJson(res, 200, { ok: deleted, id });
     }
 

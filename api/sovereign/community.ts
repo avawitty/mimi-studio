@@ -23,8 +23,8 @@ export default async function handler(req: any, res: any) {
     const rawLimit = Number(req.query?.limit ?? req.query?.count ?? 40);
     const limit = Number.isFinite(rawLimit) ? rawLimit : 40;
     const q = String(req.query?.q || req.query?.search || "");
-    const zines = listPublicZines(limit, q);
-    const status = sovereignStatus();
+    const zines = await listPublicZines(limit, q);
+    const status = await sovereignStatus();
 
     res.setHeader("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
     res.setHeader("X-Mimi-Archive", "sovereign");

@@ -45,7 +45,7 @@ export default async function handler(req: any, res: any) {
 
       if (id) {
         const requesterUid = String(req.headers?.["x-user-id"] || "").trim();
-        const zine = getZineById(id, {
+        const zine = await getZineById(id, {
           requesterUid,
           includePrivate: Boolean(requesterUid),
         });
@@ -60,7 +60,7 @@ export default async function handler(req: any, res: any) {
       if (userId) {
         const publicOnly = String(req.query?.publicOnly || "1") !== "0";
         const requesterUid = String(req.headers?.["x-user-id"] || "").trim();
-        const zines = listUserZines(userId, {
+        const zines = await listUserZines(userId, {
           publicOnly: publicOnly || requesterUid !== userId,
           limit: Number(req.query?.limit || 100),
         });
@@ -81,7 +81,7 @@ export default async function handler(req: any, res: any) {
         return sendError(res, auth.status, auth.message, auth.code);
       }
 
-      upsertZine(parsed.zine);
+      await upsertZine(parsed.zine);
       return sendJson(res, 200, {
         ok: true,
         id: parsed.zine.id,
@@ -98,7 +98,7 @@ export default async function handler(req: any, res: any) {
       if (auth.ok === false) {
         return sendError(res, auth.status, auth.message, auth.code);
       }
-      const deleted = deleteZine(id, userId);
+      const deleted = await deleteZine(id, userId);
       return sendJson(res, 200, { ok: deleted, id });
     }
 

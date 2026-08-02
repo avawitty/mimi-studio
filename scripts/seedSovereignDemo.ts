@@ -4,8 +4,6 @@
  * Usage:
  *   MIMI_SOVEREIGN_SEED_DEMO=1 npx tsx scripts/seedSovereignDemo.ts
  *   npx tsx scripts/seedSovereignDemo.ts --import path/to/export.json
- *
- * Import JSON shape: { zines?: ZineMetadata[], profiles?: UserProfile[] }
  */
 
 import fs from "node:fs";
@@ -19,19 +17,18 @@ import {
 } from "../lib/sovereign/store";
 import type { UserProfile, ZineMetadata } from "../types";
 
-const importPathArg = process.argv.find((arg) => arg.startsWith("--import"));
-const importPath = importPathArg
-  ? importPathArg.includes("=")
-    ? importPathArg.split("=")[1]
-    : process.argv[process.argv.indexOf("--import") + 1]
-  : "";
+const importIdx = process.argv.indexOf("--import");
+const importPath =
+  importIdx >= 0
+    ? process.argv[importIdx + 1]
+    : process.argv.find((arg) => arg.startsWith("--import="))?.split("=")[1];
 
 async function main() {
   process.env.MIMI_SOVEREIGN_ENABLED = process.env.MIMI_SOVEREIGN_ENABLED || "1";
-  if (!process.env.MIMI_SOVEREIGN_DB) {
+  if (!process.env.MIMI_SOVEREIGN_DB && !process.env.MIMI_SOVEREIGN_DATABASE_URL) {
     process.env.MIMI_SOVEREIGN_DB = path.join(process.cwd(), ".data", "sovereign.sqlite");
   }
-  resetSovereignDbForTests();
+  await resetSovereignDbForTests();
 
   if (importPath) {
     const raw = fs.readFileSync(path.resolve(importPath), "utf8");
@@ -39,13 +36,19 @@ async function main() {
     let profilesUpserted = 0;
     for (const profile of payload.profiles || []) {
       if (!profile?.uid) continue;
-      upsertProfile(profile);
+      await upsertProfile(profile);
       profilesUpserted += 1;
     }
-    const { imported, skipped } = importZines(payload.zines || []);
+    const { imported, skipped } = await importZines(payload.zines || []);
     console.log(
       JSON.stringify(
-        { ok: true, imported, skipped, profilesUpserted, archive: sovereignStatus() },
+        {
+          ok: true,
+          imported,
+          skipped,
+          profilesUpserted,
+          archive: await sovereignStatus(),
+        },
         null,
         2,
       ),
@@ -54,8 +57,10 @@ async function main() {
   }
 
   process.env.MIMI_SOVEREIGN_SEED_DEMO = "1";
-  const seeded = seedDemoShelfIfEmpty();
-  console.log(JSON.stringify({ ok: true, seeded, archive: sovereignStatus() }, null, 2));
+  const seeded = await seedDemoShelfIfEmpty();
+  console.log(
+    JSON.stringify({ ok: true, seeded, archive: await sovereignStatus() }, null, 2),
+  );
 }
 
 main().catch((error) => {

@@ -5,9 +5,16 @@ export type SovereignAuthResult =
   | { ok: true; uid: string; via: "ingest_key" | "id_token" | "user_header" }
   | { ok: false; status: number; code: string; message: string };
 
+const strictAuthEnabled = (): boolean =>
+  process.env.MIMI_SOVEREIGN_STRICT_AUTH === "1" ||
+  process.env.MIMI_SOVEREIGN_STRICT_AUTH === "true" ||
+  (process.env.NODE_ENV === "production" && process.env.MIMI_SOVEREIGN_STRICT_AUTH !== "0");
+
 /**
  * Authorize a sovereign write for `expectedUid`.
  * Preference order: ingest key → Firebase ID token → matching x-user-id (dev / no-admin).
+ * In production (or MIMI_SOVEREIGN_STRICT_AUTH=1), soft x-user-id alone is rejected
+ * unless MIMI_SOVEREIGN_TRUST_USER_HEADER=1.
  */
 export const authorizeSovereignWrite = async (
   req: { headers?: Record<string, unknown> },
@@ -31,7 +38,6 @@ export const authorizeSovereignWrite = async (
     if (provided && provided === ingestKey) {
       return { ok: true, uid: expectedUid, via: "ingest_key" };
     }
-    // Ingest key configured but wrong — still allow verified ID tokens below.
   }
 
   const token = extractMimiSessionToken(headers);
@@ -62,8 +68,10 @@ export const authorizeSovereignWrite = async (
 
   const headerUid = String(headers["x-user-id"] || "").trim();
   if (headerUid && headerUid === expectedUid) {
-    // Soft path when Admin isn't configured (local Express / sovereign-first hosts).
-    if (!ingestKey || process.env.MIMI_SOVEREIGN_TRUST_USER_HEADER === "1") {
+    const allowSoftHeader =
+      process.env.MIMI_SOVEREIGN_TRUST_USER_HEADER === "1" ||
+      (!strictAuthEnabled() && !ingestKey);
+    if (allowSoftHeader) {
       return { ok: true, uid: headerUid, via: "user_header" };
     }
   }
@@ -72,6 +80,8 @@ export const authorizeSovereignWrite = async (
     ok: false,
     status: 401,
     code: "UNAUTHORIZED",
-    message: "Unauthorized sovereign write",
+    message: strictAuthEnabled()
+      ? "Strict sovereign auth requires ID token or ingest key"
+      : "Unauthorized sovereign write",
   };
 };
