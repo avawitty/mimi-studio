@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -117,5 +118,26 @@ describe("ChamberMapView", () => {
     expect(screen.getByText(/modules ·/)).toHaveTextContent(
       `${counts.all} modules`,
     );
+  });
+
+  it("returns to Studio Map when its Registry entry is opened", () => {
+    renderMap("architecture-registry");
+    const studioMapEntry = screen
+      .getByRole("heading", { name: "Studio Map" })
+      .closest("article");
+
+    expect(studioMapEntry).not.toBeNull();
+    fireEvent.click(
+      within(studioMapEntry as HTMLElement).getByRole("button", {
+        name: "Open",
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Loose capture" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Studio Map" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 });

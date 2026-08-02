@@ -435,7 +435,7 @@ export const ChamberMapView: React.FC<ChamberMapViewProps> = ({
       {mode === "studio-map" ? (
         <StudioMap onNavigate={navigate} />
       ) : (
-        <ArchitectureRegistry onNavigate={onNavigate} />
+        <ArchitectureRegistry onNavigate={navigate} />
       )}
     </StudioShell>
   );
