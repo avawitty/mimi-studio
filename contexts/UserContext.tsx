@@ -1356,12 +1356,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const upgradePlan = async (plan: 'core' | 'optioning' | 'pro' | 'lab', interval?: 'month' | 'year') => {
     if (!profile) return;
-    try {
-      await updateProfile({ ...profile, planStatus: plan, plan, subscriptionInterval: interval || 'month', subscriptionStatus: 'active' });
-    } catch (e) {
-      console.error("MIMI // Failed to upgrade plan", e);
-      throw e;
-    }
+    // Entitlement fields are Admin / Stripe-webhook only in Firestore rules.
+    // Optimistic local UI after Checkout; durable grant arrives via webhook.
+    const updated = {
+      ...profile,
+      planStatus: plan,
+      plan,
+      subscriptionInterval: interval || 'month',
+      subscriptionStatus: 'active' as const,
+      lastActive: Date.now(),
+    };
+    setProfile(updated);
+    await saveProfileLocally(updated);
   };
 
   const incrementGeneration = async (cost: number = 2) => {

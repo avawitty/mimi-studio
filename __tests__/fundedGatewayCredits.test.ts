@@ -112,6 +112,12 @@ describe("collectStripeCustomerIdCandidates", () => {
       ),
     ).toEqual(["cus_user", "cus_billing"]);
   });
+
+  it("also scans customerId (Functions/lib parity)", () => {
+    expect(
+      collectStripeCustomerIdCandidates({ customerId: "cus_alt" }, { stripeCustomerId: "cus_main" }),
+    ).toEqual(["cus_alt", "cus_main"]);
+  });
 });
 
 describe("rollForwardMembershipGrant", () => {

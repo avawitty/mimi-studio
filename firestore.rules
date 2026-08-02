@@ -26,6 +26,42 @@ service cloud.firestore {
     }
     function hasRequiredFields(fields) { return request.resource.data.keys().hasAll(fields); }
     function hasOnlyAllowedFields(fields) { return request.resource.data.keys().hasOnly(fields); }
+
+    // Paid entitlement keys must never be owner-written (create or update).
+    // Free-tier plan markers (free/trial/ghost/expired) are allowed on create for signup.
+    function entitlementFieldKeys() {
+      return [
+        'stripeCustomerId',
+        'membershipCredits',
+        'subscriptionStatus',
+        'subscriptionInterval',
+        'isPatron',
+        'patronActivatedAt',
+        'patronKey',
+        'mimiPlan',
+        'membershipPlan',
+        'plan',
+        'planStatus'
+      ];
+    }
+    function isFreeTierPlanValue(value) {
+      return value in ['free', 'trial', 'ghost', 'expired'];
+    }
+    function ownerCreateWithoutPaidEntitlements() {
+      return !request.resource.data.keys().hasAny([
+        'stripeCustomerId',
+        'membershipCredits',
+        'subscriptionStatus',
+        'subscriptionInterval',
+        'isPatron',
+        'patronActivatedAt',
+        'patronKey'
+      ])
+      && (!('plan' in request.resource.data) || isFreeTierPlanValue(request.resource.data.plan))
+      && (!('planStatus' in request.resource.data) || isFreeTierPlanValue(request.resource.data.planStatus))
+      && (!('mimiPlan' in request.resource.data) || isFreeTierPlanValue(request.resource.data.mimiPlan))
+      && (!('membershipPlan' in request.resource.data) || isFreeTierPlanValue(request.resource.data.membershipPlan));
+    }
     
     function validString(field, min, max) {
       return request.resource.data[field] is string && 
@@ -98,22 +134,11 @@ service cloud.firestore {
     // PROFILES (Public Read, Owner Write)
     match /profiles_public/{userId} {
       allow read, list: if true;
-      allow create: if isOwner(userId) || isAdmin();
+      // Owner create: free-tier signup only — no delete/recreate paid forge path.
+      allow create: if isAdmin() || (isOwner(userId) && ownerCreateWithoutPaidEntitlements());
       allow update: if isAdmin() || (
         isOwner(userId) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'stripeCustomerId',
-          'membershipCredits',
-          'mimiPlan',
-          'membershipPlan',
-          'subscriptionStatus',
-          'subscriptionInterval',
-          'isPatron',
-          'patronActivatedAt',
-          'patronKey',
-          'plan',
-          'planStatus'
-        ])
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(entitlementFieldKeys())
       );
       allow delete: if isOwner(userId) || isAdmin();
     }
@@ -335,26 +360,20 @@ service cloud.firestore {
     // USERS (Owner only - PATCHED FOR PRIVILEGE ESCALATION)
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == 'user' || isAdmin());
+      // Owner create: free-tier only — block delete/recreate forge of paid fields.
+      allow create: if isAdmin() || (
+        isOwner(userId) &&
+        (!('role' in request.resource.data) || request.resource.data.role == 'user') &&
+        ownerCreateWithoutPaidEntitlements()
+      );
       // Billing / entitlement fields are server-written (Stripe webhook / Admin).
       // Owners must not self-set stripeCustomerId, membershipCredits, or patron markers.
       allow update: if isAdmin() || (
         isOwner(userId) &&
         (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'role',
-          'stripeCustomerId',
-          'membershipCredits',
-          'mimiPlan',
-          'membershipPlan',
-          'subscriptionStatus',
-          'subscriptionInterval',
-          'isPatron',
-          'patronActivatedAt',
-          'patronKey',
-          'plan',
-          'planStatus'
-        ])
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(
+          entitlementFieldKeys().concat(['role'])
+        )
       );
       allow delete: if isOwner(userId) || isAdmin();
       

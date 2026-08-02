@@ -286,8 +286,9 @@ export const resolveMimiFundedGatewayAccess = async (
         if ((shouldReloadPeriod && trustedBilling) || shouldMintMissing) {
           const interval = (data.subscriptionInterval || "month") as MimiBillingInterval;
           const existingPeriodEnd = Number(grant?.periodEndsAt ?? 0);
+          // Period reload preserves stored allowance; mint derives from plan.
           const credits = shouldReloadPeriod
-            ? buildCreditGrant({ plan, interval }).credits
+            ? rollForwardMembershipGrant(grant, interval)
             : buildCreditGrant({
                 plan,
                 interval,
@@ -311,11 +312,9 @@ export const resolveMimiFundedGatewayAccess = async (
             remaining: credits.remaining,
             reason: shouldReloadPeriod ? "period_reload" : "trusted_mint",
           });
-        } else if (shouldReloadPeriod && !trustedBilling) {
-          // Expired period without Stripe-verified entitlement — do not
-          // rollForward client-controlled allowance.
-          return { allowed: false, billable: false, uid: decoded.uid, cost };
         }
+        // Expired period without Stripe verify: do not refill, but still allow
+        // spending any leftover remaining credits below.
 
         remaining = Number(grant?.remaining ?? 0);
         if (!Number.isFinite(remaining) || remaining < cost) {

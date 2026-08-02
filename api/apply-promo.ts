@@ -46,13 +46,45 @@ export default async function handler(req: any, res: any) {
     }
 
     const uid = decoded.uid;
-    const oneYearFromNow = Date.now() + 365 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const promoKey = normalizedCode.slice(0, 32);
+
+    // Idempotent redeem: do not refill credits / extend the year window on repeat POSTs.
+    const [userSnap, membershipSnap] = await Promise.all([
+      db.collection("users").doc(uid).get(),
+      db.collection("memberships").doc(uid).get(),
+    ]);
+    const existingUser = (userSnap.data() || {}) as Record<string, unknown>;
+    const existingMembership = (membershipSnap.data() || {}) as Record<string, unknown>;
+    const existingCredits =
+      (existingUser.membershipCredits as { remaining?: unknown; periodEndsAt?: unknown } | undefined) ||
+      (existingMembership.credits as { remaining?: unknown; periodEndsAt?: unknown } | undefined);
+    const periodEndsAt = Number(
+      existingCredits?.periodEndsAt ?? existingMembership.currentPeriodEnd ?? 0,
+    );
+    const alreadyRedeemed =
+      periodEndsAt > now &&
+      (String(existingUser.patronKey || "") === promoKey ||
+        String(existingMembership.source || "") === "promo" ||
+        existingUser.isPatron === true);
+
+    if (alreadyRedeemed) {
+      return sendJson(res, 200, {
+        ok: true,
+        applied: false,
+        alreadyRedeemed: true,
+        success: true,
+        message: "Promo already applied.",
+        membershipCredits: existingCredits || null,
+      });
+    }
+
+    const oneYearFromNow = now + 365 * 24 * 60 * 60 * 1000;
     const { credits: membershipCredits } = buildCreditGrant({
       plan: "lab",
       interval: "year",
       currentPeriodEnd: oneYearFromNow,
     });
-    const now = Date.now();
 
     const userPatch = {
       planStatus: "lab",
@@ -64,7 +96,7 @@ export default async function handler(req: any, res: any) {
       membershipCredits,
       isPatron: true,
       patronActivatedAt: now,
-      patronKey: normalizedCode.slice(0, 32),
+      patronKey: promoKey,
     };
 
     await Promise.all([
