@@ -28,12 +28,12 @@
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
     --mimi-grain-opacity: 0.08;
-    /* Signal Underarchive — luminous monolithic cobalt haze (mimizine.app hero key) */
-    --mimi-cobalt: #5a7d9a; /* mid atmospheric cobalt */
-    --mimi-cobalt-deep: #2a4058; /* vignette / silhouette depth */
-    --mimi-cobalt-mist: #c5d4e2; /* backlit fog highlight */
-    --mimi-cobalt-haze: rgba(90, 125, 160, 0.28);
-    --mimi-gilt: #a89b6e;
+    /* Signal Underarchive — light cobalt mist + art-deco feminine whisper */
+    --mimi-cobalt: #9bb8ce; /* light atmospheric blue */
+    --mimi-cobalt-deep: #6a8aa4; /* soft depth (not navy) */
+    --mimi-cobalt-mist: #e8f0f6; /* pale luminous fog */
+    --mimi-cobalt-haze: rgba(155, 184, 206, 0.38);
+    --mimi-gilt: #c4b08a; /* softer deco gilt */
 
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
@@ -57,11 +57,11 @@
     --mimi-olive: #5a5a40;
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
-    --mimi-cobalt: #8aa8c0; /* Luminous cobalt on dark chrome */
-    --mimi-cobalt-deep: #1e3044;
-    --mimi-cobalt-mist: #d0dce8;
-    --mimi-cobalt-haze: rgba(90, 125, 160, 0.35);
-    --mimi-gilt: #a89b6e;
+    --mimi-cobalt: #a8c4d6; /* Light cobalt on dark chrome */
+    --mimi-cobalt-deep: #5a7a92;
+    --mimi-cobalt-mist: #eef4f8;
+    --mimi-cobalt-haze: rgba(155, 184, 206, 0.42);
+    --mimi-gilt: #c4b08a;
     --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
   }
 
@@ -194,22 +194,22 @@
     background:
       radial-gradient(
         ellipse 70% 55% at 50% 42%,
-        color-mix(in srgb, var(--mimi-cobalt-mist, #c5d4e2) 55%, transparent) 0%,
+        color-mix(in srgb, var(--mimi-cobalt-mist, #e8f0f6) 60%, transparent) 0%,
         var(--mimi-cobalt-haze) 42%,
-        transparent 72%
+        transparent 74%
       ),
       radial-gradient(
         ellipse 140% 100% at 50% 100%,
-        color-mix(in srgb, var(--mimi-cobalt-deep, #2a4058) 55%, transparent) 0%,
+        color-mix(in srgb, var(--mimi-cobalt-deep, #6a8aa4) 35%, transparent) 0%,
         transparent 55%
       ),
       radial-gradient(
         ellipse 120% 80% at 50% 0%,
-        color-mix(in srgb, var(--mimi-cobalt-deep, #2a4058) 40%, transparent) 0%,
+        color-mix(in srgb, var(--mimi-cobalt, #9bb8ce) 30%, transparent) 0%,
         transparent 50%
       );
     mix-blend-mode: multiply;
-    opacity: 0.85;
+    opacity: 0.72;
   }
 
   .mimi-cobalt-haze > * {
@@ -217,11 +217,22 @@
     z-index: 1;
   }
 
-  /* Full-bleed hero atmosphere — Front Page visual / dark worktable fields */
+  /* Full-bleed hero atmosphere — pale light-cobalt fog field */
   .mimi-cobalt-field {
     background:
-      radial-gradient(ellipse 55% 50% at 50% 45%, var(--mimi-cobalt-mist, #c5d4e2) 0%, transparent 55%),
-      radial-gradient(ellipse 100% 80% at 50% 50%, var(--mimi-cobalt, #5a7d9a) 0%, var(--mimi-cobalt-deep, #2a4058) 70%, #152030 100%);
+      radial-gradient(ellipse 65% 58% at 50% 40%, var(--mimi-cobalt-mist, #e8f0f6) 0%, transparent 60%),
+      radial-gradient(ellipse 100% 90% at 50% 50%, var(--mimi-cobalt, #9bb8ce) 0%, var(--mimi-cobalt-deep, #6a8aa4) 72%, #8aa8be 100%);
+  }
+
+  /* Soft art-deco feminine fan — gilt + light cobalt arcs */
+  .mimi-deco-fan {
+    width: 3.25rem;
+    height: 1rem;
+    background:
+      radial-gradient(ellipse 110% 130% at 50% 100%, transparent 36%, var(--mimi-gilt, #c4b08a) 37%, var(--mimi-gilt, #c4b08a) 40%, transparent 41%),
+      radial-gradient(ellipse 85% 115% at 50% 100%, transparent 44%, var(--mimi-cobalt, #9bb8ce) 45%, var(--mimi-cobalt, #9bb8ce) 47.5%, transparent 48.5%),
+      radial-gradient(ellipse 55% 90% at 50% 100%, transparent 52%, color-mix(in srgb, var(--mimi-gilt, #c4b08a) 70%, transparent) 53%, transparent 56%);
+    opacity: 0.9;
   }
 
   .mimi-gilt-rule {

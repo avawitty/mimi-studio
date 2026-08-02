@@ -10,9 +10,9 @@
 
 Mimi already carries MKUltra / Rococo / surveillance lore (Dolls, Obsidian Ledger, Oracle). The public face stays a quiet editorial archive. This layer adds a **controlled cold-war signal** so the house doesn’t read as a lifestyle magazine:
 
-- **Monolithic cobalt haze** — the luminous foggy blue of the mimizine.app hero: backlit mist, desaturated cobalt → white-blue glow, vignette edges — not navy institutional panels, not neon cyber
-- **Surveillance** — obscured silhouette energy, registry corners, closed-circuit quiet
-- **MKUltra Rococo** — gilt whisper + baroque restraint in silhouette/structure (architectural coat, not ornament dump)
+- **Light cobalt haze** — pale luminous blue mist (`#9BB8CE` → `#E8F0F6`), airy and backlit — not navy, not neon
+- **Art deco feminine** — slender silhouettes, soft geometry, fan/stepped deco marks, gilt whisper; elegance over brutal monolith
+- **Surveillance** — quiet registry corners, obscured glamour, closed-circuit as mood not HUD
 
 Oracle and Dolls may go denser; public plates get a whisper.
 
@@ -37,13 +37,13 @@ Oracle and Dolls may go denser; public plates get a whisper.
 
 | Token | Value | Use |
 |-------|-------|-----|
-| `--mimi-cobalt` | `#5A7D9A` | Mid atmospheric cobalt (marks, labels) |
-| `--mimi-cobalt-deep` | `#2A4058` | Vignette / depth |
-| `--mimi-cobalt-mist` | `#C5D4E2` | Backlit fog highlight |
-| `--mimi-cobalt-haze` | `rgba(90, 125, 160, 0.28)` | Fog wash |
-| `--mimi-gilt` | `#A89B6E` | Rare rococo whisper (not terracotta) |
+| `--mimi-cobalt` | `#9BB8CE` | Light atmospheric blue |
+| `--mimi-cobalt-deep` | `#6A8AA4` | Soft depth |
+| `--mimi-cobalt-mist` | `#E8F0F6` | Pale fog highlight |
+| `--mimi-cobalt-haze` | `rgba(155, 184, 206, 0.38)` | Airy fog wash |
+| `--mimi-gilt` | `#C4B08A` | Art-deco feminine whisper |
 
-Reference mood: silhouetted figure in cobalt fog, centered serif **Mimi**, tagline over haze — high-fashion surveillance atmosphere.
+Reference mood: art-deco feminine silhouette in **light** cobalt mist, serif **Mimi**, soft gilt deco fan — glamorous, atmospheric, not institutional navy.
 
 ## Motifs
 
@@ -53,7 +53,7 @@ Reference mood: silhouetted figure in cobalt fog, centered serif **Mimi**, tagli
 
 ## Acceptance
 
-- [ ] Public first viewport still passes brand test (editorial archive first)
-- [ ] Cobalt reads institutional/cold, not purple-AI
-- [ ] Gilt is rare whisper, not theme fill
-- [ ] Oracle/Dolls remain free to be denser
+- [x] Public first viewport still passes brand test (editorial archive first)
+- [x] Cobalt reads **light atmospheric blue**, not navy / purple-AI
+- [x] Gilt + deco fan are rare feminine whispers, not theme fill
+- [x] Oracle/Dolls remain free to be denser

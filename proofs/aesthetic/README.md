@@ -28,11 +28,14 @@ These are **direction boards**, not production pixel specs. Implementation shoul
 | `18-signal-underarchive-board.jpg` | Signal Underarchive specimen |
 | `19-signal-studio-nod.jpg` | Studio cobalt/registry nod |
 | `20-signal-signature-rococo.jpg` | Signature surveillance + gilt whisper |
-| `21-cobalt-haze-hero.jpg` | Luminous cobalt haze hero (reference key) |
-| `22-cobalt-ui-application.jpg` | Cobalt fog applied to Front Page plate |
-| `23-cobalt-mobile-plate.jpg` | Mobile cobalt haze plate |
+| `21-cobalt-haze-hero.jpg` | Mid-cobalt fog hero (earlier pass) |
+| `22-cobalt-ui-application.jpg` | Mid-cobalt fog on Front Page plate |
+| `23-cobalt-mobile-plate.jpg` | Mobile mid-cobalt haze plate |
+| `24-light-cobalt-deco-hero.jpg` | **Light cobalt** + art-deco feminine hero |
+| `25-light-cobalt-ui.jpg` | Light cobalt / deco UI application |
+| `26-light-cobalt-mobile-deco.jpg` | Mobile light cobalt + deco plate |
 
-Visual language target: high-contrast black/white, olive/stone accents, Cormorant + Geist, column rules, editorial-archive discipline — not cream/lifestyle cliché, and not “Mimi as a print shop.”
+Visual language target: high-contrast black/white, olive/stone accents, **light cobalt mist** + soft gilt deco, Cormorant + Geist, column rules, editorial-archive discipline — not cream/lifestyle cliché, and not “Mimi as a print shop.”
 
 **Wordmark:** title-case **Mimi** (not all-caps MIMI). Proofs regenerated to match.
 

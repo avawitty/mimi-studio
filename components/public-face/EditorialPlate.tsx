@@ -52,7 +52,7 @@ export const EditorialPlate: React.FC<EditorialPlateProps> = ({
           <PublicCTA onClick={onAction}>{actionLabel}</PublicCTA>
         </div>
         <div className="space-y-3">
-          <div className="mimi-gilt-rule" aria-hidden />
+          <div className="mimi-deco-fan" aria-hidden />
           <PressMark label={folioLabel} tone="cobalt" />
         </div>
       </div>

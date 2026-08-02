@@ -75,12 +75,12 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
       >
         <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-3">
-            <span className="font-sans text-[9px] uppercase tracking-[0.3em] font-semibold text-[var(--mimi-cobalt,#5A7D9A)]">
+            <span className="font-sans text-[9px] uppercase tracking-[0.3em] font-semibold text-[var(--mimi-cobalt-deep,#6A8AA4)]">
               Colophon
             </span>
             <PressMark label="Registry" tone="cobalt" />
           </div>
-          <div className="mimi-gilt-rule" aria-hidden />
+          <div className="mimi-deco-fan" aria-hidden />
           <p className="font-serif italic text-sm md:text-base text-[var(--mimi-ink,#0a0a0a)]">
             {italicLine}
           </p>

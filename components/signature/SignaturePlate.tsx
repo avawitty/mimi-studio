@@ -52,7 +52,7 @@ export const SignaturePlate = forwardRef<HTMLDivElement, SignaturePlateProps>(
             <PressMark label="Registry" tone="cobalt" />
           </div>
 
-          <ColumnRule />
+          <div className="mimi-deco-fan" aria-hidden />
 
           <div className="space-y-3 py-4">
             <h2 className="font-serif italic text-4xl md:text-5xl leading-[0.95] tracking-tight">
@@ -65,12 +65,12 @@ export const SignaturePlate = forwardRef<HTMLDivElement, SignaturePlateProps>(
             )}
           </div>
 
-          {/* Geometric mark family — black + olive only */}
-          <div className="flex items-center gap-6 py-2" aria-hidden>
-            <span className="w-10 h-10 border border-[var(--mimi-ink,#0a0a0a)] rounded-full" />
-            <span className="w-0 h-0 border-l-[18px] border-l-transparent border-r-[18px] border-r-transparent border-b-[30px] border-b-[var(--mimi-olive,#5A5A40)]" />
-            <span className="w-9 h-9 border border-[var(--mimi-ink,#0a0a0a)]" />
-            <span className="w-12 h-px bg-[var(--mimi-ink,#0a0a0a)]" />
+          {/* Art-deco feminine mark family — arcs, diamond, gilt whisper */}
+          <div className="flex items-center gap-5 py-2" aria-hidden>
+            <span className="w-10 h-10 rounded-full border border-[var(--mimi-cobalt,#9BB8CE)]" />
+            <span className="w-7 h-7 rotate-45 border border-[var(--mimi-gilt,#C4B08A)]" />
+            <span className="w-10 h-5 rounded-full border border-[var(--mimi-ink,#0a0a0a)]/70" />
+            <span className="mimi-gilt-rule" />
           </div>
 
           {motifs.length > 0 && (
