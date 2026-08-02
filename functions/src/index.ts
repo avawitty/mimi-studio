@@ -14,6 +14,10 @@ app.use(cookieParser());
 const ALLOWED_ORIGIN_PATTERNS: Array<string | RegExp> = [
   'https://mimi.you',
   'https://www.mimi.you',
+  'https://mimi.rip',
+  'https://www.mimi.rip',
+  'https://mimi.fish',
+  'https://www.mimi.fish',
   'https://avainlife.com',
   'https://www.avainlife.com',
   /^https:\/\/[\w-]+\.vercel\.app$/,
