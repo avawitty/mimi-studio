@@ -14,8 +14,11 @@ import { buildSessionCookieHeader, clearSessionCookieHeader, SESSION_EXPIRES_MS 
 import { proxySessionLogin } from './lib/proxySessionToFunctions';
 import mimiImageHandler from "./api/mimi-image";
 import generateTextHandler from "./api/mimi/generate-text";
+import embedHandler from "./api/mimi/embed";
+import aiGatewayProxyHandler from "./api/proxy/ai-gateway";
 import createCheckoutSessionHandler from "./api/create-checkout-session";
 import createBillingPortalSessionHandler from "./api/create-billing-portal-session";
+import applyPromoHandler from "./api/apply-promo";
 import stripeWebhookHandler from "./api/stripe-webhook";
 import {
   embedGeminiContentViaGateway,
@@ -33,7 +36,18 @@ import { searchShopifyGlobalCatalog } from "./lib/shopifyCatalog";
 import { verifyMimiSession } from "./lib/serverFirebaseAdmin";
 import { handleCreatorFeedRequest } from "./api/feed";
 import youSearchHandler from "./api/you-search";
+import residueAcquireHandler from "./api/residue-acquire";
 import liveTokenHandler from "./api/live/token";
+import sovereignCommunityHandler from "./api/sovereign/community";
+import sovereignZineHandler from "./api/sovereign/zine";
+import sovereignStatusHandler from "./api/sovereign/status";
+import sovereignProfileHandler from "./api/sovereign/profile";
+import sovereignPocketHandler from "./api/sovereign/pocket";
+import sovereignImportHandler from "./api/sovereign/import";
+import sovereignReindexHandler from "./api/sovereign/reindex";
+import sovereignEventsHandler from "./api/sovereign/events";
+import sovereignPingHandler from "./api/sovereign/ping";
+import { sovereignStatus } from "./lib/sovereign/store";
 import { isPaidPatronPlan } from "./constants";
 
 loadEnv({ path: ".env.local", override: false, quiet: true });
@@ -355,6 +369,17 @@ async function startServer() {
         return res.json(fallbackResult);
       } catch (err: any) {
         res.status(500).json({ error: { message: err.message }});
+      }
+    }
+  });
+
+  app.post("/api/proxy/ai-gateway", async (req, res) => {
+    try {
+      await aiGatewayProxyHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/proxy/ai-gateway:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }
     }
   });
@@ -951,7 +976,7 @@ async function startServer() {
   });
 
   // API Routes
-  app.get("/api/health", (req, res) => {
+  app.get("/api/health", async (req, res) => {
     const serverAiEnabled =
       process.env.MIMI_ENABLE_SERVER_AI === "true" ||
       process.env.MIMI_ENABLE_SERVER_AI === "1";
@@ -969,8 +994,56 @@ async function startServer() {
         aiGateway: serverAiEnabled && Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
         replicate: serverAiEnabled && Boolean(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY),
       },
+      sovereign: await sovereignStatus(),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // Sovereign archive — owned SQLite data plane (Floor / public reads without Firestore)
+  app.get("/api/sovereign/status", async (req, res) => {
+    await sovereignStatusHandler(req, res);
+  });
+  app.get("/api/sovereign/ping", async (req, res) => {
+    await sovereignPingHandler(req, res);
+  });
+  app.get("/api/sovereign/community", async (req, res) => {
+    await sovereignCommunityHandler(req, res);
+  });
+  app.get("/api/sovereign/zines/:id", async (req, res) => {
+    await sovereignZineHandler(req, res);
+  });
+  app.post("/api/sovereign/zines", async (req, res) => {
+    await sovereignZineHandler(req, res);
+  });
+  app.delete("/api/sovereign/zines/:id", async (req, res) => {
+    await sovereignZineHandler(req, res);
+  });
+  app.get("/api/sovereign/zines", async (req, res) => {
+    await sovereignZineHandler(req, res);
+  });
+  app.get("/api/sovereign/profile", async (req, res) => {
+    await sovereignProfileHandler(req, res);
+  });
+  app.post("/api/sovereign/profile", async (req, res) => {
+    await sovereignProfileHandler(req, res);
+  });
+  app.get("/api/sovereign/pocket", async (req, res) => {
+    await sovereignPocketHandler(req, res);
+  });
+  app.post("/api/sovereign/pocket", async (req, res) => {
+    await sovereignPocketHandler(req, res);
+  });
+  app.delete("/api/sovereign/pocket", async (req, res) => {
+    await sovereignPocketHandler(req, res);
+  });
+  app.post("/api/sovereign/import", async (req, res) => {
+    await sovereignImportHandler(req, res);
+  });
+  app.post("/api/sovereign/reindex", async (req, res) => {
+    await sovereignReindexHandler(req, res);
+  });
+  app.get("/api/sovereign/events", async (req, res) => {
+    await sovereignEventsHandler(req, res);
   });
 
   app.get("/api/heartbeat", (_req, res) => {
@@ -1366,6 +1439,14 @@ async function startServer() {
     await youSearchHandler(req, res);
   });
 
+  app.get("/api/residue-acquire", async (req, res) => {
+    await residueAcquireHandler(req, res);
+  });
+
+  app.post("/api/residue-acquire", async (req, res) => {
+    await residueAcquireHandler(req, res);
+  });
+
   app.post("/api/live/token", async (req, res) => {
     try {
       await liveTokenHandler(req, res);
@@ -1386,54 +1467,7 @@ async function startServer() {
   });
 
   app.post("/api/apply-promo", async (req, res) => {
-    try {
-      const { userId, code } = req.body;
-      
-      if (!db) {
-        return res.status(500).json({ error: "Database not initialized" });
-      }
-
-      const normalizedCode = code.trim().toUpperCase().replace(/\s+/g, '');
-      const envPromoBypassCodes = (process.env.PROMO_BYPASS_CODES || '')
-        .split(',')
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-        .map((entry) => entry.toUpperCase());
-      const allowedBypassCodes = new Set(['MIMIMUSE', ...envPromoBypassCodes]);
-      if (allowedBypassCodes.has(normalizedCode)) {
-        const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
-        
-        // Update user profile
-        await db.collection("users").doc(userId).set({
-          planStatus: "lab",
-          plan: "lab",
-          subscriptionStatus: "active",
-          subscriptionInterval: "year",
-        }, { merge: true });
-        
-        await db.collection("profiles_public").doc(userId).set({
-          planStatus: "lab",
-          plan: "lab",
-          subscriptionStatus: "active",
-        }, { merge: true });
-
-        // Update memberships collection securely
-        await db.collection("memberships").doc(userId).set({
-          plan: "lab",
-          status: "active",
-          currentPeriodEnd: oneYearFromNow,
-          stripeCustomerId: "promo_code",
-          interval: "year"
-        }, { merge: true });
-
-        return res.json({ success: true, message: "1-Year Lab Access Granted." });
-      }
-
-      return res.status(400).json({ error: "Invalid cipher." });
-    } catch (error: any) {
-      console.error("MIMI // Promo Error:", error);
-      res.status(500).json({ error: error.message });
-    }
+    await applyPromoHandler(req, res);
   });
 
   app.get("/api/shopify/connection", async (req, res) => {
@@ -1612,6 +1646,17 @@ async function startServer() {
       await generateTextHandler(req, res);
     } catch (error: any) {
       console.error("MIMI // Route error in /api/mimi/generate-text:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/embed", async (req, res) => {
+    try {
+      await embedHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/embed:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }

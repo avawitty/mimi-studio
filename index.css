@@ -519,6 +519,86 @@
     border-color: var(--archive-border);
   }
 
+  /* Scry mobile — one ink plate continuous with app chrome (#050506) */
+  @media (max-width: 767px) {
+    .archive-chamber.scry-mobile-ink {
+      --archive-cream: #050506;
+      --archive-ink: #f3f1ea;
+      --archive-border: rgba(243, 241, 234, 0.12);
+      --archive-muted: rgba(243, 241, 234, 0.55);
+      --archive-panel: #121214;
+      --archive-surface: #050506;
+      background: #050506;
+    }
+
+    /* App chrome already says Scry — hide chamber masthead strip entirely on mobile */
+    .archive-chamber.scry-mobile-ink .archive-chrome {
+      display: none;
+    }
+
+    .archive-chamber.scry-mobile-ink .archive-canvas {
+      background: #050506;
+    }
+
+    .archive-chamber.scry-mobile-ink .scry-trend-map {
+      background: #0c0c0e;
+      border-color: rgba(243, 241, 234, 0.14);
+    }
+
+    .archive-chamber.scry-mobile-ink .scry-trend-map .scry-trend-axis {
+      border-color: rgba(243, 241, 234, 0.18);
+    }
+  }
+
+  .scry-latent-field {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(100% 55% at 8% 0%, rgba(155, 184, 206, 0.1), transparent 52%),
+      #050506;
+    color: #f3f1ea;
+  }
+
+  .scry-latent-scan {
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(155, 184, 206, 0.7), transparent);
+    animation: scryLatentScan 4.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes scryLatentScan {
+    0%,
+    100% {
+      top: 18%;
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.8;
+    }
+    55% {
+      top: 72%;
+      opacity: 0.25;
+    }
+    90% {
+      opacity: 0;
+    }
+  }
+
+  .scry-lane-live {
+    color: #9bb8ce;
+  }
+
+  .scry-lane-failed {
+    color: #d27a7a;
+  }
+
+  .scry-lane-empty {
+    color: rgba(243, 241, 234, 0.45);
+  }
+
   .archive-text-ink {
     color: var(--archive-ink);
   }

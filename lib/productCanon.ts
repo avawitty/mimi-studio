@@ -56,6 +56,9 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   threads: "scribe",
   "narrative-threads": "scribe",
   "art-style": "tailor",
+  scry: "scry",
+  "trace-scry": "scry",
+  "specimen-search": "scry",
   scryer: "tailor",
   "style-scryer": "tailor",
   "aesthetic-intelligence": "tailor",
@@ -63,6 +66,13 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   atelier: "atelier",
   objects: "atelier",
   "taste-objects": "atelier",
+  residue: "residue",
+  "residue-engine": "residue",
+  "cultural-residue": "residue",
+  "emotional-residue": "residue",
+  observatory: "observatory",
+  "mean-median-mode": "mean-median-mode",
+  "observatory-mmm": "mean-median-mode",
   // Social surfaces live on The Proscenium (wings via nested path).
   connections: "proscenium",
   correspondents: "proscenium",
@@ -107,6 +117,31 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["Memory Atoms", "Codex context packs", "documented decisions", "Used Context payloads"],
     userFlow: "Save important conversation fragments and turn them into traceable context Mimi can retrieve later.",
     notes: "Legacy route /research-memory aliases here. ResearchMemory runs inside the Atomize tab.",
+  },
+  {
+    id: "scry",
+    name: "Scry",
+    layer: "chamber",
+    engine: "Evidence Retrieval Engine",
+    priority: 2,
+    status: "live",
+    canonicalRoute: "/scry",
+    implementedMode: "scry",
+    component: "ScryView",
+    aliases: ["Trace & Scry", "Specimen Search", "Trend Scryer"],
+    inputs: ["natural-language query", "trend keyword", "Tailor profile context", "archive / Pocket excerpts"],
+    generations: [
+      "personal archive grounding",
+      "open-web signal retrieval",
+      "Scribe reading synthesis",
+      "shadow-memory vector hits",
+      "biaxial trend synthesis",
+    ],
+    outputs: ["ScryRun evidence lanes", "web signals", "editorial readings", "trend maps", "narrative drafts"],
+    userFlow:
+      "Ask a question or name a drift signal; inspect evidence by lane (archive, web, reading, shadow) before drafting.",
+    notes:
+      "Lanes stay distinct — no shared result overwrite. Synthesis uses AI Gateway when available; Google Search grounding stays on Gemini.",
   },
   {
     id: "tailor",
@@ -494,6 +529,96 @@ export const CANON_MODULES: CanonModule[] = [
       "Enter the Stage to witness transmissions, open Correspondents for follows and connections, or manage invite-only Cliques — all under one arch.",
     notes:
       "Legacy /connections and /cliques redirect to /proscenium/correspondents and /proscenium/cliques. Local Echoes are demonstration specimens only.",
+  },
+  {
+    id: "residue",
+    name: "Residue",
+    layer: "chamber",
+    engine: "Cultural / Emotional Residue Engine",
+    priority: 14.5,
+    status: "live",
+    canonicalRoute: "/residue",
+    implementedMode: "residue",
+    component: "ResidueChamber",
+    aliases: ["Residue Engine", "Cultural Residue", "Emotional Residue", "MMM"],
+    inputs: [
+      "cultural query or emotional experience text",
+      "optional user notes",
+      "manual / acquired sources (offline heuristics first)",
+      "optional Apify acquisition (token-gated)",
+    ],
+    generations: [
+      "cultural lineage + codes",
+      "interpretive neighborhoods",
+      "mean / median / mode readouts",
+      "intelligence reports",
+      "product adapter proposals",
+    ],
+    outputs: [
+      "session residue runs",
+      "evidence + source manifests",
+      "intelligence reports",
+      "proposed zine / edit / forecast / taste / memory artifacts",
+    ],
+    userFlow:
+      "Run an offline-first cultural or emotional residue pass, inspect synthesis and evidence, review M/M/M and product proposals, then hand off to Intel Hub, Edit, Forecast, or Taste Graph. Optional signed-in Apify acquisition when configured.",
+    notes:
+      "Emotional mode always shows the non-diagnostic safety notice. Memory / taste / edit outputs stay proposed until accepted elsewhere. Live Apify acquisition is Phase 9 (token + session gated). Alias MMM here is per-run Residue analysis — collective Mean Median Mode is The Observatory.",
+  },
+  {
+    id: "observatory",
+    name: "The Observatory",
+    layer: "chamber",
+    engine: "Collective Perception",
+    priority: 9,
+    status: "live",
+    canonicalRoute: "/observatory",
+    implementedMode: "observatory",
+    component: "ObservatoryChamber",
+    aliases: ["Observatory", "Collective Intelligence"],
+    inputs: [
+      "consented public Proscenium artifacts",
+      "anonymized topic / motif / inquiry / form signals",
+    ],
+    generations: [
+      "central-tendency profiles",
+      "Mean Median Mode reports",
+      "methodology + uncertainty disclosure",
+    ],
+    outputs: [
+      "present-atmosphere readout",
+      "handoffs to Forecast / Proscenium / Residue",
+    ],
+    userFlow:
+      "Open The Observatory to read Mean Median Mode — mean, median, mode, and their joint profile over consented public signals. Per-run M/M/M stays in Residue.",
+    notes:
+      "Prototype may show labeled demonstration aggregates. Live contribution requires Proscenium publish disclosure. Do not alias this module as MMM (Residue keeps that short alias).",
+  },
+  {
+    id: "mean-median-mode",
+    name: "Mean Median Mode",
+    layer: "chamber",
+    engine: "Collective Central Tendency",
+    priority: 9.1,
+    status: "live",
+    canonicalRoute: "/mean-median-mode",
+    implementedMode: "mean-median-mode",
+    component: "ObservatoryChamber",
+    aliases: ["Mean Median Mode", "Collective Moods"],
+    inputs: [
+      "consented public signal aggregates",
+      "windowed intensity observations",
+    ],
+    generations: [
+      "mean / median / mode strip",
+      "summation interpretation",
+      "seeking-mode shares",
+    ],
+    outputs: ["MeanMedianModeReport", "CentralTendencyProfile[]"],
+    userFlow:
+      "Read the present atmosphere via literal mean, median, and mode — not a leaderboard. Stage on The Proscenium to contribute anonymized structure.",
+    notes:
+      "Collective Moods is a docs-only conceptual alias. Distinct from Residue per-run MeanMedianModeResult.",
   },
 ];
 

@@ -223,9 +223,10 @@ export function synthesizeLocalCreativeDossier(input: {
   ]).filter((v) => v.startsWith("#") || /^[a-z]/i.test(v));
 
   const hexPalette = unique([
+    ...palette,
     ...signals.flatMap((s) => s.palette),
     ...(priorSig?.paletteExtraction ?? []),
-  ]).filter((v) => /^#[0-9a-f]{6}$/i.test(v));
+  ]).filter((v) => /^#[0-9a-f]{3,8}$/i.test(v));
 
   const voice = unique([
     ...(fields["voice — emotional temperature"] ?? []),
@@ -234,10 +235,15 @@ export function synthesizeLocalCreativeDossier(input: {
     ...(priorSig?.moodCluster ? [priorSig.moodCluster] : []),
   ]);
   const deepen = unique([...(fields["deepen"] ?? []), ...(fields["experiment"] ?? [])]);
+  // Digest label is "Exclusion principles (what they refuse)" — also accept short keys.
+  const exclusionFromDigest = Object.entries(fields)
+    .filter(([key]) => key === "exclusion principles" || key.startsWith("exclusion principles"))
+    .flatMap(([, values]) => values);
   const refuse = unique([
     ...(fields["refuse"] ?? []),
     ...(fields["refusals"] ?? []),
     ...(fields["exclusion rules"] ?? []),
+    ...exclusionFromDigest,
   ]);
   const references = unique([
     ...(fields["references"] ?? []),

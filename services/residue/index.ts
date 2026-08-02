@@ -1,5 +1,5 @@
 /**
- * Mimi Residue Engine — public API (Phases 2–7).
+ * Mimi Residue Engine — public API (Phases 2–9).
  */
 
 export * from "./constants";
@@ -31,7 +31,12 @@ export {
   ApifySourceAcquisitionProvider,
   createApifySourceAcquisitionProvider,
 } from "./acquisition/providers/apify/apifySourceAcquisitionProvider";
-export { APIFY_ACTOR_CANDIDATES } from "./acquisition/providers/apify/actorRegistry";
+export {
+  APIFY_ACTOR_CANDIDATES,
+  resolveResidueApifyActorId,
+} from "./acquisition/providers/apify/actorRegistry";
+export { mapApifyDatasetItemsToAcquiredSources } from "./acquisition/providers/apify/mapApifyDatasetItems";
+export { acquireResidueSources } from "./acquisition/composeAcquisition";
 
 export {
   runCulturalResidue,

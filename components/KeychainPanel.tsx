@@ -92,7 +92,7 @@ export const KeychainPanel: React.FC = () => {
   };
 
   return (
-    <div className="w-full bg-white dark:bg-stone-900 border border-nous-border p-8 mb-8">
+    <div className="w-full bg-white dark:bg-stone-900 border border-nous-border p-4 sm:p-6 md:p-8 mb-4 md:mb-8">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h2 className="font-serif text-2xl italic flex items-center gap-2">

@@ -67,14 +67,15 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
     >
       <ApprovalStamp triggerKey={stampKey} />
 
-      <div className="px-4 md:px-6 pt-3">
+      {/* Folder tab sits on the colophon sheet — never over the canvas above. */}
+      <div className="px-4 md:px-6 pt-2">
         <DossierTab label="Mimi // Colophon" classify="Registry" />
       </div>
 
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full text-left px-4 md:px-6 py-4 flex items-start justify-between gap-4 hover:bg-black/[0.02] transition-colors border border-t-0"
+        className="w-full text-left px-4 md:px-6 py-3 md:py-4 flex items-start justify-between gap-4 hover:bg-black/[0.02] transition-colors border border-t-0"
         style={{
           borderColor: "var(--mimi-manila-edge, #C9BA86)",
           background:

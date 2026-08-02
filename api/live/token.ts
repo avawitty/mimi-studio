@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import {
   cors,
   providerKey,
@@ -6,11 +5,6 @@ import {
   sendError,
   sendJson,
 } from "../../lib/apiUtils.js";
-import {
-  chargeMimiFundedGateway,
-  fundedGatewayCreditCost,
-  resolveMimiFundedGatewayAccess,
-} from "../../lib/mimiFundedGateway.js";
 import { modelFor } from "../../services/modelConfig.js";
 
 /**
@@ -28,14 +22,15 @@ export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
 
   try {
-    const liveCost = fundedGatewayCreditCost(
+    const funded = await import("../../lib/mimiFundedGateway.js");
+    const liveCost = funded.fundedGatewayCreditCost(
       Number(process.env.MIMI_LIVE_CREDIT_COST || 2),
     );
     const headerKey = String(req.headers["x-api-key"] || "").trim();
     const model = modelFor("live", "gemini");
 
     let mintKey = "";
-    let access: Awaited<ReturnType<typeof resolveMimiFundedGatewayAccess>> | null =
+    let access: Awaited<ReturnType<typeof funded.resolveMimiFundedGatewayAccess>> | null =
       null;
 
     if (headerKey && headerKey !== "undefined") {
@@ -55,7 +50,7 @@ export default async function handler(req: any, res: any) {
         );
       }
 
-      access = await resolveMimiFundedGatewayAccess(req, liveCost);
+      access = await funded.resolveMimiFundedGatewayAccess(req, liveCost);
       if (access.allowed) {
         mintKey = serverKey;
       } else if (process.env.MIMI_LIVE_ALLOW_UNAUTH === "true") {
@@ -79,6 +74,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    const { GoogleGenAI } = await import("@google/genai");
     const ai = new GoogleGenAI({
       apiKey: mintKey,
       httpOptions: { apiVersion: "v1alpha" },
@@ -101,7 +97,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (access?.billable) {
-      await chargeMimiFundedGateway(access, {
+      await funded.chargeMimiFundedGateway(access, {
         model,
         feature: "gemini-live-ephemeral",
       });

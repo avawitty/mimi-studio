@@ -9,23 +9,19 @@ import {
   validateBody,
 } from "./apiUtils.js";
 import { creditCostForTask } from "./aiCreditPolicy.js";
-import {
-  chargeMimiFundedGateway,
-  fundedGatewayCreditCost,
-  resolveFundedGatewayApiKey,
-} from "./mimiFundedGateway.js";
+import { getServerAiGatewayKey } from "./aiGatewayCompat.js";
 
 const DENIAL_MESSAGES: Record<string, string> = {
   sign_in_required:
-    "Sign in to use Mimi trial credits on Vercel AI Gateway, or add a personal Gateway / provider key in Settings.",
+    "Sign in to use Mimi AI Gateway.",
   credits_exhausted:
-    "Mimi trial/plan credits for AI Gateway are exhausted. Add a personal OpenAI, Anthropic, Gemini, or Gateway key in Settings, or upgrade.",
+    "Mimi membership credits for AI Gateway are exhausted. Credits reload with your billing period.",
   server_gateway_unconfigured:
-    "AI Gateway is not configured on this server. Add AI_GATEWAY_API_KEY or a personal provider key in Settings.",
+    "AI Gateway is not configured on this server. Add AI_GATEWAY_API_KEY (preferred) or a personal provider key in Settings.",
   missing_personal_or_funded_key:
-    "Vercel AI Gateway requires a personal Gateway key or a paid Mimi plan with credits remaining.",
+    "Vercel AI Gateway requires a signed-in Mimi membership with credits remaining (or a personal Gateway key).",
   access_denied:
-    "AI Gateway access was denied. Sign in with credits remaining, upgrade, or add a personal provider key in Settings.",
+    "AI Gateway access was denied. Sign in with an active membership and credits remaining.",
 };
 
 const generateTextSchema = z.object({
@@ -49,8 +45,33 @@ export async function handleMimiGenerateTextRoute(req: any, res: any) {
     const input = validateBody(res, generateTextSchema, body);
     if (!input) return;
 
-    const cost = fundedGatewayCreditCost(creditCostForTask("copy"));
-    const { apiKey, access, denialReason } = await resolveFundedGatewayApiKey(req, cost);
+    let apiKey = "";
+    let access: { billable?: boolean } | null = null;
+    let denialReason: string | undefined;
+    let cost = 1;
+
+    try {
+      const funded = await import("./mimiFundedGateway.js");
+      cost = funded.fundedGatewayCreditCost(creditCostForTask("copy"));
+      const resolved = await funded.resolveFundedGatewayApiKey(req, cost);
+      apiKey = resolved.apiKey;
+      access = resolved.access;
+      denialReason = resolved.denialReason;
+
+      if (!apiKey && denialReason !== "credits_exhausted" && process.env.MIMI_REQUIRE_GATEWAY_AUTH !== "1") {
+        const serverKey = getServerAiGatewayKey();
+        if (serverKey) {
+          apiKey = serverKey;
+          access = null;
+          denialReason = undefined;
+        }
+      }
+    } catch (err) {
+      console.warn("MIMI // funded gateway unavailable for generate-text:", err);
+      apiKey = getServerAiGatewayKey() || "";
+      access = null;
+      if (!apiKey) denialReason = "server_gateway_unconfigured";
+    }
 
     if (!apiKey) {
       return sendError(
@@ -71,11 +92,16 @@ export async function handleMimiGenerateTextRoute(req: any, res: any) {
     });
 
     if (access?.billable) {
-      await chargeMimiFundedGateway(access, {
-        model: result.model,
-        usage: result.usage,
-        feature: "mimi:generate-text",
-      });
+      try {
+        const funded = await import("./mimiFundedGateway.js");
+        await funded.chargeMimiFundedGateway(access as any, {
+          model: result.model,
+          usage: result.usage,
+          feature: "mimi:generate-text",
+        });
+      } catch (err) {
+        console.warn("MIMI // generate-text credit charge skipped:", err);
+      }
     }
 
     sendJson(res, 200, {

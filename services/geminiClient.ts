@@ -20,11 +20,15 @@ export const setGlobalKeyRing = (keys: string[]) => {
 const handleProxyError = async (res: Response): Promise<Error> => {
   const status = res.status;
   let errMessage = '';
+  let errCode: string | number = status;
   try {
     const text = await res.text();
     try {
       const errData = JSON.parse(text);
       errMessage = errData.error?.message || errData.error || errData.message || text;
+      if (typeof errMessage !== 'string') errMessage = String(errMessage);
+      const nestedCode = errData.error?.code ?? errData.code;
+      if (nestedCode != null && nestedCode !== '') errCode = nestedCode;
     } catch {
       if (text.includes('Starting Server') || text.includes('doctype html') || text.includes('<html')) {
         errMessage = 'MIMI // Secure Proxy is initializing or restarting. Please retry.';
@@ -42,7 +46,7 @@ const handleProxyError = async (res: Response): Promise<Error> => {
   
   const err = new Error(errMessage) as any;
   err.status = status;
-  err.code = status;
+  err.code = errCode;
   err.isTransient = status === 502 || status === 503 || status === 504 || errMessage.includes('initializing');
   return err;
 };
@@ -52,15 +56,17 @@ const buildGeminiProxyHeaders = async (key?: string): Promise<Record<string, str
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
-  if (key) {
-    headers['x-api-key'] = key;
-    return headers;
-  }
+  // Always attach the Firebase session so /api/proxy/gemini can authorize
+  // plan-funded AI Gateway. Do not skip the token when a personal Gemini key
+  // is present — that forced lab users into BYOK-only / "configure API keys".
   try {
     const { auth } = await import('./firebaseInit');
     const token = await auth.currentUser?.getIdToken();
     if (token) headers['x-user-token'] = `Bearer ${token}`;
   } catch {}
+  if (key) {
+    headers['x-api-key'] = key;
+  }
   return headers;
 };
 
@@ -266,8 +272,15 @@ export async function withResilience<T>(
             if (params.model && params.model.includes('image')) {
                 return await realAi.models.generateContent(params);
             }
+            // Native Google Search / tool use is Gemini-only; Gateway chat drops tools.
+            if (Array.isArray(params.config?.tools) && params.config.tools.length > 0) {
+                return await realAi.models.generateContent(params);
+            }
             return await aiProvider.generateContent(params);
         },
+        // Embeddings always route through the Gemini proxy (/api/proxy/gemini), which
+        // remaps embedContent to Gateway when a server key is present.
+        embedContent: async (params: any) => await realAi.models.embedContent(params),
         generateImages: async (params: any) => await realAi.models.generateImages(params)
       }
     };
@@ -275,22 +288,26 @@ export async function withResilience<T>(
         return await operation(mockAi);
     } catch (primaryError: any) {
         const msg = String(primaryError?.message || primaryError || "");
-        // Gateway/BYOK path failed (often 403 credits). Prefer Gemini proxy next
-        // and stop forcing the dead gateway choice for subsequent Oracle calls.
-        if (
-          activeId === "gateway" &&
-          (/credits|403|Gateway|sign in/i.test(msg)) &&
-          typeof localStorage !== "undefined"
-        ) {
+        // Only Gateway credit/auth failures should fall through to Gemini.
+        // OpenAI/Anthropic failures must surface — not silently run on Gemini keys.
+        const isGatewayCreditFailure =
+          activeId === "gateway" && /credits|403|Gateway|sign in/i.test(msg);
+        if (!isGatewayCreditFailure) {
+          throw primaryError;
+        }
+        if (typeof localStorage !== "undefined") {
           try {
             localStorage.setItem("mimi_active_llm", "gemini");
             setGlobalAIProvider("gemini");
+            window.dispatchEvent(
+              new CustomEvent("mimi:llm_provider_changed", { detail: { provider: "gemini" } }),
+            );
           } catch {
             // ignore storage failures
           }
         }
         console.warn(
-          `MIMI // Oracle: Active provider "${activeId}" failed; falling back to Gemini proxy path.`,
+          `MIMI // Oracle: Gateway failed; falling back to Gemini proxy path.`,
           msg,
         );
         // Continue into gemini resilience path below.
@@ -339,14 +356,40 @@ export async function withResilience<T>(
       error.message?.includes('Failed to fetch') ||
       error.message?.includes('NetworkError');
     
+    const errCode = String(error.code || error.error?.code || "");
+    const originalMessage = String(error.message || "");
+    const isCreditOrGatewayError =
+      errCode === "credits_exhausted" ||
+      errCode === "sign_in_required" ||
+      errCode === "server_gateway_unconfigured" ||
+      errCode === "missing_personal_or_funded_key" ||
+      errCode === "access_denied" ||
+      originalMessage.includes("credits") ||
+      originalMessage.includes("Gateway") ||
+      originalMessage.includes("AI Gateway") ||
+      originalMessage.includes("billing period") ||
+      originalMessage.includes("prepayment") ||
+      originalMessage.includes("RESOURCE_EXHAUSTED") ||
+      originalMessage.includes("signed-in Mimi plan") ||
+      originalMessage.includes("plan-funded") ||
+      // Legacy gemini-proxy denial — do not treat as BYOK key void.
+      originalMessage.includes("personal API key or MIMI_ENABLE_SERVER_AI") ||
+      originalMessage.includes("Gemini requires");
+
+    // Personal-key failures only. keyUsed === "Proxy" means no personal Gemini
+    // key was attached — do not infer "funded" from source === "Secure Server
+    // Proxy" (browser always uses that label even for BYOK).
+    const usingFundedProxyPath = keyUsed === "Proxy" || keyUsed === "";
+
     const isKeyError = 
-      error.status === 403 || 
-      error.message?.includes('403') || 
-      error.message?.includes('PERMISSION_DENIED') ||
-      error.message?.includes('api-key-expired') ||
-      error.message?.includes('API_KEY_INVALID') ||
-      error.message?.includes('credits') ||
-      error.message?.includes('Gateway');
+      !isCreditOrGatewayError &&
+      !usingFundedProxyPath && (
+        error.status === 403 || 
+        originalMessage.includes('403') || 
+        originalMessage.includes('PERMISSION_DENIED') ||
+        originalMessage.includes('api-key-expired') ||
+        originalMessage.includes('API_KEY_INVALID')
+      );
 
     const hasMoreKeys = globalKeyRing.length > 0 && globalKeyRing.filter(k => !attemptedKeys.includes(k)).length > 0;
     const canRetry = isQuotaError || isOverloadError || (isKeyError && hasMoreKeys && keyUsed !== 'Proxy' && keyUsed !== '');
@@ -361,12 +404,64 @@ export async function withResilience<T>(
     }
     
     const originalMsg = error.message || "";
-    const isCreditsDepleted = originalMsg.includes("RESOURCE_EXHAUSTED") ||
-                             originalMsg.includes("prepayment credits") ||
-                             originalMsg.includes("depleted");
+
+    if (errCode === "sign_in_required") {
+      if (!suppressGlobalEvents && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+          detail: {
+            type: "error",
+            message: originalMsg || "Sign in to use Mimi AI Gateway.",
+          },
+        }));
+      }
+      const signInError = new Error(originalMsg || "Sign in to use Mimi AI Gateway.") as any;
+      signInError.code = "sign_in_required";
+      throw signInError;
+    }
+
+    // Prefer structured denial codes — do not match sign_in copy that mentions credits.
+    const isPlanCreditsExhausted =
+      errCode === "credits_exhausted" ||
+      (errCode !== "sign_in_required" &&
+        (originalMsg.includes("membership credits") ||
+          (originalMsg.includes("exhausted") && originalMsg.includes("billing period"))));
+    const isCreditsDepleted =
+      isCreditOrGatewayError ||
+      originalMsg.includes("RESOURCE_EXHAUSTED") ||
+      originalMsg.includes("prepayment credits") ||
+      originalMsg.includes("depleted");
+
+    if (isPlanCreditsExhausted) {
+      if (!suppressGlobalEvents && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+          detail: {
+            type: "error",
+            message: originalMsg.includes("exhausted")
+              ? originalMsg
+              : "Mimi membership credits for AI Gateway are exhausted. Credits reload with your billing period.",
+          },
+        }));
+      }
+      const creditsError = new Error(
+        originalMsg ||
+          "Mimi membership credits for AI Gateway are exhausted. Credits reload with your billing period.",
+      ) as any;
+      creditsError.code = "credits_exhausted";
+      throw creditsError;
+    }
 
     if (isCreditsDepleted) {
-      const creditsError = new Error("MIMI // Oracle Status: Prepayment Credits Depleted. The associated AI Studio project has run out of credits or prepayment funds. TO RESOLVE: Go to AI Studio at https://ai.studio/projects or add a custom API key in the Sovereign Keychain.") as any;
+      if (!suppressGlobalEvents && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+          detail: {
+            type: "error",
+            message: "Oracle credits unavailable. Signed-in plan credits or AI Gateway configuration required — personal API keys are optional.",
+          },
+        }));
+      }
+      const creditsError = new Error(
+        "MIMI // Oracle Status: AI credits unavailable. Prefer a signed-in Mimi plan (AI Gateway) over personal provider keys.",
+      ) as any;
       creditsError.code = 'RESOURCE_EXHAUSTED';
       throw creditsError;
     }
@@ -375,7 +470,7 @@ export async function withResilience<T>(
       if (!suppressGlobalEvents) {
         window.dispatchEvent(new CustomEvent('mimi:show_quota_shield'));
       }
-      const quotaError = new Error("Oracle frequency saturated. All available keys are throttled.") as any;
+      const quotaError = new Error("Oracle is rate-limited right now. Retry shortly — personal API keys are not required.") as any;
       quotaError.code = 'QUOTA_EXCEEDED';
       throw quotaError;
     }
@@ -385,6 +480,27 @@ export async function withResilience<T>(
       overloadError.code = 'OVERLOADED';
       throw overloadError;
     }
+
+    // Funded proxy / session failures that look like 403s must not become BYOK nags.
+    if (
+      usingFundedProxyPath &&
+      (error.status === 403 || originalMessage.includes("403") || originalMessage.includes("PERMISSION_DENIED"))
+    ) {
+      if (!suppressGlobalEvents && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+          detail: {
+            type: "error",
+            message: "Oracle could not complete this request via AI Gateway. Retry shortly.",
+          },
+        }));
+      }
+      const proxyError = new Error(
+        originalMsg || "Oracle connection failed via AI Gateway.",
+      ) as any;
+      proxyError.code = errCode || "gateway_proxy_denied";
+      proxyError.status = error.status || 403;
+      throw proxyError;
+    }
     
     if (isKeyError) {
       const originalMsg = error.message || "";
@@ -392,21 +508,33 @@ export async function withResilience<T>(
                         originalMsg.includes("Service Blocked") || 
                         originalMsg.includes("PERMISSION_DENIED") ||
                         originalMsg.includes("blocked");
-      
+      // Proxy / session path is plan-funded AI Gateway — never demand BYOK.
+      const usingFundedProxy = keyUsed === "Proxy" || keyUsed === "";
+
       if (!suppressGlobalEvents) {
-        if (isBlocked) {
+        if (usingFundedProxy) {
+          window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+            detail: {
+              type: "error",
+              message: "Oracle could not complete this request via AI Gateway. Retry shortly.",
+            },
+          }));
+        } else if (isBlocked) {
           window.dispatchEvent(new CustomEvent('mimi:key_blocked', { detail: { message: originalMsg } }));
         } else {
           window.dispatchEvent(new CustomEvent('mimi:key_void'));
         }
       }
-      const genericMsg = "Oracle connection failed: Invalid API Key. Please verify your registry credentials.";
+      const genericMsg = usingFundedProxy
+        ? "Oracle connection failed via AI Gateway."
+        : "Oracle connection failed: Invalid API Key. Please verify your registry credentials.";
       const isCustomMsg = originalMsg.includes("API_KEY_SERVICE_BLOCKED") || 
                           originalMsg.includes("Service Blocked") || 
                           originalMsg.includes("GCP") ||
                           originalMsg.includes("PERMISSION_DENIED") ||
                           originalMsg.includes("blocked") ||
-                          originalMsg.includes("MIMI");
+                          originalMsg.includes("MIMI") ||
+                          originalMsg.includes("AI Gateway");
       throw new Error(isCustomMsg ? originalMsg : `${genericMsg} (${originalMsg})`);
     }
     
@@ -441,15 +569,19 @@ export async function tryModels<T>(
             return await operation(mockAi, models[0]);
         } catch (error: any) {
             const msg = String(error?.message || error || "");
-            console.warn(`MIMI // Provider ${activeId} failed; falling back to Gemini model ladder:`, msg);
-            if (
-              activeId === "gateway" &&
-              /credits|403|Gateway|sign in/i.test(msg) &&
-              typeof localStorage !== "undefined"
-            ) {
+            const isGatewayCreditFailure =
+              activeId === "gateway" && /credits|403|Gateway|sign in/i.test(msg);
+            if (!isGatewayCreditFailure) {
+              throw error;
+            }
+            console.warn(`MIMI // Gateway failed; falling back to Gemini model ladder:`, msg);
+            if (typeof localStorage !== "undefined") {
               try {
                 localStorage.setItem("mimi_active_llm", "gemini");
                 setGlobalAIProvider("gemini");
+                window.dispatchEvent(
+                  new CustomEvent("mimi:llm_provider_changed", { detail: { provider: "gemini" } }),
+                );
               } catch {
                 // ignore
               }

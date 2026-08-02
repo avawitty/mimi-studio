@@ -58,7 +58,7 @@ export default async function handler(req: any, res: any) {
     let shouldProcess = true;
     const now = Date.now();
 
-    await db.runTransaction(async (transaction) => {
+    await db.runTransaction(async (transaction: any) => {
       const snapshot = await transaction.get(eventRef);
       const data = snapshot.data();
       const processingRecently =

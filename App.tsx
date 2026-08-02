@@ -249,6 +249,14 @@ const ChamberMapView = lazy(() =>
 const AtelierChamber = lazy(() =>
   import("./components/chambers/AtelierChamber").then((m) => ({ default: m.AtelierChamber })),
 );
+const ResidueChamber = lazy(() =>
+  import("./components/chambers/ResidueChamber").then((m) => ({ default: m.ResidueChamber })),
+);
+const ObservatoryChamber = lazy(() =>
+  import("./components/chambers/ObservatoryChamber").then((m) => ({
+    default: m.ObservatoryChamber,
+  })),
+);
 const TheOracle = lazy(() =>
   import("./components/TheOracle").then((m) => ({ default: m.TheOracle })),
 );
@@ -870,6 +878,9 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "proscenium",
   "qc_engine",
   "quiet-studio",
+  "residue",
+  "observatory",
+  "mean-median-mode",
   "sanctuary",
   "scribe",
   "scry",
@@ -1996,6 +2007,38 @@ export const App: React.FC = () => {
             (await resolveExportCoverUrl(coverUrl, opts.studioCoverOverlays)) ?? coverUrl;
         }
 
+        // Hi-fi issues pre-develop cover + plates before save so reveal opens finished.
+        const targetUidForBake = profile?.uid || user?.uid || "ghost";
+        if (opts.isHighFidelity && !opts.isLite && !opts.isQuickPreview) {
+          try {
+            const { bakeZineVisualPlates } = await import("./lib/bakeZinePlates");
+            window.dispatchEvent(
+              new CustomEvent("mimi:registry_alert", {
+                detail: { message: "Developing hi-fi plates for this issue…" },
+              }),
+            );
+            const baked = await bakeZineVisualPlates({
+              content: result.content,
+              profile,
+              apiKey: personaKey,
+              artifacts: media,
+              treatmentId: opts.zineOptions?.selectedTreatmentId,
+              isLite: opts.isLite,
+              isHighFidelity: opts.isHighFidelity,
+              isQuickPreview: opts.isQuickPreview,
+              existingCoverUrl: coverUrl,
+              ownerUid: targetUidForBake === "ghost" ? undefined : targetUidForBake,
+            });
+            result.content = baked.content;
+            if (baked.coverUrl) coverUrl = baked.coverUrl;
+            if (baked.failures.length) {
+              console.warn("MIMI // Hi-fi plate bake partial failures:", baked.failures);
+            }
+          } catch (bakeError) {
+            console.warn("MIMI // Hi-fi plate bake skipped:", bakeError);
+          }
+        }
+
         let cost = 2; // Default for full zine
         if (opts.isLite) cost = 1;
         if (opts.isHighFidelity || opts.deepThinking) cost = 3;
@@ -2245,6 +2288,9 @@ export const App: React.FC = () => {
     architecture: "System Architecture",
     "chamber-map": "Chamber Registry",
     atelier: "Atelier",
+    residue: "Residue",
+    observatory: "The Observatory",
+    "mean-median-mode": "Mean Median Mode",
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
@@ -2260,18 +2306,32 @@ export const App: React.FC = () => {
         "threads",
         "latent-constellation",
         "the-lens",
+        "residue",
+        "intel-hub",
+        "forecast",
       ].includes(mode)
     )
       return "reflect";
     if (["tailor", "loom", "action-board", "the-edit", "the-press", "wardrobe", "mimi-drop"].includes(mode))
       return "refine";
     if (
-      ["signature", "ward", "profile", "taste-graph", "pocket", "scribe", "mimi-dolls", "mimi-rip", "atelier"].includes(
-        mode,
-      )
+      [
+        "signature",
+        "ward",
+        "profile",
+        "taste-graph",
+        "pocket",
+        "scribe",
+        "mimi-dolls",
+        "mimi-rip",
+        "atelier",
+        "residue",
+        "intel-hub",
+      ].includes(mode)
     )
       return "signature";
-    if (["nebula", "proscenium"].includes(mode)) return "observe";
+    if (["nebula", "proscenium", "observatory", "mean-median-mode"].includes(mode))
+      return "observe";
     return "system";
   };
 
@@ -2373,9 +2433,29 @@ export const App: React.FC = () => {
         <MobileProfileModal
           isOpen={isMobileProfileOpen}
           onClose={() => setIsMobileProfileOpen(false)}
-          onOpenSettings={() => {
+          onOpenShare={() => {
+            try {
+              sessionStorage.setItem("mimi:profile_pane", "share");
+            } catch {
+              /* ignore */
+            }
             setIsMobileProfileOpen(false);
             setViewMode("profile");
+            window.dispatchEvent(
+              new CustomEvent("mimi:profile_pane", { detail: "share" }),
+            );
+          }}
+          onOpenSettings={() => {
+            try {
+              sessionStorage.setItem("mimi:profile_pane", "settings");
+            } catch {
+              /* ignore */
+            }
+            setIsMobileProfileOpen(false);
+            setViewMode("profile");
+            window.dispatchEvent(
+              new CustomEvent("mimi:profile_pane", { detail: "settings" }),
+            );
           }}
         />
       </Suspense>
@@ -2453,9 +2533,9 @@ export const App: React.FC = () => {
         {/* Main Content Area */}
         <main
           className={`flex-1 flex flex-col relative ${
-            ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio"].includes(viewMode)
+            ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio", "brand-intake"].includes(viewMode)
               ? "overflow-hidden min-h-0 pb-0 h-full"
-              : viewMode === "mimi-rip"
+              : viewMode === "mimi-rip" || viewMode === "scry"
                 ? "overflow-hidden min-h-0 pb-0 h-full bg-[#050506]"
                 : [
                       "editorial-home",
@@ -2465,7 +2545,8 @@ export const App: React.FC = () => {
                       "archival",
                     ].includes(viewMode)
                   ? "overflow-y-auto bg-nous-base pb-8 md:pb-0 mimi-page-pad mimi-page-pad--public"
-                  : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0 mimi-page-pad"
+                  : // Modest bottom pad — Studio owns its own nav clearance; do not reserve 72px here
+                    "overflow-y-auto bg-nous-base pb-[max(1.25rem,env(safe-area-inset-bottom))] md:pb-0 mimi-page-pad"
           }`}
         >
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (
@@ -2701,6 +2782,15 @@ export const App: React.FC = () => {
                           <ChamberMapView onNavigate={setViewMode} />
                         )}
                         {viewMode === "atelier" && <AtelierChamber />}
+                        {viewMode === "residue" && (
+                          <ResidueChamber navigate={navigate} />
+                        )}
+                        {viewMode === "observatory" && (
+                          <ObservatoryChamber navigate={navigate} focus="overview" />
+                        )}
+                        {viewMode === "mean-median-mode" && (
+                          <ObservatoryChamber navigate={navigate} focus="mmm" />
+                        )}
                         {viewMode === "geo_engine" && (
                           <div className="h-full w-full overflow-y-auto">
                             <TheGEOEngine />

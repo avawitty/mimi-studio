@@ -25,8 +25,8 @@ const LEGAL_SUMMARY = {
  body:"Anonymous users exist only in local memory (localStorage). Once you purge your cache, the machine forgets you. This is true digital death."
  },
  {
- head:"Swan Persistence & The Social Floor",
- body:"Anchored identities transmit encrypted structural data to the Cloud Registry. We extract keyword data from our embedding logic and vectors—not your actual art itself. We synthesize these into 'Social Floor' anonymized trends."
+ head:"Swan Persistence & Mean Median Mode",
+ body:"Anchored identities may stage work on The Proscenium. When you acknowledge publish disclosure, eligible structure — themes, motifs, inquiry types, and form — may contribute anonymized signals to Mean Median Mode inside The Observatory. We do not put private Studio, Tailor memory, or personal Scry into that readout, and we do not show exact private wording as collective data."
  }
  ]
  },

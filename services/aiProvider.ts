@@ -230,6 +230,8 @@ class AnthropicProvider implements AIProvider {
 class GatewayProvider implements AIProvider {
   async generateContent(params: any) {
     const token = await getFirebaseToken();
+    const keys = getLocalKeys();
+    const personalGatewayKey = String(keys.gateway || "").trim();
 
     const messages: any[] = [];
 
@@ -266,6 +268,9 @@ class GatewayProvider implements AIProvider {
     }
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    // Personal AI Gateway BYOK — resolveFundedGatewayApiKey accepts Authorization
+    // Bearer that is not a Firebase JWT. Session token stays on x-user-token.
+    if (personalGatewayKey) headers.Authorization = `Bearer ${personalGatewayKey}`;
     if (token) headers['x-user-token'] = 'Bearer ' + token;
 
     const res = await fetch('/api/proxy/ai-gateway', {

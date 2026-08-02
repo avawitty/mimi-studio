@@ -1,14 +1,18 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ExternalLink, Sparkles, Wand2, Compass } from "lucide-react";
+import { ExternalLink, Sparkles, Wand2, Compass, ArrowRight } from "lucide-react";
 import { ChamberShell } from "./ChamberShell";
 import { MimiYouHub } from "../tailor/MimiYouHub";
+import { DollProfileScreen } from "../tailor/DollProfileScreen";
+import { DollPortraitStage } from "../tailor/DollPortraitStage";
 import { useUser } from "../../contexts/UserContext";
 import { ProceduralDollStudio } from "./ProceduralDollStudio";
 import type { Doll } from "../../types";
 import { listDolls, updateDoll } from "../../services/tailorService";
 import {
+  MIMI_SHELL_STAPLE_VERSION,
   type ProceduralDollAesthetic,
   readStoredActiveDollId,
+  resolveIdentityViewUrl,
   writeStoredActiveDollId,
 } from "../../services/dollEngine";
 
@@ -16,11 +20,15 @@ interface MimiDollsChamberProps {
   navigate: (path: string) => void;
 }
 
+type ChamberView = "shell" | "shader" | "hub";
+
 export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({ navigate }) => {
   const { user, profile } = useUser();
-  const [chamberView, setChamberView] = useState<"dresser" | "hub">("dresser");
+  const [chamberView, setChamberView] = useState<ChamberView>("shell");
   const [dolls, setDolls] = useState<Doll[]>([]);
   const [boundDollId, setBoundDollId] = useState<string | null>(() => readStoredActiveDollId());
+  const [openProfile, setOpenProfile] = useState(false);
+  const [loadingDolls, setLoadingDolls] = useState(false);
   const handle =
     profile?.handle ||
     user?.email?.split("@")[0]?.replace(/\s+/g, "-").toLowerCase() ||
@@ -32,21 +40,28 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({ navigate }) 
       setDolls([]);
       return;
     }
-    void listDolls(user.uid).then((list) => {
-      setDolls(list);
-      if (!boundDollId && list[0]) {
-        setBoundDollId(list[0].id);
-      } else if (boundDollId && !list.some((d) => d.id === boundDollId) && list[0]) {
-        setBoundDollId(list[0].id);
-      }
-    });
+    setLoadingDolls(true);
+    void listDolls(user.uid)
+      .then((list) => {
+        setDolls(list);
+        if (!boundDollId && list[0]) {
+          setBoundDollId(list[0].id);
+          writeStoredActiveDollId(list[0].id);
+        } else if (boundDollId && !list.some((d) => d.id === boundDollId) && list[0]) {
+          setBoundDollId(list[0].id);
+          writeStoredActiveDollId(list[0].id);
+        }
+      })
+      .finally(() => setLoadingDolls(false));
   }, [user?.uid, boundDollId]);
 
   const boundDoll = dolls.find((d) => d.id === boundDollId) ?? null;
+  const shellUrl = boundDoll ? resolveIdentityViewUrl(boundDoll, "portrait") : null;
 
   const handleSelectDoll = (dollId: string) => {
     setBoundDollId(dollId);
     writeStoredActiveDollId(dollId);
+    setOpenProfile(false);
   };
 
   const handleAestheticCommit = useCallback(
@@ -76,25 +91,63 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({ navigate }) 
     navigate(`/u/${handle}`);
   };
 
+  if (openProfile && boundDoll) {
+    return (
+      <DollProfileScreen
+        doll={boundDoll}
+        onBack={() => {
+          setOpenProfile(false);
+          if (user?.uid) {
+            void listDolls(user.uid).then(setDolls);
+          }
+        }}
+        onContinue={() => {
+          setOpenProfile(false);
+          if (user?.uid) {
+            void listDolls(user.uid).then(setDolls);
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <ChamberShell
       moduleId="mimi-dolls"
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setChamberView(chamberView === "dresser" ? "hub" : "dresser")}
-            className="px-3 py-1.5 border border-purple-500 bg-purple-500/10 font-mono text-[8px] uppercase tracking-widest text-purple-300 hover:bg-purple-500/20 flex items-center gap-1.5"
+            onClick={() => setChamberView("shell")}
+            className={`px-3 py-1.5 border font-mono text-[8px] uppercase tracking-widest flex items-center gap-1.5 ${
+              chamberView === "shell"
+                ? "border-[var(--mimi-ink,#0a0a0a)] bg-[var(--mimi-ink,#0a0a0a)] text-[var(--mimi-field,#fdfbf7)]"
+                : "border-nous-border hover:bg-nous-base0/30"
+            }`}
           >
-            {chamberView === "dresser" ? (
-              <>
-                <Compass size={11} /> Universe Hub
-              </>
-            ) : (
-              <>
-                <Wand2 size={11} /> 3D Dresser Studio
-              </>
-            )}
+            <Sparkles size={11} /> Shell
+          </button>
+          <button
+            type="button"
+            onClick={() => setChamberView("hub")}
+            className={`px-3 py-1.5 border font-mono text-[8px] uppercase tracking-widest flex items-center gap-1.5 ${
+              chamberView === "hub"
+                ? "border-[var(--mimi-ink,#0a0a0a)] bg-[var(--mimi-ink,#0a0a0a)] text-[var(--mimi-field,#fdfbf7)]"
+                : "border-nous-border hover:bg-nous-base0/30"
+            }`}
+          >
+            <Compass size={11} /> Universe
+          </button>
+          <button
+            type="button"
+            onClick={() => setChamberView("shader")}
+            className={`px-3 py-1.5 border font-mono text-[8px] uppercase tracking-widest flex items-center gap-1.5 ${
+              chamberView === "shader"
+                ? "border-nous-border bg-nous-base0/40"
+                : "border-nous-border/50 text-nous-subtle hover:bg-nous-base0/20"
+            }`}
+          >
+            <Wand2 size={11} /> Shader lab
           </button>
           <button
             type="button"
@@ -113,12 +166,139 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({ navigate }) 
         </div>
       }
     >
-      {chamberView === "dresser" ? (
+      {chamberView === "shell" ? (
+        <div className="h-full min-h-0 overflow-y-auto">
+          <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-6">
+            <header className="space-y-2">
+              <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle">
+                Mimi Shell · {MIMI_SHELL_STAPLE_VERSION}
+              </p>
+              <h2 className="font-serif text-3xl md:text-4xl text-nous-text">House porcelain projection</h2>
+              <p className="font-serif italic text-nous-subtle max-w-xl">
+                Same species for every creator — elongated neck, serene BJD calm. Taste only dresses the shell.
+              </p>
+            </header>
+
+            {!user?.uid ? (
+              <div className="border border-dashed border-nous-border/40 p-10 text-center space-y-4">
+                <p className="font-serif italic text-lg text-nous-text">Sign in to project your shell.</p>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent("mimi:open_gateway"))}
+                  className="font-mono text-[9px] uppercase tracking-widest px-6 py-3 bg-nous-text text-nous-base"
+                >
+                  Enter Mimi
+                </button>
+              </div>
+            ) : loadingDolls ? (
+              <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle">Loading shells…</p>
+            ) : dolls.length === 0 ? (
+              <div
+                className="border border-nous-border/25 p-8 md:p-12 text-center space-y-5"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at 30% 0%, rgba(200,220,220,0.35) 0%, transparent 55%)",
+                }}
+              >
+                <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle">
+                  Shell dormant
+                </p>
+                <p className="font-serif text-2xl text-nous-text">No doll projected yet</p>
+                <p className="text-sm text-nous-subtle max-w-md mx-auto leading-relaxed">
+                  The dark shader lab is optional. Your Imagen shell appears after Tailor builds a Doll
+                  from your Taste Graph — then this chamber shows the porcelain plate.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/tailor")}
+                  className="inline-flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest px-6 py-3 bg-nous-text text-nous-base"
+                >
+                  Open Tailor → Generate Doll <ArrowRight size={12} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
+                    Active shell
+                  </label>
+                  <select
+                    value={boundDollId ?? ""}
+                    onChange={(e) => handleSelectDoll(e.target.value)}
+                    className="border border-nous-border bg-transparent font-mono text-[10px] px-2 py-1.5 max-w-[260px]"
+                  >
+                    {dolls.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                        {resolveIdentityViewUrl(d, "portrait") ? "" : " · projecting…"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {boundDoll ? (
+                  <div className="grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] gap-6 items-start">
+                    <div className="relative aspect-[3/4] max-h-[70vh] border border-nous-border/30 overflow-hidden bg-stone-950">
+                      {shellUrl ? (
+                        <img
+                          src={shellUrl}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <DollPortraitStage doll={boundDoll} className="absolute inset-0 w-full h-full" />
+                      )}
+                      {!shellUrl ? (
+                        <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                          <p className="font-mono text-[8px] uppercase tracking-widest text-amber-200/90">
+                            No plate yet — open conditioning to run shell projection
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-serif text-2xl text-nous-text mb-1">{boundDoll.name}</h3>
+                        <p className="text-sm text-nous-subtle leading-relaxed">
+                          {boundDoll.description || boundDoll.creativePhilosophy || "Taste Graph projection."}
+                        </p>
+                      </div>
+                      <p className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
+                        {boundDoll.palette.slice(0, 4).join(" · ") || "palette pending"}
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOpenProfile(true)}
+                          className="px-5 py-3 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest"
+                        >
+                          {shellUrl ? "Open conditioning" : "Run shell projection"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setChamberView("shader")}
+                          className="px-5 py-3 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle"
+                        >
+                          Shader lab
+                        </button>
+                      </div>
+                      <p className="font-mono text-[7px] uppercase tracking-widest text-nous-subtle/80">
+                        Shader lab is a separate realtime playground — not the Imagen shell.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
+      ) : chamberView === "shader" ? (
         <div className="flex flex-col gap-3 h-full min-h-0">
           <div className="flex flex-wrap items-center gap-3 px-1">
-            <label className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
-              Bound Doll
-            </label>
+            <p className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
+              Shader lab · optional · not the shell plate
+            </p>
             {user?.uid && dolls.length > 0 ? (
               <select
                 value={boundDollId ?? ""}
@@ -134,15 +314,17 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({ navigate }) 
             ) : (
               <span className="font-mono text-[9px] text-nous-subtle">
                 {user?.uid
-                  ? "No dolls yet — generate one from Tailor outputs."
+                  ? "No dolls yet — generate one from Tailor, then return."
                   : "Sign in to bind a Taste Graph doll."}
               </span>
             )}
-            {boundDoll && (
-              <span className="font-mono text-[8px] uppercase tracking-widest text-purple-300/80 truncate max-w-[280px]">
-                {boundDoll.palette.slice(0, 3).join(" · ") || "palette pending"}
-              </span>
-            )}
+            <button
+              type="button"
+              onClick={() => setChamberView("shell")}
+              className="ml-auto font-mono text-[8px] uppercase tracking-widest border border-nous-border px-3 py-1.5"
+            >
+              Back to shell
+            </button>
           </div>
           <ProceduralDollStudio
             boundDoll={boundDoll}

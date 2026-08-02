@@ -6,7 +6,8 @@
  * generateGatewayObject when llm.apiKey is provided.
  */
 
-import { ManualSourceProvider } from "../acquisition/providers/manualSourceProvider";
+import { acquireResidueSources } from "../acquisition/composeAcquisition";
+import type { SourceAcquisitionProvider } from "../acquisition/SourceAcquisitionProvider";
 import {
   RESIDUE_PROMPT_VERSION,
   RESIDUE_SCHEMA_VERSION,
@@ -63,6 +64,10 @@ export interface CulturalResidueRunOptions {
   llm?: ResidueLlmOptions;
   /** Pre-normalized sources (skips URL acquisition). */
   sources?: SourceReference[];
+  /** When true and APIFY_TOKEN is available (Node), merge Apify-acquired sources. */
+  useApify?: boolean;
+  /** Injectable Apify provider (tests / custom clients). */
+  apifyProvider?: SourceAcquisitionProvider;
   now?: string;
 }
 
@@ -120,20 +125,18 @@ export async function runCulturalResidue(
   // 2) Acquire / normalize sources
   let acquiredSources = options.sources;
   if (!acquiredSources) {
-    const manual = new ManualSourceProvider();
-    const acquisition = await manual.acquire({
+    const acquisition = await acquireResidueSources({
       inquiry: normalizedQuery,
       mode: "cultural",
       sourceUrls: input.sourceUrls,
+      userNotes: input.userNotes,
       maxItems: input.analysisDepth === "deep" ? 40 : input.analysisDepth === "quick" ? 10 : 25,
+      useApify: options.useApify,
+      apifyProvider: options.apifyProvider,
+      now,
     });
     warnings.push(...acquisition.warnings);
-    acquiredSources = normalizeSources({
-      acquired: acquisition.sources,
-      sourceUrls: undefined,
-      userNotes: input.userNotes,
-      accessedAt: now,
-    });
+    acquiredSources = acquisition.sources;
   } else if (input.userNotes?.length) {
     acquiredSources = [
       ...acquiredSources,
@@ -233,13 +236,19 @@ export async function runCulturalResidue(
     usedLlm = true;
     modelName = synthesisLlm.model || modelName;
     const syn = synthesisLlm.object;
-    definition = claimFromText({
-      claimId: "claim_definition",
-      statement: syn.definition,
-      status: evidence.length ? "interpretive" : "model-proposed",
-      evidence,
-    });
-    origins = syn.origins.map((statement, i) =>
+    const definitionStatement = nonEmptyString(syn.definition);
+    if (definitionStatement) {
+      definition = claimFromText({
+        claimId: "claim_definition",
+        statement: definitionStatement,
+        status: evidence.length ? "interpretive" : "model-proposed",
+        evidence,
+      });
+    }
+    origins = syn.origins
+      .map((statement) => nonEmptyString(statement))
+      .filter((statement): statement is string => Boolean(statement))
+      .map((statement, i) =>
       claimFromText({
         claimId: `claim_origin_${i}`,
         statement,
@@ -247,25 +256,32 @@ export async function runCulturalResidue(
         evidence,
       }),
     );
-    lineage = syn.lineage.map((row, i) => ({
+    lineage = syn.lineage
+      .filter((row) => nonEmptyString(row.label) && nonEmptyString(row.description))
+      .map((row, i) => ({
       stageId: `lineage_llm_${i}`,
-      label: row.label,
+      label: row.label.trim(),
       stage: row.stage,
       startYear: row.startYear,
       endYear: row.endYear,
-      description: row.description,
+      description: row.description.trim(),
       evidenceIds: evidenceIdsForSourceIds(row.evidenceSourceIds, evidence),
       confidence: row.confidence,
     }));
-    culturalCodes = syn.culturalCodes.map((row, i) => ({
+    culturalCodes = syn.culturalCodes
+      .filter((row) => nonEmptyString(row.label) && nonEmptyString(row.description))
+      .map((row, i) => ({
       codeId: `code_llm_${i}`,
       category: row.category,
-      label: row.label,
-      description: row.description,
+      label: row.label.trim(),
+      description: row.description.trim(),
       evidenceIds: evidenceIdsForSourceIds(row.evidenceSourceIds, evidence),
       confidence: row.confidence,
     }));
-    descendants = syn.descendants.map((statement, i) =>
+    descendants = syn.descendants
+      .map((statement) => nonEmptyString(statement))
+      .filter((statement): statement is string => Boolean(statement))
+      .map((statement, i) =>
       claimFromText({
         claimId: `claim_desc_${i}`,
         statement,
@@ -273,7 +289,10 @@ export async function runCulturalResidue(
         evidence,
       }),
     );
-    survivingMeanings = syn.survivingMeanings.map((statement, i) =>
+    survivingMeanings = syn.survivingMeanings
+      .map((statement) => nonEmptyString(statement))
+      .filter((statement): statement is string => Boolean(statement))
+      .map((statement, i) =>
       claimFromText({
         claimId: `claim_surv_${i}`,
         statement,
@@ -281,7 +300,10 @@ export async function runCulturalResidue(
         evidence,
       }),
     );
-    lostMeanings = syn.lostMeanings.map((statement, i) =>
+    lostMeanings = syn.lostMeanings
+      .map((statement) => nonEmptyString(statement))
+      .filter((statement): statement is string => Boolean(statement))
+      .map((statement, i) =>
       claimFromText({
         claimId: `claim_lost_${i}`,
         statement,
@@ -289,7 +311,10 @@ export async function runCulturalResidue(
         evidence,
       }),
     );
-    computationallyIntroducedMeanings = syn.computationallyIntroducedMeanings.map((statement, i) =>
+    computationallyIntroducedMeanings = syn.computationallyIntroducedMeanings
+      .map((statement) => nonEmptyString(statement))
+      .filter((statement): statement is string => Boolean(statement))
+      .map((statement, i) =>
       claimFromText({
         claimId: `claim_comp_${i}`,
         statement,
@@ -297,7 +322,10 @@ export async function runCulturalResidue(
         evidence,
       }),
     );
-    commercialAbsorption = syn.commercialAbsorption.map((statement, i) =>
+    commercialAbsorption = syn.commercialAbsorption
+      .map((statement) => nonEmptyString(statement))
+      .filter((statement): statement is string => Boolean(statement))
+      .map((statement, i) =>
       claimFromText({
         claimId: `claim_comm_${i}`,
         statement,
@@ -305,7 +333,10 @@ export async function runCulturalResidue(
         evidence,
       }),
     );
-    counterSignals = syn.counterSignals.map((statement, i) =>
+    counterSignals = syn.counterSignals
+      .map((statement) => nonEmptyString(statement))
+      .filter((statement): statement is string => Boolean(statement))
+      .map((statement, i) =>
       claimFromText({
         claimId: `claim_counter_${i}`,
         statement,
@@ -313,17 +344,21 @@ export async function runCulturalResidue(
         evidence,
       }),
     );
-    associations = syn.associations.map((row, i) => ({
+    associations = syn.associations
+      .filter((row) => nonEmptyString(row.origin) && nonEmptyString(row.target) && nonEmptyString(row.description))
+      .map((row, i) => ({
       associationId: `assoc_llm_${i}`,
-      originNodeId: row.origin,
-      targetNodeId: row.target,
+      originNodeId: row.origin.trim(),
+      targetNodeId: row.target.trim(),
       relationship: row.relationship,
-      description: row.description,
+      description: row.description.trim(),
       evidenceIds: evidenceIdsForSourceIds(row.evidenceSourceIds, evidence),
       confidence: row.status === "model-proposed" ? Math.min(row.confidence, 0.35) : row.confidence,
       status: row.evidenceSourceIds.length === 0 ? "model-proposed" : row.status,
     }));
-    evidenceGaps = syn.evidenceGaps;
+    evidenceGaps = syn.evidenceGaps
+      .map((gap) => nonEmptyString(gap))
+      .filter((gap): gap is string => Boolean(gap));
     completedStages.push(
       "generate-associations",
       "label-claim-status",
@@ -459,8 +494,12 @@ function claimFromText(input: {
 
 function evidenceIdsForSourceIds(sourceIds: string[], evidence: EvidenceRecord[]): string[] {
   const set = new Set(sourceIds);
-  const ids = evidence.filter((e) => set.has(e.sourceId)).map((e) => e.evidenceId);
-  return ids.length ? ids : evidence.slice(0, 1).map((e) => e.evidenceId);
+  return evidence.filter((e) => set.has(e.sourceId)).map((e) => e.evidenceId);
+}
+
+function nonEmptyString(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function sourceQualityScoreFor(
