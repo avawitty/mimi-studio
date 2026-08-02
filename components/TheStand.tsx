@@ -48,6 +48,10 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   const floorBrowseRef = useRef(floorBrowseZines);
   floorBrowseRef.current = floorBrowseZines;
 
+  // Identity key — Floor fetch must cancel/restart when this changes (uid alone
+  // is not enough when floorLoaded stays false mid-flight). From #145.
+  const floorIdentityKey = `${user?.uid ?? ''}:${user?.isAnonymous ? 'anon' : 'reg'}`;
+
   // Identity change must resettle Floor — don't keep another account's shelf / empty quota state.
   useEffect(() => {
     setFloorLoaded(false);
@@ -55,7 +59,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     setCommunityZines([]);
     setFloorSearchApplied(null);
     setCloudZines([]);
-  }, [user?.uid, user?.isAnonymous]);
+  }, [floorIdentityKey]);
 
 
   useEffect(() => {
@@ -104,6 +108,8 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
 
   // Lazy-load Floor once, then keep live via SSE / poll — including while searching
   // so unpublished/deleted issues leave the shelf (and active search) promptly.
+  // floorIdentityKey cancels in-flight prior-identity fetches even when floorLoaded
+  // was still false (deps otherwise wouldn't change).
   useEffect(() => {
     if (mode !== 'floor') return;
     let cancelled = false;
@@ -165,7 +171,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
       cancelled = true;
       unsubLive();
     };
-  }, [mode, floorLoaded]);
+  }, [mode, floorLoaded, floorIdentityKey]);
 
   // Server-side Floor search when sovereign is ready; restore browse shelf when cleared.
   useEffect(() => {
