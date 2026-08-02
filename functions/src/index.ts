@@ -13,8 +13,8 @@ const app = express();
 app.use(cookieParser());
 
 const ALLOWED_ORIGIN_PATTERNS: Array<string | RegExp> = [
-  'https://mimi.you',
   'https://www.mimi.you',
+  'https://mimi.you',
   'https://avainlife.com',
   'https://www.avainlife.com',
   /^https:\/\/[\w-]+\.vercel\.app$/,
@@ -416,7 +416,7 @@ app.get('/api/og/zine', async (req, res) => {
     const imageUrl = String(
       zine.coverImageUrl || zine.contentImages?.[0] || 'https://raw.githubusercontent.com/Aris-A-C/mimi-assets/main/mimi_logo_new.png',
     );
-    const base = String(process.env.MIMI_PUBLIC_BASE_URL || 'https://mimi.you').replace(/\/$/, '');
+    const base = String(process.env.MIMI_PUBLIC_BASE_URL || 'https://www.mimi.you').replace(/\/$/, '');
     const pageUrl = `${base}/zine/${zineId}`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -459,6 +459,10 @@ app.post('/api/triggerPressGeneration', async (req, res) => {
 });
 
 export const api = functions.https.onRequest(app);
-export const dailyPressIssueJob = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  await generateDailyPressIssue();
-});
+
+// Scheduled pubsub jobs require Blaze + Cloud Scheduler on mimistudios.
+// Use POST /api/triggerPressGeneration (above) until billing is enabled, then restore:
+// export const dailyPressIssueJob = functions.pubsub.schedule('every 24 hours').onRun(async () => {
+//   await generateDailyPressIssue();
+// });
+

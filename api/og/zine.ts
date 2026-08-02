@@ -48,7 +48,7 @@ export default async function handler(req: any, res: any) {
     const imageUrl = String(
       zine.coverImageUrl || zine.contentImages?.[0] || "https://raw.githubusercontent.com/Aris-A-C/mimi-assets/main/mimi_logo_new.png",
     );
-    const configuredBase = String(process.env.MIMI_PUBLIC_BASE_URL || "https://mimi.you").replace(/\/$/, "");
+    const configuredBase = String(process.env.MIMI_PUBLIC_BASE_URL || "https://www.mimi.you").replace(/\/$/, "");
     const pageUrl = `${configuredBase}/zine/${zineId}`;
 
     const html = `<!DOCTYPE html>
