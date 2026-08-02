@@ -161,7 +161,6 @@ npm run validate:canon              # Validate canonical routes
 npm run verify:tailor-contract      # Verify Tailor profile contracts
 npm run verify:used-context         # Verify the Used Context flow
 npm run verify:zine-visual-policy   # Verify zine visual-policy rules
-<<<<<<< HEAD
 npm run verify:zine-spread-compose  # Verify customLayout spread compose
 npm run verify:structured-zine-pdf  # Verify archival structured PDF export
 npm run verify:doll-engine          # Verify Doll Engine projection helpers
@@ -171,11 +170,9 @@ npm run verify:gateway-generate-text # Needs AI_GATEWAY_API_KEY
 npm run review:mobile               # iPhone-width UX probe (needs :3000 or pass URL)
 npm run setup:mimi-fish-domains     # Auth domains for mimi.fish (+ optional Vercel)
 npm run setup:mimi-rip-domains      # Auth domains for mimi.rip
-=======
 npm run sovereign:seed              # Seed demo Floor into the sovereign archive
 npm run sovereign:import -- ./file  # Import a JSON export into sovereign
 npm run sovereign:export-firestore  # One-shot Firestore → sovereign (needs Admin)
->>>>>>> origin/main
 ```
 
 Additional integration checks are available for Shopify, Intel Hub, Residue, and Pinterest preview workflows.
