@@ -107,9 +107,11 @@ jobs:
             PR_NUMBER="${{ github.event.pull_request.number }}"
           fi
           meta="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json url,headRefName,baseRefName,headRepository)"
-          head_repo="$(echo "$meta" | jq -r '.headRepository.cloneUrl // empty')"
-          if [ -z "$head_repo" ] || [ "$head_repo" = "null" ]; then
+          head_name_with_owner="$(echo "$meta" | jq -r '.headRepository.nameWithOwner // empty')"
+          if [ -z "$head_name_with_owner" ] || [ "$head_name_with_owner" = "null" ]; then
             head_repo="https://github.com/${GITHUB_REPOSITORY}"
+          else
+            head_repo="https://github.com/${head_name_with_owner}"
           fi
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "pr_url=$(echo "$meta" | jq -r .url)" >> "$GITHUB_OUTPUT"
