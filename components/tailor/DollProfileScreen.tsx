@@ -147,7 +147,8 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
     const saved = localStorage.getItem(`mimi_doll_chat_${doll.id}`);
     if (saved) return JSON.parse(saved);
-    const awakening = doll.generatedImageUrl
+    const shellOnline = dollHasShellPortrait(doll);
+    const awakening = shellOnline
       ? `Shell online. Creator, I am ${doll.name}. Ego partitioned, cognitive lace taut — ready for conditioning.`
       : `Shell dormant. Creator, I am ${doll.name}. Projecting the Mimi Shell onto your graph — porcelain species lock, then conditioning.`;
     return [
@@ -170,8 +171,10 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  const handleRegeneratePortrait = async (view: DollIdentityView = identityView) => {
-    if (isGeneratingPortrait) return;
+  const handleRegeneratePortrait = async (
+    view: DollIdentityView = identityView,
+  ): Promise<boolean> => {
+    if (isGeneratingPortrait) return false;
     setIsGeneratingPortrait(true);
     triggerSound('transition');
 
@@ -249,6 +252,7 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
             },
           ]);
         }
+        return true;
       } else {
         throw new Error(data?.error?.message || 'Empty image response');
       }
@@ -268,6 +272,7 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         })
       );
       // Do not silently swap in a stock photo as "simulated success"
+      return false;
     } finally {
       setIsGeneratingPortrait(false);
     }
@@ -284,13 +289,31 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   const packStatus = identityPackCompleteness(currentDoll);
 
   // Cultish onboarding beat: first visit without a portrait auto-projects the house shell.
+  // Persist the one-shot across StrictMode remounts; clear on failure so a retry is possible.
   useEffect(() => {
+    const storageKey = `mimi_doll_auto_shell_${currentDoll.id}`;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(storageKey) === '1') {
+      autoShellProjectedRef.current = true;
+    }
     if (autoShellProjectedRef.current) return;
     if (dollHasShellPortrait(currentDoll)) return;
     if (isGeneratingPortrait) return;
     autoShellProjectedRef.current = true;
-    void handleRegeneratePortrait('portrait');
-    // Intentionally one-shot per mount when shell image is missing.
+    try {
+      sessionStorage.setItem(storageKey, '1');
+    } catch {
+      // ignore
+    }
+    void handleRegeneratePortrait('portrait').then((ok) => {
+      if (ok) return;
+      autoShellProjectedRef.current = false;
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+    });
+    // Intentionally one-shot when shell image is missing.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onboarding auto-project
   }, [
     currentDoll.id,

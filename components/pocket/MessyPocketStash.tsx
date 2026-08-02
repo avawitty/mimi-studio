@@ -267,19 +267,34 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
     if (e.currentTarget === e.target) setDropping(false);
   };
 
+  const ingestDataTransfer = async (dt: DataTransfer) => {
+    if (dt.files?.length) {
+      await ingestFiles(dt.files);
+      return;
+    }
+    const uri = dt.getData("text/uri-list") || dt.getData("text/plain");
+    if (!uri?.trim()) return;
+    await ingestLink(uri);
+  };
+
   const onDeskDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDropping(false);
-    if (e.dataTransfer.files?.length) {
-      await ingestFiles(e.dataTransfer.files);
-      return;
-    }
-    const uri =
-      e.dataTransfer.getData("text/uri-list") ||
-      e.dataTransfer.getData("text/plain");
-    if (!uri?.trim()) return;
-    await ingestLink(uri);
+    await ingestDataTransfer(e.dataTransfer);
+  };
+
+  /** Backdrop / chrome drops: stash still open, but not over the desk surface. */
+  const onShellDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropping(false);
+    await ingestDataTransfer(e.dataTransfer);
+  };
+
+  const onShellDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const actionIconClass =
@@ -288,12 +303,21 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
   if (!open) return null;
 
   return (
-    <div className="messy-pocket-root fixed inset-0 z-[120]" role="dialog" aria-modal="true" aria-label="Pocket stash">
+    <div
+      className="messy-pocket-root fixed inset-0 z-[120]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pocket stash"
+      onDragOver={onShellDragOver}
+      onDrop={(e) => void onShellDrop(e)}
+    >
       <button
         type="button"
         aria-label="Dismiss pocket stash"
         className="absolute inset-0 bg-black/45 border-0 cursor-default"
         onClick={onClose}
+        onDragOver={onShellDragOver}
+        onDrop={(e) => void onShellDrop(e)}
       />
       <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
         <div
@@ -306,8 +330,14 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
             animation: "messyPocketDown 320ms cubic-bezier(0.2, 0.8, 0.2, 1)",
           }}
           onClick={(e) => e.stopPropagation()}
+          onDragOver={onShellDragOver}
+          onDrop={(e) => void onShellDrop(e)}
         >
-          <div className="shrink-0 flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-black/10 bg-[#f3f1ea]/95">
+          <div
+            className="shrink-0 flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-black/10 bg-[#f3f1ea]/95"
+            onDragOver={onShellDragOver}
+            onDrop={(e) => void onShellDrop(e)}
+          >
             <div className="min-w-0">
               <p className="font-serif italic text-xl md:text-2xl leading-none">Pocket</p>
               <p className="font-mono text-[7px] uppercase tracking-[0.2em] text-stone-500 mt-1">

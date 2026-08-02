@@ -275,22 +275,26 @@ export async function withResilience<T>(
         return await operation(mockAi);
     } catch (primaryError: any) {
         const msg = String(primaryError?.message || primaryError || "");
-        // Gateway/BYOK path failed (often 403 credits). Prefer Gemini proxy next
-        // and stop forcing the dead gateway choice for subsequent Oracle calls.
-        if (
-          activeId === "gateway" &&
-          (/credits|403|Gateway|sign in/i.test(msg)) &&
-          typeof localStorage !== "undefined"
-        ) {
+        // Only Gateway credit/auth failures should fall through to Gemini.
+        // OpenAI/Anthropic failures must surface — not silently run on Gemini keys.
+        const isGatewayCreditFailure =
+          activeId === "gateway" && /credits|403|Gateway|sign in/i.test(msg);
+        if (!isGatewayCreditFailure) {
+          throw primaryError;
+        }
+        if (typeof localStorage !== "undefined") {
           try {
             localStorage.setItem("mimi_active_llm", "gemini");
             setGlobalAIProvider("gemini");
+            window.dispatchEvent(
+              new CustomEvent("mimi:llm_provider_changed", { detail: { provider: "gemini" } }),
+            );
           } catch {
             // ignore storage failures
           }
         }
         console.warn(
-          `MIMI // Oracle: Active provider "${activeId}" failed; falling back to Gemini proxy path.`,
+          `MIMI // Oracle: Gateway failed; falling back to Gemini proxy path.`,
           msg,
         );
         // Continue into gemini resilience path below.
@@ -339,14 +343,20 @@ export async function withResilience<T>(
       error.message?.includes('Failed to fetch') ||
       error.message?.includes('NetworkError');
     
-    const isKeyError = 
-      error.status === 403 || 
-      error.message?.includes('403') || 
-      error.message?.includes('PERMISSION_DENIED') ||
-      error.message?.includes('api-key-expired') ||
-      error.message?.includes('API_KEY_INVALID') ||
+    const isCreditOrGatewayError =
       error.message?.includes('credits') ||
-      error.message?.includes('Gateway');
+      error.message?.includes('Gateway') ||
+      error.message?.includes('prepayment') ||
+      error.message?.includes('RESOURCE_EXHAUSTED');
+
+    const isKeyError = 
+      !isCreditOrGatewayError && (
+        error.status === 403 || 
+        error.message?.includes('403') || 
+        error.message?.includes('PERMISSION_DENIED') ||
+        error.message?.includes('api-key-expired') ||
+        error.message?.includes('API_KEY_INVALID')
+      );
 
     const hasMoreKeys = globalKeyRing.length > 0 && globalKeyRing.filter(k => !attemptedKeys.includes(k)).length > 0;
     const canRetry = isQuotaError || isOverloadError || (isKeyError && hasMoreKeys && keyUsed !== 'Proxy' && keyUsed !== '');
@@ -361,9 +371,11 @@ export async function withResilience<T>(
     }
     
     const originalMsg = error.message || "";
-    const isCreditsDepleted = originalMsg.includes("RESOURCE_EXHAUSTED") ||
-                             originalMsg.includes("prepayment credits") ||
-                             originalMsg.includes("depleted");
+    const isCreditsDepleted =
+      isCreditOrGatewayError ||
+      originalMsg.includes("RESOURCE_EXHAUSTED") ||
+      originalMsg.includes("prepayment credits") ||
+      originalMsg.includes("depleted");
 
     if (isCreditsDepleted) {
       const creditsError = new Error("MIMI // Oracle Status: Prepayment Credits Depleted. The associated AI Studio project has run out of credits or prepayment funds. TO RESOLVE: Go to AI Studio at https://ai.studio/projects or add a custom API key in the Sovereign Keychain.") as any;
@@ -441,15 +453,19 @@ export async function tryModels<T>(
             return await operation(mockAi, models[0]);
         } catch (error: any) {
             const msg = String(error?.message || error || "");
-            console.warn(`MIMI // Provider ${activeId} failed; falling back to Gemini model ladder:`, msg);
-            if (
-              activeId === "gateway" &&
-              /credits|403|Gateway|sign in/i.test(msg) &&
-              typeof localStorage !== "undefined"
-            ) {
+            const isGatewayCreditFailure =
+              activeId === "gateway" && /credits|403|Gateway|sign in/i.test(msg);
+            if (!isGatewayCreditFailure) {
+              throw error;
+            }
+            console.warn(`MIMI // Gateway failed; falling back to Gemini model ladder:`, msg);
+            if (typeof localStorage !== "undefined") {
               try {
                 localStorage.setItem("mimi_active_llm", "gemini");
                 setGlobalAIProvider("gemini");
+                window.dispatchEvent(
+                  new CustomEvent("mimi:llm_provider_changed", { detail: { provider: "gemini" } }),
+                );
               } catch {
                 // ignore
               }
