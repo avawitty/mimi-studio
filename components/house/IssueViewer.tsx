@@ -1,5 +1,7 @@
-import { ArrowLeft, Download } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Download, Link2 } from "lucide-react";
 import PlateVisual from "./PlateVisual";
+import { copyHouseShareLink } from "./share";
 import { useMimi } from "./store";
 import { SysLabel } from "./shared";
 
@@ -11,6 +13,7 @@ export default function IssueViewer({
   onBack: () => void;
 }) {
   const { issues, plates } = useMimi();
+  const [copied, setCopied] = useState(false);
   const issue = issues.find((i) => i.id === id);
 
   if (!issue) {
@@ -54,13 +57,29 @@ export default function IssueViewer({
           >
             <ArrowLeft size={14} /> Studio
           </button>
-          <button
-            type="button"
-            onClick={exportJson}
-            className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] border border-[var(--house-line)] px-4 py-2 hover:border-[var(--house-ink)]"
-          >
-            <Download size={14} /> Export JSON
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                void copyHouseShareLink("issue", issue.id).then((ok) => {
+                  if (ok) {
+                    setCopied(true);
+                    window.setTimeout(() => setCopied(false), 1600);
+                  }
+                });
+              }}
+              className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] border border-[var(--house-line)] px-4 py-2 hover:border-[var(--house-ink)]"
+            >
+              <Link2 size={14} /> {copied ? "Copied" : "Copy link"}
+            </button>
+            <button
+              type="button"
+              onClick={exportJson}
+              className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] border border-[var(--house-line)] px-4 py-2 hover:border-[var(--house-ink)]"
+            >
+              <Download size={14} /> Export JSON
+            </button>
+          </div>
         </div>
       </header>
 

@@ -2,6 +2,9 @@ export type DebrisKind = "link" | "text" | "image" | "upload";
 
 export type DebrisStatus = "held" | "kept" | "refused";
 
+/** Elevator floors — 1F Ingest through 4F Penthouse. */
+export type FloorId = 1 | 2 | 3 | 4;
+
 export interface DebrisTag {
   label: string;
   intensity: number;

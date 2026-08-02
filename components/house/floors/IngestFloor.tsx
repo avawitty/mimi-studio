@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type DragEvent } from "react";
 import { ImageIcon, Link, Type, Upload, X } from "lucide-react";
-import { extractTags, EDITOR_VOICE } from "../editor";
+import { extractTags, EDITOR_VOICE, matchesHouseQuery } from "../editor";
+import SearchBar from "../SearchBar";
 import { extractPaletteFromImage, getState, setState, uid, useMimi } from "../store";
 import type { Debris } from "../types";
 import { FloorHeader, MimiVoice, SysLabel, TagChip } from "../shared";
@@ -16,10 +17,13 @@ export default function IngestFloor() {
   const { debris } = useMimi();
   const [kind, setKind] = useState<Debris["kind"]>("text");
   const [raw, setRaw] = useState("");
+  const [query, setQuery] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const held = debris.filter((d) => d.status === "held");
+  const held = debris.filter(
+    (d) => d.status === "held" && matchesHouseQuery(query, d.raw, d.tags),
+  );
 
   function ingest() {
     const value = raw.trim();
@@ -172,6 +176,11 @@ export default function IngestFloor() {
         </section>
 
         <aside>
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="Filter held debris…"
+          />
           <SysLabel className="mb-4 block">Intake holding — {held.length}</SysLabel>
           {held.length === 0 ? (
             <p className="font-serif italic text-[var(--house-stone)] text-lg">
