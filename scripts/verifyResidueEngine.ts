@@ -29,6 +29,7 @@ import {
   literalMode,
   meanMedianModeResultSchema,
   redactSensitiveText,
+  runCulturalResidue,
   safeParseCulturalResidueResult,
   sanitizeEmotionalStatement,
   sourceQualityScore,
@@ -409,10 +410,62 @@ async function main() {
   const badDisclosure = claimProvenanceDisclosure(bad.definition as typeof cultural.definition);
   assert(badDisclosure.isModelProposed, "no-evidence historical treated as under-supported");
 
-  console.log("OK — Residue Phase 2 checks passed.");
+  // --- Phase 3: Cultural Residue engine (offline / no gateway required) ---
+  const engineOut = await runCulturalResidue(
+    {
+      query: "office siren",
+      researchQuestion: "How did office siren travel from niche feeds into retail?",
+      sourceUrls: ["https://example.com/office-siren-explainer"],
+      userNotes: [
+        "Office siren emerged on TikTok with pencil skirts and thin knits, then amplified on the FYP.",
+        "Retail lookbooks at Zara absorbed the silhouette; some users now report fatigue and backlash.",
+        "Possible descent from earlier secretary-chic media tropes remains speculative.",
+      ],
+      analysisDepth: "standard",
+      retention: "temporary",
+      consentToStore: false,
+    },
+    {
+      llm: { offline: true },
+      runId: "run_office_siren_offline",
+      now,
+    },
+  );
+
+  assert(engineOut.usedLlm === false, "offline engine does not call LLM");
+  assert(engineOut.result.query.toLowerCase().includes("office siren"), "query preserved");
+  assert(engineOut.result.evidence.length > 0, "engine extracted evidence");
+  assert(engineOut.result.lineage.length > 0, "engine built lineage");
+  assert(engineOut.result.culturalCodes.length > 0, "engine detected cultural codes");
+  assert(
+    engineOut.result.computationallyIntroducedMeanings.some((c) => c.status === "model-proposed" || c.evidenceIds.length > 0),
+    "computational residue present",
+  );
+  assert(
+    engineOut.result.associations.some((a) => a.status === "model-proposed"),
+    "model-proposed associations remain labeled",
+  );
+  assert(engineOut.result.usedContext.length > 0, "used context built");
+  assert(
+    engineOut.result.confidenceSummary.summary.includes("not a diagnostic likelihood"),
+    "confidence narrative labeled",
+  );
+  assert(engineOut.partial.completedStages.includes("synthesize"), "synthesize stage completed");
+  assert(
+    culturalResidueResultSchema.safeParse(engineOut.result).success,
+    "engine result validates",
+  );
+
+  // Hallucinated citation prevention: unknown source IDs must not appear as evidence sources
+  const sourceIds = new Set(engineOut.result.sources.map((s) => s.sourceId));
+  for (const ev of engineOut.result.evidence) {
+    assert(sourceIds.has(ev.sourceId), `evidence source exists: ${ev.sourceId}`);
+  }
+
+  console.log("OK — Residue Phase 2 + Phase 3 cultural engine checks passed.");
 }
 
 main().catch((err) => {
-  console.error("FAIL — Residue Phase 2 verification:", err);
+  console.error("FAIL — Residue verification:", err);
   process.exit(1);
 });

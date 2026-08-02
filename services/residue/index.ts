@@ -1,5 +1,5 @@
 /**
- * Mimi Residue Engine — public Phase 2 API.
+ * Mimi Residue Engine — public API (Phases 2–3).
  */
 
 export * from "./constants";
@@ -8,6 +8,7 @@ export * from "./types";
 export * from "./scoring";
 export * from "./uncertainty";
 export * from "./provenance";
+export * from "./pipeline";
 
 export {
   buildResidueRunDocument,
@@ -31,3 +32,11 @@ export {
   createApifySourceAcquisitionProvider,
 } from "./acquisition/providers/apify/apifySourceAcquisitionProvider";
 export { APIFY_ACTOR_CANDIDATES } from "./acquisition/providers/apify/actorRegistry";
+
+export {
+  runCulturalResidue,
+  type CulturalResidueEngineOutput,
+  type CulturalResidueRunOptions,
+} from "./cultural/culturalResidueEngine";
+export { normalizeSources } from "./shared/normalizeSources";
+export { extractEvidenceOffline } from "./shared/extractEvidence";
