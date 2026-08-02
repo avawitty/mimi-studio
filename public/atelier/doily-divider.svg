@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" width="1200" height="120">
+  <g fill="none" stroke="#8A877F" stroke-width="1" opacity="0.85">
+    <!-- baseline -->
+    <line x1="0" y1="100" x2="1200" y2="100"/>
+    <!-- scallops -->
+    <g>
+      <path id="scallop" d="M0 100 Q 25 58 50 100" />
+      <use href="#scallop" x="0"/>
+      <use href="#scallop" x="50"/>
+      <use href="#scallop" x="100"/>
+      <use href="#scallop" x="150"/>
+      <use href="#scallop" x="200"/>
+      <use href="#scallop" x="250"/>
+      <use href="#scallop" x="300"/>
+      <use href="#scallop" x="350"/>
+      <use href="#scallop" x="400"/>
+      <use href="#scallop" x="450"/>
+      <use href="#scallop" x="500"/>
+      <use href="#scallop" x="550"/>
+      <use href="#scallop" x="600"/>
+      <use href="#scallop" x="650"/>
+      <use href="#scallop" x="700"/>
+      <use href="#scallop" x="750"/>
+      <use href="#scallop" x="800"/>
+      <use href="#scallop" x="850"/>
+      <use href="#scallop" x="900"/>
+      <use href="#scallop" x="950"/>
+      <use href="#scallop" x="1000"/>
+      <use href="#scallop" x="1050"/>
+      <use href="#scallop" x="1100"/>
+      <use href="#scallop" x="1150"/>
+    </g>
+    <!-- inner arches -->
+    <g stroke-width="0.7">
+      <path id="arch" d="M6 100 Q 25 72 44 100" />
+      <use href="#arch" x="0"/><use href="#arch" x="50"/><use href="#arch" x="100"/>
+      <use href="#arch" x="150"/><use href="#arch" x="200"/><use href="#arch" x="250"/>
+      <use href="#arch" x="300"/><use href="#arch" x="350"/><use href="#arch" x="400"/>
+      <use href="#arch" x="450"/><use href="#arch" x="500"/><use href="#arch" x="550"/>
+      <use href="#arch" x="600"/><use href="#arch" x="650"/><use href="#arch" x="700"/>
+      <use href="#arch" x="750"/><use href="#arch" x="800"/><use href="#arch" x="850"/>
+      <use href="#arch" x="900"/><use href="#arch" x="950"/><use href="#arch" x="1000"/>
+      <use href="#arch" x="1050"/><use href="#arch" x="1100"/><use href="#arch" x="1150"/>
+    </g>
+    <!-- dots between scallops -->
+    <g fill="#8A877F" stroke="none">
+      <circle cx="25" cy="46" r="1.6"/><circle cx="75" cy="46" r="1.6"/>
+      <circle cx="125" cy="46" r="1.6"/><circle cx="175" cy="46" r="1.6"/>
+      <circle cx="225" cy="46" r="1.6"/><circle cx="275" cy="46" r="1.6"/>
+      <circle cx="325" cy="46" r="1.6"/><circle cx="375" cy="46" r="1.6"/>
+      <circle cx="425" cy="46" r="1.6"/><circle cx="475" cy="46" r="1.6"/>
+      <circle cx="525" cy="46" r="1.6"/><circle cx="575" cy="46" r="1.6"/>
+      <circle cx="625" cy="46" r="1.6"/><circle cx="675" cy="46" r="1.6"/>
+      <circle cx="725" cy="46" r="1.6"/><circle cx="775" cy="46" r="1.6"/>
+      <circle cx="825" cy="46" r="1.6"/><circle cx="875" cy="46" r="1.6"/>
+      <circle cx="925" cy="46" r="1.6"/><circle cx="975" cy="46" r="1.6"/>
+      <circle cx="1025" cy="46" r="1.6"/><circle cx="1075" cy="46" r="1.6"/>
+      <circle cx="1125" cy="46" r="1.6"/><circle cx="1175" cy="46" r="1.6"/>
+    </g>
+    <!-- tiny loops above dots -->
+    <g stroke-width="0.6">
+      <path id="loop" d="M25 44 c -8 -14 8 -14 0 0 M25 44 c 0 -18 12 -10 6 2" transform="translate(0,-4)"/>
+      <use href="#loop" x="0"/><use href="#loop" x="50"/><use href="#loop" x="100"/>
+      <use href="#loop" x="150"/><use href="#loop" x="200"/><use href="#loop" x="250"/>
+      <use href="#loop" x="300"/><use href="#loop" x="350"/><use href="#loop" x="400"/>
+      <use href="#loop" x="450"/><use href="#loop" x="500"/><use href="#loop" x="550"/>
+      <use href="#loop" x="600"/><use href="#loop" x="650"/><use href="#loop" x="700"/>
+      <use href="#loop" x="750"/><use href="#loop" x="800"/><use href="#loop" x="850"/>
+      <use href="#loop" x="900"/><use href="#loop" x="950"/><use href="#loop" x="1000"/>
+      <use href="#loop" x="1050"/><use href="#loop" x="1100"/><use href="#loop" x="1150"/>
+    </g>
+  </g>
+</svg>

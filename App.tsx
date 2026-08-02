@@ -77,7 +77,10 @@ import { archiveManager } from "./services/archiveManager";
 import { SUPERINTELLIGENCE_PROMPTS } from "./constants";
 import { AnalysisDisplay } from "./components/AnalysisDisplay";
 import { ElevatorLoader } from "./components/ElevatorLoader";
-import { ViewSkeleton } from "./components/loaders/ViewSkeleton";
+import { AppShell } from "./components/system/AppShell";
+import { ChamberSkeleton } from "./components/system/ChamberSkeleton";
+import { SurveillanceOverlay } from "./components/system/SurveillanceOverlay";
+import { Wayfinder } from "./components/navigation/Wayfinder";
 import { UserProvider, useUser } from "./contexts/UserContext";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { AgentProvider, useAgents } from "./contexts/AgentContext";
@@ -86,6 +89,7 @@ import { canonicalizeMimiRoute } from "./lib/productCanon";
 import { LegalDocumentPage } from "./components/LegalDocumentPage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useTactileAudio } from "./hooks/useTactileAudio";
+import { useChamber } from "./hooks/useChamber";
 
 // Lazy load views to reduce initial request count and prevent 429 errors
 import { MobileProfileModal } from "./components/MobileProfileModal";
@@ -356,7 +360,6 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Bell,
   Sparkles,
-  LayoutGrid,
   User,
   Menu,
   X,
@@ -476,12 +479,6 @@ const NavigationDrawer: React.FC<{
   const { user } = useUser();
   const { currentPalette, toggleMode } = useTheme();
   const isDark = currentPalette?.isDark;
-  const recommendedPath = [
-    { number: "01", label: "Collect", note: "Bring in source material", mode: "scribe" },
-    { number: "02", label: "Shape", note: "Find the editorial angle", mode: "the-edit" },
-    { number: "03", label: "Create", note: "Develop the issue", mode: "studio" },
-    { number: "04", label: "Publish", note: "Prepare the release", mode: "the-press" },
-  ];
 
   return (
     <AnimatePresence>
@@ -524,6 +521,12 @@ const NavigationDrawer: React.FC<{
                 <X size={16} strokeWidth={1.5} />
               </button>
             </div>
+
+            <Wayfinder
+              viewMode={viewMode}
+              onNavigate={handleNav}
+              disabled={isGenerating}
+            />
 
             {/* High Latency / Generation Guard Banner */}
             {isGenerating && (
@@ -2317,9 +2320,13 @@ export const App: React.FC = () => {
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
+<<<<<<< HEAD
 
   const chamber = getChamberFamily(viewMode);
   const faceKind = getFaceKind(viewMode);
+=======
+  const chamber = useChamber(viewMode);
+>>>>>>> origin/main
 
   return (
     <IntelligenceGateContext.Provider value={gateValue}>
@@ -2431,19 +2438,6 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      {appState !== AppState.REVEALED && viewMode !== "studio" && (
-        <StudioChrome
-          theme={currentPalette.isDark ? "dark" : "light"}
-          onToggleTheme={toggleMode}
-          onOpenMenu={() => setIsNavOpen(true)}
-          viewMode={viewMode}
-          isGenerating={appState === AppState.THINKING}
-          isHighLatency={(systemStatus?.latency ?? 0) > 250 || systemStatus?.oracle === 'saturated'}
-          pocketStashOpen={pocketStashOpen}
-        />
-      )}
-
       <MessyPocketStash
         open={pocketStashOpen}
         onClose={() => {
@@ -2453,6 +2447,7 @@ export const App: React.FC = () => {
         onOpenRegistry={() => setViewMode("pocket")}
       />
 
+<<<<<<< HEAD
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Binder spine sidebar */}
         {appState !== AppState.REVEALED && (
@@ -2501,6 +2496,27 @@ export const App: React.FC = () => {
           data-chamber={chamber}
           data-face={faceKind}
         >
+=======
+      <AppShell
+        viewMode={viewMode}
+        hideBinder={appState === AppState.REVEALED}
+        menuOpen={isNavOpen}
+        onToggleMenu={() => setIsNavOpen(!isNavOpen)}
+        chrome={
+          appState !== AppState.REVEALED && viewMode !== "studio" ? (
+            <StudioChrome
+              theme={currentPalette.isDark ? "dark" : "light"}
+              onToggleTheme={toggleMode}
+              onOpenMenu={() => setIsNavOpen(true)}
+              viewMode={viewMode}
+              isGenerating={appState === AppState.THINKING}
+              isHighLatency={(systemStatus?.latency ?? 0) > 250 || systemStatus?.oracle === 'saturated'}
+              pocketStashOpen={pocketStashOpen}
+            />
+          ) : null
+        }
+      >
+>>>>>>> origin/main
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (
             <div className="w-full bg-[#1A1A1A] text-[#F5F5F0] border-b border-[#333333] px-6 py-3 flex items-center justify-between z-40 relative">
               <div className="flex items-center gap-3">
@@ -2547,11 +2563,19 @@ export const App: React.FC = () => {
               transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
               <SurveillanceOverlay
+<<<<<<< HEAD
                 chamber={chamber}
                 face={faceKind}
                 disabled={isCRTEnabled}
               />
               <div className="relative z-[1] h-full min-h-0 flex flex-col">
+=======
+                family={chamber.family}
+                quiet={chamber.quietChrome}
+                voidPlate={chamber.isDarkPlate}
+                signalDense={chamber.signalDense}
+              />
+>>>>>>> origin/main
               <AnimatePresence>
                 {appState === AppState.THINKING && (
                   <ElevatorLoader
@@ -2560,7 +2584,15 @@ export const App: React.FC = () => {
                   />
                 )}
               </AnimatePresence>
-              <Suspense fallback={<ViewSkeleton />}>
+              <Suspense
+                fallback={
+                  <ChamberSkeleton
+                    family={chamber.family}
+                    voidPlate={chamber.isDarkPlate}
+                    label={chamber.module?.name || currentTitle}
+                  />
+                }
+              >
                 {appState === AppState.REVEALED && zineMetadata ? (
                   <AnalysisDisplay
                     metadata={zineMetadata}
@@ -2779,8 +2811,7 @@ export const App: React.FC = () => {
           </AnimatePresence>
           <SelectionMemoryCapture />
           <CookieConsentBanner />
-        </main>
-      </div>
+      </AppShell>
 
       {/* GLOBAL RESPONSIVE RIGHT-SIDE SLIDING DRAWER MENU */}
       <NavigationDrawer

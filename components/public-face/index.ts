@@ -6,3 +6,6 @@ export { PublicField } from "./PublicField";
 export { EditorialPlate } from "./EditorialPlate";
 export { RegistryCorners } from "./RegistryCorners";
 export { DossierTab } from "./DossierTab";
+export { AtelierDesk } from "./AtelierDesk";
+export { FilingFolder } from "./FilingFolder";
+export { OracleSpecimenHero } from "./OracleSpecimenHero";

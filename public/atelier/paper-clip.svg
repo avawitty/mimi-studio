@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 320" width="120" height="320">
+  <defs>
+    <linearGradient id="wire" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6f6d67"/>
+      <stop offset="0.45" stop-color="#b9b7b0"/>
+      <stop offset="0.6" stop-color="#d7d5ce"/>
+      <stop offset="1" stop-color="#7a7871"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#wire)" stroke-width="9" stroke-linecap="round">
+    <!-- outer loop -->
+    <path d="M60 300
+             C 22 300 14 268 14 236
+             L 14 76
+             C 14 40 34 20 60 20
+             C 86 20 106 40 106 76
+             L 106 240"/>
+    <!-- inner loop -->
+    <path d="M60 268
+             C 40 268 34 250 34 232
+             L 34 84
+             C 34 60 44 46 60 46
+             C 76 46 86 60 86 84
+             L 86 250
+             C 86 262 78 268 70 268"/>
+  </g>
+  <!-- subtle highlight -->
+  <g fill="none" stroke="#e8e6df" stroke-width="2" stroke-linecap="round" opacity="0.7">
+    <path d="M17 230 L17 78 C17 46 34 24 58 23"/>
+    <path d="M37 226 L37 86 C37 64 46 50 59 49"/>
+  </g>
+</svg>
