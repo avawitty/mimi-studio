@@ -1,28 +1,35 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
 
 export const RegistryAlert: React.FC = () => {
  const [alerts, setAlerts] = useState<any[]>([]);
+ const recentMessages = useRef<Set<string>>(new Set());
 
  useEffect(() => {
  const handleAlert = (e: any) => {
  const message = String(e.detail?.message || "").trim();
  // Dedupe identical toasts — gateway/credit failures were stacking System Dissonance.
- setAlerts((prev) => {
-   if (message && prev.some((a) => String(a.message || "").trim() === message)) {
-     return prev;
-   }
-   const id = Math.random().toString(36).substr(2, 9);
-   const newAlert = { id, ...e.detail };
+ if (message && recentMessages.current.has(message)) {
+   return;
+ }
+ if (message) {
+   recentMessages.current.add(message);
    setTimeout(() => {
-     setAlerts((current) => current.filter((a) => a.id !== id));
+     recentMessages.current.delete(message);
    }, 5000);
-   const soundType = e.detail.type === 'error' ? 'error' : 'success';
-   window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: soundType } }));
-   return [...prev, newAlert];
- });
+ }
+
+ const id = Math.random().toString(36).substr(2, 9);
+ setAlerts((prev) => [...prev, { id, ...e.detail }]);
+
+ // Side effects outside the state updater (React may invoke updaters twice).
+ const soundType = e.detail.type === 'error' ? 'error' : 'success';
+ window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: soundType } }));
+ setTimeout(() => {
+   setAlerts((current) => current.filter((a) => a.id !== id));
+ }, 5000);
  };
 
  window.addEventListener('mimi:registry_alert', handleAlert);

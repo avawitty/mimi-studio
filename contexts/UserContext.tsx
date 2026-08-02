@@ -1334,30 +1334,24 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const activatePatron = async (key: string) => {
     if (!profile || !user) return;
-    const { credits } = buildCreditGrant({ plan: 'lab', interval: 'year' });
-    const labPatch = {
-      planStatus: 'lab' as const,
-      plan: 'lab' as const,
-      mimiPlan: 'lab' as const,
+    const { applyPromoCode } = await import('../services/membershipPipeline');
+    const result = await applyPromoCode(user.uid, key);
+    const credits =
+      result?.membershipCredits ||
+      buildCreditGrant({ plan: 'lab', interval: 'year' }).credits;
+    // Server Admin already wrote entitlement fields — only refresh local state.
+    setProfile({
+      ...profile,
+      planStatus: 'lab',
+      plan: 'lab',
+      mimiPlan: 'lab',
       isPatron: true,
       patronActivatedAt: Date.now(),
       patronKey: key,
-      subscriptionStatus: 'active' as const,
-      subscriptionInterval: 'year' as const,
+      subscriptionStatus: 'active',
+      subscriptionInterval: 'year',
       membershipCredits: credits,
-    };
-    try {
-      const { applyPromoCode } = await import('../services/membershipPipeline');
-      await applyPromoCode(user.uid, key);
-      
-      // Also update local profile state to reflect the change immediately
-      await updateProfile({ ...profile, ...labPatch });
-    } catch (e) {
-      console.warn("MIMI // Database write failed for patron, but treating as success locally for this session. Error:", e);
-      // Fallback: If DB is blocked due to security rules, enable it locally for the current session anyway 
-      // so the user can continue working without the backend connection.
-      setProfile({ ...profile, ...labPatch });
-    }
+    });
   };
 
   const upgradePlan = async (plan: 'core' | 'optioning' | 'pro' | 'lab', interval?: 'month' | 'year') => {

@@ -7,6 +7,34 @@ import {
   type MimiBillingInterval,
 } from "./mimiEntitlements.js";
 import { proxyToFunctions } from "./proxyToFunctions.js";
+import {
+  collectStripeCustomerIdCandidates,
+  verifyStripeCustomerEntitlement,
+} from "./verifyStripeEntitlement.js";
+
+/**
+ * Stripe-verified paid entitlement. Candidate cus_* ids may come from
+ * user/profile/billing docs, but only Stripe confirmation grants trust.
+ */
+export async function resolveTrustedPaidBilling(opts: {
+  uid: string;
+  email?: string | null;
+  sources: Array<Record<string, unknown> | null | undefined>;
+}): Promise<boolean> {
+  const candidates = collectStripeCustomerIdCandidates(...opts.sources);
+  for (const customerId of candidates) {
+    if (
+      await verifyStripeCustomerEntitlement({
+        customerId,
+        uid: opts.uid,
+        email: opts.email,
+      })
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Period rollover: an existing grant with allowance whose period has ended.
@@ -52,20 +80,12 @@ export function isPaidSubscriptionActive(subscriptionStatus: unknown): boolean {
 }
 
 /**
- * Trusted signals for minting paid credits. Only Stripe customer ids from
- * billing/subscription (webhook writes) and server-set patron activation count.
- * Never trust client-writable user-root plan, stripeCustomerId, or patronKey.
+ * Synchronous shape check only — NEVER use this alone to mint/reload credits.
+ * Firestore user/profile/billing docs are owner-writable; cus_* can be forged.
+ * Call `resolveTrustedPaidBilling` (Stripe-verified) before healing.
  */
 export function hasTrustedPaidBillingSignal(data: Record<string, unknown>): boolean {
-  const stripeCustomerId = String(data.stripeCustomerId || "").trim();
-  if (stripeCustomerId.startsWith("cus_")) return true;
-
-  const patronActivatedAt = Number(data.patronActivatedAt ?? 0);
-  if (data.isPatron === true && Number.isFinite(patronActivatedAt) && patronActivatedAt > 0) {
-    return true;
-  }
-
-  return false;
+  return String(data.stripeCustomerId || "").trim().startsWith("cus_");
 }
 
 /** Roll an expired grant forward without re-deriving allowance from client plan. */
@@ -202,7 +222,7 @@ export const resolveMimiFundedGatewayAccess = async (
       return softAllow(undefined, cost);
     }
 
-    let decoded: { uid: string };
+    let decoded: { uid: string; email?: string };
     try {
       decoded = await auth.verifyIdToken(token);
     } catch {
@@ -250,13 +270,18 @@ export const resolveMimiFundedGatewayAccess = async (
           data.membershipCredits ||
           data.subscription?.credits ||
           billingData.credits;
-        const trustedBilling = hasTrustedPaidBillingSignal({
-          stripeCustomerId: billingData.stripeCustomerId,
-          isPatron: data.isPatron,
-          patronActivatedAt: data.patronActivatedAt,
-        });
         const shouldReloadPeriod = needsMembershipPeriodReload(grant);
-        const shouldMintMissing = needsMembershipCreditMint(grant) && trustedBilling;
+        const needsMint = needsMembershipCreditMint(grant);
+        // Only hit Stripe when a heal would actually run.
+        const trustedBilling =
+          shouldReloadPeriod || needsMint
+            ? await resolveTrustedPaidBilling({
+                uid: decoded.uid,
+                email: decoded.email,
+                sources: [billingData, data as Record<string, unknown>],
+              })
+            : false;
+        const shouldMintMissing = needsMint && trustedBilling;
 
         if ((shouldReloadPeriod && trustedBilling) || shouldMintMissing) {
           const interval = (data.subscriptionInterval || "month") as MimiBillingInterval;
@@ -286,6 +311,10 @@ export const resolveMimiFundedGatewayAccess = async (
             remaining: credits.remaining,
             reason: shouldReloadPeriod ? "period_reload" : "trusted_mint",
           });
+        } else if (shouldReloadPeriod && !trustedBilling) {
+          // Expired period without Stripe-verified entitlement — do not
+          // rollForward client-controlled allowance.
+          return { allowed: false, billable: false, uid: decoded.uid, cost };
         }
 
         remaining = Number(grant?.remaining ?? 0);

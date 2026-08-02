@@ -138,25 +138,59 @@ const buildCreditGrant = (planInput, interval = 'month') => {
         periodEndsAt: currentPeriodEnd,
     };
 };
-const rollForwardMembershipGrant = (grant, interval = 'month', now = Date.now()) => {
+const collectStripeCustomerIdCandidates = (...sources) => {
     var _a;
-    const allowance = Number((_a = grant === null || grant === void 0 ? void 0 : grant.allowance) !== null && _a !== void 0 ? _a : 0);
-    const periodMs = (interval === 'year' ? 365 : 30) * 24 * 60 * 60 * 1000;
-    return {
-        allowance,
-        used: 0,
-        remaining: allowance,
-        periodEndsAt: now + periodMs,
-    };
+    const ids = new Set();
+    for (const source of sources) {
+        if (!source)
+            continue;
+        const direct = String(source.stripeCustomerId || '').trim();
+        if (direct.startsWith('cus_'))
+            ids.add(direct);
+        const nested = String(((_a = source.subscription) === null || _a === void 0 ? void 0 : _a.stripeCustomerId) || '').trim();
+        if (nested.startsWith('cus_'))
+            ids.add(nested);
+    }
+    return [...ids];
 };
-const hasTrustedStripeBilling = (data) => {
-    var _a;
-    const stripeCustomerId = String(data.stripeCustomerId || ((_a = data.subscription) === null || _a === void 0 ? void 0 : _a.stripeCustomerId) || '').trim();
-    if (stripeCustomerId && !stripeCustomerId.startsWith('promo_'))
-        return true;
-    // Patron / promo lab seats activated via membershipPipeline.
-    if (data.isPatron === true && (data.patronActivatedAt || data.patronKey))
-        return true;
+/**
+ * Verify cus_* against Stripe. Firestore docs are owner-writable (incl. billing/**
+ * via users catch-all), so never trust a stored stripeCustomerId alone.
+ */
+const verifyStripeCustomerEntitlement = async (customerId, uid, email) => {
+    var _a, _b;
+    if (!customerId.startsWith('cus_'))
+        return false;
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+        console.warn('MIMI // STRIPE_SECRET_KEY missing; cannot verify billing entitlement');
+        return false;
+    }
+    try {
+        const stripe = new stripe_1.default(key);
+        const customer = await stripe.customers.retrieve(customerId);
+        if (customer.deleted)
+            return false;
+        const metaUid = String(((_a = customer.metadata) === null || _a === void 0 ? void 0 : _a.firebaseUid) || ((_b = customer.metadata) === null || _b === void 0 ? void 0 : _b.uid) || '').trim();
+        if (metaUid && metaUid !== uid)
+            return false;
+        const wantEmail = String(email || '').trim().toLowerCase();
+        const customerEmail = String(customer.email || '').trim().toLowerCase();
+        if (!metaUid && wantEmail && customerEmail && customerEmail !== wantEmail)
+            return false;
+        const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
+        return subs.data.some((sub) => sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due');
+    }
+    catch (err) {
+        console.warn('MIMI // Stripe entitlement verification failed:', err);
+        return false;
+    }
+};
+const resolveTrustedPaidBilling = async (uid, email, sources) => {
+    for (const customerId of collectStripeCustomerIdCandidates(...sources)) {
+        if (await verifyStripeCustomerEntitlement(customerId, uid, email))
+            return true;
+    }
     return false;
 };
 const writeMembershipEntitlements = async ({ uid, plan, interval = 'month', stripeCustomerId, status = 'active', }) => {
@@ -326,7 +360,7 @@ app.post('/api/funded-gateway/access', async (req, res) => {
         const profileRef = db.collection('profiles_public').doc(decoded.uid);
         const [userDoc, profileDoc] = await Promise.all([userRef.get(), profileRef.get()]);
         const data = Object.assign(Object.assign({}, (profileDoc.data() || {})), (userDoc.data() || {}));
-        const plan = normalizeMimiPlan(data.plan || data.planStatus || data.mimiPlan);
+        const plan = normalizeMimiPlan(data.plan || data.planStatus || data.mimiPlan || data.membershipPlan);
         const paid = isPaidMimiPlan(plan);
         let remaining = 0;
         if (paid) {
@@ -350,16 +384,16 @@ app.post('/api/funded-gateway/access', async (req, res) => {
             const periodEndsAt = Number((_c = grant === null || grant === void 0 ? void 0 : grant.periodEndsAt) !== null && _c !== void 0 ? _c : 0);
             const now = Date.now();
             const needsPeriodReload = hasAllowance && Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
-            const trustedBilling = hasTrustedStripeBilling(Object.assign(Object.assign(Object.assign({}, data), billingData), { stripeCustomerId: data.stripeCustomerId || billingData.stripeCustomerId }));
-            // Malformed grant (remaining:0, no positive allowance) needs mint.
-            const needsTrustedMint = !hasAllowance && trustedBilling;
-            if (needsPeriodReload || needsTrustedMint) {
+            const needsMint = !hasAllowance;
+            const trustedBilling = needsPeriodReload || needsMint
+                ? await resolveTrustedPaidBilling(decoded.uid, decoded.email, [billingData, data])
+                : false;
+            const needsTrustedMint = needsMint && trustedBilling;
+            if ((needsPeriodReload && trustedBilling) || needsTrustedMint) {
                 const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month');
                 const credits = needsPeriodReload
-                    ? trustedBilling
-                        ? buildCreditGrant(plan, interval)
-                        : rollForwardMembershipGrant(grant, interval, now)
-                    : !needsPeriodReload && periodEndsAt > now
+                    ? buildCreditGrant(plan, interval)
+                    : periodEndsAt > now
                         ? Object.assign(Object.assign({}, buildCreditGrant(plan, interval)), { periodEndsAt }) : buildCreditGrant(plan, interval);
                 const healPatch = {
                     membershipCredits: credits,
@@ -371,6 +405,12 @@ app.post('/api/funded-gateway/access', async (req, res) => {
                     profileRef.set(healPatch, { merge: true }),
                 ]);
                 grant = credits;
+            }
+            else if (needsPeriodReload && !trustedBilling) {
+                // Expired period without Stripe-verified entitlement — never rollForward
+                // a client-controlled allowance.
+                res.status(200).send({ allowed: false, billable: false, uid: decoded.uid, cost });
+                return;
             }
             remaining = Number((_d = grant === null || grant === void 0 ? void 0 : grant.remaining) !== null && _d !== void 0 ? _d : 0);
         }

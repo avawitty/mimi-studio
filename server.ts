@@ -18,6 +18,7 @@ import embedHandler from "./api/mimi/embed";
 import aiGatewayProxyHandler from "./api/proxy/ai-gateway";
 import createCheckoutSessionHandler from "./api/create-checkout-session";
 import createBillingPortalSessionHandler from "./api/create-billing-portal-session";
+import applyPromoHandler from "./api/apply-promo";
 import stripeWebhookHandler from "./api/stripe-webhook";
 import {
   embedGeminiContentViaGateway,
@@ -1408,54 +1409,7 @@ async function startServer() {
   });
 
   app.post("/api/apply-promo", async (req, res) => {
-    try {
-      const { userId, code } = req.body;
-      
-      if (!db) {
-        return res.status(500).json({ error: "Database not initialized" });
-      }
-
-      const normalizedCode = code.trim().toUpperCase().replace(/\s+/g, '');
-      const envPromoBypassCodes = (process.env.PROMO_BYPASS_CODES || '')
-        .split(',')
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-        .map((entry) => entry.toUpperCase());
-      const allowedBypassCodes = new Set(['MIMIMUSE', ...envPromoBypassCodes]);
-      if (allowedBypassCodes.has(normalizedCode)) {
-        const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
-        
-        // Update user profile
-        await db.collection("users").doc(userId).set({
-          planStatus: "lab",
-          plan: "lab",
-          subscriptionStatus: "active",
-          subscriptionInterval: "year",
-        }, { merge: true });
-        
-        await db.collection("profiles_public").doc(userId).set({
-          planStatus: "lab",
-          plan: "lab",
-          subscriptionStatus: "active",
-        }, { merge: true });
-
-        // Update memberships collection securely
-        await db.collection("memberships").doc(userId).set({
-          plan: "lab",
-          status: "active",
-          currentPeriodEnd: oneYearFromNow,
-          stripeCustomerId: "promo_code",
-          interval: "year"
-        }, { merge: true });
-
-        return res.json({ success: true, message: "1-Year Lab Access Granted." });
-      }
-
-      return res.status(400).json({ error: "Invalid cipher." });
-    } catch (error: any) {
-      console.error("MIMI // Promo Error:", error);
-      res.status(500).json({ error: error.message });
-    }
+    await applyPromoHandler(req, res);
   });
 
   app.get("/api/shopify/connection", async (req, res) => {

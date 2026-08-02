@@ -7,6 +7,7 @@ import {
   needsMembershipPeriodReload,
   rollForwardMembershipGrant,
 } from "../lib/mimiFundedGateway.js";
+import { collectStripeCustomerIdCandidates } from "../lib/verifyStripeEntitlement.js";
 import { buildCreditGrant, isPaidMimiPlan, normalizeMimiPlan } from "../lib/mimiEntitlements.js";
 
 describe("needsMembershipPeriodReload", () => {
@@ -87,27 +88,29 @@ describe("needsMembershipCreditHeal (compat)", () => {
 });
 
 describe("hasTrustedPaidBillingSignal", () => {
-  it("requires Stripe billing doc or server patron activation — not client fields", () => {
+  it("is only a cus_* shape check — not sufficient for mint without Stripe verify", () => {
     expect(hasTrustedPaidBillingSignal({ plan: "lab", mimiPlan: "lab" })).toBe(false);
     expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "promo_code" })).toBe(false);
     expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "cus_123" })).toBe(true);
+    // Patron markers alone are never treated as trusted shape signals.
     expect(
       hasTrustedPaidBillingSignal({
         isPatron: true,
         patronActivatedAt: Date.now(),
       }),
-    ).toBe(true);
-    expect(
-      hasTrustedPaidBillingSignal({
-        isPatron: true,
-        patronKey: "self-set-key",
-      }),
     ).toBe(false);
+  });
+});
+
+describe("collectStripeCustomerIdCandidates", () => {
+  it("collects cus_* from user and billing sources", () => {
     expect(
-      hasTrustedPaidBillingSignal({
-        membershipCredits: { allowance: 10000, remaining: 0 },
-      }),
-    ).toBe(false);
+      collectStripeCustomerIdCandidates(
+        { stripeCustomerId: "cus_user" },
+        { stripeCustomerId: "cus_billing" },
+        { stripeCustomerId: "promo_code" },
+      ),
+    ).toEqual(["cus_user", "cus_billing"]);
   });
 });
 
@@ -143,5 +146,10 @@ describe("lab plan credit grant", () => {
     expect(credits.remaining).toBeGreaterThanOrEqual(10000);
     expect(needsMembershipCreditMint(credits)).toBe(false);
     expect(needsMembershipPeriodReload(credits)).toBe(false);
+  });
+
+  it("includes membershipPlan in plan normalization path", () => {
+    expect(normalizeMimiPlan("lab")).toBe("lab");
+    expect(isPaidMimiPlan(normalizeMimiPlan("lab"))).toBe(true);
   });
 });
