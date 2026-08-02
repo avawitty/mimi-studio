@@ -63,6 +63,10 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   atelier: "atelier",
   objects: "atelier",
   "taste-objects": "atelier",
+  residue: "residue",
+  "residue-engine": "residue",
+  "cultural-residue": "residue",
+  "emotional-residue": "residue",
   // Social surfaces live on The Proscenium (wings via nested path).
   connections: "proscenium",
   correspondents: "proscenium",
@@ -494,6 +498,38 @@ export const CANON_MODULES: CanonModule[] = [
       "Enter the Stage to witness transmissions, open Correspondents for follows and connections, or manage invite-only Cliques — all under one arch.",
     notes:
       "Legacy /connections and /cliques redirect to /proscenium/correspondents and /proscenium/cliques. Local Echoes are demonstration specimens only.",
+  },
+  {
+    id: "residue",
+    name: "Residue",
+    layer: "chamber",
+    engine: "Cultural / Emotional Residue Engine",
+    priority: 14.5,
+    status: "live",
+    canonicalRoute: "/residue",
+    implementedMode: "residue",
+    component: "ResidueChamber",
+    aliases: ["Residue Engine", "Cultural Residue", "Emotional Residue", "MMM"],
+    inputs: [
+      "cultural query or emotional experience text",
+      "optional user notes",
+      "manual / acquired sources (offline heuristics first)",
+    ],
+    generations: [
+      "cultural lineage + codes",
+      "interpretive neighborhoods",
+      "mean / median / mode readouts",
+      "product adapter proposals",
+    ],
+    outputs: [
+      "session residue runs",
+      "evidence + source manifests",
+      "proposed zine / edit / forecast / taste / memory artifacts",
+    ],
+    userFlow:
+      "Run an offline-first cultural or emotional residue pass, inspect synthesis and evidence, review M/M/M and product proposals, then hand off to Intel Hub, Edit, Forecast, or Taste Graph.",
+    notes:
+      "Phase 8 UI over Phases 2–7 engines. Emotional mode always shows the non-diagnostic safety notice. Memory / taste / edit outputs stay proposed until accepted elsewhere. Live Apify acquisition is Phase 9.",
   },
 ];
 

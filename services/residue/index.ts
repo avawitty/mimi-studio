@@ -1,5 +1,5 @@
 /**
- * Mimi Residue Engine — public API (Phases 2–7).
+ * Mimi Residue Engine — public API (Phases 2–8).
  */
 
 export * from "./constants";

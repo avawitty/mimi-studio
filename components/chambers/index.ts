@@ -12,5 +12,6 @@ export { PrivateStudioChamber } from "./PrivateStudioChamber";
 export { TheEditChamber } from "./TheEditChamber";
 export { ThePressChamber } from "./ThePressChamber";
 export { AtelierChamber } from "./AtelierChamber";
+export { ResidueChamber } from "./ResidueChamber";
 export { ChamberMapView } from "./ChamberMapView";
 export { AestheticIntelligenceChamber } from "./AestheticIntelligenceChamber";

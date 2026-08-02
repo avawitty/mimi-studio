@@ -35,6 +35,7 @@ const IMPLEMENTED_MODES = new Set([
   "chamber-map",
   "atelier",
   "proscenium",
+  "residue",
 ]);
 
 /** Primary chamber component paths (Milestone 1 registry) */
@@ -47,6 +48,7 @@ const CHAMBER_COMPONENT_FILES: Record<string, string> = {
   TheEditChamber: "components/chambers/TheEditChamber.tsx",
   ThePressChamber: "components/chambers/ThePressChamber.tsx",
   AtelierChamber: "components/chambers/AtelierChamber.tsx",
+  ResidueChamber: "components/chambers/ResidueChamber.tsx",
   SignatureView: "components/SignatureView.tsx",
   TailorHub: "components/tailor/TailorHub.tsx",
   TasteGraph: "components/TasteGraph.tsx",

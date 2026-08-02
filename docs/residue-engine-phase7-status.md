@@ -35,6 +35,6 @@ npm run verify:residue
 
 ## Next
 
-**Phase 8 — Residue UI chamber** (tabs, safety notice, design system)  
+**Phase 8 — Residue UI chamber** — see [residue-engine-phase8-status.md](./residue-engine-phase8-status.md)  
 **Phase 9 — Live Apify acquisition** (token-gated)  
 **Phase 10 — Broader tests/docs polish**
