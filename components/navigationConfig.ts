@@ -186,6 +186,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         keywords: ["mimi.you", "dolls", "doll", "universe", "field notes", "creative profile", "identity"],
       },
       {
+        mode: "mimi-rip",
+        label: "mimi.rip",
+        note: "inverse taste / dark mirror reading",
+        keywords: ["mimi.rip", "rip", "inverse", "dark mirror", "anti-motif", "blind spots", "shadow"],
+      },
+      {
         mode: "proscenium",
         label: "Proscenium",
         note: "public stage/feed",
