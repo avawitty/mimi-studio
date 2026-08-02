@@ -1,6 +1,49 @@
 import { cors, sendJson } from "../lib/apiUtils.js";
 import { sovereignStatus } from "../lib/sovereign/store.js";
 
+const sovereignStatusSafe = async () => {
+  try {
+    return await Promise.race([
+      sovereignStatus(),
+      new Promise<Awaited<ReturnType<typeof sovereignStatus>>>((resolve) => {
+        setTimeout(
+          () =>
+            resolve({
+              enabled: false,
+              ready: false,
+              backend: null,
+              path: null,
+              zineCount: 0,
+              publicCount: 0,
+              profileCount: 0,
+              pocketCount: 0,
+              schemaVersion: null,
+              latencyMs: null,
+              gatewayEmbed: false,
+              embeddedCount: 0,
+            }),
+          9_000,
+        );
+      }),
+    ]);
+  } catch {
+    return {
+      enabled: false,
+      ready: false,
+      backend: null as "sqlite" | "postgres" | null,
+      path: null as string | null,
+      zineCount: 0,
+      publicCount: 0,
+      profileCount: 0,
+      pocketCount: 0,
+      schemaVersion: null as number | null,
+      latencyMs: null as number | null,
+      gatewayEmbed: false,
+      embeddedCount: 0,
+    };
+  }
+};
+
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
   const serverAiEnabled =
@@ -25,7 +68,7 @@ export default async function handler(req: any, res: any) {
       gateway: aiGatewayAvailable,
       replicate: serverAiEnabled && Boolean(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY),
     },
-    sovereign: await sovereignStatus(),
+    sovereign: await sovereignStatusSafe(),
     timestamp: new Date().toISOString(),
   });
 }
