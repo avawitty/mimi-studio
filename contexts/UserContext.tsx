@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { UserProfile, UserPreferences, Persona, TailorLogicDraft, NarrativeThread } from '../types';
-import { getLocalProfile, saveProfileLocally } from '../services/localArchive';
+import { getLocalProfile, getLocalPocket, saveProfileLocally } from '../services/localArchive';
 import { 
   bootstrapAuth, ensureAuth, getUserProfile, saveUserProfile, commitGlobalHandshake,
   anchorIdentity, linkIdentity, handleAuthRedirect, startGhostSession, 
@@ -683,6 +683,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
           setPocket(items);
         });
+      } else {
+        const hydrateLocalPocket = async () => {
+          const items = await getLocalPocket();
+          setPocket(items || []);
+        };
+        void hydrateLocalPocket();
+        const onLocalPocketUpdate = () => {
+          void hydrateLocalPocket();
+        };
+        window.addEventListener('mimi:pocket_updated', onLocalPocketUpdate);
+        unsubscribePocket.current = () => {
+          window.removeEventListener('mimi:pocket_updated', onLocalPocketUpdate);
+        };
       }
       
       // Construct initial state from one-time fetch to unblock UI immediately
