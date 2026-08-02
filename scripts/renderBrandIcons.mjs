@@ -73,3 +73,31 @@ try {
 } finally {
   await browser.close();
 }
+
+// Derive favicon / apple-touch rasters from the light 512 (fonts already baked in)
+const { execFileSync } = await import("node:child_process");
+execFileSync(
+  "python3",
+  [
+    "-c",
+    `
+from PIL import Image
+from pathlib import Path
+import base64
+src = Image.open("public/mimi-app-icon.png").convert("RGB")
+src.resize((180, 180), Image.Resampling.LANCZOS).save("public/apple-touch-icon.png")
+src.resize((180, 180), Image.Resampling.LANCZOS).save("public/brand/official/mimi-app-icon-180.png")
+for size, name in [(32, "favicon-32.png"), (16, "favicon-16.png"), (48, "favicon-48.png")]:
+    src.resize((size, size), Image.Resampling.LANCZOS).save(f"public/{name}")
+b64 = base64.b64encode(Path("public/apple-touch-icon.png").read_bytes()).decode()
+Path("public/favicon.svg").write_text(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Mimi">'
+    "<title>Mimi</title>"
+    f'<image href="data:image/png;base64,{b64}" width="180" height="180" />'
+    "</svg>"
+)
+print("wrote favicon + apple-touch rasters")
+`,
+  ],
+  { cwd: root, stdio: "inherit" },
+);
