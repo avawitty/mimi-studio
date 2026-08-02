@@ -11,6 +11,7 @@ import {
 import { useUser } from "../../contexts/UserContext";
 import { ColumnRule } from "../public-face/ColumnRule";
 import { PressMark } from "../public-face/PressMark";
+import { RegistryCorners } from "../public-face/RegistryCorners";
 import { ApprovalStamp } from "../motion/ApprovalStamp";
 
 interface UsedContextColophonProps {
@@ -61,9 +62,10 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
 
   return (
     <aside
-      className={`mimi-colophon relative border-t border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)] ${className}`}
+      className={`mimi-colophon mimi-cobalt-haze relative border-t border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)] ${className}`}
       aria-label="Used Context colophon"
     >
+      <RegistryCorners tone="cobalt" />
       <ApprovalStamp triggerKey={stampKey} />
 
       <button
@@ -73,11 +75,12 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
       >
         <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-3">
-            <span className="font-sans text-[9px] uppercase tracking-[0.3em] font-semibold text-[var(--mimi-stone,#78716c)]">
+            <span className="font-sans text-[9px] uppercase tracking-[0.3em] font-semibold text-[var(--mimi-cobalt,#1B3A5C)]">
               Colophon
             </span>
-            <PressMark label="Used Context" />
+            <PressMark label="Registry" tone="cobalt" />
           </div>
+          <div className="mimi-gilt-rule" aria-hidden />
           <p className="font-serif italic text-sm md:text-base text-[var(--mimi-ink,#0a0a0a)]">
             {italicLine}
           </p>

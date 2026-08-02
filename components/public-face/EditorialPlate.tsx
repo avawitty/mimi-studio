@@ -3,6 +3,7 @@ import { MimiWordmark } from "./MimiWordmark";
 import { PublicCTA } from "./PublicCTA";
 import { ColumnRule } from "./ColumnRule";
 import { PressMark } from "./PressMark";
+import { RegistryCorners } from "./RegistryCorners";
 
 type EditorialPlateProps = {
   thesis: string;
@@ -32,8 +33,9 @@ export const EditorialPlate: React.FC<EditorialPlateProps> = ({
 }) => {
   return (
     <section
-      className={`grid grid-cols-1 lg:grid-cols-12 min-h-[min(100dvh,920px)] ${className}`}
+      className={`relative grid grid-cols-1 lg:grid-cols-12 min-h-[min(100dvh,920px)] ${className}`}
     >
+      <RegistryCorners tone="cobalt" />
       <div className="lg:col-span-5 flex flex-col justify-between gap-10 px-6 md:px-12 py-12 md:py-16 border-b lg:border-b-0 lg:border-r border-[var(--mimi-hairline,#d4d4d4)]">
         <div className="space-y-8">
           {showWordmark && <MimiWordmark size="lg" as="h1" />}
@@ -50,11 +52,11 @@ export const EditorialPlate: React.FC<EditorialPlateProps> = ({
           <PublicCTA onClick={onAction}>{actionLabel}</PublicCTA>
         </div>
         <div className="space-y-3">
-          <ColumnRule accent className="w-12" />
-          <PressMark label={folioLabel} />
+          <div className="mimi-gilt-rule" aria-hidden />
+          <PressMark label={folioLabel} tone="cobalt" />
         </div>
       </div>
-      <div className="lg:col-span-7 relative min-h-[42vh] lg:min-h-0 bg-[var(--mimi-ink,#0a0a0a)] overflow-hidden">
+      <div className="lg:col-span-7 relative min-h-[42vh] lg:min-h-0 bg-[var(--mimi-ink,#0a0a0a)] overflow-hidden mimi-cobalt-haze">
         {visual}
       </div>
     </section>

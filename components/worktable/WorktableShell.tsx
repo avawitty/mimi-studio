@@ -50,7 +50,8 @@ export const WorktableShell: React.FC<WorktableShellProps> = ({
 
   return (
     <div
-      className={`flex flex-col h-full min-h-0 bg-[var(--mimi-worktable,#fafafa)] text-[var(--mimi-ink,#0a0a0a)] ${className}`}
+      className={`mimi-cobalt-haze flex flex-col h-full min-h-0 bg-[var(--mimi-worktable,#fafafa)] text-[var(--mimi-ink,#0a0a0a)] ${className}`}
+      data-accent="signal-underarchive"
     >
       {chrome && <div className="shrink-0 border-b border-[var(--mimi-hairline,#d4d4d4)]">{chrome}</div>}
 

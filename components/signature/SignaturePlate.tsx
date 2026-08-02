@@ -3,6 +3,7 @@ import { AestheticSignature } from "../../types";
 import { MimiWordmark } from "../public-face/MimiWordmark";
 import { ColumnRule } from "../public-face/ColumnRule";
 import { PressMark } from "../public-face/PressMark";
+import { RegistryCorners } from "../public-face/RegistryCorners";
 
 type SignaturePlateProps = {
   signature: AestheticSignature;
@@ -37,6 +38,8 @@ export const SignaturePlate = forwardRef<HTMLDivElement, SignaturePlateProps>(
           aria-hidden
           className="pointer-events-none absolute inset-0 mimi-public-grain opacity-[0.08] mix-blend-multiply"
         />
+        {/* Signal Underarchive whisper — closed-circuit corners */}
+        <RegistryCorners tone="cobalt" />
 
         <div className="relative z-[1] space-y-8">
           <div className="flex items-start justify-between gap-4">
@@ -46,7 +49,7 @@ export const SignaturePlate = forwardRef<HTMLDivElement, SignaturePlateProps>(
               </p>
               <MimiWordmark size="sm" />
             </div>
-            <PressMark label="Plate" />
+            <PressMark label="Registry" tone="cobalt" />
           </div>
 
           <ColumnRule />

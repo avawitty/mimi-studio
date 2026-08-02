@@ -35,7 +35,8 @@ The product differentiator is not “pretty generation UI.” It is **approved t
 | 7 | One public face | [`aesthetic-07-public-face.md`](./aesthetic-07-public-face.md) | `07-public-face-family.jpg` |
 
 **UX/UI plan (cross-cutting):** [`aesthetic-ux-ui-plan.md`](./aesthetic-ux-ui-plan.md)  
-**Phase C outcome proofs:** [`aesthetic-phase-c-outcomes.md`](./aesthetic-phase-c-outcomes.md) (`08`–`10` in `proofs/aesthetic/`)
+**Phase C outcome proofs:** [`aesthetic-phase-c-outcomes.md`](./aesthetic-phase-c-outcomes.md) (`08`–`10` in `proofs/aesthetic/`)  
+**Signal Underarchive (cobalt / surveillance / rococo nod):** [`aesthetic-signal-underarchive.md`](./aesthetic-signal-underarchive.md)
 
 ## Goals
 

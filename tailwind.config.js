@@ -40,6 +40,8 @@ export default {
           olive: 'var(--mimi-olive)',
           stone: 'var(--mimi-stone)',
           hairline: 'var(--mimi-hairline)',
+          cobalt: 'var(--mimi-cobalt)',
+          gilt: 'var(--mimi-gilt)',
         },
         nous: {
           base: 'var(--nous-base)',

@@ -28,6 +28,10 @@
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
     --mimi-grain-opacity: 0.08;
+    /* Signal Underarchive — restrained MKUltra / surveillance / rococo nod */
+    --mimi-cobalt: #1b3a5c;
+    --mimi-cobalt-haze: rgba(45, 90, 140, 0.14);
+    --mimi-gilt: #a89b6e;
 
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
@@ -51,6 +55,9 @@
     --mimi-olive: #5a5a40;
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
+    --mimi-cobalt: #7a9bb8; /* Lighter cobalt on dark chrome */
+    --mimi-cobalt-haze: rgba(45, 90, 140, 0.22);
+    --mimi-gilt: #a89b6e;
     --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
   }
 
@@ -167,6 +174,39 @@
   .mimi-wordmark {
     font-family: var(--era-font-serif), "Cormorant Garamond", serif;
     font-variant-ligatures: none;
+  }
+
+  /* Signal Underarchive — monolithic cobalt haze (worktables / opted-in chambers) */
+  .mimi-cobalt-haze {
+    position: relative;
+  }
+
+  .mimi-cobalt-haze::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 120% 80% at 50% -10%, var(--mimi-cobalt-haze) 0%, transparent 55%),
+      radial-gradient(ellipse 90% 60% at 100% 100%, var(--mimi-cobalt-haze) 0%, transparent 50%);
+  }
+
+  .mimi-cobalt-haze > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .mimi-gilt-rule {
+    height: 1px;
+    width: 2.5rem;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--mimi-gilt, #a89b6e) 30%,
+      var(--mimi-gilt, #a89b6e) 70%,
+      transparent
+    );
   }
 
   .studio-worktable {

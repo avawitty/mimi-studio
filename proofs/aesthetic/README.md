@@ -25,6 +25,9 @@ These are **direction boards**, not production pixel specs. Implementation shoul
 | `15-mobile-moodboard.jpg` | Mobile Moodboard collapse |
 | `16-mobile-taste-graph.jpg` | Mobile Taste Graph settle |
 | `17-mobile-darkroom.jpg` | Mobile Darkroom collapse |
+| `18-signal-underarchive-board.jpg` | Signal Underarchive specimen |
+| `19-signal-studio-nod.jpg` | Studio cobalt/registry nod |
+| `20-signal-signature-rococo.jpg` | Signature surveillance + gilt whisper |
 
 Visual language target: high-contrast black/white, olive/stone accents, Cormorant + Geist, column rules, editorial-archive discipline — not cream/lifestyle cliché, and not “Mimi as a print shop.”
 
