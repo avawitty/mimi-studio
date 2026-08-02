@@ -64,7 +64,8 @@ const routes = [
   ["editorial-home", "01-front", "public"],
   ["stand", "02-stand", "public"],
   ["signature", "03-signature", "public"],
-  ["studio", "04-studio", "studio"],
+  ["rip", "04-rip", "public-dark"],
+  ["studio", "05-studio", "studio"],
 ];
 
 for (const [route, label, kind] of routes) {
@@ -102,9 +103,10 @@ for (const [route, label, kind] of routes) {
     };
   });
 
-  if (kind === "public") {
-    if (chromeStats.dataChrome !== "public-face") {
-      note("fail", route, `Expected data-chrome=public-face, got ${chromeStats.dataChrome}`);
+  if (kind === "public" || kind === "public-dark") {
+    const expectedChrome = kind === "public-dark" ? "public-face-dark" : "public-face";
+    if (chromeStats.dataChrome !== expectedChrome) {
+      note("fail", route, `Expected data-chrome=${expectedChrome}, got ${chromeStats.dataChrome}`);
     }
     if (chromeStats.headerBtns > 4) {
       note(
@@ -118,6 +120,13 @@ for (const [route, label, kind] of routes) {
     }
     if (chromeStats.mimiAllCaps) note("fail", route, "Found all-caps MIMI wordmark outside chrome");
   }
+  // Brand break: CSS uppercase turning "Mimi Rip" into MIMI RIP in chrome subtitle
+  const chromeMimiCaps = await page.evaluate(() => {
+    const sub = document.querySelector("header.studio-chrome span.font-mono");
+    const t = (sub?.textContent || "").trim();
+    return /^MIMI\b/.test(t) ? t : null;
+  });
+  if (chromeMimiCaps) note("fail", route, `Chrome subtitle all-caps brand: ${chromeMimiCaps}`);
   const headerBtns = chromeStats.headerBtns;
 
   const body = await page.locator("body").innerText().catch(() => "");
