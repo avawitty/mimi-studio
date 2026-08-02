@@ -43,43 +43,44 @@ export const findSimilarProducts = async (tasteVector: number[], limit: number =
   }
 };
 
-const ensureAnonymousAuth = async () => {
-  if (auth.currentUser) return auth.currentUser.uid;
-  try {
-    const res = await signInAnonymously(auth);
-    return res.user.uid;
-  } catch (error: any) {
-    // If anonymous auth is restricted/disabled, fallback to the local profile ID or local fallback
-    try {
-      const stored = localStorage.getItem('mimi_local_profile');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.uid) {
-          return parsed.uid;
-        }
-      }
-    } catch (e) {}
-    // If no local profile found, fall back to a generic/stable local visitor ID or 'ghost'
-    return 'ghost';
-  }
+/**
+ * Shared / client-forged namespaces must never hold shadow memory — especially
+ * full `embed_text`. Only real Firebase Auth UIDs (registered or anonymous).
+ */
+const isSharedShadowNamespace = (uid: string | null | undefined): boolean => {
+  if (!uid) return true;
+  if (uid === "ghost") return true;
+  if (uid.startsWith("local_")) return true;
+  return false;
 };
 
 /**
- * Bulk shadow writes must use a real Firebase uid — never the shared `ghost`
- * / local-profile fallback (cross-client overwrite risk).
+ * Resolve a Firebase Auth UID for shadow memory. Never falls back to local
+ * profile IDs or the shared `ghost` path (cross-user privacy risk).
  */
-const requireFirebaseUidForShadowWrite = async (): Promise<string | null> => {
-  if (auth.currentUser) return auth.currentUser.uid;
+const requireFirebaseUidForShadow = async (): Promise<string | null> => {
+  if (auth.currentUser?.uid && !isSharedShadowNamespace(auth.currentUser.uid)) {
+    return auth.currentUser.uid;
+  }
   try {
     const res = await signInAnonymously(auth);
-    return res.user.uid;
+    const uid = res.user?.uid;
+    if (!uid || isSharedShadowNamespace(uid)) return null;
+    return uid;
   } catch (error: any) {
     console.warn(
-      "MIMI // Shadow write refused: Firebase auth unavailable (no shared ghost namespace)",
+      "MIMI // Shadow memory: Firebase auth unavailable (refusing shared ghost namespace)",
       error?.message || error,
     );
     return null;
   }
+};
+
+const fetchShadowMemoryForUid = async (uid: string): Promise<ShadowMemoryDoc[]> => {
+  if (isSharedShadowNamespace(uid)) return [];
+  const memoryCollection = collection(db, `users/${uid}/memory`);
+  const snapshot = await getDocs(memoryCollection);
+  return snapshot.docs.map((d) => ({ ...d.data(), id: d.id } as ShadowMemoryDoc));
 };
 
 const buildEmbedText = (item: any): string => {
@@ -94,7 +95,10 @@ export const syncToShadowMemory = async (item: any) => {
     const ai = getAiClient();
     if (!ai) return;
 
-    const uid = await ensureAnonymousAuth();
+    // Full embed_text must never land under shared ghost / local-profile paths.
+    const uid = await requireFirebaseUidForShadow();
+    if (!uid) return;
+
     let textToEmbed = buildEmbedText(item);
 
     if (!textToEmbed.trim()) return;
@@ -126,7 +130,8 @@ export const syncToShadowMemory = async (item: any) => {
 
 export const deleteFromShadowMemory = async (itemId: string) => {
   try {
-    const uid = await ensureAnonymousAuth();
+    const uid = await requireFirebaseUidForShadow();
+    if (!uid) return;
     await deleteDoc(doc(db, `users/${uid}/memory`, itemId));
   } catch (e: any) {
     console.warn("MIMI // Shadow De-anchor Failed:", e.message);
@@ -135,10 +140,9 @@ export const deleteFromShadowMemory = async (itemId: string) => {
 
 export const getAllShadowMemory = async (): Promise<ShadowMemoryDoc[]> => {
   try {
-    const uid = await ensureAnonymousAuth();
-    const memoryCollection = collection(db, `users/${uid}/memory`);
-    const snapshot = await getDocs(memoryCollection);
-    return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as ShadowMemoryDoc));
+    const uid = await requireFirebaseUidForShadow();
+    if (!uid) return [];
+    return await fetchShadowMemoryForUid(uid);
   } catch (e: any) {
     console.warn("MIMI // Shadow Fetch Failed:", e.message);
     return [];
@@ -176,49 +180,29 @@ export const reindexShadowMemoryEmbeddings = async (options: {
   limit?: number;
   onProgress?: (done: number, total: number) => void;
 } = {}): Promise<ShadowReindexResult> => {
-  const docsForAudit = async () => getAllShadowMemory();
+  const emptyAudit = (reason: "ai_unavailable" | "auth_required"): ShadowReindexResult => {
+    const audit = auditShadowEmbeddings([], options.referenceDims, options.referenceModel);
+    return {
+      attempted: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+      auditBefore: audit,
+      auditAfter: audit,
+      aborted: true,
+      abortReason: reason,
+    };
+  };
 
   const ai = getAiClient();
-  if (!ai) {
-    const docs = await docsForAudit();
-    const audit = auditShadowEmbeddings(
-      docs,
-      options.referenceDims,
-      options.referenceModel,
-    );
-    return {
-      attempted: 0,
-      updated: 0,
-      skipped: 0,
-      failed: 0,
-      auditBefore: audit,
-      auditAfter: audit,
-      aborted: true,
-      abortReason: "ai_unavailable",
-    };
-  }
+  if (!ai) return emptyAudit("ai_unavailable");
 
-  const uid = await requireFirebaseUidForShadowWrite();
-  if (!uid) {
-    const docs = await docsForAudit();
-    const audit = auditShadowEmbeddings(
-      docs,
-      options.referenceDims,
-      options.referenceModel,
-    );
-    return {
-      attempted: 0,
-      updated: 0,
-      skipped: 0,
-      failed: 0,
-      auditBefore: audit,
-      auditAfter: audit,
-      aborted: true,
-      abortReason: "auth_required",
-    };
-  }
+  // Pin one Firebase UID for every read + write — never mix ghost/local fetch
+  // with a real-uid write (wrong namespace + false shadowIndexHint clears).
+  const uid = await requireFirebaseUidForShadow();
+  if (!uid) return emptyAudit("auth_required");
 
-  const docs = await getAllShadowMemory();
+  const docs = await fetchShadowMemoryForUid(uid);
   const auditBefore = auditShadowEmbeddings(
     docs,
     options.referenceDims,
@@ -275,7 +259,7 @@ export const reindexShadowMemoryEmbeddings = async (options: {
     options.onProgress?.(i + 1, candidates.length);
   }
 
-  const docsAfter = await getAllShadowMemory();
+  const docsAfter = await fetchShadowMemoryForUid(uid);
   const auditAfter = auditShadowEmbeddings(
     docsAfter,
     lastDims ?? options.referenceDims ?? auditBefore.referenceDims,
@@ -314,10 +298,10 @@ export const scryShadowMemoryLane = async (
     const ai = getAiClient();
     if (!ai) return { hits: [], audit: emptyAudit };
 
-    const uid = await ensureAnonymousAuth();
-    const memoryCollection = collection(db, `users/${uid}/memory`);
-    const snapshot = await getDocs(memoryCollection);
-    const docs = snapshot.docs.map((d) => ({ ...d.data(), id: d.id } as ShadowMemoryDoc));
+    const uid = await requireFirebaseUidForShadow();
+    if (!uid) return { hits: [], audit: emptyAudit };
+
+    const docs = await fetchShadowMemoryForUid(uid);
 
     // Audit even when the query embed fails so width/model drift still surfaces.
     const { values: queryVector, model: queryModel } = await getEmbeddingWithMeta([
@@ -335,18 +319,17 @@ export const scryShadowMemoryLane = async (
     const oneMonth = 30 * 24 * 60 * 60 * 1000;
     const queryModelId = String(queryModel || "").trim();
 
-    const hits = snapshot.docs
-      .map((d) => {
-        const data = d.data() as any;
+    const hits = docs
+      .map((data) => {
         const field = data.embedding_field as number[] | undefined;
         const docModel = String(data.embedding_model || "").trim();
         const modelMismatch = Boolean(queryModelId && docModel && docModel !== queryModelId);
         if (!embeddingsCompatible(queryVector, field) || modelMismatch) {
-          return { ...data, id: d.id, similarity: 0, _incompatible: true } as ShadowScryHit;
+          return { ...data, id: data.id, similarity: 0, _incompatible: true } as ShadowScryHit;
         }
         return {
           ...data,
-          id: d.id,
+          id: data.id,
           similarity: cosineSimilarity(queryVector, field),
           _incompatible: false,
         } as ShadowScryHit;
