@@ -9,27 +9,61 @@ import {
 import { proxyToFunctions } from "./proxyToFunctions.js";
 
 /**
- * Paid members (lab/atelier/…) must not be forced into BYOK just because
- * Stripe/webhook never wrote membershipCredits. Heal when the grant is
- * missing or the billing period has ended — never mid-period when remaining
- * is simply spent down to zero.
+ * Period rollover: an existing grant with allowance whose period has ended.
+ * Safe to rewrite — the user already had a server-issued grant.
  */
-export function needsMembershipCreditHeal(
+export function needsMembershipPeriodReload(
   grant: { remaining?: unknown; allowance?: unknown; periodEndsAt?: unknown } | null | undefined,
   now = Date.now(),
+): boolean {
+  if (grant == null || typeof grant !== "object") return false;
+  const hasAllowance = grant.allowance != null && Number.isFinite(Number(grant.allowance));
+  if (!hasAllowance) return false;
+  const periodEndsAt = Number(grant.periodEndsAt ?? 0);
+  return Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
+}
+
+/**
+ * Missing/malformed grant — only heal when a trusted billing signal exists.
+ * Never mint paid credits from client-writable plan fields alone.
+ */
+export function needsMembershipCreditMint(
+  grant: { remaining?: unknown; allowance?: unknown; periodEndsAt?: unknown } | null | undefined,
 ): boolean {
   if (grant == null || typeof grant !== "object") return true;
   const hasAllowance = grant.allowance != null && Number.isFinite(Number(grant.allowance));
   const hasRemaining = grant.remaining != null && Number.isFinite(Number(grant.remaining));
-  if (!hasAllowance && !hasRemaining) return true;
-  const periodEndsAt = Number(grant.periodEndsAt ?? 0);
-  if (Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now) return true;
-  return false;
+  return !hasAllowance && !hasRemaining;
+}
+
+/** @deprecated Use needsMembershipPeriodReload / needsMembershipCreditMint. */
+export function needsMembershipCreditHeal(
+  grant: { remaining?: unknown; allowance?: unknown; periodEndsAt?: unknown } | null | undefined,
+  now = Date.now(),
+): boolean {
+  return needsMembershipCreditMint(grant) || needsMembershipPeriodReload(grant, now);
 }
 
 export function isPaidSubscriptionActive(subscriptionStatus: unknown): boolean {
   const status = String(subscriptionStatus || "active").trim().toLowerCase();
   return status !== "inactive" && status !== "canceled" && status !== "cancelled";
+}
+
+/**
+ * Trusted signals that the seat was granted by Stripe/webhook/admin — not a
+ * client-forged `plan: "lab"` on an owner-writable profile doc.
+ */
+export function hasTrustedPaidBillingSignal(data: Record<string, unknown>): boolean {
+  const stripeCustomerId = String(data.stripeCustomerId || "").trim();
+  if (stripeCustomerId && !stripeCustomerId.startsWith("promo_")) return true;
+
+  const grant = (data.membershipCredits || (data.subscription as any)?.credits) as
+    | { allowance?: unknown; lastGrantedAt?: unknown }
+    | undefined;
+  // Prior server-issued grant (has allowance) is enough for period reload.
+  if (grant && grant.allowance != null && Number.isFinite(Number(grant.allowance))) return true;
+
+  return false;
 }
 
 const require = createRequire(import.meta.url);
@@ -180,14 +214,21 @@ export const resolveMimiFundedGatewayAccess = async (
         }
 
         let grant = data.membershipCredits || data.subscription?.credits;
-        if (needsMembershipCreditHeal(grant)) {
+        const trustedBilling = hasTrustedPaidBillingSignal(data as Record<string, unknown>);
+        const shouldReloadPeriod = needsMembershipPeriodReload(grant);
+        const shouldMintMissing = needsMembershipCreditMint(grant) && trustedBilling;
+
+        if (shouldReloadPeriod || shouldMintMissing) {
           const interval = (data.subscriptionInterval || "month") as MimiBillingInterval;
+          const existingPeriodEnd = Number(grant?.periodEndsAt ?? 0);
           const { credits } = buildCreditGrant({
             plan,
             interval,
-            currentPeriodEnd: Number(grant?.periodEndsAt) > Date.now()
-              ? Number(grant.periodEndsAt)
-              : undefined,
+            // Preserve a still-valid period window when minting a partial grant.
+            currentPeriodEnd:
+              !shouldReloadPeriod && existingPeriodEnd > Date.now()
+                ? existingPeriodEnd
+                : undefined,
           });
           const healPatch = {
             membershipCredits: credits,
@@ -199,10 +240,11 @@ export const resolveMimiFundedGatewayAccess = async (
             profileRef.set(healPatch, { merge: true }),
           ]);
           grant = credits;
-          console.info("MIMI // Healed missing/expired membership credits for funded gateway", {
+          console.info("MIMI // Healed membership credits for funded gateway", {
             uid: decoded.uid,
             plan,
             remaining: credits.remaining,
+            reason: shouldReloadPeriod ? "period_reload" : "trusted_mint",
           });
         }
 
@@ -272,7 +314,9 @@ export const chargeMimiFundedGateway = async (
     const profileRef = db.collection("profiles_public").doc(access.uid);
     const userDoc = await userRef.get();
     const userData = userDoc.data() || {};
-    const plan = normalizeMimiPlan(userData.plan || userData.planStatus);
+    const plan = normalizeMimiPlan(
+      userData.plan || userData.planStatus || userData.mimiPlan || userData.membershipPlan,
+    );
     const isPaid = isPaidMimiPlan(plan);
 
     const creditUpdate: Record<string, unknown> = isPaid

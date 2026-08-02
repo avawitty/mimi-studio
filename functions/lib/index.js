@@ -319,12 +319,16 @@ app.post('/api/funded-gateway/access', async (req, res) => {
             const hasAllowance = (grant === null || grant === void 0 ? void 0 : grant.allowance) != null && Number.isFinite(Number(grant.allowance));
             const hasRemaining = (grant === null || grant === void 0 ? void 0 : grant.remaining) != null && Number.isFinite(Number(grant.remaining));
             const periodEndsAt = Number((_c = grant === null || grant === void 0 ? void 0 : grant.periodEndsAt) !== null && _c !== void 0 ? _c : 0);
-            const needsHeal = grant == null ||
-                (!hasAllowance && !hasRemaining) ||
-                (Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < Date.now());
-            if (needsHeal) {
+            const now = Date.now();
+            const needsPeriodReload = hasAllowance && Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
+            const stripeCustomerId = String(data.stripeCustomerId || '').trim();
+            const trustedBilling = (Boolean(stripeCustomerId) && !stripeCustomerId.startsWith('promo_')) || hasAllowance;
+            const needsTrustedMint = !hasAllowance && !hasRemaining && trustedBilling;
+            if (needsPeriodReload || needsTrustedMint) {
                 const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month');
-                const credits = buildCreditGrant(plan, interval);
+                // Preserve a still-valid period window when minting a partial grant.
+                const credits = !needsPeriodReload && periodEndsAt > now
+                    ? Object.assign(Object.assign({}, buildCreditGrant(plan, interval)), { periodEndsAt }) : buildCreditGrant(plan, interval);
                 const healPatch = {
                     membershipCredits: credits,
                     subscriptionStatus: data.subscriptionStatus || 'active',
@@ -365,7 +369,7 @@ app.post('/api/funded-gateway/charge', async (req, res) => {
         const profileRef = db.collection('profiles_public').doc(access.uid);
         const userDoc = await userRef.get();
         const userData = userDoc.data() || {};
-        const paid = isPaidMimiPlan(userData.plan || userData.planStatus);
+        const paid = isPaidMimiPlan(userData.plan || userData.planStatus || userData.mimiPlan || userData.membershipPlan);
         const field = paid ? 'membershipCredits' : 'trial';
         const cost = Number(access.cost || 1);
         const patch = {

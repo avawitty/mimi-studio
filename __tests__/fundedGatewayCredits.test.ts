@@ -1,21 +1,28 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasTrustedPaidBillingSignal,
   isPaidSubscriptionActive,
   needsMembershipCreditHeal,
+  needsMembershipCreditMint,
+  needsMembershipPeriodReload,
 } from "../lib/mimiFundedGateway.js";
 import { buildCreditGrant, isPaidMimiPlan, normalizeMimiPlan } from "../lib/mimiEntitlements.js";
 
-describe("needsMembershipCreditHeal", () => {
-  it("heals when membershipCredits were never granted", () => {
-    expect(needsMembershipCreditHeal(undefined)).toBe(true);
-    expect(needsMembershipCreditHeal(null)).toBe(true);
-    expect(needsMembershipCreditHeal({})).toBe(true);
-  });
-
-  it("does not heal mid-period when remaining is simply spent", () => {
+describe("needsMembershipPeriodReload", () => {
+  it("reloads only when an existing allowance period has ended", () => {
     const now = Date.now();
     expect(
-      needsMembershipCreditHeal(
+      needsMembershipPeriodReload(
+        {
+          allowance: 10000,
+          remaining: 0,
+          periodEndsAt: now - 1000,
+        },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      needsMembershipPeriodReload(
         {
           allowance: 10000,
           remaining: 0,
@@ -26,17 +33,52 @@ describe("needsMembershipCreditHeal", () => {
     ).toBe(false);
   });
 
-  it("heals when the billing period has ended", () => {
+  it("does not reload a missing grant (mint is separate + must be trusted)", () => {
+    expect(needsMembershipPeriodReload(undefined)).toBe(false);
+    expect(needsMembershipPeriodReload({})).toBe(false);
+  });
+});
+
+describe("needsMembershipCreditMint", () => {
+  it("mints when membershipCredits were never granted", () => {
+    expect(needsMembershipCreditMint(undefined)).toBe(true);
+    expect(needsMembershipCreditMint(null)).toBe(true);
+    expect(needsMembershipCreditMint({})).toBe(true);
+  });
+
+  it("does not mint mid-period when remaining is simply spent", () => {
+    expect(
+      needsMembershipCreditMint({
+        allowance: 10000,
+        remaining: 0,
+        periodEndsAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("needsMembershipCreditHeal (compat)", () => {
+  it("heals missing grants or expired periods", () => {
+    expect(needsMembershipCreditHeal(undefined)).toBe(true);
     const now = Date.now();
     expect(
       needsMembershipCreditHeal(
-        {
-          allowance: 10000,
-          remaining: 0,
-          periodEndsAt: now - 1000,
-        },
+        { allowance: 10000, remaining: 0, periodEndsAt: now - 1 },
         now,
       ),
+    ).toBe(true);
+  });
+});
+
+describe("hasTrustedPaidBillingSignal", () => {
+  it("requires Stripe customer id or a prior allowance grant", () => {
+    expect(hasTrustedPaidBillingSignal({ plan: "lab", mimiPlan: "lab" })).toBe(false);
+    expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "promo_code" })).toBe(false);
+    expect(hasTrustedPaidBillingSignal({ stripeCustomerId: "cus_123" })).toBe(true);
+    expect(
+      hasTrustedPaidBillingSignal({
+        membershipCredits: { allowance: 10000, remaining: 0 },
+      }),
     ).toBe(true);
   });
 });
@@ -61,6 +103,7 @@ describe("lab plan credit grant", () => {
     expect(isPaidMimiPlan("lab")).toBe(true);
     const { credits } = buildCreditGrant({ plan: "lab", interval: "month" });
     expect(credits.remaining).toBeGreaterThanOrEqual(10000);
-    expect(needsMembershipCreditHeal(credits)).toBe(false);
+    expect(needsMembershipCreditMint(credits)).toBe(false);
+    expect(needsMembershipPeriodReload(credits)).toBe(false);
   });
 });

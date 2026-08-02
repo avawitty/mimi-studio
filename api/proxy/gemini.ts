@@ -28,15 +28,15 @@ type GatewayResolution = {
 
 const DENIAL_MESSAGES: Record<string, string> = {
   sign_in_required:
-    "Sign in to use Mimi plan credits on Vercel AI Gateway.",
+    "Sign in to use Mimi AI Gateway.",
   credits_exhausted:
-    "Mimi plan credits for AI Gateway are exhausted. Credits reload with your billing period — or add a personal Gateway key in Settings.",
+    "Mimi membership credits for AI Gateway are exhausted. Credits reload with your billing period.",
   server_gateway_unconfigured:
     "AI Gateway is not configured on this server. Add AI_GATEWAY_API_KEY, or a personal Gemini key in Settings as a temporary fallback.",
   missing_personal_or_funded_key:
-    "AI generation requires a signed-in Mimi plan with credits, or a personal Gateway key.",
+    "AI generation requires a signed-in Mimi membership with credits, or a personal Gateway key.",
   access_denied:
-    "AI Gateway access was denied. Sign in with an active plan and credits remaining.",
+    "AI Gateway access was denied. Sign in with an active membership and credits remaining.",
 };
 
 /**
