@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Search,
@@ -9,666 +8,737 @@ import {
   Database,
   ArrowRight,
   TrendingUp,
-  Sliders,
-  Sparkles,
   PenTool,
-  Cpu,
   Bookmark,
-  Shuffle,
-  Compass,
-  FileText,
-  Key,
-  Layers,
-  CheckCircle,
-  HelpCircle,
-  ChevronRight,
   Download,
+  ChevronRight,
+  Layers,
+  Archive,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react";
-import { searchGrounding } from "../services/searchService";
-import { scryShadowMemory } from "../services/vectorSearch";
 import {
-  scryWebSignals,
-  generateScribeReading,
-  generateOracleResearch,
-} from "../services/geminiService";
+  ArchiveChamberShell,
+  ArchiveContextPanel,
+  type ArchiveWorkflowStep,
+} from "./chambers/ArchiveChamberShell";
 import { useUser } from "../contexts/UserContext";
+import {
+  compileTrendNarrative,
+  runSpecimenScry,
+  runTrendScry,
+} from "../services/scryService";
+import type {
+  ResearchResult,
+  ResultStatus,
+  ScryLaneId,
+  ScryRun,
+  TrendCurationMap,
+  TrendCluster,
+} from "../schemas/scryContracts";
+
+type ScryTab = "specimen" | "trend";
+
+const TABS: {
+  id: ScryTab;
+  label: string;
+  icon: React.ReactNode;
+  note: string;
+  workflow: ArchiveWorkflowStep;
+}[] = [
+  {
+    id: "specimen",
+    label: "Specimen",
+    icon: <Search size={14} />,
+    note: "Ask across archive, web, reading, and shadow memory",
+    workflow: "read",
+  },
+  {
+    id: "trend",
+    label: "Trend",
+    icon: <TrendingUp size={14} />,
+    note: "Deep-scry a drift signal into a biaxial map and draft",
+    workflow: "collect",
+  },
+];
+
+const LANE_META: Record<
+  ScryLaneId,
+  { label: string; icon: React.ReactNode; accent: string }
+> = {
+  personalMemory: {
+    label: "My Archive",
+    icon: <Archive size={14} />,
+    accent: "border-l-stone-800",
+  },
+  web: {
+    label: "Open Web",
+    icon: <Globe size={14} />,
+    accent: "border-l-[#5A5A40]",
+  },
+  generatedReading: {
+    label: "Mimi's Reading",
+    icon: <ScanLine size={14} />,
+    accent: "border-l-[#9BB8CE]",
+  },
+  shadowMemory: {
+    label: "Shadow Memory",
+    icon: <Database size={14} />,
+    accent: "border-l-stone-500",
+  },
+};
+
+const STATUS_LABEL: Record<ResultStatus, string> = {
+  success: "Live",
+  partial: "Partial",
+  empty: "Empty",
+  failed: "Failed",
+  simulated: "Simulated",
+  speculative: "Speculative",
+};
+
+const PRESETS = [
+  {
+    label: "Saturation Chic",
+    q: "Saturation Chic — neon rebellion against greige minimalism",
+  },
+  {
+    label: "Noir Maturity",
+    q: "Monochrome Maturity — black and white tailored armor",
+  },
+  {
+    label: "Cyber-Vandal Craft",
+    q: "Synthetic Acid Brights — industrial neons, street craft",
+  },
+];
+
+/** Only http(s) (and same-origin relative paths) — blocks javascript: etc. */
+function safeHref(url?: string): string | undefined {
+  if (!url || typeof url !== "string") return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.href;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function safeHostname(url?: string): string {
+  const href = safeHref(url);
+  if (!href) return "unknown";
+  try {
+    return new URL(href, typeof window !== "undefined" ? window.location.origin : "https://local.invalid")
+      .hostname;
+  } catch {
+    return "unknown";
+  }
+}
+
+const ResultCard: React.FC<{
+  item: ResearchResult;
+  index: number;
+}> = ({ item, index }) => {
+  const meta = LANE_META[item.sourceLane];
+  const href = safeHref(item.url);
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.04, 0.24) }}
+      className={`border archive-border bg-white/80 border-l-2 ${meta.accent} p-4 md:p-5`}
+    >
+      <div className="flex justify-between items-start gap-3 mb-3">
+        <div className="min-w-0">
+          <p className="font-mono text-[8px] uppercase tracking-[0.2em] archive-text-muted flex items-center gap-1.5">
+            {meta.icon}
+            {meta.label}
+          </p>
+          {href ? (
+            <p className="font-mono text-[8px] archive-text-muted mt-1 truncate">
+              {safeHostname(href)}
+            </p>
+          ) : null}
+          {typeof item.similarity === "number" ? (
+            <p className="font-mono text-[8px] archive-text-muted mt-1">
+              Resonance {(item.similarity * 100).toFixed(0)}%
+            </p>
+          ) : null}
+        </div>
+        <Layers size={12} className="archive-text-muted shrink-0 mt-0.5" />
+      </div>
+      <h3 className="font-serif text-lg md:text-xl italic archive-text-ink mb-2 leading-snug">
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline underline-offset-4"
+          >
+            {item.title}
+          </a>
+        ) : (
+          item.title
+        )}
+      </h3>
+      {(item.snippet || item.content_preview) && (
+        <p className="font-sans text-sm archive-text-muted leading-relaxed line-clamp-3">
+          {item.snippet || item.content_preview}
+        </p>
+      )}
+    </motion.article>
+  );
+};
+
+const LaneStrip: React.FC<{ run: ScryRun | null; busy: boolean }> = ({
+  run,
+  busy,
+}) => {
+  const lanes = Object.keys(LANE_META) as ScryLaneId[];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      {lanes.map((lane) => {
+        const status = run?.laneStatus[lane] ?? "empty";
+        const count =
+          lane === "generatedReading"
+            ? run?.sources.generatedReading
+              ? 1
+              : 0
+            : (run?.sources[lane] as ResearchResult[] | undefined)?.length || 0;
+        return (
+          <div
+            key={lane}
+            className="border archive-border px-3 py-2 min-h-[52px]"
+            data-lane={lane}
+            data-status={status}
+          >
+            <p className="font-mono text-[7px] uppercase tracking-[0.18em] archive-text-muted">
+              {LANE_META[lane].label}
+            </p>
+            <p className="font-mono text-[9px] archive-text-ink mt-1">
+              {busy && status === "empty" ? "…" : STATUS_LABEL[status]}
+              {count > 0 ? ` · ${count}` : ""}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 export const ScryView: React.FC = () => {
-  const { profile, activePersona, apiKeys, pocket, setPocket } = useUser();
-
-  // Core Navigation Active Tab
-  const [activeTab, setActiveTab] = useState<"specimen" | "trend-scryer">(
-    "specimen",
-  );
-
-  // Tab A: Specimen Search states
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[]>([]);
-  const [webResults, setWebResults] = useState<any[]>([]);
-  const [scribeReading, setScribeReading] = useState<string | null>(null);
-  const [isScrying, setIsScrying] = useState(false);
-  const [confidence, setConfidence] = useState(0);
-  const [latency, setLatency] = useState(0);
-
-  // Tab B: Trend Research & Copywriter states
-  const [trendQuery, setTrendQuery] = useState("Saturation Chic");
-  const [isTrendScrying, setIsTrendScrying] = useState(false);
-  const [curationMap, setCurationMap] = useState<any | null>(null);
-  const [hoveredCluster, setHoveredCluster] = useState<any | null>(null);
-  const [narrativeDraft, setNarrativeDraft] = useState("");
-  const [isCompilingNarrative, setIsCompilingNarrative] = useState(false);
-
-  // UI Notification Floater
+  const { profile, apiKeys, pocket, setPocket } = useUser();
+  const [tab, setTab] = useState<ScryTab>("specimen");
+  const [contextOpen, setContextOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
-  const showNotification = (msg: string) => {
+  const [query, setQuery] = useState("");
+  const [run, setRun] = useState<ScryRun | null>(null);
+  const [isScrying, setIsScrying] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const [trendQuery, setTrendQuery] = useState("Saturation Chic");
+  const [isTrendScrying, setIsTrendScrying] = useState(false);
+  const [curationMap, setCurationMap] = useState<TrendCurationMap | null>(null);
+  const [hoveredCluster, setHoveredCluster] = useState<TrendCluster | null>(null);
+  const [narrativeDraft, setNarrativeDraft] = useState("");
+  const [narrativeVia, setNarrativeVia] = useState<"gateway" | "local" | null>(null);
+  const [isCompilingNarrative, setIsCompilingNarrative] = useState(false);
+
+  const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const apply = () => setContextOpen(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  const showNotification = useCallback((msg: string) => {
     setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
-  };
+    window.setTimeout(() => setNotification(null), 2800);
+  }, []);
 
-  // Preset options for Trend Scryer
-  const presets = [
-    {
-      label: "Saturation Chic",
-      q: "Saturation Chic (Neon Rebellion, vibrant bright clothing against minimal slate graints)",
+  const handleScry = useCallback(
+    async (q?: string) => {
+      const queryToUse = (q ?? query).trim();
+      if (!queryToUse || isScrying) return;
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setIsScrying(true);
+      setRun(null);
+      if (q) setQuery(q);
+
+      try {
+        const next = await runSpecimenScry({
+          query: queryToUse,
+          profile,
+          geminiKey: apiKeys?.gemini,
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setRun(next);
+          const live = next.confidence?.label || "Scry complete";
+          showNotification(live);
+        }
+      } catch (err) {
+        console.error("MIMI // Scrying failed", err);
+        showNotification("Scry failed — see lane statuses.");
+      } finally {
+        if (!controller.signal.aborted) setIsScrying(false);
+      }
     },
-    {
-      label: "Noir Maturity",
-      q: "Monochrome Maturity (Black and white tailored armors vs high saturation)",
-    },
-    {
-      label: "Cyber-Vandal Craft",
-      q: "Synthetic Acid Brights (Industrial neons, high chroma street crafts)",
-    },
-  ];
+    [apiKeys?.gemini, isScrying, profile, query, showNotification],
+  );
 
-  // Standard Query Search triggers
-  const handleScry = async (q?: string) => {
-    const queryToUse = q || query;
-    if (!queryToUse.trim() || isScrying) return;
-    setIsScrying(true);
-    setWebResults([]);
-    setResults([]);
-    setScribeReading(null);
-    setConfidence(0);
-    setLatency(0);
-    if (q) setQuery(q);
+  useEffect(() => {
+    const onSearch = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (typeof detail === "string" && detail.trim()) {
+        setTab("specimen");
+        void handleScry(detail);
+      }
+    };
+    window.addEventListener("mimi:scry_search", onSearch);
+    return () => window.removeEventListener("mimi:scry_search", onSearch);
+  }, [handleScry]);
 
-    const startTime = performance.now();
-    const geminiKey = apiKeys?.gemini;
-
-    try {
-      const textPromises = [
-        searchGrounding(queryToUse)
-          .then((data) => {
-            setResults((prev) => [...prev, ...data.results]);
-            setScribeReading(data.summary);
-          })
-          .catch((e) => console.error("MIMI // Search grounding failed", e)),
-
-        scryWebSignals(queryToUse)
-          .then((data) => {
-            setWebResults(data.results);
-            if (data.groundingChunks && data.groundingChunks.length > 0) {
-              setResults((prev) => [
-                ...prev,
-                ...data.groundingChunks.map((c: any) => ({
-                  title: c.web?.title || "Grounded Insight",
-                  snippet: c.web?.title || "Grounded in real-time data",
-                  url: c.web?.uri,
-                })),
-              ]);
-            }
-          })
-          .catch((e) => console.error("MIMI // Web scry failed", e)),
-
-        generateScribeReading(profile, queryToUse, geminiKey)
-          .then((reading) => {
-            setScribeReading(reading);
-          })
-          .catch((e) => console.error("MIMI // Scribe failed", e)),
-
-        scryShadowMemory(queryToUse)
-          .then((hits) => {
-            setResults(hits);
-          })
-          .catch((e) => console.error("MIMI // Shadow memory failed", e)),
-      ];
-
-      await Promise.allSettled([...textPromises]);
-      setConfidence(Math.random() * 20 + 78); // 78-98%
-      setLatency(Math.floor(performance.now() - startTime));
-    } catch (e: any) {
-      console.error("MIMI // Scrying failed", e);
-    } finally {
-      setIsScrying(false);
-    }
-  };
-
-  // Deep Semiotic Trend Scrying
   const conductTrendScry = async (keywordToScry?: string) => {
-    const keyword = keywordToScry || trendQuery;
-    if (!keyword.trim() || isTrendScrying) return;
-
+    const keyword = (keywordToScry || trendQuery).trim();
+    if (!keyword || isTrendScrying) return;
     setIsTrendScrying(true);
     setCurationMap(null);
     setNarrativeDraft("");
-    showNotification(`Querying grounding indexes for: ${keyword}`);
+    setNarrativeVia(null);
+    setHoveredCluster(null);
+    if (keywordToScry) setTrendQuery(keywordToScry);
+    showNotification(`Deep-scrying: ${keyword}`);
 
     try {
-      const researchData = await generateOracleResearch(keyword, profile);
-      if (researchData) {
-        setCurationMap(researchData);
-        setConfidence(Math.random() * 15 + 83);
-        showNotification(
-          "Coherence signals identified. Bi-axial map constructed.",
-        );
+      const map = await runTrendScry({ keyword, profile });
+      setCurationMap(map);
+      if (map.status === "failed") {
+        showNotification("Trend scry failed — no fabricated fallback.");
+      } else if (map.status === "empty") {
+        showNotification("No trend evidence returned.");
       } else {
-        showNotification(
-          "Semiotics modeling failed. Defaulting to general search fallback.",
-        );
+        showNotification("Trend map constructed from live grounding.");
       }
-    } catch (e: any) {
-      console.error("MIMI // Trend Scrying failed", e);
-      // Fallback mock representation structured around user's query direction
-      const isSaturation = keyword.toLowerCase().includes("saturat");
-      const stub = {
-        thesis: isSaturation
-          ? "A resistance campaign against greige minimalist hegemony, utilizing chemical saturations and fluorescent highlights in professional silhouettes."
-          : `Emerging trajectory shift centering around key stylistic elements of ${keyword}.`,
-        trendClusters: [
-          {
-            name: "Neon Maturity Tailoring",
-            position: { x: -0.6, y: -0.4 },
-            historicalPrecedent: "1980s Armani power shoulder neon underlays",
-            contradictoryAesthetic: "Corporate Normcore Gray",
-          },
-          {
-            name: "High-Chroma Knits",
-            position: { x: 0.3, y: 0.8 },
-            historicalPrecedent: "Missoni vivid spectrum patterns",
-            contradictoryAesthetic: "Hermetic Off-white linen",
-          },
-          {
-            name: "Synthetic Acid Sprays",
-            position: { x: -0.8, y: 0.5 },
-            historicalPrecedent: "90s Rave couture",
-            contradictoryAesthetic: "Raw Canvas minimalism",
-          },
-          {
-            name: "Fluorescent Accents",
-            position: { x: 0.5, y: -0.2 },
-            historicalPrecedent: "Schiaparelli shocking pink highlights",
-            contradictoryAesthetic: "Savile Row Charcoal",
-          },
-          {
-            name: "Saturated Leather armor",
-            position: { x: 0.1, y: -0.7 },
-            historicalPrecedent: "Mugler neon yellow biker ensembles",
-            contradictoryAesthetic: "Washed beige suede",
-          },
-        ],
-        biaxialMapDescription:
-          "Plotting tactile materiality of bright pigment armor along the horizontal axis, and underground club sentiment resistance along the vertical Axis Y.",
-        sources: [
-          {
-            title: "Vogue - The return of Neon Power Silhouettes",
-            url: "https://vogue.com",
-          },
-          {
-            title: "WGSN Aesthetic Analysis - Beyond the Neutral Palette",
-            url: "https://wgsn.com",
-          },
-        ],
-      };
-      setCurationMap(stub);
-      setConfidence(91.7);
+    } catch (err) {
+      console.error("MIMI // Trend Scrying failed", err);
+      setCurationMap({
+        thesis: "",
+        trendClusters: [],
+        biaxialMapDescription: "",
+        sources: [],
+        status: "failed",
+      });
+      showNotification("Trend scry failed — no fabricated fallback.");
     } finally {
       setIsTrendScrying(false);
     }
   };
 
-  // Compile Scribe blog draft from trend results
-  const compileNarrativeDraft = () => {
-    if (!curationMap) return;
+  const compileNarrativeDraft = async () => {
+    if (!curationMap || isCompilingNarrative) return;
     setIsCompilingNarrative(true);
-    showNotification("Scribing narrative draft from trend coordinates...");
-
-    setTimeout(() => {
-      const hasSaturated = trendQuery.toLowerCase().includes("saturat");
-      let mockDoc = "";
-
-      if (hasSaturated) {
-        mockDoc =
-          `### SATURATION CHIC & THE REBELLION AGAINST THE GREIGE MONOTONY\n\n` +
-          `*Written in partnership with Mimi Scribe. Insights compiled on ${new Date().toLocaleDateString()}*\n\n` +
-          `For nearly a decade, we have been told that "maturity" looks like an aseptic hotel lobby. It looks like charcoal wool trousers, slate coats, and linen shirts in shades of cold ash. But as we comb through Pinterest and street signals worldwide, there is a quiet, fluorescent insurgency mounting.\n\n` +
-          `**The Semiotic Shift:** We are entering the era of "Saturation Chic." This is not the sloppy, neon-raver look of the early 2010s; it is the integration of ultra-bright, highly saturated visual nodes into highly tailored, mature silhouettes. Think of a structured charcoal power jacket with a brilliant cadmium-yellow silk shift underneath.\n\n` +
-          `**Key Trajectory Signals Found:**\n` +
-          curationMap.trendClusters
-            .map(
-              (c) =>
-                `- **${c.name}**: An architectural bridge between ${c.historicalPrecedent} and today's wardrobe goals (reinvigorating elements of its contradictory style, *${c.contradictoryAesthetic}*).`,
-            )
-            .join("\n") +
-          `\n\n### Strategic Takeaway for curators:\n` +
-          `The strategy here is not to surrender to neon chaos. It is to use saturated color specifically as a sovereign accent—representing creative autonomy, intellectual sharpness, and a direct visual objection to algorithmically curated conformity.`;
-      } else {
-        mockDoc =
-          `### CULTURAL INSIGHTS RECORD // FOCUS: ${trendQuery.toUpperCase()}\n\n` +
-          `*System Thesis: ${curationMap.thesis}*\n\n` +
-          `**Identified Trajectory Targets:**\n` +
-          curationMap.trendClusters
-            .map(
-              (c) =>
-                `- **${c.name}**: Reanimating ${c.historicalPrecedent} coordinates against ${c.contradictoryAesthetic}.`,
-            )
-            .join("\n") +
-          `\n\nNarrative compiled via Mimi Scriptorium Grounding Layer.`;
+    showNotification("Compiling narrative via AI Gateway…");
+    try {
+      const result = await compileTrendNarrative({
+        keyword: trendQuery,
+        curation: curationMap,
+        profile,
+      });
+      if (!result) {
+        showNotification("Nothing to compile — run Deep-Scry first.");
+        return;
       }
-
-      setNarrativeDraft(mockDoc);
-      setIsCompilingNarrative(false);
+      setNarrativeDraft(result.draft);
+      setNarrativeVia(result.via);
       showNotification(
-        "Narrative compiled successfully. Editorial draft ready for refinement.",
+        result.via === "gateway"
+          ? "Narrative compiled via AI Gateway."
+          : "Local scaffold — Gateway unavailable.",
       );
-    }, 1200);
+    } finally {
+      setIsCompilingNarrative(false);
+    }
   };
 
   const saveDraftToPocket = () => {
-    if (!narrativeDraft) return;
-    if (setPocket) {
-      const updatedPocket = Array.isArray(pocket) ? [...pocket] : [];
-      updatedPocket.push({
-        id: `scribe-narrative-${Date.now()}`,
-        type: "scribe-intake",
-        metadata: {
-          keyword: trendQuery,
-          compiledOn: Date.now(),
-        },
-        content_preview: narrativeDraft.slice(0, 300),
-        content: {
-          title: `Editorial: ${trendQuery}`,
-          draftText: narrativeDraft,
-        },
-      });
-      setPocket(updatedPocket);
-      showNotification(
-        "Narrative anchored! Specimen added to Sovereign Pocket.",
-      );
-    }
+    if (!narrativeDraft || !setPocket) return;
+    const updated = Array.isArray(pocket) ? [...pocket] : [];
+    updated.push({
+      id: `scribe-narrative-${Date.now()}`,
+      type: "scribe-intake",
+      metadata: { keyword: trendQuery, compiledOn: Date.now(), via: narrativeVia },
+      content_preview: narrativeDraft.slice(0, 300),
+      content: {
+        title: `Editorial: ${trendQuery}`,
+        draftText: narrativeDraft,
+      },
+    } as any);
+    setPocket(updated);
+    showNotification("Draft anchored to Pocket.");
   };
 
   const downloadMarkdown = () => {
+    if (!narrativeDraft) return;
     const element = document.createElement("a");
     const file = new Blob([narrativeDraft], { type: "text/plain" });
     element.href = URL.createObjectURL(file);
-    element.download = `mimi_editorial_${trendQuery.toLowerCase().replace(/[^a-z0-9]/g, "_")}.md`;
+    element.download = `mimi_editorial_${trendQuery
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")}.md`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
-    showNotification("Markdown draft exported successfully.");
+    showNotification("Markdown exported.");
   };
 
-  useEffect(() => {
-    const handleScrySearch = (e: any) => handleScry(e.detail);
-    window.addEventListener("mimi:scry_search", handleScrySearch);
-    return () =>
-      window.removeEventListener("mimi:scry_search", handleScrySearch);
-  }, []);
+  const contextDrawer = useMemo(
+    () => (
+      <ArchiveContextPanel
+        title={activeTab.label}
+        subtitle={activeTab.note}
+        footer={
+          <div className="space-y-2 font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+            <p>
+              Keys:{" "}
+              <span className="archive-text-ink">
+                {[apiKeys?.gemini && "Gemini", apiKeys?.you_com && "You.com"]
+                  .filter(Boolean)
+                  .join(" · ") || "Server / Gateway"}
+              </span>
+            </p>
+            {run?.confidence ? (
+              <p>
+                Coverage:{" "}
+                <span className="archive-text-ink">
+                  {(run.confidence.score * 100).toFixed(0)}% — {run.confidence.label}
+                </span>
+              </p>
+            ) : null}
+            {run?.latencyMs != null ? (
+              <p>
+                Latency: <span className="archive-text-ink">{run.latencyMs}ms</span>
+              </p>
+            ) : null}
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+            Evidence layers
+          </p>
+          <p className="font-serif italic text-sm leading-relaxed archive-text-ink">
+            {tab === "specimen"
+              ? "Four lanes stay separate: My Archive, Open Web, Mimi's Reading, and Shadow Memory. Coverage replaces costume confidence."
+              : "Trend Scry maps live search into a biaxial plot. Failed runs stay empty — no fake Vogue stubs."}
+          </p>
+        </div>
+        <div className="space-y-3 pt-2 border-t archive-border">
+          <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+            What to do next
+          </p>
+          <ul className="font-sans text-[10px] archive-text-muted space-y-2 list-none">
+            {tab === "specimen" ? (
+              <>
+                <li>Ask a mood, texture, or ghost question.</li>
+                <li>Read lane statuses before trusting a synthesis.</li>
+                <li>Send useful fragments onward via Pocket.</li>
+              </>
+            ) : (
+              <>
+                <li>Pick a preset or name a drift signal.</li>
+                <li>Inspect cluster nodes on the biaxial map.</li>
+                <li>Compile a draft when Gateway or local scaffold is ready.</li>
+              </>
+            )}
+          </ul>
+        </div>
+        {run?.failures?.length ? (
+          <div className="space-y-2 pt-2 border-t archive-border">
+            <p className="font-mono text-[8px] uppercase tracking-widest text-red-800/80 flex items-center gap-1.5">
+              <AlertCircle size={11} /> Lane failures
+            </p>
+            <ul className="space-y-1.5">
+              {run.failures.slice(0, 6).map((f, i) => (
+                <li key={`${f.lane}-${i}`} className="font-mono text-[9px] archive-text-muted">
+                  {f.lane}: {f.message.slice(0, 80)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </ArchiveContextPanel>
+    ),
+    [activeTab.label, activeTab.note, apiKeys?.gemini, apiKeys?.you_com, run, tab],
+  );
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleScry();
-    }
-  };
-
-  const countSovereigntyPoints = () => {
-    let count = 0;
-    if (apiKeys?.gemini) count++;
-    if (apiKeys?.you_com) count++;
-    return count;
-  };
+  const specimenHits = useMemo(() => {
+    if (!run) return [] as ResearchResult[];
+    return [
+      ...run.sources.personalMemory,
+      ...run.sources.web,
+      ...run.sources.shadowMemory,
+    ];
+  }, [run]);
 
   return (
-    <div className="bg-white text-[#1a1a1a] min-h-full h-full relative overflow-x-hidden font-sans selection:bg-black selection:text-white pb-32">
-      <div className="absolute inset-0 pointer-events-none opacity-[0.18] bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] z-0"></div>
-      <div
-        className="absolute inset-0 w-full h-full mx-auto z-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px)",
-          backgroundSize: "calc(100% / 12) 100%, 100% 28px",
-        }}
-      ></div>
-
-      {/* NOTIFICATION TOAST */}
+    <>
       <AnimatePresence>
-        {notification && (
+        {notification ? (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="fixed top-8 left-1/2 -translate-x-1/2 z-50 p-4 bg-stone-900 border border-emerald-500/50 text-[#f4f4f0] font-mono text-[9px] uppercase tracking-widest flex items-center gap-3 shadow-2xl rounded-none"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 bg-black text-white font-mono text-[9px] uppercase tracking-widest flex items-center gap-2 border border-white/10"
+            role="status"
           >
-            <CheckCircle size={14} className="text-emerald-500" />
+            <CheckCircle size={12} className="text-[#9BB8CE]" />
             <span>{notification}</span>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
 
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 sm:px-12 flex flex-col min-h-full border-l border-r border-[#e0e0e0]">
-        <main className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-0 relative">
-          {/* Left Sidebar */}
-          <aside className="hidden lg:block lg:col-span-2 border-r border-[#e0e0e0] py-12 pr-6">
-            <nav className="flex flex-col gap-8 font-mono text-xs uppercase tracking-widest">
+      <ArchiveChamberShell
+        moduleId="scry"
+        activeWorkflowStep={activeTab.workflow}
+        workflowSteps={["collect", "read", "approve", "save"]}
+        contextDrawer={contextDrawer}
+        contextDrawerOpen={contextOpen}
+        onContextDrawerToggle={() => setContextOpen((o) => !o)}
+        contextDrawerTitle="Guide"
+        headerNote="Evidence first — four lanes, no costume certainty."
+        spine={
+          <>
+            {TABS.map((item) => (
               <button
-                onClick={() => setActiveTab("specimen")}
-                className={`text-left py-2 border-l-2 pl-4 transition-all uppercase ${activeTab === "specimen" ? "border-black font-bold text-black" : "border-transparent text-stone-400 hover:text-stone-700"}`}
+                key={item.id}
+                type="button"
+                title={item.label}
+                onClick={() => setTab(item.id)}
+                className={`archive-icon-btn w-10 h-10 flex items-center justify-center border border-transparent ${
+                  tab === item.id ? "is-active border-white/20" : ""
+                }`}
               >
-                Specimen_Search
+                {item.icon}
               </button>
+            ))}
+          </>
+        }
+        contextSidebar={
+          <nav className="flex flex-col gap-1 px-2 pb-4" aria-label="Scry modes">
+            {TABS.map((item) => (
               <button
-                onClick={() => setActiveTab("trend-scryer")}
-                className={`text-left py-2 border-l-2 pl-4 transition-all uppercase ${activeTab === "trend-scryer" ? "border-black font-bold text-black" : "border-transparent text-stone-400 hover:text-stone-700"}`}
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                className={`text-left px-3 py-2.5 border font-mono text-[9px] uppercase tracking-[0.16em] ${
+                  tab === item.id
+                    ? "border-archive-ink bg-archive-ink text-archive-cream"
+                    : "border-transparent archive-text-muted hover:archive-text-ink"
+                }`}
               >
-                Trend_Scry_Suite
+                {item.label}
               </button>
-              <span className="block py-2 border-l-2 border-transparent pl-4 opacity-30 cursor-not-allowed">
-                Archives
-              </span>
-              <span className="block py-2 border-l-2 border-transparent pl-4 opacity-30 cursor-not-allowed">
-                Index
-              </span>
+            ))}
+          </nav>
+        }
+        canvas={
+          <div className="flex flex-col h-full min-h-0" data-testid="scry-chamber">
+            <nav
+              aria-label="Scry modes"
+              className="md:hidden shrink-0 grid grid-cols-2 border-b archive-border"
+            >
+              {TABS.map((mode) => {
+                const active = tab === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setTab(mode.id)}
+                    className={`flex items-center justify-center gap-1.5 px-2 py-2.5 font-mono text-[8px] uppercase tracking-[0.15em] border-b-2 min-h-[44px] ${
+                      active
+                        ? "archive-workflow-active border-archive-ink"
+                        : "archive-workflow-idle border-transparent"
+                    }`}
+                  >
+                    {mode.icon}
+                    {mode.label}
+                  </button>
+                );
+              })}
             </nav>
 
-            <div className="mt-24 font-serif italic text-xs text-stone-500 leading-relaxed space-y-4">
-              <p>
-                "To create your own trend, you must first index the forces that
-                oppose your intuition."
-              </p>
-              <div className="mt-2 text-[9px] font-mono uppercase bg-stone-100 p-2 border border-stone-200">
-                <strong>Keys Enrolled: </strong>
-                {countSovereigntyPoints()} anchored
-              </div>
-            </div>
-          </aside>
+            {tab === "specimen" && (
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="px-4 md:px-8 pt-6 md:pt-10 pb-4 max-w-3xl">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.28em] archive-text-muted mb-3 flex items-center gap-2">
+                    <span
+                      className={`inline-block w-1.5 h-1.5 ${
+                        isScrying ? "bg-[#5A5A40] animate-pulse" : "border border-[#5A5A40]"
+                      }`}
+                    />
+                    Latent retrieval
+                  </p>
+                  <h2 className="font-serif italic text-3xl md:text-5xl leading-none archive-text-ink mb-3">
+                    Ask the registry
+                  </h2>
+                  <p className="font-sans text-sm archive-text-muted max-w-md leading-relaxed mb-8">
+                    Describe a texture, a mood, or a ghost. Evidence returns in four labeled
+                    lanes — archive, web, reading, shadow.
+                  </p>
 
-          {/* Main Interface */}
-          <div className="col-span-1 lg:col-span-7 py-12 lg:px-12 flex flex-col min-h-screen">
-            {/* TAB 1: ORIGINAL SPECIMEN SEARCH */}
-            {activeTab === "specimen" && (
-              <div className="flex-grow flex flex-col h-full justify-between">
-                <div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-12"
-                  >
-                    <div className="flex items-center gap-2 mb-4">
-                      <span
-                        className={`inline-block w-2 h-2 ${isScrying ? "bg-[#004d40] animate-pulse" : "bg-transparent border border-[#004d40]"} rounded-full`}
-                      ></span>
-                      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#004d40]">
-                        Latent Space Retrieval
-                      </span>
-                    </div>
-                    <h2 className="font-serif text-6xl md:text-8xl leading-none italic mb-6">
-                      Scry.
-                    </h2>
-                    <p className="font-serif text-xl italic text-stone-600 max-w-md">
-                      Describe a texture, a mood, or a ghost. We will find its
-                      echo in your registry.
-                    </p>
-                  </motion.div>
+                  <label className="block mb-2 font-mono text-[9px] uppercase tracking-widest archive-text-muted">
+                    Query
+                  </label>
+                  <div className="relative mb-6">
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void handleScry();
+                        }
+                      }}
+                      className="w-full bg-transparent border-b-2 border-black py-3 md:py-4 text-xl md:text-2xl font-serif italic placeholder:text-stone-300 focus:outline-none pr-14"
+                      placeholder="will i be a lover girl again?"
+                      aria-label="Scry query"
+                      data-testid="scry-query"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleScry()}
+                      disabled={isScrying || !query.trim()}
+                      aria-label="Run scry"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-black text-white disabled:opacity-40"
+                    >
+                      {isScrying ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <ArrowRight size={16} />
+                      )}
+                    </button>
+                  </div>
 
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="relative w-full mb-16"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="font-mono text-xs uppercase tracking-widest text-stone-500">
-                        Input_:
-                      </label>
-                      <div className="flex gap-2">
-                        <button className="px-3 py-1 border border-[#e0e0e0] rounded-full font-mono text-[10px] uppercase hover:bg-black hover:text-white transition-colors">
-                          Web
-                        </button>
-                        <button className="px-3 py-1 border border-[#e0e0e0] rounded-full font-mono text-[10px] uppercase hover:bg-black hover:text-white transition-colors">
-                          Describe
-                        </button>
-                        <button className="px-3 py-1 border border-[#e0e0e0] rounded-full font-mono text-[10px] uppercase hover:bg-black hover:text-white transition-colors">
-                          Scribe
-                        </button>
-                      </div>
-                    </div>
-                    <div className="group relative">
-                      <input
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        className="w-full bg-transparent border-b-2 border-black py-4 md:py-6 text-2xl md:text-3xl font-serif italic placeholder:text-stone-300 focus:outline-none transition-all pr-16"
-                        placeholder="will i be a lover girl again?"
-                      />
-                      <button
-                        onClick={() => handleScry()}
-                        disabled={isScrying}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black text-white hover:scale-110 transition-transform disabled:opacity-50"
-                      >
-                        {isScrying ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <ArrowRight size={16} />
-                        )}
-                      </button>
-                    </div>
-                  </motion.div>
+                  <LaneStrip run={run} busy={isScrying} />
                 </div>
 
-                <div className="space-y-8 pb-12">
-                  {/* RESULTS DISPLAY */}
-                  <AnimatePresence>
-                    {scribeReading && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
+                <div className="px-4 md:px-8 pb-28 md:pb-16 max-w-3xl space-y-4">
+                  <AnimatePresence mode="popLayout">
+                    {run?.sources.generatedReading ? (
+                      <motion.article
+                        key="reading"
+                        initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="border border-[#e0e0e0] p-6 relative overflow-hidden bg-white/50 backdrop-blur-sm"
+                        className="border archive-border border-l-2 border-l-[#9BB8CE] p-4 md:p-5 bg-white/80"
+                        data-lane="generatedReading"
                       >
-                        <div className="absolute top-0 left-0 w-1 h-full bg-[#004d40]"></div>
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="flex flex-col">
-                            <span className="font-mono text-[10px] text-stone-800 uppercase tracking-widest mb-1">
-                              Scribe // Reading
-                            </span>
-                          </div>
-                          <div className="w-8 h-8 border border-stone-200 rounded-full flex items-center justify-center bg-white">
-                            <ScanLine size={14} className="text-[#004d40]" />
-                          </div>
-                        </div>
-                        <div>
-                          <p className="font-serif italic text-xl text-stone-700 leading-relaxed max-w-xl">
-                            "{scribeReading}"
+                        <div className="flex justify-between items-start mb-3">
+                          <p className="font-mono text-[8px] uppercase tracking-[0.2em] archive-text-muted flex items-center gap-1.5">
+                            <ScanLine size={12} />
+                            Mimi's Reading
+                            {run.sources.generatedReading.via === "gateway" ? (
+                              <span className="text-[#5A5A40]"> · Gateway</span>
+                            ) : null}
                           </p>
                         </div>
-                      </motion.div>
-                    )}
+                        <p className="font-serif italic text-lg md:text-xl archive-text-ink leading-relaxed">
+                          “{run.sources.generatedReading.text}”
+                        </p>
+                      </motion.article>
+                    ) : null}
 
-                    {webResults.map((r, i) => (
-                      <motion.div
-                        key={`web-${i}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="border border-[#e0e0e0] p-6 relative overflow-hidden bg-white/50 backdrop-blur-sm"
-                      >
-                        <div className="absolute top-0 left-0 w-1 h-full bg-[#4db6ac]"></div>
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="flex flex-col">
-                            <span className="font-mono text-[10px] text-[#004d40] uppercase tracking-widest mb-1">
-                              Web Signal // Found
-                            </span>
-                            <span className="font-mono text-[10px] text-stone-500 uppercase tracking-widest">
-                              URL: {r.url ? new URL(r.url).hostname : "unknown"}
-                            </span>
-                          </div>
-                          <div className="w-8 h-8 border border-stone-200 rounded-full flex items-center justify-center bg-white">
-                            <Globe size={14} className="text-[#004d40]" />
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="font-serif text-xl md:text-2xl mb-2">
-                            <a
-                              href={r.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:underline"
-                            >
-                              {r.title}
-                            </a>
-                          </h3>
-                          <p className="font-sans font-light text-sm text-stone-600 leading-relaxed max-w-xl">
-                            {r.snippet}
-                          </p>
-                        </div>
-                      </motion.div>
+                    {specimenHits.map((item, i) => (
+                      <ResultCard key={`${item.sourceLane}-${item.id || i}`} item={item} index={i} />
                     ))}
-
-                    {results.length > 0 &&
-                      results.map((r, i) => (
-                        <motion.div
-                          key={`mem-${i}`}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.1 }}
-                          className="border border-[#e0e0e0] p-6 relative overflow-hidden bg-white/50 backdrop-blur-sm"
-                        >
-                          <div className="absolute top-0 left-0 w-1 h-full bg-stone-800"></div>
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="flex flex-col">
-                              <span className="font-mono text-[10px] text-stone-600 uppercase tracking-widest mb-1">
-                                Shadow Memory // {r.type || "Data"}
-                              </span>
-                              <span className="font-mono text-[10px] text-stone-500 uppercase tracking-widest">
-                                Resonance:{" "}
-                                {r.similarity
-                                  ? (r.similarity * 100).toFixed(0)
-                                  : "85"}
-                                %
-                              </span>
-                            </div>
-                            <div className="w-8 h-8 border border-stone-200 rounded-full flex items-center justify-center bg-white">
-                              <Database size={14} className="text-stone-600" />
-                            </div>
-                          </div>
-                          <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-                            {r.display_image && (
-                              <div className="w-24 h-24 border border-stone-200 bg-stone-50 flex items-center justify-center shrink-0">
-                                <img
-                                  src={r.display_image}
-                                  className="w-full h-full object-cover grayscale opacity-80"
-                                />
-                              </div>
-                            )}
-                            <div>
-                              <h3 className="font-serif text-lg md:text-xl mb-2 italic">
-                                {r.content?.prompt ||
-                                  r.title ||
-                                  "Archived Specimen"}
-                              </h3>
-                              <p className="font-sans font-light text-sm text-stone-600 leading-relaxed max-w-xl line-clamp-3">
-                                {r.content_preview ||
-                                  r.snippet ||
-                                  "Fragment located in the latent registry."}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
                   </AnimatePresence>
+
+                  {!isScrying && run && specimenHits.length === 0 && !run.sources.generatedReading ? (
+                    <div
+                      className="border border-dashed archive-border p-8 text-center"
+                      data-testid="scry-empty"
+                    >
+                      <p className="font-mono text-[9px] uppercase tracking-widest archive-text-muted mb-2">
+                        No evidence yet
+                      </p>
+                      <p className="font-serif italic text-sm archive-text-muted">
+                        Lanes returned empty or failed. Nothing fabricated.
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             )}
 
-            {/* TAB 2: ADVANCED TREND CURATION & KEYWORD RESEARCH SUITE */}
-            {activeTab === "trend-scryer" && (
-              <div className="space-y-10">
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <TrendingUp size={14} className="text-[#004d40]" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#004d40] font-bold">
-                      Trend Grounding & Semiotic Scribing
-                    </span>
-                  </div>
-                  <h2 className="font-serif text-5xl italic font-light tracking-tight">
-                    The Trend Scryer Center
-                  </h2>
-                  <p className="font-sans text-xs text-stone-600 leading-relaxed max-w-xl">
-                    Mimi parses live global indicators to formulate authentic
-                    micro-narratives (like{" "}
-                    <strong className="font-semibold text-black italic">
-                      "Saturation Chic"
-                    </strong>{" "}
-                    or vibrant-accent color resistances). Build strategic
-                    counter-movements instead of copying greige monochromatic
-                    structures.
+            {tab === "trend" && (
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-8 py-6 md:py-10 pb-28 md:pb-16 max-w-3xl space-y-8">
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.28em] archive-text-muted mb-3 flex items-center gap-2">
+                    <TrendingUp size={12} />
+                    Trend grounding
                   </p>
-                </motion.div>
-
-                {/* Keychain connection status for You.com */}
-                <div className="p-4 bg-stone-100 border border-stone-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 font-mono text-[10px]">
-                  <div className="flex items-center gap-2">
-                    <Key size={12} className="text-stone-600" />
-                    <span className="uppercase text-stone-500">
-                      Credential Pipeline:
-                    </span>
-                    {apiKeys?.you_com ? (
-                      <span className="text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded-sm border border-emerald-300">
-                        YOU.COM API KEY ANCHORED (Secure Tunnel)
-                      </span>
-                    ) : (
-                      <span className="text-stone-500 bg-stone-200/60 px-2 py-0.5 rounded-sm">
-                        GOOGLE SEARCH ENGINE (Standard Grounding Active)
-                      </span>
-                    )}
-                  </div>
-                  {!apiKeys?.you_com && (
-                    <button
-                      onClick={() =>
-                        window.dispatchEvent(
-                          new CustomEvent("mimi:change_view", {
-                            detail: "profile",
-                          }),
-                        )
-                      }
-                      className="text-[9px] uppercase tracking-wider underline hover:text-black font-semibold text-stone-600"
-                    >
-                      Modify Keychain Credits →
-                    </button>
-                  )}
+                  <h2 className="font-serif italic text-3xl md:text-5xl archive-text-ink mb-3">
+                    Trend Scryer
+                  </h2>
+                  <p className="font-sans text-sm archive-text-muted max-w-xl leading-relaxed">
+                    Live search into a biaxial drift map. Synthesis drafts prefer AI Gateway;
+                    failures stay honest.
+                  </p>
                 </div>
 
-                {/* Research Presets Panel */}
-                <div className="space-y-2">
-                  <span className="font-mono text-[9px] uppercase text-stone-500 block">
-                    Try Preset Focus Signals:
+                <div className="border archive-border px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-widest">
+                  <span className="archive-text-muted">
+                    Grounding:{" "}
+                    <span className="archive-text-ink">
+                      {apiKeys?.you_com ? "You.com + Gemini Search" : "Gemini Google Search"}
+                    </span>
                   </span>
+                  {!apiKeys?.you_com ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.dispatchEvent(
+                          new CustomEvent("mimi:change_view", { detail: "profile" }),
+                        )
+                      }
+                      className="underline archive-text-muted hover:archive-text-ink text-left"
+                    >
+                      Keychain →
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+                    Presets
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {presets.map((p) => (
+                    {PRESETS.map((p) => (
                       <button
                         key={p.label}
-                        onClick={() => {
-                          setTrendQuery(p.q);
-                          conductTrendScry(p.q);
-                        }}
-                        className={`px-3 py-1.5 border font-mono text-[10px] uppercase tracking-widest ${trendQuery === p.q ? "bg-black text-white border-black" : "bg-transparent border-stone-300 hover:border-stone-800"}`}
+                        type="button"
+                        onClick={() => void conductTrendScry(p.q)}
+                        className={`px-3 py-2 min-h-[40px] border font-mono text-[9px] uppercase tracking-widest ${
+                          trendQuery === p.q
+                            ? "bg-black text-white border-black"
+                            : "border-stone-300 hover:border-black"
+                        }`}
                       >
                         {p.label}
                       </button>
@@ -676,36 +746,29 @@ export const ScryView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Trend Search Bar */}
-                <div className="space-y-2 relative">
-                  <div className="flex justify-between items-center">
-                    <label className="font-mono text-[10px] uppercase text-stone-500">
-                      Custom Trend Keyword / Phrase:
-                    </label>
-                    <span className="font-mono text-[9px] text-[#004d40]">
-                      Grounding:{" "}
-                      {apiKeys?.you_com
-                        ? "You.com Sonar Engine"
-                        : "Google Search Multi-Stage"}
-                    </span>
-                  </div>
-                  <div className="relative group">
+                <div className="space-y-2">
+                  <label className="font-mono text-[9px] uppercase tracking-widest archive-text-muted">
+                    Drift signal
+                  </label>
+                  <div className="relative">
                     <input
                       value={trendQuery}
                       onChange={(e) => setTrendQuery(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") conductTrendScry();
+                        if (e.key === "Enter") void conductTrendScry();
                       }}
-                      className="w-full bg-stone-50 border border-stone-300 px-4 py-3 font-serif italic text-lg focus:outline-none focus:border-black transition-all"
-                      placeholder="Enter trend (e.g., Saturation Chic, Neon maturity, etc.)"
+                      className="w-full border archive-border bg-white px-4 py-3 pr-28 font-serif italic text-lg focus:outline-none focus:border-black"
+                      placeholder="Saturation Chic, Neon maturity…"
+                      data-testid="trend-query"
                     />
                     <button
-                      onClick={() => conductTrendScry()}
-                      disabled={isTrendScrying}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 bg-[#004d40] text-white hover:bg-[#00332a] font-mono text-[9px] uppercase tracking-widest font-black flex items-center gap-1"
+                      type="button"
+                      onClick={() => void conductTrendScry()}
+                      disabled={isTrendScrying || !trendQuery.trim()}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-2 min-h-[40px] bg-black text-white font-mono text-[9px] uppercase tracking-widest disabled:opacity-40 flex items-center gap-1.5"
                     >
                       {isTrendScrying ? (
-                        <Loader2 size={10} className="animate-spin" />
+                        <Loader2 size={12} className="animate-spin" />
                       ) : (
                         "Deep-Scry"
                       )}
@@ -713,324 +776,197 @@ export const ScryView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Active Scrying Output Visualization */}
-                {curationMap && (
-                  <div className="space-y-6 pt-4 border-t border-stone-200">
-                    <div className="p-5 bg-white/50 border border-stone-300 relative space-y-4">
-                      <span className="absolute top-2 right-3 font-mono text-[8px] text-[#004d40] tracking-widest font-bold">
-                        [ BIAXIAL TREND PLOT ]
-                      </span>
+                {curationMap?.status === "failed" || curationMap?.status === "empty" ? (
+                  <div
+                    className="border border-dashed archive-border p-6 text-center"
+                    data-testid="trend-empty"
+                  >
+                    <p className="font-mono text-[9px] uppercase tracking-widest archive-text-muted mb-2">
+                      {curationMap.status === "failed" ? "Trend scry failed" : "No trend evidence"}
+                    </p>
+                    <p className="font-serif italic text-sm archive-text-muted">
+                      No fabricated sources. Retry when search or keys are available.
+                    </p>
+                  </div>
+                ) : null}
 
-                      <div className="space-y-1">
-                        <span className="font-mono text-[9px] text-stone-500 block uppercase">
-                          Strategic Thesis Compiled:
+                {curationMap && curationMap.status !== "failed" && curationMap.status !== "empty" ? (
+                  <div className="space-y-6 border-t archive-border pt-6">
+                    <div className="space-y-2">
+                      <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+                        Thesis
+                      </p>
+                      <h4 className="font-serif italic text-xl md:text-2xl archive-text-ink leading-snug">
+                        “{curationMap.thesis}”
+                      </h4>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+                        Biaxial map — tap a node
+                      </p>
+                      <div className="relative w-full h-[220px] md:h-[260px] border archive-border bg-[#FAFAFA]">
+                        <div className="absolute inset-0 border-t border-dashed border-stone-300 top-1/2 pointer-events-none" />
+                        <div className="absolute inset-0 border-l border-dashed border-stone-300 left-1/2 pointer-events-none" />
+                        <span className="absolute top-2 left-1/2 -translate-x-1/2 font-mono text-[7px] archive-text-muted uppercase tracking-widest">
+                          Hidden
                         </span>
-                        <h4 className="font-serif text-xl md:text-2xl font-light italic text-[#004d40]">
-                          "{curationMap.thesis}"
-                        </h4>
-                      </div>
-
-                      {/* Bi-axial Scatter Plot Grid */}
-                      <div className="space-y-2">
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-stone-500 block">
-                          Mapping Coordinates Layout (Hover points to inspect):
+                        <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-mono text-[7px] archive-text-muted uppercase tracking-widest">
+                          Surface
                         </span>
-
-                        <div className="relative w-full h-[240px] bg-stone-100/80 border border-stone-200 flex items-center justify-center overflow-hidden">
-                          {/* Scatter grid lines */}
-                          <div className="absolute inset-0 border-t border-dashed border-stone-300 top-1/2 pointer-events-none" />
-                          <div className="absolute inset-0 border-l border-dashed border-stone-300 left-1/2 pointer-events-none" />
-
-                          {/* Scatter grid axis labels */}
-                          <span className="absolute top-2 left-1/2 -translate-x-1/2 font-mono text-[7px] text-stone-400 uppercase tracking-widest">
-                            UNDERGROUND / HIDDEN (Aesthetic Rebellion)
-                          </span>
-                          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 font-mono text-[7px] text-stone-400 uppercase tracking-widest">
-                            OBSERVABLE / SURFACE (Mainstream Trend)
-                          </span>
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[7px] text-stone-400 uppercase tracking-widest origin-left rotate-90 translate-x-1">
-                            TACTILE / MATERIAL
-                          </span>
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[7px] text-stone-400 uppercase tracking-widest origin-right -rotate-90 -translate-x-1">
-                            SYMBOLIC / IDEOLOGICAL
-                          </span>
-
-                          {/* Plot Points */}
-                          {curationMap.trendClusters.map((tc, idx) => {
-                            // Map coordinates from [-1, 1] to percentages [10% to 90%]
-                            const leftPx = `${((tc.position.x + 1) / 2) * 80 + 10}%`;
-                            const topPx = `${((1 - tc.position.y) / 2) * 80 + 10}%`;
-                            return (
-                              <button
-                                key={idx}
-                                onMouseEnter={() => setHoveredCluster(tc)}
-                                onClick={() => setHoveredCluster(tc)}
-                                className={`absolute w-3.5 h-3.5 rounded-full border-2 cursor-pointer transition-all hover:scale-150 ${hoveredCluster?.name === tc.name ? "bg-nous-text border-amber-500 scale-125 shadow-lg" : "bg-amber-500 border-nous-text"}`}
-                                style={{ left: leftPx, top: topPx }}
-                              />
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Hover Points inspector box */}
-                      {hoveredCluster ? (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.98 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="p-4 bg-stone-50 border border-stone-300 font-mono text-[10px] space-y-2"
-                        >
-                          <div className="flex justify-between items-center pb-1 border-b border-stone-200">
-                            <span className="font-extrabold uppercase text-stone-800">
-                              {hoveredCluster.name}
-                            </span>
-                            <span className="text-[9px] text-[#004d40]">
-                              X: {hoveredCluster.position.x.toFixed(1)}, Y:{" "}
-                              {hoveredCluster.position.y.toFixed(1)}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-stone-500 block">
-                              HISTORICAL PRECEDENT SHIFT:
-                            </span>
-                            <span className="italic text-stone-700 font-serif text-[11px] leading-relaxed font-bold block">
-                              {hoveredCluster.historicalPrecedent}
-                            </span>
-                          </div>
-                          <div className="pt-1">
-                            <span className="text-stone-500 block">
-                              CONTRADICTING PALETTE MONOTONY:
-                            </span>
-                            <span className="text-red-700 font-sans block">
-                              {hoveredCluster.contradictoryAesthetic}
-                            </span>
-                          </div>
-                        </motion.div>
-                      ) : (
-                        <div className="text-center font-mono text-[9px] text-stone-400 py-2 border border-dashed border-stone-200 uppercase">
-                          -- Hover on any coordinate node above to dissect
-                          aesthetic archetypes --
-                        </div>
-                      )}
-
-                      {/* Scribe Narrative Generation Module */}
-                      <div className="space-y-4 pt-4 border-t border-stone-200">
-                        <div className="flex justify-between items-center">
-                          <span className="font-mono text-[10px] uppercase text-[#004d40] font-bold">
-                            Zine Narrative Writer
-                          </span>
-                          <button
-                            onClick={compileNarrativeDraft}
-                            disabled={isCompilingNarrative}
-                            className="px-3.5 py-1.5 bg-black text-white hover:bg-stone-800 font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-1"
-                          >
-                            {isCompilingNarrative ? (
-                              <Loader2 size={10} className="animate-spin" />
-                            ) : (
-                              <PenTool size={10} />
-                            )}
-                            Compile Scription Draft & Commentary
-                          </button>
-                        </div>
-
-                        {narrativeDraft ? (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="space-y-4"
-                          >
-                            <span className="font-mono text-[9px] text-stone-500 block uppercase">
-                              Refining Editorial Draft (Editable Canvas):
-                            </span>
-                            <textarea
-                              value={narrativeDraft}
-                              onChange={(e) =>
-                                setNarrativeDraft(e.target.value)
-                              }
-                              className="w-full bg-white border border-stone-300 p-5 font-serif italic text-[#1a1a1a] text-sm leading-relaxed min-h-[300px] focus:outline-none focus:border-black"
-                              placeholder="Drafting narrative..."
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[7px] archive-text-muted uppercase tracking-widest -rotate-90 origin-left">
+                          Material
+                        </span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[7px] archive-text-muted uppercase tracking-widest rotate-90 origin-right">
+                          Symbolic
+                        </span>
+                        {curationMap.trendClusters.map((tc, idx) => {
+                          const left = `${((tc.position.x + 1) / 2) * 80 + 10}%`;
+                          const top = `${((1 - tc.position.y) / 2) * 80 + 10}%`;
+                          const active = hoveredCluster?.name === tc.name;
+                          return (
+                            <button
+                              key={`${tc.name}-${idx}`}
+                              type="button"
+                              aria-label={tc.name}
+                              onMouseEnter={() => setHoveredCluster(tc)}
+                              onFocus={() => setHoveredCluster(tc)}
+                              onClick={() => setHoveredCluster(tc)}
+                              className={`absolute w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 border-2 transition-transform ${
+                                active
+                                  ? "bg-[#5A5A40] border-black scale-125"
+                                  : "bg-[#9BB8CE] border-black hover:scale-125"
+                              }`}
+                              style={{ left, top }}
                             />
-
-                            <div className="flex flex-wrap gap-2 justify-end">
-                              <button
-                                onClick={downloadMarkdown}
-                                className="px-3 py-1.5 border border-stone-300 hover:border-black bg-[#f4f4f0] text-stone-700 font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-1.5"
-                              >
-                                <Download size={11} /> Export Markdown
-                              </button>
-                              <button
-                                onClick={saveDraftToPocket}
-                                className="px-4 py-1.5 bg-[#004d40] text-white hover:bg-[#00332a] font-mono text-[9px] uppercase tracking-widest font-black flex items-center gap-1.5"
-                              >
-                                <Bookmark size={11} /> Anchor to Pocket Memory
-                              </button>
-                            </div>
-                          </motion.div>
-                        ) : (
-                          <div className="p-6 bg-stone-100/50 border border-stone-200 text-center font-mono text-[10px] text-stone-400 uppercase tracking-wider">
-                            Deep-Scry grounding completed. Press "COMPILE
-                            SCRIPTION DRAFT" above to generate stylized
-                            blog/zine essays analyzing coordinates.
-                          </div>
-                        )}
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {/* Sources cited */}
-                    {curationMap.sources && curationMap.sources.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-stone-500 block">
-                          Grounded Web Citations / Signals:
-                        </span>
-                        <div className="space-y-2">
-                          {curationMap.sources.map((src, sIdx) => (
-                            <div
-                              key={sIdx}
-                              className="p-3 bg-white/40 border border-stone-200 font-mono text-[10px] flex justify-between items-center"
-                            >
-                              <span className="font-bold truncate max-w-sm">
-                                {src.title}
-                              </span>
-                              <a
-                                href={src.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[#004d40] hover:underline flex items-center gap-1 uppercase text-[9px]"
-                              >
-                                Open Signal <ChevronRight size={10} />
-                              </a>
-                            </div>
-                          ))}
+                    {hoveredCluster ? (
+                      <div className="border archive-border p-4 space-y-2">
+                        <div className="flex justify-between gap-2 border-b archive-border pb-2">
+                          <span className="font-mono text-[10px] uppercase tracking-widest archive-text-ink font-bold">
+                            {hoveredCluster.name}
+                          </span>
+                          <span className="font-mono text-[9px] archive-text-muted shrink-0">
+                            {hoveredCluster.position.x.toFixed(1)}, {hoveredCluster.position.y.toFixed(1)}
+                          </span>
                         </div>
+                        <p className="font-serif italic text-sm archive-text-ink">
+                          {hoveredCluster.historicalPrecedent}
+                        </p>
+                        <p className="font-sans text-[11px] archive-text-muted">
+                          Contradicts: {hoveredCluster.contradictoryAesthetic}
+                        </p>
                       </div>
+                    ) : (
+                      <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted text-center border border-dashed archive-border py-3">
+                        Select a coordinate node
+                      </p>
                     )}
+
+                    <div className="space-y-3 border-t archive-border pt-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <p className="font-mono text-[9px] uppercase tracking-widest archive-text-muted">
+                          Narrative writer
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => void compileNarrativeDraft()}
+                          disabled={isCompilingNarrative}
+                          className="px-4 py-2.5 min-h-[44px] bg-black text-white font-mono text-[9px] uppercase tracking-widest font-bold flex items-center justify-center gap-2 disabled:opacity-40"
+                        >
+                          {isCompilingNarrative ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <PenTool size={12} />
+                          )}
+                          Compile draft
+                        </button>
+                      </div>
+
+                      {narrativeDraft ? (
+                        <div className="space-y-3">
+                          <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+                            Draft
+                            {narrativeVia === "gateway"
+                              ? " · AI Gateway"
+                              : narrativeVia === "local"
+                                ? " · Local scaffold"
+                                : ""}
+                          </p>
+                          <textarea
+                            value={narrativeDraft}
+                            onChange={(e) => setNarrativeDraft(e.target.value)}
+                            className="w-full border archive-border bg-white p-4 font-serif italic text-sm leading-relaxed min-h-[240px] focus:outline-none focus:border-black"
+                          />
+                          <div className="flex flex-wrap gap-2 justify-end">
+                            <button
+                              type="button"
+                              onClick={downloadMarkdown}
+                              className="px-3 py-2 min-h-[40px] border archive-border font-mono text-[9px] uppercase tracking-widest flex items-center gap-1.5"
+                            >
+                              <Download size={11} /> Export
+                            </button>
+                            <button
+                              type="button"
+                              onClick={saveDraftToPocket}
+                              className="px-4 py-2 min-h-[40px] bg-black text-white font-mono text-[9px] uppercase tracking-widest flex items-center gap-1.5"
+                            >
+                              <Bookmark size={11} /> Pocket
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="font-mono text-[9px] uppercase tracking-widest archive-text-muted text-center border archive-border py-6">
+                          Deep-Scry first, then compile
+                        </p>
+                      )}
+                    </div>
+
+                    {curationMap.sources.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+                          Citations
+                        </p>
+                        <ul className="space-y-2">
+                          {curationMap.sources.map((src, sIdx) => {
+                            const href = safeHref(src.url);
+                            return (
+                              <li
+                                key={`${src.url}-${sIdx}`}
+                                className="border archive-border px-3 py-2.5 flex justify-between items-center gap-3 font-mono text-[10px]"
+                              >
+                                <span className="truncate font-bold">{src.title}</span>
+                                {href ? (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="shrink-0 uppercase text-[8px] tracking-widest archive-text-muted hover:archive-text-ink flex items-center gap-1"
+                                  >
+                                    Open <ChevronRight size={10} />
+                                  </a>
+                                ) : (
+                                  <span className="shrink-0 uppercase text-[8px] tracking-widest archive-text-muted">
+                                    Unavailable
+                                  </span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ) : null}
                   </div>
-                )}
+                ) : null}
               </div>
             )}
           </div>
-
-          {/* Right Sidebar */}
-          <aside className="hidden lg:block lg:col-span-3 border-l border-[#e0e0e0] pl-6 py-12">
-            <div className="sticky top-12">
-              <h3 className="font-mono text-xs uppercase tracking-[0.2em] mb-8 border-b border-black pb-2 inline-block">
-                Aesthetic Registry
-              </h3>
-
-              <div className="space-y-8">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-mono text-[10px] uppercase text-stone-500">
-                      Latency
-                    </span>
-                    <span className="font-mono text-[10px]">
-                      {latency || (isTrendScrying ? "450ms" : "0ms")}
-                    </span>
-                  </div>
-                  <div className="w-full bg-stone-200 h-[1px]">
-                    <div
-                      className="bg-black h-full transition-all duration-1000"
-                      style={{
-                        width: latency
-                          ? `${Math.min(latency / 20, 100)}%`
-                          : isTrendScrying
-                            ? "15%"
-                            : "0%",
-                      }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-mono text-[10px] uppercase text-stone-500">
-                      Confidence
-                    </span>
-                    <span className="font-mono text-[10px]">
-                      {confidence > 0 ? `${confidence.toFixed(1)}%` : "---"}
-                    </span>
-                  </div>
-                  <div className="w-full bg-stone-200 h-[1px]">
-                    <div
-                      className="bg-black h-full transition-all duration-1000"
-                      style={{ width: `${confidence}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div>
-                  <span className="font-mono text-[10px] uppercase text-stone-500 block mb-3">
-                    Semantics Archetype
-                  </span>
-                  <ul className="font-mono text-[10px] space-y-2">
-                    <li className="flex justify-between text-[#004d40] font-bold">
-                      <span>&gt; Saturated Chroma</span>
-                      <span className="opacity-100">
-                        {confidence > 0 ? "0.94" : "---"}
-                      </span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>&gt; Neon Rebellion</span>
-                      <span className="opacity-70">
-                        {confidence > 0 ? "0.86" : "---"}
-                      </span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>&gt; Tayloring Armor</span>
-                      <span className="opacity-70">
-                        {confidence > 0 ? "0.74" : "---"}
-                      </span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>&gt; Greige Monotony</span>
-                      <span className="opacity-30">
-                        {confidence > 0 ? "0.12" : "---"}
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="pt-8 mt-8 border-t border-[#e0e0e0]">
-                  <span className="font-mono text-[10px] uppercase text-stone-500 block mb-4">
-                    Neural Activity
-                  </span>
-                  <div className="grid grid-cols-6 gap-1 h-24 items-end">
-                    <div
-                      className={`bg-black/10 w-full ${isScrying || isTrendScrying ? "animate-pulse" : ""}`}
-                      style={{ height: "100%", animationDelay: "0.1s" }}
-                    ></div>
-                    <div
-                      className={`bg-black/20 w-full ${isScrying || isTrendScrying ? "animate-pulse" : ""}`}
-                      style={{ height: "80%", animationDelay: "0.3s" }}
-                    ></div>
-                    <div
-                      className={`bg-black/5 w-full ${isScrying || isTrendScrying ? "animate-pulse" : ""}`}
-                      style={{ height: "40%", animationDelay: "0.5s" }}
-                    ></div>
-                    <div
-                      className={`bg-black/30 w-full ${isScrying || isTrendScrying ? "animate-pulse" : ""}`}
-                      style={{ height: "90%", animationDelay: "0.2s" }}
-                    ></div>
-                    <div
-                      className={`bg-black/10 w-full ${isScrying || isTrendScrying ? "animate-pulse" : ""}`}
-                      style={{ height: "60%", animationDelay: "0.7s" }}
-                    ></div>
-                    <div
-                      className={`bg-black/5 w-full ${isScrying || isTrendScrying ? "animate-pulse" : ""}`}
-                      style={{ height: "30%", animationDelay: "0.4s" }}
-                    ></div>
-                  </div>
-                  <div className="mt-2 font-mono text-[9px] text-right opacity-50 text-stone-500">
-                    {isScrying || isTrendScrying
-                      ? "Deep semantic ground scry loop..."
-                      : "Awaiting input..."}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </aside>
-        </main>
-      </div>
-    </div>
+        }
+      />
+    </>
   );
 };

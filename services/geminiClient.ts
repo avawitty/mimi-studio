@@ -266,8 +266,15 @@ export async function withResilience<T>(
             if (params.model && params.model.includes('image')) {
                 return await realAi.models.generateContent(params);
             }
+            // Native Google Search / tool use is Gemini-only; Gateway chat drops tools.
+            if (Array.isArray(params.config?.tools) && params.config.tools.length > 0) {
+                return await realAi.models.generateContent(params);
+            }
             return await aiProvider.generateContent(params);
         },
+        // Embeddings always route through the Gemini proxy (/api/proxy/gemini), which
+        // remaps embedContent to Gateway when a server key is present.
+        embedContent: async (params: any) => await realAi.models.embedContent(params),
         generateImages: async (params: any) => await realAi.models.generateImages(params)
       }
     };

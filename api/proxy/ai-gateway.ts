@@ -1,9 +1,5 @@
 import { cors, readJsonBody, requireMethod, sendJson, sendText } from "../../lib/apiUtils.js";
-import {
-  chargeMimiFundedGateway,
-  fundedGatewayCreditCost,
-  resolveFundedGatewayApiKey,
-} from "../../lib/mimiFundedGateway.js";
+import { getServerAiGatewayKey } from "../../lib/aiGatewayCompat.js";
 
 const DENIAL_MESSAGES: Record<string, string> = {
   sign_in_required:
@@ -23,8 +19,34 @@ export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
 
   try {
-    const cost = fundedGatewayCreditCost();
-    const { apiKey, access, denialReason } = await resolveFundedGatewayApiKey(req, cost);
+    const body = await readJsonBody(req);
+    let apiKey = "";
+    let access: { billable?: boolean } | null = null;
+    let denialReason: string | undefined;
+
+    try {
+      const funded = await import("../../lib/mimiFundedGateway.js");
+      const cost = funded.fundedGatewayCreditCost();
+      const resolved = await funded.resolveFundedGatewayApiKey(req, cost);
+      apiKey = resolved.apiKey;
+      access = resolved.access;
+      denialReason = resolved.denialReason;
+
+      // Infra / sign-in gate failure: fall back to server key like openai proxy.
+      if (!apiKey && denialReason !== "credits_exhausted" && process.env.MIMI_REQUIRE_GATEWAY_AUTH !== "1") {
+        const serverKey = getServerAiGatewayKey();
+        if (serverKey) {
+          apiKey = serverKey;
+          access = null;
+          denialReason = undefined;
+        }
+      }
+    } catch (err) {
+      console.warn("MIMI // funded gateway unavailable for ai-gateway proxy:", err);
+      apiKey = getServerAiGatewayKey() || "";
+      access = null;
+      if (!apiKey) denialReason = "server_gateway_unconfigured";
+    }
 
     if (!apiKey) {
       return sendJson(res, 403, {
@@ -41,22 +63,27 @@ export default async function handler(req: any, res: any) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(await readJsonBody(req)),
+      body: JSON.stringify(body),
     });
 
     const text = await upstream.text();
     if (access?.billable && upstream.ok) {
-      let parsed: Record<string, any> = {};
       try {
-        parsed = JSON.parse(text);
-      } catch {
-        parsed = {};
+        const funded = await import("../../lib/mimiFundedGateway.js");
+        let parsed: Record<string, any> = {};
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          parsed = {};
+        }
+        await funded.chargeMimiFundedGateway(access as any, {
+          model: parsed.model,
+          usage: parsed.usage,
+          feature: "ai-gateway:text",
+        });
+      } catch (err) {
+        console.warn("MIMI // ai-gateway credit charge skipped:", err);
       }
-      await chargeMimiFundedGateway(access, {
-        model: parsed.model,
-        usage: parsed.usage,
-        feature: "ai-gateway:text",
-      });
     }
     sendText(res, upstream.status, text, upstream.headers.get("content-type") || "application/json; charset=utf-8");
   } catch (error: any) {

@@ -14,6 +14,7 @@ import { buildSessionCookieHeader, clearSessionCookieHeader, SESSION_EXPIRES_MS 
 import { proxySessionLogin } from './lib/proxySessionToFunctions';
 import mimiImageHandler from "./api/mimi-image";
 import generateTextHandler from "./api/mimi/generate-text";
+import embedHandler from "./api/mimi/embed";
 import aiGatewayProxyHandler from "./api/proxy/ai-gateway";
 import createCheckoutSessionHandler from "./api/create-checkout-session";
 import createBillingPortalSessionHandler from "./api/create-billing-portal-session";
@@ -34,6 +35,7 @@ import { searchShopifyGlobalCatalog } from "./lib/shopifyCatalog";
 import { verifyMimiSession } from "./lib/serverFirebaseAdmin";
 import { handleCreatorFeedRequest } from "./api/feed";
 import youSearchHandler from "./api/you-search";
+import residueAcquireHandler from "./api/residue-acquire";
 import liveTokenHandler from "./api/live/token";
 import { isPaidPatronPlan } from "./constants";
 
@@ -1378,6 +1380,14 @@ async function startServer() {
     await youSearchHandler(req, res);
   });
 
+  app.get("/api/residue-acquire", async (req, res) => {
+    await residueAcquireHandler(req, res);
+  });
+
+  app.post("/api/residue-acquire", async (req, res) => {
+    await residueAcquireHandler(req, res);
+  });
+
   app.post("/api/live/token", async (req, res) => {
     try {
       await liveTokenHandler(req, res);
@@ -1624,6 +1634,17 @@ async function startServer() {
       await generateTextHandler(req, res);
     } catch (error: any) {
       console.error("MIMI // Route error in /api/mimi/generate-text:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/embed", async (req, res) => {
+    try {
+      await embedHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/embed:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }

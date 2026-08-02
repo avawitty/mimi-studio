@@ -1,5 +1,5 @@
 /**
- * Residue Engine Phase 2–8 verification — schemas, scoring, provenance, safety, storage, UI contract.
+ * Residue Engine Phase 2–9 verification — schemas, scoring, provenance, safety, storage, UI contract, Apify.
  * Run: npx tsx scripts/verifyResidueEngine.ts
  * No Firebase / Apify network required.
  */
@@ -8,6 +8,9 @@ import {
   APIFY_ACTOR_CANDIDATES,
   ApifySourceAcquisitionProvider,
   ManualSourceProvider,
+  acquireResidueSources,
+  mapApifyDatasetItemsToAcquiredSources,
+  resolveResidueApifyActorId,
   EMOTIONAL_SAFETY_NOTICE,
   RESIDUE_SCHEMA_VERSION,
   buildConfidenceSummary,
@@ -378,14 +381,87 @@ async function main() {
   });
   assert(manualResult.status === "partial", "manual acquisition");
 
-  const apify = new ApifySourceAcquisitionProvider();
-  const apifyResult = await apify.acquire({
+  // Phase 9: force-disabled path (no network) + injectable client mapping
+  const apifyDisabled = new ApifySourceAcquisitionProvider({ forceDisabled: true });
+  const apifyDisabledResult = await apifyDisabled.acquire({
     inquiry: "indie sleaze",
     mode: "cultural",
     maxItems: 10,
   });
-  assert(apifyResult.status === "disabled", "apify disabled without live Phase 9 client");
-  assert(APIFY_ACTOR_CANDIDATES.reddit.includes("reddit"), "actor registry");
+  assert(apifyDisabledResult.status === "disabled", "apify force-disabled");
+  assert(APIFY_ACTOR_CANDIDATES.ragWebBrowser.includes("rag-web-browser"), "actor registry rag");
+  assert(APIFY_ACTOR_CANDIDATES.reddit.includes("reddit"), "actor registry reddit");
+  assert(resolveResidueApifyActorId({}).includes("rag-web-browser"), "default actor id");
+
+  const mapped = mapApifyDatasetItemsToAcquiredSources(
+    [
+      {
+        markdown: "Indie sleaze revived via short-form nightlife edits and thrifted partywear.",
+        metadata: { title: "Indie Sleaze Notes", url: "https://example.com/indie-sleaze" },
+        searchResult: { title: "Indie Sleaze Notes", url: "https://example.com/indie-sleaze" },
+        query: "indie sleaze",
+      },
+      {
+        text: "People on forums report fatigue with the look.",
+        metadata: { title: "Forum fatigue", url: "https://reddit.com/r/example/1" },
+      },
+      { title: "empty" },
+    ],
+    { actorId: "apify/rag-web-browser", maxItems: 5 },
+  );
+  assert(mapped.length === 2, "map apify items");
+  assert(mapped[0].sourceType === "journalism", "mapped journalism type");
+  assert(mapped[1].sourceType === "reddit", "mapped reddit type");
+
+  const mockClient = {
+    actor() {
+      return {
+        async call() {
+          return { id: "run_mock", status: "SUCCEEDED", defaultDatasetId: "ds_mock" };
+        },
+      };
+    },
+    dataset() {
+      return {
+        async listItems() {
+          return {
+            items: [
+              {
+                markdown: "Platform amplification of indie sleaze codes.",
+                metadata: {
+                  title: "Mock crawl",
+                  url: "https://example.com/mock-indie",
+                },
+              },
+            ],
+          };
+        },
+      };
+    },
+  };
+  const apifyLiveMock = new ApifySourceAcquisitionProvider({
+    token: "test-token",
+    client: mockClient,
+  });
+  assert(apifyLiveMock.isAvailable(), "mock apify available");
+  const mockAcquire = await apifyLiveMock.acquire({
+    inquiry: "indie sleaze",
+    mode: "cultural",
+    maxItems: 3,
+  });
+  assert(mockAcquire.status === "partial" || mockAcquire.status === "success", "mock acquire status");
+  assert(mockAcquire.sources.length >= 1, "mock acquire sources");
+
+  const composed = await acquireResidueSources({
+    inquiry: "indie sleaze",
+    mode: "cultural",
+    sourceUrls: ["https://example.com/a"],
+    userNotes: ["Flash photography codes return in lookbooks."],
+    useApify: true,
+    apifyProvider: apifyLiveMock,
+  });
+  assert(composed.sources.length >= 2, "compose manual+apify sources");
+  assert(composed.apifyStatus === "partial" || composed.apifyStatus === "success", "compose apify status");
 
   // Memory store: artifact delete does not delete run
   const store = createMemoryResidueStore();
@@ -822,7 +898,36 @@ async function main() {
     "no auto-approved memory",
   );
 
-  // --- Phase 8: Residue UI chamber contract ---
+  // Phase 9 engine path with injectable Apify (no network)
+  const culturalWithApify = await runCulturalResidue(
+    {
+      query: "indie sleaze",
+      userNotes: ["Retail capsules absorbed thrifted partywear codes."],
+      sourceUrls: ["https://example.com/indie"],
+      retention: "temporary",
+      consentToStore: false,
+    },
+    {
+      llm: { offline: true },
+      useApify: true,
+      apifyProvider: apifyLiveMock,
+      now,
+    },
+  );
+  assert(
+    culturalWithApify.result.sources.some(
+      (s) => s.url?.includes("mock-indie") || s.url?.includes("example.com"),
+    ),
+    "engine merged apify/manual sources",
+  );
+  assert(
+    culturalWithApify.result.metadata.warnings.some((w) => /apify/i.test(w)),
+    "engine apify warning",
+  );
+
+  // --- Phase 8: Residue UI chamber contract (main #124) ---
+  // Expects main's ChamberShell + ResiduePanels UI. Blocked until
+  // ResidueChamber.tsx competing-UI conflict is resolved.
   assert(RESIDUE_CHAMBER_MODULE_ID === "residue", "chamber module id");
   assert(RESIDUE_CHAMBER_MODE === "residue", "chamber mode");
   assert(RESIDUE_CHAMBER_ROUTE === "/residue", "chamber route");
@@ -871,8 +976,10 @@ async function main() {
   assert(chamberSrc.includes("runEmotionalResidue"), "chamber runs emotional engine");
   assert(chamberSrc.includes("buildResidueProductOutputBundle"), "chamber surfaces products");
   assert(chamberSrc.includes("adaptResidueToMeanMedianMode"), "chamber surfaces MMM");
+  assert(chamberSrc.includes("/api/residue-acquire"), "chamber wires Apify acquire API");
+  assert(chamberSrc.includes("useApify"), "chamber exposes Apify toggle");
 
-  console.log("OK — Residue Phase 2–8 checks passed.");
+  console.log("OK — Residue Phase 2–9 checks passed.");
 }
 
 main().catch((err) => {

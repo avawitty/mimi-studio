@@ -56,6 +56,9 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   threads: "scribe",
   "narrative-threads": "scribe",
   "art-style": "tailor",
+  scry: "scry",
+  "trace-scry": "scry",
+  "specimen-search": "scry",
   scryer: "tailor",
   "style-scryer": "tailor",
   "aesthetic-intelligence": "tailor",
@@ -111,6 +114,31 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["Memory Atoms", "Codex context packs", "documented decisions", "Used Context payloads"],
     userFlow: "Save important conversation fragments and turn them into traceable context Mimi can retrieve later.",
     notes: "Legacy route /research-memory aliases here. ResearchMemory runs inside the Atomize tab.",
+  },
+  {
+    id: "scry",
+    name: "Scry",
+    layer: "chamber",
+    engine: "Evidence Retrieval Engine",
+    priority: 2,
+    status: "live",
+    canonicalRoute: "/scry",
+    implementedMode: "scry",
+    component: "ScryView",
+    aliases: ["Trace & Scry", "Specimen Search", "Trend Scryer"],
+    inputs: ["natural-language query", "trend keyword", "Tailor profile context", "archive / Pocket excerpts"],
+    generations: [
+      "personal archive grounding",
+      "open-web signal retrieval",
+      "Scribe reading synthesis",
+      "shadow-memory vector hits",
+      "biaxial trend synthesis",
+    ],
+    outputs: ["ScryRun evidence lanes", "web signals", "editorial readings", "trend maps", "narrative drafts"],
+    userFlow:
+      "Ask a question or name a drift signal; inspect evidence by lane (archive, web, reading, shadow) before drafting.",
+    notes:
+      "Lanes stay distinct — no shared result overwrite. Synthesis uses AI Gateway when available; Google Search grounding stays on Gemini.",
   },
   {
     id: "tailor",
@@ -514,22 +542,25 @@ export const CANON_MODULES: CanonModule[] = [
       "cultural query or emotional experience text",
       "optional user notes",
       "manual / acquired sources (offline heuristics first)",
+      "optional Apify acquisition (token-gated)",
     ],
     generations: [
       "cultural lineage + codes",
       "interpretive neighborhoods",
       "mean / median / mode readouts",
+      "intelligence reports",
       "product adapter proposals",
     ],
     outputs: [
       "session residue runs",
       "evidence + source manifests",
+      "intelligence reports",
       "proposed zine / edit / forecast / taste / memory artifacts",
     ],
     userFlow:
-      "Run an offline-first cultural or emotional residue pass, inspect synthesis and evidence, review M/M/M and product proposals, then hand off to Intel Hub, Edit, Forecast, or Taste Graph.",
+      "Run an offline-first cultural or emotional residue pass, inspect synthesis and evidence, review M/M/M and product proposals, then hand off to Intel Hub, Edit, Forecast, or Taste Graph. Optional signed-in Apify acquisition when configured.",
     notes:
-      "Phase 8 UI over Phases 2–7 engines. Emotional mode always shows the non-diagnostic safety notice. Memory / taste / edit outputs stay proposed until accepted elsewhere. Live Apify acquisition is Phase 9.",
+      "Emotional mode always shows the non-diagnostic safety notice. Memory / taste / edit outputs stay proposed until accepted elsewhere. Live Apify acquisition is Phase 9 (token + session gated).",
   },
 ];
 

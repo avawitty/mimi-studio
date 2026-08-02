@@ -1,8 +1,8 @@
 /**
  * Vercel AI Gateway model catalog for Mimi (operational defaults).
  *
- * Policy: when calling AI Gateway for text, image, audio (TTS), or video
- * generation, resolve models through this catalog / `modelFor(role, "gateway")`
+ * Policy: when calling AI Gateway for text, image, audio (TTS), video, or
+ * embeddings, resolve models through this catalog / `modelFor(role, "gateway")`
  * rather than hardcoding provider strings. Defaults should track the newest
  * stable `provider/model` IDs verified against
  * https://ai-gateway.vercel.sh/v1/models — re-check that endpoint when bumping.

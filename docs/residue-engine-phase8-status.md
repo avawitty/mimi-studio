@@ -2,7 +2,7 @@
 
 **Status:** Complete (Residue UI chamber thin slice)  
 **Date:** 2026-08-02  
-**Branch:** `meresidue-phase8-ui-42dd`
+**Landed via:** #124 on `main` (this branch merges Phase 9 Apify onto that UI)
 
 ## Delivered
 
@@ -13,6 +13,7 @@
 - Handoffs to Intel Hub, The Edit, Forecast, Taste Graph, Scribe
 - Canon + menu + Application Guide + `validate:canon` registration
 - Shared contract in `lib/residueChamberContract.ts` (tabs + copy + handoffs)
+- Panel split: `components/residue/ResiduePanels.tsx`, `ResidueSafetyBanner.tsx`
 
 ## Constraints preserved
 
@@ -20,7 +21,11 @@
 - Emotional mode is non-diagnostic; safety banner stays visible while emotional results are active
 - Runs default to temporary session memory (`consentToStore: false`)
 - Memory / taste / edit outputs remain `proposed`
-- No live Apify (Phase 9)
+
+## Follow-on (Phase 9, this PR)
+
+- Optional Apify acquisition toggle in the chamber (token-gated, signed-in)
+- Emotional mode sends a redacted inquiry to `/api/residue-acquire`
 
 ## Commands
 
@@ -29,7 +34,8 @@ npm run verify:residue
 npm run validate:canon
 ```
 
+Open in app: `/residue`
+
 ## Next
 
-**Phase 9 — Live Apify acquisition** (token-gated)  
 **Phase 10 — Broader tests/docs polish** + optional Firestore-backed run reopen UI

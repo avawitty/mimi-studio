@@ -2,8 +2,8 @@
  * Mimi Residue Engine — provenance + Used Context builders.
  * Distinguishes observed evidence from model inference.
  *
- * Hashing must stay browser-safe: ResidueChamber pulls this module into the
- * Vite client bundle, so `node:crypto` cannot be imported here.
+ * Hashing uses @noble/hashes (browser-safe) instead of node:crypto so this
+ * module can ship in the Vite client bundle with offline residue engines.
  */
 
 import { sha256 } from "@noble/hashes/sha2.js";

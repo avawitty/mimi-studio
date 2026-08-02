@@ -1,5 +1,5 @@
 import { cors, requireMethod, sendError, sendJson } from "../lib/apiUtils.js";
-import { extractMimiSessionToken, getServerFirebaseAdmin, verifyMimiSession } from "../lib/serverFirebaseAdmin.js";
+import { extractMimiSessionToken } from "../lib/mimiSessionToken.js";
 import { proxyToFunctions } from "../lib/proxyToFunctions.js";
 import {
   subscriptionPeriodEnd,
@@ -11,6 +11,28 @@ export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
 
   try {
+    // Prefer Cloud Functions when Admin is not opted-in — loading firebase-admin
+    // on Vercel has crashed isolates (FUNCTION_INVOCATION_FAILED).
+    const preferLocalAdmin = process.env.MIMI_USE_VERCEL_FIREBASE_ADMIN === "1";
+    if (!preferLocalAdmin) {
+      const token = extractMimiSessionToken(req.headers || {});
+      if (!token) {
+        sendError(res, 401, "Mimi sign-in is required.", "AUTH_REQUIRED");
+        return;
+      }
+      const proxied = await proxyToFunctions("/api/sync-subscription", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      res.statusCode = proxied.status;
+      res.setHeader("Content-Type", proxied.headers.get("content-type") || "application/json");
+      res.end(proxied.text);
+      return;
+    }
+
+    const { getServerFirebaseAdmin, verifyMimiSession } = await import(
+      "../lib/serverFirebaseAdmin.js"
+    );
     const { auth, db } = getServerFirebaseAdmin();
     if (!auth || !db) {
       const token = extractMimiSessionToken(req.headers || {});
