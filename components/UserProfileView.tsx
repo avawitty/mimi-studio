@@ -172,6 +172,11 @@ export const UserProfileView: React.FC = () => {
       const detail = (event as CustomEvent).detail;
       if (detail === "share" || detail === "settings") {
         setProfilePane(detail);
+        try {
+          sessionStorage.removeItem("mimi:profile_pane");
+        } catch {
+          /* ignore storage errors */
+        }
       }
     };
     window.addEventListener("mimi:profile_pane", onPane);
