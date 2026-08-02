@@ -7,7 +7,7 @@ export default async function handler(req: any, res: any) {
     if (!rawUrl) return sendJson(res, 400, { error: "URL required" });
     const parsed = new URL(rawUrl);
     const response = await fetch(parsed.toString(), {
-      headers: { "User-Agent": "Mozilla/5.0 MimiZineBot/1.0" },
+      headers: { "User-Agent": "Mozilla/5.0 MimiBot/1.0" },
       signal: AbortSignal.timeout(12000),
     });
     const html = await response.text();

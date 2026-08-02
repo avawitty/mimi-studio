@@ -85,8 +85,8 @@ export const PublisherDashboard: React.FC = () => {
           <h1 className="font-serif text-3xl md:text-5xl font-bold tracking-tight text-white mb-2">
             Publisher Console.
           </h1>
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-stone-500 font-extrabold">
-            MIMIZINE METRICS CORE // SECURE DATA WIDGETS ACTIVE
+          <p className="font-mono text-[9px] tracking-[0.2em] text-stone-500 font-extrabold">
+            Mimi Metrics Core // Secure Data Widgets Active
           </p>
         </div>
 

@@ -1130,7 +1130,7 @@ export const AnalysisDisplay: React.FC<{
  if (navigator.share) {
  try {
  await navigator.share({
- title: metadata.title || 'Mimi Zine',
+ title: metadata.title || 'Mimi',
  text: metadata.content?.strategic_hypothesis || 'View this zine.',
  url: shareUrl
  });

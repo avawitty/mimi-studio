@@ -27,7 +27,7 @@ const upsertMeta = (selector: string, attributes: Record<string, string>) => {
 export const setZineMetaTags = (data: SEOData) => {
   if (typeof document === "undefined") return;
 
-  document.title = `${data.title} | MimiZine Editorial`;
+  document.title = `${data.title} | Mimi`;
   upsertMeta('meta[name="description"]', { name: "description", content: data.description });
 
   const pageUrl = data.url || window.location.href;
@@ -61,7 +61,7 @@ export const setZineMetaTags = (data: SEOData) => {
     },
     publisher: {
       "@type": "Organization",
-      name: "MimiZine",
+      name: "Mimi",
       logo: {
         "@type": "ImageObject",
         url: "https://raw.githubusercontent.com/Aris-A-C/mimi-assets/main/mimi_logo_new.png",
@@ -106,7 +106,7 @@ export function injectJSONLD(viewMode: string, docUrl: string = "https://www.mim
   let schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Mimi Zine Core Node",
+    name: "Mimi",
     url: docUrl,
     logo: `${docUrl}/logo.png`,
     description: "A structured independent editorial studio for taste-driven creator communities.",
@@ -118,7 +118,7 @@ export function injectJSONLD(viewMode: string, docUrl: string = "https://www.mim
       schema = {
         "@context": "https://schema.org",
         "@type": "NewsArticle",
-        headline: "Mimi Zine // Tactile Monoliths on the Latent Grid",
+        headline: "Mimi // Tactile Monoliths on the Latent Grid",
         datePublished: "2026-05-24T00:00:00Z",
         dateModified: "2026-05-24T01:30:00Z",
         description:
@@ -130,7 +130,7 @@ export function injectJSONLD(viewMode: string, docUrl: string = "https://www.mim
         },
         publisher: {
           "@type": "Organization",
-          name: "Mimi Zine",
+          name: "Mimi",
           logo: {
             "@type": "ImageObject",
             url: `${docUrl}/logo.png`,

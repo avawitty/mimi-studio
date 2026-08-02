@@ -52,9 +52,9 @@ interface ClientStrategy extends IntelStrategyLike {
   roadmap: Array<{ id: string; title: string; description: string; checked: boolean }>;
 }
 
-// 2. Default Mimi Zine Baseline
+// 2. Default Mimi Baseline
 const DEFAULT_CLIENT: ClientStrategy = {
-  clientName: "Mimi Zine (Mimi Museum)",
+  clientName: "Mimi (Mimi Museum)",
   tagline: "A private editorial studio for turning scattered cultural signals into a coherent, evolving point of view.",
   wedgeFocus: 85,
   editorialOrthodoxy: 75,
@@ -62,7 +62,7 @@ const DEFAULT_CLIENT: ClientStrategy = {
   thesis: {
     chapter: "CHAPTER I // PERSONAL EDITORIAL INTELLIGENCE",
     title: "The Personal Editorial Intelligence Layer",
-    summary1: "Mimi Zine is a private editorial studio rather than a generic inspiration feed or styling assistant. It turns scattered references, wardrobe signals, saved images, cultural interests, and personal language into a coherent point of view. Users are not merely discovering content; they are authoring an evolving aesthetic identity with an intelligent partner.",
+    summary1: "Mimi is a private editorial studio rather than a generic inspiration feed or styling assistant. It turns scattered references, wardrobe signals, saved images, cultural interests, and personal language into a coherent point of view. Users are not merely discovering content; they are authoring an evolving aesthetic identity with an intelligent partner.",
     summary2: "For a visually literate, identity-conscious audience motivated by synthesis rather than volume, Mimi combines multimodal intake, semantic tagging, preference modeling, contrastive visual analysis, and longitudinal taste graphs. Loosely organized references become editorial boards, vocabulary, recommendations, and periodic style reports while the archive remains portable, inspectable, private, and user-controlled.",
     bullets: [
       "Mimi is a taste-making instrument, not an algorithmic content feed.",

@@ -1543,7 +1543,7 @@ export function getSimulatedImageBase64(prompt: string, aspectRatio = "1:1"): st
       <rect width="100%" height="100%" filter="url(#grainFilter)" pointer-events="none" mix-blend-mode="overlay" />
   
       <g transform="translate(60, ${height - 110})">
-        <text x="0" y="0" class="mono-text">MIMIZINE // TEMPORAL REFRACTION SYSTEM</text>
+        <text x="0" y="0" class="mono-text">Mimi // TEMPORAL REFRACTION SYSTEM</text>
         <text x="0" y="32" class="title-text">${prompt.slice(0, 48)}${prompt.length > 48 ? '...' : ''}</text>
         <text x="0" y="56" class="desc-text">Simulated mirror state // Vogue Italia Luminous Diaphanity concept</text>
       </g>
@@ -3837,7 +3837,7 @@ export const generateOracleResearch = async (topic: string, profile: any) => {
     // Google Search tool requires native Gemini (Gateway chat drops tools — see geminiClient).
     const response = await ai.models.generateContent({
       model: modelFor('textFast', 'gemini'),
-      contents: `Act as a 'Cultural Alchemist' and Trend Forecaster for Mimi Zine.
+      contents: `Act as a 'Cultural Alchemist' and Trend Forecaster for Mimi.
       Perform 'Deep Scrying' on the topic: ${topic}.
       
       OPERATING PRINCIPLES:

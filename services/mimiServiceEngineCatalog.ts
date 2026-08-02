@@ -126,7 +126,7 @@ const explainMimiServiceEngine = (output: MimiServiceEngineOutput): Explanation 
   reasoning: [
     "The engine is named by product capability rather than implementation vendor.",
     "Provider, storage, and model-specific details are treated as adapters.",
-    "MimiZine evidence governance is attached to the engine output.",
+    "Mimi evidence governance is attached to the engine output.",
   ],
   userFlowBenefit: "As a creator, you can move from artifact evidence to creative output without Mimi making opaque identity claims or locking the workflow to one model provider.",
 });
