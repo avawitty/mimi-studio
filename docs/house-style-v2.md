@@ -18,24 +18,24 @@ Use `data-surface="public"` on Front Page, Share, Signature, Stand, and public s
 |-------|--------|-----------|
 | Field | `--mimi-field` `#FFFFFF` | `--mimi-worktable` `#FAFAFA` |
 | Ink | `--mimi-ink` `#0A0A0A` | same |
-| Olive | `--mimi-olive` `#5A5A40` | folio / press only |
+| Olive | `--mimi-olive` `#5A5A40` | folio / press primary accent |
 | Stone | `--mimi-stone` `#78716C` | metadata |
 | Hairline | `--mimi-hairline` `#D4D4D4` | column rules |
+| Light blue | `--mimi-cobalt` `#9BB8CE` | Accent C — marks / stamps only |
 | Grain | cool tooth ≤12% opacity | optional |
-| Cobalt | `--mimi-cobalt` `#9BB8CE` | light atmospheric blue |
-| Cobalt deep | `--mimi-cobalt-deep` `#6A8AA4` | soft depth (not navy) |
-| Cobalt mist | `--mimi-cobalt-mist` `#E8F0F6` | pale luminous fog |
-| Cobalt haze | `--mimi-cobalt-haze` | airy fog wash |
-| Gilt | `--mimi-gilt` `#C4B08A` | art-deco feminine whisper |
+
+## Accent map
+
+1. **Olive** — primary mark / diamond / press accent  
+2. **Stone** — metadata  
+3. **Light blue** — secondary accent (registry, Filed stamps, geometry dots)  
+4. **Manila folder** — spy motif on Captive Sentinel, Keep Tabs, colophon tab — see `prd/aesthetic-signal-underarchive.md`
 
 ## Signal Underarchive (nod)
 
-Controlled MKUltra / surveillance / monolithic cobalt / rococo whisper — see `prd/aesthetic-signal-underarchive.md`.
-
-- Public face: registry corners + cobalt mark + gilt hairline only
-- Worktables: soft cobalt haze vignette OK
-- Oracle / Dolls: full denser language remains theirs
-- Never purple glow or cream/terracotta lifestyle fill
+- House style first; manila + light blue are **nods**, not a reskin
+- Signature: ticket notches, olive geometry, light-blue secondary, soft dossier tab
+- Never purple glow or cream/terracotta lifestyle fill on public plates
 
 ## Anti-drift checklist
 
@@ -43,9 +43,9 @@ Controlled MKUltra / surveillance / monolithic cobalt / rococo whisper — see `
 - [ ] Wordmark is `Mimi`, not `MIMI`
 - [ ] No large warm-cream panel as primary public field
 - [ ] No terracotta / purple / glow on public face
-- [ ] Olive / cobalt are accents only, not theme fills
+- [ ] Olive / light blue are accents only, not theme fills
+- [ ] Manila folder stays on dossier surfaces (not Front Page hero)
 - [ ] Cards avoided unless needed for interaction
-- [ ] Signal Underarchive stays a nod, not a full cyberdeck reskin
 
 ## Oracle
 

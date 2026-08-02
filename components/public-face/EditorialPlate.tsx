@@ -1,9 +1,7 @@
 import React from "react";
 import { MimiWordmark } from "./MimiWordmark";
 import { PublicCTA } from "./PublicCTA";
-import { ColumnRule } from "./ColumnRule";
 import { PressMark } from "./PressMark";
-import { RegistryCorners } from "./RegistryCorners";
 
 type EditorialPlateProps = {
   thesis: string;
@@ -19,7 +17,7 @@ type EditorialPlateProps = {
 
 /**
  * One-composition entry plate: brand + thesis + one action + dominant visual.
- * PRD-02 / PRD-07.
+ * House style first; light blue is accent-only (PRD-02 / PRD-07).
  */
 export const EditorialPlate: React.FC<EditorialPlateProps> = ({
   thesis,
@@ -35,7 +33,6 @@ export const EditorialPlate: React.FC<EditorialPlateProps> = ({
     <section
       className={`relative grid grid-cols-1 lg:grid-cols-12 min-h-[min(100dvh,920px)] ${className}`}
     >
-      <RegistryCorners tone="cobalt" />
       <div className="lg:col-span-5 flex flex-col justify-between gap-10 px-6 md:px-12 py-12 md:py-16 border-b lg:border-b-0 lg:border-r border-[var(--mimi-hairline,#d4d4d4)]">
         <div className="space-y-8">
           {showWordmark && <MimiWordmark size="lg" as="h1" />}
@@ -51,13 +48,15 @@ export const EditorialPlate: React.FC<EditorialPlateProps> = ({
           </div>
           <PublicCTA onClick={onAction}>{actionLabel}</PublicCTA>
         </div>
-        <div className="space-y-3">
-          <div className="mimi-deco-fan" aria-hidden />
-          <PressMark label={folioLabel} tone="cobalt" />
+        <div className="flex items-center gap-4">
+          <PressMark label={folioLabel} tone="olive" />
+          <span
+            aria-hidden
+            className="w-1.5 h-1.5 rounded-full bg-[var(--mimi-cobalt,#9BB8CE)]"
+          />
         </div>
       </div>
-      <div className="lg:col-span-7 relative min-h-[42vh] lg:min-h-0 overflow-hidden mimi-cobalt-field">
-        <div className="absolute inset-0 mimi-cobalt-haze" aria-hidden />
+      <div className="lg:col-span-7 relative min-h-[42vh] lg:min-h-0 overflow-hidden bg-[var(--mimi-worktable,#fafafa)]">
         <div className="absolute inset-0">{visual}</div>
       </div>
     </section>

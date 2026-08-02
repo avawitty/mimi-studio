@@ -3,18 +3,20 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Folder, ExternalLink, Copy, Check, X } from 'lucide-react';
 
-// Manila dossier palette — a deliberate skeuomorphic motif, kept to a tight set.
+// Manila dossier palette — spy × folder motif; light blue is house Accent C.
 const MANILA = {
-  tab: '#DCCF9E',
-  body: '#E8DCB5',
-  bodyEdge: '#C9BA86',
-  sheet: '#F7F3E8',
-  sheetEdge: '#D8CBA0',
+  tab: 'var(--mimi-manila-tab, #E8DCB5)',
+  body: 'var(--mimi-manila-body, #F0E6C8)',
+  bodyEdge: 'var(--mimi-manila-edge, #C9BA86)',
+  sheet: 'var(--mimi-manila-sheet, #F7F3E8)',
+  sheetEdge: 'var(--mimi-manila-edge, #D8CBA0)',
   ink: '#232018',
   inkSoft: '#3A352A',
   label: '#8A7F5C',
-  labelStrong: '#5C5334',
+  labelStrong: 'var(--mimi-manila-ink, #5C5334)',
   stamp: '#8B2E2E',
+  signal: 'var(--mimi-cobalt, #9BB8CE)',
+  signalDeep: 'var(--mimi-cobalt-deep, #6A8AA4)',
 };
 
 const detectSource = () => {
@@ -117,7 +119,7 @@ export const CaptiveSentinel: React.FC<{ onClose: () => void }> = ({ onClose }) 
               </div>
               <span
                 className="font-mono text-[8px] uppercase tracking-[0.2em] font-black px-2 py-1 border"
-                style={{ color: MANILA.stamp, borderColor: MANILA.stamp }}
+                style={{ color: MANILA.signalDeep, borderColor: MANILA.signal }}
               >
                 Restricted
               </span>
@@ -128,10 +130,10 @@ export const CaptiveSentinel: React.FC<{ onClose: () => void }> = ({ onClose }) 
               className="paper-texture relative border"
               style={{ background: MANILA.sheet, borderColor: MANILA.sheetEdge }}
             >
-              {/* Angled stamp */}
+              {/* Angled stamp — light-blue signal accent on manila sheet */}
               <div
-                className="absolute right-3 top-3 -rotate-6 border-2 px-2 py-1 opacity-85 pointer-events-none"
-                style={{ color: MANILA.stamp, borderColor: MANILA.stamp }}
+                className="absolute right-3 top-3 -rotate-6 border-2 px-2 py-1 opacity-90 pointer-events-none"
+                style={{ color: MANILA.signalDeep, borderColor: MANILA.signal }}
               >
                 <span className="font-mono text-[8px] uppercase tracking-[0.2em] font-black">
                   In-App Capture

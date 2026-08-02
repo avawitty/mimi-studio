@@ -77,14 +77,28 @@ export const KeepTabsButton: React.FC<KeepTabsButtonProps> = ({
   if (variant === "panel") {
     return (
       <div
-        className={`border border-nous-border/35 bg-[#F7F3EA]/80 dark:bg-white/[0.03] p-4 text-left ${className}`}
+        className={`border p-4 text-left ${className}`}
+        style={{
+          background: "var(--mimi-manila-sheet, #F7F3E8)",
+          borderColor: "var(--mimi-manila-edge, #C9BA86)",
+        }}
       >
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 shrink-0 border border-nous-border/40 bg-[#E8DFC8]/60 dark:bg-white/5 p-2">
-            <FolderOpen size={14} className="text-nous-subtle" strokeWidth={1.5} />
+          <div
+            className="mt-0.5 shrink-0 border p-2"
+            style={{
+              background: "var(--mimi-manila-tab, #E8DCB5)",
+              borderColor: "var(--mimi-manila-edge, #C9BA86)",
+            }}
+          >
+            <FolderOpen
+              size={14}
+              className="text-[var(--mimi-cobalt-deep,#6A8AA4)]"
+              strokeWidth={1.5}
+            />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-nous-subtle">
+            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-manila-ink,#5C5334)]">
               Public record · ongoing
             </p>
             <h3 className="font-serif text-lg mt-1">Keep Tabs</h3>

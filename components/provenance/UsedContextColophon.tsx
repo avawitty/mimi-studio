@@ -11,7 +11,7 @@ import {
 import { useUser } from "../../contexts/UserContext";
 import { ColumnRule } from "../public-face/ColumnRule";
 import { PressMark } from "../public-face/PressMark";
-import { RegistryCorners } from "../public-face/RegistryCorners";
+import { DossierTab } from "../public-face/DossierTab";
 import { ApprovalStamp } from "../motion/ApprovalStamp";
 
 interface UsedContextColophonProps {
@@ -62,25 +62,32 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
 
   return (
     <aside
-      className={`mimi-colophon mimi-cobalt-haze relative border-t border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)] ${className}`}
+      className={`mimi-colophon relative border-t border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)] ${className}`}
       aria-label="Used Context colophon"
     >
-      <RegistryCorners tone="cobalt" />
       <ApprovalStamp triggerKey={stampKey} />
+
+      <div className="px-4 md:px-6 pt-3">
+        <DossierTab label="Mimi // Colophon" classify="Registry" />
+      </div>
 
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full text-left px-4 md:px-6 py-4 flex items-start justify-between gap-4 hover:bg-black/[0.02] transition-colors"
+        className="w-full text-left px-4 md:px-6 py-4 flex items-start justify-between gap-4 hover:bg-black/[0.02] transition-colors border border-t-0"
+        style={{
+          borderColor: "var(--mimi-manila-edge, #C9BA86)",
+          background:
+            "linear-gradient(180deg, var(--mimi-manila-sheet, #F7F3E8) 0%, var(--mimi-field, #ffffff) 42%)",
+        }}
       >
         <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-3">
-            <span className="font-sans text-[9px] uppercase tracking-[0.3em] font-semibold text-[var(--mimi-cobalt-deep,#6A8AA4)]">
-              Colophon
+            <span className="font-sans text-[9px] uppercase tracking-[0.3em] font-semibold text-[var(--mimi-olive,#5A5A40)]">
+              Used Context
             </span>
-            <PressMark label="Registry" tone="cobalt" />
+            <PressMark label="Filed" tone="cobalt" />
           </div>
-          <div className="mimi-deco-fan" aria-hidden />
           <p className="font-serif italic text-sm md:text-base text-[var(--mimi-ink,#0a0a0a)]">
             {italicLine}
           </p>

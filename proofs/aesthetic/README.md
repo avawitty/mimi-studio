@@ -35,7 +35,7 @@ These are **direction boards**, not production pixel specs. Implementation shoul
 | `25-light-cobalt-ui.jpg` | Light cobalt / deco UI application |
 | `26-light-cobalt-mobile-deco.jpg` | Mobile light cobalt + deco plate |
 
-Visual language target: high-contrast black/white, olive/stone accents, **light cobalt mist** + soft gilt deco, Cormorant + Geist, column rules, editorial-archive discipline — not cream/lifestyle cliché, and not “Mimi as a print shop.”
+Visual language target: high-contrast black/white, **olive + light blue accents**, spy × Manila folder nods on dossier surfaces, Cormorant + Geist, column rules, editorial-archive discipline — not cream/lifestyle cliché, and not “Mimi as a print shop.”
 
 **Wordmark:** title-case **Mimi** (not all-caps MIMI). Proofs regenerated to match.
 

@@ -28,12 +28,18 @@
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
     --mimi-grain-opacity: 0.08;
-    /* Signal Underarchive — light cobalt mist + art-deco feminine whisper */
-    --mimi-cobalt: #9bb8ce; /* light atmospheric blue */
-    --mimi-cobalt-deep: #6a8aa4; /* soft depth (not navy) */
-    --mimi-cobalt-mist: #e8f0f6; /* pale luminous fog */
-    --mimi-cobalt-haze: rgba(155, 184, 206, 0.38);
-    --mimi-gilt: #c4b08a; /* softer deco gilt */
+    /* Accent C — light blue (peer to olive; not a theme fill) */
+    --mimi-cobalt: #9bb8ce;
+    --mimi-cobalt-deep: #6a8aa4;
+    --mimi-cobalt-mist: #e8f0f6;
+    --mimi-cobalt-haze: rgba(155, 184, 206, 0.22);
+    --mimi-gilt: #c4b08a;
+    /* Spy × Manila folder motif (Captive Sentinel / dossier nods) */
+    --mimi-manila-tab: #e8dcb5;
+    --mimi-manila-body: #f0e6c8;
+    --mimi-manila-edge: #c9ba86;
+    --mimi-manila-sheet: #f7f3e8;
+    --mimi-manila-ink: #5c5334;
 
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
@@ -57,11 +63,16 @@
     --mimi-olive: #5a5a40;
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
-    --mimi-cobalt: #a8c4d6; /* Light cobalt on dark chrome */
+    --mimi-cobalt: #a8c4d6;
     --mimi-cobalt-deep: #5a7a92;
     --mimi-cobalt-mist: #eef4f8;
-    --mimi-cobalt-haze: rgba(155, 184, 206, 0.42);
+    --mimi-cobalt-haze: rgba(155, 184, 206, 0.28);
     --mimi-gilt: #c4b08a;
+    --mimi-manila-tab: #c9ba86;
+    --mimi-manila-body: #3a352a;
+    --mimi-manila-edge: #8a7f5c;
+    --mimi-manila-sheet: #2a261c;
+    --mimi-manila-ink: #e8dcb5;
     --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
   }
 
@@ -224,7 +235,7 @@
       radial-gradient(ellipse 100% 90% at 50% 50%, var(--mimi-cobalt, #9bb8ce) 0%, var(--mimi-cobalt-deep, #6a8aa4) 72%, #8aa8be 100%);
   }
 
-  /* Soft art-deco feminine fan — gilt + light cobalt arcs */
+  /* Soft art-deco feminine fan — gilt + light blue arcs (accent only) */
   .mimi-deco-fan {
     width: 3.25rem;
     height: 1rem;
@@ -233,6 +244,21 @@
       radial-gradient(ellipse 85% 115% at 50% 100%, transparent 44%, var(--mimi-cobalt, #9bb8ce) 45%, var(--mimi-cobalt, #9bb8ce) 47.5%, transparent 48.5%),
       radial-gradient(ellipse 55% 90% at 50% 100%, transparent 52%, color-mix(in srgb, var(--mimi-gilt, #c4b08a) 70%, transparent) 53%, transparent 56%);
     opacity: 0.9;
+  }
+
+  /* Ticket / plate notch corners — Signature collectible */
+  .mimi-ticket-plate {
+    --ticket-notch: 10px;
+    clip-path: polygon(
+      var(--ticket-notch) 0%,
+      calc(100% - var(--ticket-notch)) 0%,
+      100% var(--ticket-notch),
+      100% calc(100% - var(--ticket-notch)),
+      calc(100% - var(--ticket-notch)) 100%,
+      var(--ticket-notch) 100%,
+      0% calc(100% - var(--ticket-notch)),
+      0% var(--ticket-notch)
+    );
   }
 
   .mimi-gilt-rule {

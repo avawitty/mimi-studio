@@ -44,6 +44,11 @@ export default {
           'cobalt-deep': 'var(--mimi-cobalt-deep)',
           'cobalt-mist': 'var(--mimi-cobalt-mist)',
           gilt: 'var(--mimi-gilt)',
+          'manila-tab': 'var(--mimi-manila-tab)',
+          'manila-body': 'var(--mimi-manila-body)',
+          'manila-edge': 'var(--mimi-manila-edge)',
+          'manila-sheet': 'var(--mimi-manila-sheet)',
+          'manila-ink': 'var(--mimi-manila-ink)',
         },
         nous: {
           base: 'var(--nous-base)',

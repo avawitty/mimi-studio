@@ -14,7 +14,7 @@ Cormorant + Geist + grain is already Mimi, but token usage drifts into warm crea
 
 ## Goals
 
-1. Lock a **high-contrast black/white** base with **olive `#5A5A40`** and **stone `#78716c`** as the only accents.
+1. Lock a **high-contrast black/white** base with **olive `#5A5A40`**, **stone `#78716c`**, and **light blue `#9BB8CE`** as accents (olive primary; blue secondary).
 2. Reduce warm-cream panel surface area; prefer white field + hairline rules.
 3. Keep paper grain as a **quiet print tooth**, not a beige wash.
 4. Publish an anti-drift checklist for designers/agents.
@@ -36,6 +36,8 @@ Cormorant + Geist + grain is already Mimi, but token usage drifts into warm crea
 | Subtle | `#404040` | Body secondary |
 | Accent A | Olive `#5A5A40` | Issue marks, provenance accent, rare emphasis |
 | Accent B | Stone `#78716C` | Metadata, quiet UI chrome |
+| Accent C | Light blue `#9BB8CE` | Registry / Filed stamps, geometry dots — not theme fills |
+| Manila (motif) | `#E8DCB5` family | Spy × folder nod on Captive Sentinel / Keep Tabs / colophon — not public hero field |
 | Border | `#E5E5E5` → prefer `#D4D4D4` hairlines | Column rules over filled panels |
 | Grain | Cool/neutral texture @ ≤12% opacity | Not warm cream paper fill |
 
