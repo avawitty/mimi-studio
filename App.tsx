@@ -71,7 +71,10 @@ import { archiveManager } from "./services/archiveManager";
 import { SUPERINTELLIGENCE_PROMPTS } from "./constants";
 import { AnalysisDisplay } from "./components/AnalysisDisplay";
 import { ElevatorLoader } from "./components/ElevatorLoader";
-import { ViewSkeleton } from "./components/loaders/ViewSkeleton";
+import { AppShell } from "./components/system/AppShell";
+import { ChamberSkeleton } from "./components/system/ChamberSkeleton";
+import { SurveillanceOverlay } from "./components/system/SurveillanceOverlay";
+import { Wayfinder } from "./components/navigation/Wayfinder";
 import { UserProvider, useUser } from "./contexts/UserContext";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { AgentProvider, useAgents } from "./contexts/AgentContext";
@@ -80,6 +83,7 @@ import { canonicalizeMimiRoute } from "./lib/productCanon";
 import { LegalDocumentPage } from "./components/LegalDocumentPage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useTactileAudio } from "./hooks/useTactileAudio";
+import { useChamber } from "./hooks/useChamber";
 
 // Lazy load views to reduce initial request count and prevent 429 errors
 import { MobileProfileModal } from "./components/MobileProfileModal";
@@ -350,7 +354,6 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Bell,
   Sparkles,
-  LayoutGrid,
   User,
   Menu,
   X,
@@ -470,12 +473,6 @@ const NavigationDrawer: React.FC<{
   const { user } = useUser();
   const { currentPalette, toggleMode } = useTheme();
   const isDark = currentPalette?.isDark;
-  const recommendedPath = [
-    { number: "01", label: "Collect", note: "Bring in source material", mode: "scribe" },
-    { number: "02", label: "Shape", note: "Find the editorial angle", mode: "the-edit" },
-    { number: "03", label: "Create", note: "Develop the issue", mode: "studio" },
-    { number: "04", label: "Publish", note: "Prepare the release", mode: "the-press" },
-  ];
 
   return (
     <AnimatePresence>
@@ -518,6 +515,12 @@ const NavigationDrawer: React.FC<{
                 <X size={16} strokeWidth={1.5} />
               </button>
             </div>
+
+            <Wayfinder
+              viewMode={viewMode}
+              onNavigate={handleNav}
+              disabled={isGenerating}
+            />
 
             {/* High Latency / Generation Guard Banner */}
             {isGenerating && (
@@ -2311,79 +2314,7 @@ export const App: React.FC = () => {
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
-
-  const getChamber = (mode: string) => {
-    if (["studio", "moodboard", "darkroom", "private-studio"].includes(mode)) return "create";
-    if (
-      [
-        "oracle",
-        "geo_engine",
-        "thimble",
-        "archival",
-        "threads",
-        "latent-constellation",
-        "the-lens",
-        "residue",
-        "intel-hub",
-        "forecast",
-      ].includes(mode)
-    )
-      return "reflect";
-    if (
-      [
-        "tailor",
-        "celestial-calibration",
-        "loom",
-        "action-board",
-        "the-edit",
-        "the-press",
-        "wardrobe",
-        "mimi-drop",
-      ].includes(mode)
-    )
-      return "refine";
-    if (
-      [
-        "signature",
-        "ward",
-        "profile",
-        "taste-graph",
-        "pocket",
-        "scribe",
-        "mimi-dolls",
-        "mimi-rip",
-        "atelier",
-        "house",
-        "residue",
-        "intel-hub",
-      ].includes(mode)
-    )
-      return "signature";
-    if (["nebula", "proscenium", "observatory", "mean-median-mode"].includes(mode))
-      return "observe";
-    return "system";
-  };
-
-  const chamber = getChamber(viewMode);
-
-  const ChamberOverlay = ({ chamber }: { chamber: string }) => {
-    if (chamber === "reflect") {
-      return (
-        <div className="absolute inset-0 pointer-events-none opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] z-0 mix-blend-overlay" />
-      );
-    }
-    if (chamber === "refine") {
-      return (
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] z-0 mix-blend-overlay" />
-      );
-    }
-    if (chamber === "signature") {
-      return (
-        <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')] z-0 mix-blend-overlay" />
-      );
-    }
-    return null;
-  };
+  const chamber = useChamber(viewMode);
 
   return (
     <IntelligenceGateContext.Provider value={gateValue}>
@@ -2495,19 +2426,6 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      {appState !== AppState.REVEALED && viewMode !== "studio" && (
-        <StudioChrome
-          theme={currentPalette.isDark ? "dark" : "light"}
-          onToggleTheme={toggleMode}
-          onOpenMenu={() => setIsNavOpen(true)}
-          viewMode={viewMode}
-          isGenerating={appState === AppState.THINKING}
-          isHighLatency={(systemStatus?.latency ?? 0) > 250 || systemStatus?.oracle === 'saturated'}
-          pocketStashOpen={pocketStashOpen}
-        />
-      )}
-
       <MessyPocketStash
         open={pocketStashOpen}
         onClose={() => {
@@ -2517,67 +2435,25 @@ export const App: React.FC = () => {
         onOpenRegistry={() => setViewMode("pocket")}
       />
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Binder spine sidebar */}
-        {appState !== AppState.REVEALED && (
-          <button
-            type="button"
-            onClick={() => setIsNavOpen(!isNavOpen)}
-            aria-expanded={isNavOpen}
-            aria-label="Toggle Mimi Canon Menu"
-            title="Toggle Mimi Canon Menu"
-            className="w-16 bg-black flex flex-col items-center py-6 border-r border-stone-900 relative z-20 hidden md:flex cursor-pointer hover:bg-stone-950 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/80 text-left"
-          >
-            <div className="flex flex-col items-center justify-between h-full select-none w-full relative z-10 text-stone-300 pointer-events-none">
-              <div className="flex flex-col items-center gap-1.5 mt-2">
-                <div className="w-8 h-8 rounded-full border border-stone-700 flex items-center justify-center bg-[#1c1c1a]/50 text-[#f3f1ea]">
-                  <LayoutGrid size={14} strokeWidth={1.5} />
-                </div>
-                <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-black">MENU</span>
-              </div>
-
-              <div className="flex-1 flex items-center justify-center py-8 relative w-full">
-                <div className="binder-spine-rod absolute left-1/2 -translate-x-1/2" aria-hidden>
-                  <span className="binder-spine-stud" style={{ top: "18%" }} />
-                  <span className="binder-spine-stud" style={{ bottom: "18%" }} />
-                </div>
-                <div
-                  className="absolute left-2 top-[18%] bottom-[18%] w-0.5 opacity-50"
-                  style={{
-                    background:
-                      "repeating-linear-gradient(to bottom, #fff 0 2px, transparent 2px 12px)",
-                  }}
-                  aria-hidden
-                />
-              </div>
-
-              <div className="flex flex-col items-center gap-1 font-mono text-[7px] text-stone-500 mb-2">
-                <span>FOLIO</span>
-                <span className="text-[9px] text-[#f3f1ea]">◎</span>
-              </div>
-            </div>
-          </button>
-        )}
-
-        {/* Main Content Area */}
-        <main
-          className={`flex-1 flex flex-col relative ${
-            ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio", "brand-intake"].includes(viewMode)
-              ? "overflow-hidden min-h-0 pb-0 h-full"
-              : viewMode === "mimi-rip" || viewMode === "scry"
-                ? "overflow-hidden min-h-0 pb-0 h-full bg-[#050506]"
-                : [
-                      "editorial-home",
-                      "stand",
-                      "signature",
-                      "showcase",
-                      "archival",
-                    ].includes(viewMode)
-                  ? "overflow-y-auto bg-nous-base pb-8 md:pb-0 mimi-page-pad mimi-page-pad--public"
-                  : // Modest bottom pad — Studio owns its own nav clearance; do not reserve 72px here
-                    "overflow-y-auto bg-nous-base pb-[max(1.25rem,env(safe-area-inset-bottom))] md:pb-0 mimi-page-pad"
-          }`}
-        >
+      <AppShell
+        viewMode={viewMode}
+        hideBinder={appState === AppState.REVEALED}
+        menuOpen={isNavOpen}
+        onToggleMenu={() => setIsNavOpen(!isNavOpen)}
+        chrome={
+          appState !== AppState.REVEALED && viewMode !== "studio" ? (
+            <StudioChrome
+              theme={currentPalette.isDark ? "dark" : "light"}
+              onToggleTheme={toggleMode}
+              onOpenMenu={() => setIsNavOpen(true)}
+              viewMode={viewMode}
+              isGenerating={appState === AppState.THINKING}
+              isHighLatency={(systemStatus?.latency ?? 0) > 250 || systemStatus?.oracle === 'saturated'}
+              pocketStashOpen={pocketStashOpen}
+            />
+          ) : null
+        }
+      >
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (
             <div className="w-full bg-[#1A1A1A] text-[#F5F5F0] border-b border-[#333333] px-6 py-3 flex items-center justify-between z-40 relative">
               <div className="flex items-center gap-3">
@@ -2623,7 +2499,12 @@ export const App: React.FC = () => {
               exit={{ opacity: 0, y: isStandalonePwaShell ? 0 : -8 }}
               transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
-              <ChamberOverlay chamber={chamber} />
+              <SurveillanceOverlay
+                family={chamber.family}
+                quiet={chamber.quietChrome}
+                voidPlate={chamber.isDarkPlate}
+                signalDense={chamber.signalDense}
+              />
               <AnimatePresence>
                 {appState === AppState.THINKING && (
                   <ElevatorLoader
@@ -2632,7 +2513,15 @@ export const App: React.FC = () => {
                   />
                 )}
               </AnimatePresence>
-              <Suspense fallback={<ViewSkeleton />}>
+              <Suspense
+                fallback={
+                  <ChamberSkeleton
+                    family={chamber.family}
+                    voidPlate={chamber.isDarkPlate}
+                    label={chamber.module?.name || currentTitle}
+                  />
+                }
+              >
                 {appState === AppState.REVEALED && zineMetadata ? (
                   <AnalysisDisplay
                     metadata={zineMetadata}
@@ -2850,8 +2739,7 @@ export const App: React.FC = () => {
           </AnimatePresence>
           <SelectionMemoryCapture />
           <CookieConsentBanner />
-        </main>
-      </div>
+      </AppShell>
 
       {/* GLOBAL RESPONSIVE RIGHT-SIDE SLIDING DRAWER MENU */}
       <NavigationDrawer

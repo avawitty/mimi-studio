@@ -3,20 +3,11 @@ import { GripVertical, Menu, Moon, Sparkles, Sun, User, Layers } from "lucide-re
 import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
-
-/** Routes that should read as editorial plates — quieter chrome, less icon density */
-const PUBLIC_FACE_MODES = new Set([
-  "editorial-home",
-  "stand",
-  "signature",
-  "showcase",
-  "archival",
-  "mimi-rip",
-  "scry",
-]);
-
-/** Public faces that sit on a forced-dark plate (chrome must match) */
-const DARK_PLATE_MODES = new Set(["mimi-rip", "scry"]);
+import {
+  CREATOR_PATH,
+  DARK_PLATE_MODES,
+  PUBLIC_FACE_MODES,
+} from "../../lib/design-system";
 
 export const StudioChrome: React.FC<{
   theme: StudioTheme;
@@ -69,12 +60,10 @@ export const StudioChrome: React.FC<{
     };
   }, []);
 
-  const creatorPath = [
-    { label: "Collect", modes: ["scribe", "darkroom"] },
-    { label: "Shape", modes: ["pocket", "wardrobe", "the-edit", "tailor"] },
-    { label: "Create", modes: ["studio", "briefs", "quiet-studio", "moodboard"] },
-    { label: "Publish", modes: ["the-press", "editorial-home"] },
-  ];
+  const creatorPath = CREATOR_PATH.map((step) => ({
+    label: step.label,
+    modes: [...step.modes],
+  }));
   const activePathIndex = Math.max(
     0,
     creatorPath.findIndex((step) => step.modes.includes(viewMode)),
