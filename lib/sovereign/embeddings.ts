@@ -4,8 +4,8 @@
  */
 import { cosineSimilarity } from "../embeddingMath.js";
 import { modelFor } from "../../services/modelConfig.js";
-import type { ZineMetadata } from "../../types";
-import { getSovereignDb } from "./db";
+import type { ZineMetadata } from "../../types.js";
+import { getSovereignDb } from "./db.js";
 
 const SEMANTIC_CANDIDATE_CAP = 200;
 const MIN_SEMANTIC_SCORE = 0.18;

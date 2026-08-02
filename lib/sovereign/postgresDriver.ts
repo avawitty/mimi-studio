@@ -6,10 +6,10 @@ import {
   type SovereignDriver,
   type SovereignRunResult,
   type SovereignStatement,
-} from "./driver";
+} from "./driver.js";
 
 /** Convert `?` placeholders to Postgres `$1`, `$2`, … */
-const toPg = (sql: string): string => {
+export const toPgPlaceholders = (sql: string): string => {
   let i = 0;
   return sql.replace(/\?/g, () => {
     i += 1;
@@ -28,12 +28,15 @@ export const normalizePostgresConnectionString = (connectionString: string): str
     const url = new URL(connectionString);
     url.searchParams.delete("sslmode");
     url.searchParams.delete("uselibpqcompat");
-    // Keep channel_binding if present; Neon pooler is fine without it.
+    url.searchParams.delete("channel_binding");
+    url.searchParams.delete("ssl");
     return url.toString();
   } catch {
     return connectionString
       .replace(/([?&])sslmode=[^&]*/gi, "$1")
       .replace(/([?&])uselibpqcompat=[^&]*/gi, "$1")
+      .replace(/([?&])channel_binding=[^&]*/gi, "$1")
+      .replace(/([?&])ssl=[^&]*/gi, "$1")
       .replace(/\?&/, "?")
       .replace(/[?&]$/, "");
   }
@@ -70,7 +73,12 @@ export const openPostgresDriver = async (connectionString: string): Promise<Sove
     });
   });
 
-  await pool.query(SCHEMA_SQL);
+  // Neon/pg often reject multi-statement queries — run one at a time.
+  for (const statement of SCHEMA_SQL.split(";")
+    .map((s) => s.trim())
+    .filter(Boolean)) {
+    await pool.query(statement);
+  }
   for (const sql of INDEX_SQL) {
     try {
       await pool.query(sql);
@@ -80,7 +88,7 @@ export const openPostgresDriver = async (connectionString: string): Promise<Sove
   }
 
   const prepare = (sql: string): SovereignStatement => {
-    const text = toPg(sql);
+    const text = toPgPlaceholders(sql);
     return {
       run: async (...params: unknown[]): Promise<SovereignRunResult> => {
         const result: QueryResult = await pool.query(text, params);
@@ -120,7 +128,7 @@ export const openPostgresDriver = async (connectionString: string): Promise<Sove
         await client.query("BEGIN");
         const originalPrepare = driver.prepare;
         driver.prepare = (sql: string): SovereignStatement => {
-          const text = toPg(sql);
+          const text = toPgPlaceholders(sql);
           return {
             run: async (...params: unknown[]) => {
               const result = await client.query(text, params);
@@ -164,3 +172,6 @@ export const openPostgresDriver = async (connectionString: string): Promise<Sove
   await applySchemaMigrations(driver);
   return driver;
 };
+
+/** @deprecated alias — tests / callers */
+export const stripPgSslQueryParams = normalizePostgresConnectionString;

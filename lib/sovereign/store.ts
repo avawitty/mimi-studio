@@ -1,14 +1,14 @@
-import type { PocketItem, UserProfile, ZineMetadata } from "../../types";
-import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache";
-import { getSovereignDb, isSovereignEnabled, resolveSovereignDbPath } from "./db";
-import { SOVEREIGN_SCHEMA_VERSION } from "./driver";
+import type { PocketItem, UserProfile, ZineMetadata } from "../../types.js";
+import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache.js";
+import { getSovereignDb, isSovereignEnabled, resolveSovereignDbPath } from "./db.js";
+import { SOVEREIGN_SCHEMA_VERSION } from "./driver.js";
 import {
   countIndexedEmbeddings,
   isSovereignGatewayEmbedEnabled,
   scheduleZineEmbedding,
   searchPublicZinesSemantic,
-} from "./embeddings";
-import { emitSovereignEvent } from "./events";
+} from "./embeddings.js";
+import { emitSovereignEvent } from "./events.js";
 
 const COMMUNITY_CAP = 60;
 const FLOOR_CACHE_TTL_MS = 30_000;

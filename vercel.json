@@ -24,6 +24,15 @@
     },
     "api/sovereign/events.ts": {
       "maxDuration": 60
+    },
+    "api/sovereign/status.ts": {
+      "maxDuration": 30
+    },
+    "api/sovereign/ping.ts": {
+      "maxDuration": 10
+    },
+    "api/health.ts": {
+      "maxDuration": 30
     }
   },
   "redirects": [

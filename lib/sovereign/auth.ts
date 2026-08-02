@@ -1,6 +1,6 @@
-import { extractSessionCookie } from "../sessionCookie";
-import { extractMimiSessionToken } from "../mimiSessionToken";
-import { getServerFirebaseAdmin } from "../serverFirebaseAdmin";
+import { extractSessionCookie } from "../sessionCookie.js";
+import { extractMimiSessionToken } from "../mimiSessionToken.js";
+import { getServerFirebaseAdmin } from "../serverFirebaseAdmin.js";
 
 export type SovereignAuthVia = "ingest_key" | "id_token" | "session_cookie" | "user_header";
 

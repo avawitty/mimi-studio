@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import {
   INDEX_SQL,
   SCHEMA_SQL,
@@ -8,9 +7,10 @@ import {
   type SovereignDriver,
   type SovereignRunResult,
   type SovereignStatement,
-} from "./driver";
+} from "./driver.js";
 
 export const openSqliteDriver = async (dbPath: string): Promise<SovereignDriver> => {
+  const { DatabaseSync } = await import("node:sqlite");
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec("PRAGMA journal_mode = WAL;");
