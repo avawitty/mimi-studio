@@ -6,15 +6,15 @@ import { logFirestoreError, handleFirestoreError, OperationType } from "./fireba
 
 export { auth, db, storage };
 
-// Test connection on boot to catch "Database not found" early
+// Test connection on boot to catch "Database not found" early.
+// Keep this cheap: firebaseInit already probes once; avoid retry storms that
+// amplify free-tier read quota exhaustion (429 RESOURCE_EXHAUSTED).
 const testConnection = async () => {
-  // Wait a bit for the network and SDK to stabilize
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 3s to 1s
-  
-  let retries = 5; // Increased retries
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  let retries = 2;
   let success = false;
-  
-  // Proactive online listener
+
   if (typeof window !== 'undefined') {
     window.addEventListener('online', async () => {
       console.info("MIMI // Browser Online: Re-enabling Firestore Network...");
@@ -30,17 +30,30 @@ const testConnection = async () => {
   while (retries > 0 && !success) {
     try {
       const { doc, getDocFromServer } = await import('firebase/firestore');
-      
+
       await getDocFromServer(doc(db, 'system', 'connection_test'));
       console.info("MIMI // Connection Test: Success");
       success = true;
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+      const code = typeof error?.code === 'string' ? error.code : '';
+
       // If it's a permission error, we're actually connected!
-      if (errorMessage.includes('permission-denied')) {
+      if (errorMessage.includes('permission-denied') || code === 'permission-denied') {
         console.info("MIMI // Connection Test: Connected (Permission Denied as expected)");
         success = true;
+        break;
+      }
+
+      // Quota / resource exhaustion: stop immediately — no further probes.
+      if (
+        code === 'resource-exhausted' ||
+        errorMessage.includes('RESOURCE_EXHAUSTED') ||
+        errorMessage.includes('Quota exceeded') ||
+        errorMessage.includes('quota')
+      ) {
+        console.warn("MIMI // Connection Test: Firestore quota exhausted; skipping retries.");
+        retries = 0;
         break;
       }
 
@@ -51,18 +64,13 @@ const testConnection = async () => {
       }
 
       console.warn(`MIMI // Connection Test: Attempt failed (${retries} left). Error: ${errorMessage}`);
-      
-      if (retries > 1) {
-        // Linear backoff
-        const delay = 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        // Only log to registry if we've exhausted all retries
-        if (errorMessage.includes('not-found') || errorMessage.includes('offline') || errorMessage.includes('does not exist')) {
-          logFirestoreError(error, OperationType.GET, 'system/connection_test');
-        }
+
+      retries -= 1;
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else if (errorMessage.includes('not-found') || errorMessage.includes('offline') || errorMessage.includes('does not exist')) {
+        logFirestoreError(error, OperationType.GET, 'system/connection_test');
       }
-      retries--;
     }
   }
 };
