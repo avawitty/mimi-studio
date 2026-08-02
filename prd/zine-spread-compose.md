@@ -3,7 +3,7 @@
 **Status**: Implementation  
 **Branch**: `mezine-spread-compose-ba01`  
 **Type**: Zine reader / authoring / export readiness  
-**Related**: `prd/aesthetic-system-overview.md`, `components/ZineLayoutEditor.tsx`, `components/AnalysisDisplay.tsx`
+**Related**: `prd/aesthetic-system-overview.md`, `docs/zine-editorial-intelligence-spec.md`, `components/ZineLayoutEditor.tsx`, `components/AnalysisDisplay.tsx`
 
 ---
 
@@ -32,6 +32,8 @@ Zines are structured AI issues, but Visual Plates render as a fixed L/R template
 - Export manifest carries `pages[]` summaries + `pdfMode: "structured"`.
 - **Hi-fi plate bake at generate** — `bakeZineVisualPlates` runs before `saveZineToProfile` for hi-fi (non-lite) issues.
 - **In-Edit compose** — Issue spreads expands plate list and opens `ZineLayoutEditor` without leaving The Edit.
+
+The editorial contract that decides which pages and spreads should exist before geometry is composed lives in [`docs/zine-editorial-intelligence-spec.md`](../docs/zine-editorial-intelligence-spec.md). This PRD remains responsible for realized page geometry, rendering, and export fidelity.
 
 ## Acceptance
 
