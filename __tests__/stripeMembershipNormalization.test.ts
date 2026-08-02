@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { normalizeStripeMembershipEvent } from "../infrastructure/stripe/normalizeMembershipEvent.js";
 
 const initiationPrice = "price_1TfuI49AUz0q2nVCHuy4k4Sq";
+const initiationAnnualPrice = "price_1Tzntj9AUz0q2nVCO66J6Wps";
 const labPrice = "price_1TfwLC9AUz0q2nVCxNzPtunX";
 
 function subscription(overrides: Record<string, unknown> = {}) {
@@ -216,8 +217,19 @@ describe("Stripe membership normalization", () => {
   });
 
   it("multiplies exact tier allowances for annual invoice periods", async () => {
+    const annualSubscription = subscription({
+      items: {
+        data: [
+          {
+            price: { id: initiationAnnualPrice },
+            current_period_start: 1_785_600_000,
+            current_period_end: 1_817_136_000,
+          },
+        ],
+      },
+    });
     const normalized = await normalizeStripeMembershipEvent(
-      stripeMock(subscription(), "year"),
+      stripeMock(annualSubscription, "year"),
       event("invoice.payment_succeeded", {
         id: "in_annual",
         customer: "cus_123",
@@ -227,7 +239,7 @@ describe("Stripe membership normalization", () => {
           data: [
             {
               amount: 12_000,
-              price: { id: initiationPrice },
+              price: { id: initiationAnnualPrice },
               period: { start: 1_785_600_000, end: 1_817_136_000 },
             },
           ],

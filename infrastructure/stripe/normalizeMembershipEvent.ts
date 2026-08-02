@@ -38,9 +38,9 @@ async function resolvePricePolicy(
     ? getConfiguredStripePricePolicyMap()[priceId]
     : undefined;
   let interval: MimiBillingInterval = configuredPolicy?.interval ?? "month";
-  let rawPlan = configuredPolicy?.plan || (
-    priceId ? MIMI_PRICE_ID_PLAN_MAP[priceId] : null
-  );
+  let rawPlan: string | null | undefined =
+    configuredPolicy?.plan ||
+    (priceId ? MIMI_PRICE_ID_PLAN_MAP[priceId] : null);
   if (priceId) {
     const price = await stripe.prices.retrieve(priceId);
     interval =
