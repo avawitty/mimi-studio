@@ -247,7 +247,7 @@ Cultural → product adapters live under `services/residue/` (Phases 3–7). Sta
 | --- | --- | --- |
 | Scry evidence lanes | `/scry` | Live — archive, web, reading, shadow + honest coverage |
 | Residue Cultural / Emotional | `/residue` | Live vertical slice — offline-first; optional Apify acquire |
-| Observatory / Mean Median Mode | `/observatory`, `/mean-median-mode` | Live vertical slice — Proscenium consent required |
+| Observatory / Mean Median Mode | `/observatory`, `/mean-median-mode` | Live vertical slice — Proscenium consent required; Mesopic Lens demo panel; Forecast culture consumes MMM baselines |
 | The Edit Signal / Issue / Forecast | `/the-edit` | Live — Update 21 panel split; default Signal; `?panel=` |
 | Mimi Dolls shell-first | `/mimi-dolls` | Live — porcelain primary; Shader Lab secondary |
 | Scribe mobile grammar | `/scribe` | Live polished — reduced chrome, Guide in mode bar |

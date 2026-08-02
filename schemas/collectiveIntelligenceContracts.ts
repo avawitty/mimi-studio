@@ -189,6 +189,100 @@ export const meanMedianModeReportSchema = z.object({
   methodology: methodologyRecordSchema.optional(),
 });
 
+/** Phase 6 — weak signals below Mean Median Mode promotion thresholds. */
+export const mesopicModeSchema = z.enum(["starry_eyed", "shadow_fields"]);
+
+export const mesopicFindingSchema = z.object({
+  id: nonEmpty,
+  mode: mesopicModeSchema,
+  canonicalLabel: nonEmpty,
+  category: collectiveSignalCategorySchema,
+  /** Why this is faint — never presented as certainty. */
+  faintnessReason: nonEmpty,
+  sampleSize: z.number().int().nonnegative(),
+  uniqueContributorBand: nonEmpty,
+  relatedSignalIds: z.array(nonEmpty),
+  evidenceNotes: z.array(z.string()).min(1),
+  observedAt: z.number().finite(),
+  methodologyVersion: nonEmpty,
+  demonstration: z.boolean().optional(),
+});
+
+export const mesopicReportSchema = z.object({
+  runId: nonEmpty,
+  status: z.enum(["success", "partial", "empty", "failed", "demonstration"]),
+  windowStart: z.number().finite(),
+  windowEnd: z.number().finite(),
+  findings: z.array(mesopicFindingSchema),
+  whatMayBeMissing: z.array(z.string()).min(1),
+  lastUpdated: z.number().finite(),
+  demonstration: z.boolean().optional(),
+});
+
+/** Phase 7 — approved RSS/Atom freshness spine for Forecast (not Keep Tabs). */
+export const approvedFeedSchema = z.object({
+  id: nonEmpty,
+  title: nonEmpty,
+  url: z.string().url(),
+  approvedAt: z.number().finite(),
+  approvedBy: nonEmpty,
+  topics: z.array(z.string()),
+  active: z.boolean(),
+  notes: z.string().optional(),
+});
+
+export const feedEntrySchema = z.object({
+  id: nonEmpty,
+  feedId: nonEmpty,
+  title: nonEmpty,
+  url: z.string().url(),
+  publishedAt: z.number().finite().optional(),
+  fetchedAt: z.number().finite(),
+  summary: z.string().optional(),
+});
+
+/**
+ * Phase 8 — Forecast consumes observed MMM profiles + external research + optional RSS.
+ * Distinct from Residue per-run forecastAdapter scenarios.
+ */
+export const forecastTrajectorySchema = z.object({
+  id: nonEmpty,
+  label: nonEmpty,
+  hypothesis: nonEmpty,
+  /** Derived from observed change or provider fields — never costume. */
+  velocityHint: z.enum(["Surging", "Rising", "Decaying", "Unknown"]),
+  basedOnSignalIds: z.array(nonEmpty),
+  citations: z.array(
+    z.object({
+      title: nonEmpty,
+      url: z.string().url().optional(),
+    }),
+  ),
+});
+
+export const forecastReportSchema = z.object({
+  runId: nonEmpty,
+  status: z.enum(["success", "partial", "empty", "failed", "speculative", "demonstration"]),
+  evidenceWindowStart: z.number().finite(),
+  evidenceWindowEnd: z.number().finite(),
+  observed: z.array(centralTendencyProfileSchema),
+  external: z
+    .object({
+      synthesis: z.string(),
+      provider: nonEmpty,
+      trendCount: z.number().int().nonnegative(),
+      simulated: z.boolean().optional(),
+    })
+    .optional(),
+  feedEntryCount: z.number().int().nonnegative(),
+  trajectories: z.array(forecastTrajectorySchema),
+  contradictions: z.array(z.string()),
+  methodologyVersion: nonEmpty,
+  whatMayBeMissing: z.array(z.string()).min(1),
+  lastUpdated: z.number().finite(),
+  demonstration: z.boolean().optional(),
+});
+
 export type CollectiveSignalCategory = z.infer<typeof collectiveSignalCategorySchema>;
 export type CyclePosition = z.infer<typeof cyclePositionSchema>;
 export type CentralTendencyProfile = z.infer<typeof centralTendencyProfileSchema>;
@@ -197,6 +291,13 @@ export type ContributionReceipt = z.infer<typeof contributionReceiptSchema>;
 export type ProsceniumPublishConsent = z.infer<typeof prosceniumPublishConsentSchema>;
 export type MethodologyRecord = z.infer<typeof methodologyRecordSchema>;
 export type MeanMedianModeReport = z.infer<typeof meanMedianModeReportSchema>;
+export type MesopicMode = z.infer<typeof mesopicModeSchema>;
+export type MesopicFinding = z.infer<typeof mesopicFindingSchema>;
+export type MesopicReport = z.infer<typeof mesopicReportSchema>;
+export type ApprovedFeed = z.infer<typeof approvedFeedSchema>;
+export type FeedEntry = z.infer<typeof feedEntrySchema>;
+export type ForecastTrajectory = z.infer<typeof forecastTrajectorySchema>;
+export type ForecastReport = z.infer<typeof forecastReportSchema>;
 
 export function safeParseCentralTendencyProfile(data: unknown) {
   return centralTendencyProfileSchema.safeParse(data);
@@ -208,4 +309,16 @@ export function safeParseMeanMedianModeReport(data: unknown) {
 
 export function safeParseProsceniumPublishConsent(data: unknown) {
   return prosceniumPublishConsentSchema.safeParse(data);
+}
+
+export function safeParseMesopicReport(data: unknown) {
+  return mesopicReportSchema.safeParse(data);
+}
+
+export function safeParseForecastReport(data: unknown) {
+  return forecastReportSchema.safeParse(data);
+}
+
+export function safeParseApprovedFeed(data: unknown) {
+  return approvedFeedSchema.safeParse(data);
 }

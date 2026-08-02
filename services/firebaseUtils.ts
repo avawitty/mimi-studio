@@ -503,8 +503,31 @@ export const linkIdentity = async (forceRedirect: boolean = false): Promise<void
 
 import { generateAndStoreZineEmbedding } from "./zineEmbeddingService";
 import { getEditorialCompileExport } from "../lib/editCompileExport";
+import {
+  buildPublishConsent,
+  consentFieldsForZine,
+  type MmmContributionStatus,
+} from "./collective/consent";
+import { buildConsentAwareTransmission } from "./collective/broadcastTransmission";
 
-export const saveZineToProfile = async (uid: string, handle: string, avatar: string | undefined, zine: ZineContent, tone: ToneTag, coverUrl?: string, deep?: boolean, isPublic?: boolean, isLite?: boolean, artifacts?: MediaFile[], originalInput?: string, transmissionsUsed?: any[], isHighFidelity?: boolean, tags?: string[], treatmentId?: string, fragmentsUsed?: string[], usedContextSnapshots?: UsedContextSnapshot[], lineage?: string[]): Promise<string> => {
+export type SaveZineMmmConsent = {
+  contributeToMeanMedianMode: boolean;
+  disclosedAt?: number;
+  disclosureVersion?: string;
+};
+
+type ZineConsentFields = {
+  isPublic: true;
+  contributeToMeanMedianMode: boolean;
+  disclosedAt: number;
+  disclosureVersion: string;
+  mmmContributionStatus: MmmContributionStatus;
+  mmmWithdrawnAt: null;
+  publishedAt: number;
+  timestamp: number;
+};
+
+export const saveZineToProfile = async (uid: string, handle: string, avatar: string | undefined, zine: ZineContent, tone: ToneTag, coverUrl?: string, deep?: boolean, isPublic?: boolean, isLite?: boolean, artifacts?: MediaFile[], originalInput?: string, transmissionsUsed?: any[], isHighFidelity?: boolean, tags?: string[], treatmentId?: string, fragmentsUsed?: string[], usedContextSnapshots?: UsedContextSnapshot[], lineage?: string[], mmmPublishConsent?: SaveZineMmmConsent | null): Promise<string> => {
   const targetUid = uid || 'ghost';
   const targetId = `zine_${targetUid}_${Date.now()}`;
   
@@ -524,11 +547,40 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
 
   const editorialCompile = getEditorialCompileExport(targetUid, true);
 
+  // Silent isPublic without Mean Median Mode disclosure is refused (finishing-pass trust).
+  let stagedPublic = !!isPublic;
+  let consentFields: ZineConsentFields | null = null;
+  if (stagedPublic) {
+    if (!mmmPublishConsent) {
+      console.warn(
+        "MIMI // saveZineToProfile: refused silent public stage — missing Mean Median Mode publish consent. Saving private.",
+      );
+      stagedPublic = false;
+    } else {
+      const consent = buildPublishConsent({
+        artifactId: targetId,
+        contributeToMeanMedianMode: mmmPublishConsent.contributeToMeanMedianMode,
+        disclosedAt: mmmPublishConsent.disclosedAt,
+        disclosureVersion: mmmPublishConsent.disclosureVersion,
+      });
+      consentFields = consentFieldsForZine(consent);
+    }
+  }
+
   const meta: ZineMetadata = {
     id: targetId, userId: uid, userHandle: handle, userAvatar: avatar || null,
     title: zine.title, tone, coverImageUrl: coverUrl || null, timestamp: Date.now(), likes: 0,
-    content: zineWithoutThreadData, isDeepThinking: !!deep, isPublic: !!isPublic, isLite: !!isLite, isHighFidelity: !!isHighFidelity,
-    publishedAt: isPublic ? Date.now() : undefined,
+    content: zineWithoutThreadData, isDeepThinking: !!deep, isPublic: stagedPublic, isLite: !!isLite, isHighFidelity: !!isHighFidelity,
+    publishedAt: stagedPublic ? (consentFields?.publishedAt ?? Date.now()) : undefined,
+    ...(consentFields
+      ? {
+          contributeToMeanMedianMode: consentFields.contributeToMeanMedianMode,
+          disclosedAt: consentFields.disclosedAt,
+          disclosureVersion: consentFields.disclosureVersion,
+          mmmContributionStatus: consentFields.mmmContributionStatus,
+          mmmWithdrawnAt: consentFields.mmmWithdrawnAt,
+        }
+      : {}),
     artifacts: [],
     fragmentsUsed: fragmentsUsed && fragmentsUsed.length > 0 ? fragmentsUsed : [],
     usedContextSnapshots: usedContextSnapshots && usedContextSnapshots.length > 0 ? usedContextSnapshots : undefined,
@@ -632,17 +684,20 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
       console.info("MIMI // saveZineToProfile: Calling updateTasteGraph...");
       updateTasteGraph(uid, 'text', { content: `${zine.title} - ${zine.meta?.intent || ''} - ${zine.pages?.map(p => p.bodyCopy).join(' ')}` });
 
-      if (isPublic) {
-        const transmission = {
-          userId: uid,
-          userHandle: handle,
-          content: zine.title,
-          imageUrl: coverUrl || (zine.pages && zine.pages[0]?.image_url) || '',
-          timestamp: Date.now(),
-          type: 'manifest',
-          likes: 0,
-          zineData: meta
-        };
+      if (stagedPublic && consentFields) {
+        const { transmission } = buildConsentAwareTransmission(
+          {
+            userId: uid,
+            userHandle: handle,
+            content: zine.title,
+            imageUrl: coverUrl || (zine.pages && zine.pages[0]?.image_url) || '',
+            type: 'manifest',
+            likes: 0,
+            zineData: meta,
+            artifactId: targetId,
+          },
+          consentFields.contributeToMeanMedianMode,
+        );
         const cleanTransmission = JSON.parse(JSON.stringify(transmission));
         await addDoc(collection(db, 'public_transmissions'), cleanTransmission);
       }

@@ -31,6 +31,13 @@ import {
   fetchContentForecast,
   type ResearchSynthesisResponse,
 } from "../services/researchService";
+import {
+  buildForecastReport,
+  loadApprovedFeedEntries,
+  loadMeanMedianModeReport,
+} from "../services/collective";
+import type { ForecastReport } from "../schemas/collectiveIntelligenceContracts";
+import { ForecastObservedPanel } from "./forecast/ForecastObservedPanel";
 
 type ForecastScope = "personal" | "company";
 type ForecastVector = "overview" | "content" | "culture";
@@ -62,6 +69,7 @@ export const TheForecast: React.FC<{
   const [forecastingScope, setForecastingScope] = useState<ForecastScope>("personal");
   const [selectedVector, setSelectedVector] = useState<ForecastVector>("overview");
   const [contentForecast, setContentForecast] = useState<ResearchSynthesisResponse | null>(null);
+  const [cultureReport, setCultureReport] = useState<ForecastReport | null>(null);
   const [isPingingLabs, setIsPingingLabs] = useState(false);
 
   useEffect(() => {
@@ -76,6 +84,31 @@ export const TheForecast: React.FC<{
       .finally(() => {
         if (!cancelled) setIsPingingLabs(false);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedVector, contentForecast, apiKeys]);
+
+  useEffect(() => {
+    if (selectedVector !== "culture") return;
+    let cancelled = false;
+    const observed = loadMeanMedianModeReport("demonstration");
+    const feedEntryCount = loadApprovedFeedEntries().length;
+    // Content research may already be loaded; culture still works offline from MMM alone.
+    void (contentForecast
+      ? Promise.resolve(contentForecast)
+      : fetchContentForecast(apiKeys)
+    ).then((external) => {
+      if (cancelled) return;
+      setCultureReport(
+        buildForecastReport({
+          observed,
+          external,
+          feedEntryCount,
+          runId: `forecast-culture-${observed.runId}`,
+        }),
+      );
+    });
     return () => {
       cancelled = true;
     };
@@ -521,31 +554,19 @@ export const TheForecast: React.FC<{
               )}
 
               {selectedVector === "culture" && (
-                <div className="flex flex-col gap-4">
-                  <h2 className="font-serif italic text-2xl flex items-center gap-3">
-                    <Brain size={20} /> Cultural Shifts
-                  </h2>
-                  <div className="border border-dashed border-nous-border bg-nous-surface/40 p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-2 text-nous-subtle">
-                        <Activity size={16} />
-                        <span className="font-mono text-[9px] uppercase tracking-widest">
-                          Awaiting observatory signal
-                        </span>
-                      </div>
-                      <p className="font-serif italic text-lg text-nous-text leading-relaxed">
-                        {FORECAST_COPY.cultureAwaiting}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => go("observatory")}
-                      className="shrink-0 px-4 py-3 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest hover:opacity-90"
-                    >
-                      Open The Observatory
-                    </button>
+                cultureReport ? (
+                  <ForecastObservedPanel
+                    report={cultureReport}
+                    onOpenObservatory={() => go("observatory")}
+                  />
+                ) : (
+                  <div className="flex items-center gap-3 text-nous-subtle py-8">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span className="font-mono text-[10px] uppercase tracking-widest">
+                      Composing cultural forecast from Observatory baselines…
+                    </span>
                   </div>
-                </div>
+                )
               )}
             </>
           )}

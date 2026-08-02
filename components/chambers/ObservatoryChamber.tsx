@@ -1,7 +1,11 @@
 import React from "react";
 import { ChamberShell } from "./ChamberShell";
 import { MeanMedianModePanel } from "../observatory/MeanMedianModePanel";
-import { loadMeanMedianModeReport } from "../../services/collective";
+import { MesopicLensPanel } from "../observatory/MesopicLensPanel";
+import {
+  loadMeanMedianModeReport,
+  loadMesopicReport,
+} from "../../services/collective";
 import {
   MEAN_MEDIAN_MODE_MODULE_ID,
   OBSERVATORY_CHAMBER_MODULE_ID,
@@ -15,6 +19,7 @@ export const ObservatoryChamber: React.FC<{
   focus?: "overview" | "mmm";
 }> = ({ navigate, focus = "mmm" }) => {
   const report = loadMeanMedianModeReport("demonstration");
+  const mesopic = loadMesopicReport("demonstration");
   const moduleId =
     focus === "mmm" ? MEAN_MEDIAN_MODE_MODULE_ID : OBSERVATORY_CHAMBER_MODULE_ID;
 
@@ -45,7 +50,7 @@ export const ObservatoryChamber: React.FC<{
       }
     >
       <div className="h-full overflow-y-auto bg-nous-base">
-        <div className="max-w-5xl mx-auto px-5 md:px-10 py-8 space-y-8">
+        <div className="max-w-5xl mx-auto px-5 md:px-10 py-8 space-y-10">
           <div className="space-y-3 max-w-2xl">
             <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-nous-subtle">
               Mean Median Mode{focus === "overview" ? " · Observatory" : ""}
@@ -56,12 +61,13 @@ export const ObservatoryChamber: React.FC<{
             <p className="font-sans text-[11px] text-nous-subtle leading-relaxed">
               {OBSERVATORY_COPY.residueDisambiguation}
             </p>
-            <p className="font-sans text-[11px] text-nous-subtle leading-relaxed">
-              {OBSERVATORY_COPY.mesopicComingSoon}
-            </p>
           </div>
 
           <MeanMedianModePanel report={report} />
+
+          <div className="border-t border-nous-border pt-10">
+            <MesopicLensPanel report={mesopic} />
+          </div>
         </div>
       </div>
     </ChamberShell>

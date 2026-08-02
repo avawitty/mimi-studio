@@ -80,7 +80,7 @@ export const DEMO_MEAN_MEDIAN_MODE_REPORT = meanMedianModeReportSchema.parse({
   limitations: [...METHODOLOGY_LIMITATIONS_DEFAULT, "This report is a labeled demonstration specimen."],
   whatMayBeMissing: [
     "Live consented Proscenium corpus (not yet aggregated in this environment).",
-    "RSS freshness spine and Mesopic weak-signal promotion (later phases).",
+    "Approved RSS freshness spine entries for Forecast (Phase 7 ingest).",
     "Source-type diversity beyond demonstration fixtures.",
   ],
   lastUpdated: windowEnd,
