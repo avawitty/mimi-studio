@@ -354,6 +354,23 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         ],
       },
       {
+        mode: "forecast",
+        label: "Forecast",
+        note: "aesthetic meteorology · personal & brand drift",
+        keywords: [
+          "forecast",
+          "the forecast",
+          "meteorology",
+          "aesthetic meteorology",
+          "drift",
+          "trends",
+          "cultural shifts",
+          "content forecasting",
+          "weather",
+          "season",
+        ],
+      },
+      {
         mode: "brand-intake",
         label: "Intelligence Report",
         note: "brand intelligence report with format selection",

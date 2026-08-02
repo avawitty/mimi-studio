@@ -73,6 +73,9 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   observatory: "observatory",
   "mean-median-mode": "mean-median-mode",
   "observatory-mmm": "mean-median-mode",
+  forecast: "forecast",
+  "the-forecast": "forecast",
+  "aesthetic-meteorology": "forecast",
   "celestial-calibration": "celestial-calibration",
   celestial: "celestial-calibration",
   natal: "celestial-calibration",
@@ -636,6 +639,35 @@ export const CANON_MODULES: CanonModule[] = [
       "Read the present atmosphere via literal mean, median, and mode — not a leaderboard. Stage on The Proscenium to contribute anonymized structure.",
     notes:
       "Collective Moods is a docs-only conceptual alias. Distinct from Residue per-run MeanMedianModeResult.",
+  },
+  {
+    id: "forecast",
+    name: "Forecast",
+    layer: "chamber",
+    engine: "Aesthetic Meteorology",
+    priority: 9.2,
+    status: "live",
+    canonicalRoute: "/forecast",
+    implementedMode: "forecast",
+    component: "TheForecast",
+    aliases: ["The Forecast", "Aesthetic Meteorology"],
+    inputs: [
+      "profile season",
+      "aesthetic DNA",
+      "GEO drift when calibrated",
+      "taste vector",
+      "optional You.com / AI Gateway for live content vectors",
+    ],
+    generations: [
+      "season / drift overview",
+      "content forecast synthesis (You.com → Mimi Gateway)",
+      "handoffs to Observatory / Residue / GEO",
+    ],
+    outputs: ["forecast overview", "live or empty content trends"],
+    userFlow:
+      "Read personal aesthetic meteorology from calibrated profile signals, then hand off to The Observatory for collective atmosphere or GEO for drift calibration.",
+    notes:
+      "Menu peer of Observatory; narrative child (Observatory’s “what next”). Content Forecasting uses live search/gateway paths with honest empty/offline states — never invent drift scores or costume trends.",
   },
   {
     id: "celestial-calibration",
