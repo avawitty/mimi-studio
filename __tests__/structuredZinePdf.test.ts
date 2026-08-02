@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildStructuredZinePdf, summarizePagesForExport } from "../lib/structuredZinePdf";
-import type { ZineMetadata } from "../types";
+import type { ZineMetadata, ZinePageSpec } from "../types";
+import { makeLegacyZineMetadata } from "./fixtures/zineMetadata";
 
 const base = {
   id: "z1",
@@ -58,5 +59,29 @@ describe("structuredZinePdf", () => {
       sections: ["cover", "reading", "plates"],
     });
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(3);
+  });
+
+  it("hydrates legacy pagesJson and includes every approved page", async () => {
+    const metadata = makeLegacyZineMetadata();
+    const legacyPages = JSON.parse(
+      metadata.content.pagesJson || "[]",
+    ) as ZinePageSpec[];
+    const pages: ZinePageSpec[] = legacyPages.map(
+      (page): ZinePageSpec => ({
+        ...page,
+        image_url: undefined,
+        originalMediaUrl: undefined,
+        assetVariants: undefined,
+      }),
+    );
+    metadata.coverImageUrl = undefined;
+    metadata.content.pages = [];
+    metadata.content.pagesJson = JSON.stringify(pages);
+
+    expect(summarizePagesForExport(metadata)).toHaveLength(2);
+    const doc = await buildStructuredZinePdf(metadata, {
+      sections: ["plates"],
+    });
+    expect(doc.getNumberOfPages()).toBe(2);
   });
 });

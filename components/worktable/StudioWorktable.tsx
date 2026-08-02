@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import type { MediaFile, ZineGenerationOptions } from "../../types";
 import { useOptionalUser } from "../../contexts/UserContext";
+import { useFeedback } from "../../hooks/useFeedback";
 import { WorkSurface } from "./WorkSurface";
 import { DossierTabs, type DossierFolder } from "./DossierTabs";
 import {
@@ -83,6 +84,7 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
 }) => {
   const userCtx = useOptionalUser();
   const profile = userCtx?.profile ?? null;
+  const feedback = useFeedback();
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -149,12 +151,8 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
 
   const advanceWhisper = useCallback(() => {
     setWhisperIndex((i) => (i + 1) % PROMPT_WHISPERS.length);
-    try {
-      if (navigator.vibrate) navigator.vibrate(8);
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    feedback.trigger("selection.changed");
+  }, [feedback]);
 
   const handleGenerate = useCallback(() => {
     const text = input.trim();

@@ -2024,6 +2024,11 @@ export const App: React.FC = () => {
           media.find((file: { type: string; url?: string; data?: string }) => file.type === "image")
             ?.data;
 
+        if (coverUrl) {
+          result.content.meta.originalCoverImageUrl =
+            result.content.meta.originalCoverImageUrl || coverUrl;
+        }
+
         if (opts.studioCoverOverlays?.length) {
           result.content.meta = result.content.meta || {};
           result.content.meta.studioCoverOverlays = opts.studioCoverOverlays;

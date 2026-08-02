@@ -19,6 +19,8 @@ import {
 } from '../services/exportManifestService';
 import { resolveZineExportCoverUrl } from '../lib/studioCoverExport';
 import { downloadStructuredZinePdf } from '../lib/structuredZinePdf';
+import { exportAssetUrl } from '../lib/zine/zinePerformance';
+import { hydrateLegacyZineMetadata } from '../lib/zine/zineMigrations';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 
@@ -167,27 +169,29 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
 
   const generateAssetsZip = async () => {
     try {
+      const hydratedMetadata = hydrateLegacyZineMetadata(metadata);
       const zip = new JSZip();
       let imgCount = 0;
       
-      const exportCoverUrl = await resolveZineExportCoverUrl(metadata);
+      const exportCoverUrl = await resolveZineExportCoverUrl(hydratedMetadata);
       if (exportCoverUrl) {
           const b64 = await urlToBase64(exportCoverUrl);
           zip.file('hero_image.jpg', b64, {base64: true});
           imgCount++;
       }
       
-      const hypothesisImg = (metadata.content as any).hypothesis_image_url;
+      const hypothesisImg = (hydratedMetadata.content as any).hypothesis_image_url;
       if (hypothesisImg) {
           const b64 = await urlToBase64(hypothesisImg);
           zip.file('strategic_hypothesis.jpg', b64, {base64: true});
           imgCount++;
       }
       
-      if (metadata.content.pages) {
-          for (let i = 0; i < metadata.content.pages.length; i++) {
-              if (metadata.content.pages[i].image_url) {
-                  const b64 = await urlToBase64(metadata.content.pages[i].image_url);
+      if (hydratedMetadata.content.pages) {
+          for (let i = 0; i < hydratedMetadata.content.pages.length; i++) {
+              const imageUrl = exportAssetUrl(hydratedMetadata.content.pages[i]);
+              if (imageUrl) {
+                  const b64 = await urlToBase64(imageUrl);
                   zip.file('visual_plate_0' + (i+1) + '.jpg', b64, {base64: true});
                   imgCount++;
               }
@@ -196,19 +200,19 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
       
       if (imgCount === 0) throw new Error("No visual assets found.");
 
-      const manifest = buildExportManifest(metadata);
+      const manifest = buildExportManifest(hydratedMetadata);
       zip.file('export-manifest.json', JSON.stringify(manifest, null, 2));
       if (manifest.editorialCompileMarkdown) {
         zip.file('editorial-compile.md', manifest.editorialCompileMarkdown);
       }
-      if (metadata.usedContextSnapshots?.length) {
-        zip.file('used-context.json', JSON.stringify(metadata.usedContextSnapshots, null, 2));
+      if (manifest.usedContextSnapshots.length) {
+        zip.file('used-context.json', JSON.stringify(manifest.usedContextSnapshots, null, 2));
       }
       
       const zipBlob = await zip.generateAsync({type: "blob"});
       const link = document.createElement('a');
       link.href = URL.createObjectURL(zipBlob);
-      link.download = "Mimi_" + metadata.title.replace(/[^a-z0-9]/gi, '_') + "_Assets.zip";
+      link.download = "Mimi_" + hydratedMetadata.title.replace(/[^a-z0-9]/gi, '_') + "_Assets.zip";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

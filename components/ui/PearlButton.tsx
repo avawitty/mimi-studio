@@ -1,14 +1,23 @@
 import React, { useCallback, useRef } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { Loader2 } from "lucide-react";
 
+import { useFeedback } from "@/hooks/useFeedback";
+import { motionTokens } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 import "./mimiMaterials.css";
 
 export type PearlButtonProps = Omit<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
-  "children" | "onDrag" | "onDragStart" | "onDragEnd" | "onAnimationStart" | "onAnimationEnd" | "onAnimationIteration" | "style"
+  | "children"
+  | "onDrag"
+  | "onDragStart"
+  | "onDragEnd"
+  | "onAnimationStart"
+  | "onAnimationEnd"
+  | "onAnimationIteration"
+  | "style"
 > & {
   children: React.ReactNode;
   loading?: boolean;
@@ -18,6 +27,8 @@ export type PearlButtonProps = Omit<
   inverse?: boolean;
   /** Optional likeness accent override (maps to --likeness-accent) */
   likenessAccent?: string;
+  /** Fire selection feedback on confirmed press (default false — avoid buzz on every tap). */
+  hapticOnPress?: boolean;
   style?: React.CSSProperties;
 };
 
@@ -29,13 +40,17 @@ export function PearlButton({
   inverse = false,
   likenessAccent,
   loading = false,
+  hapticOnPress = false,
   onMouseMove,
   onMouseLeave,
+  onClick,
   style,
   type = "button",
   ...props
 }: PearlButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const feedback = useFeedback();
+  const reduceMotion = Boolean(useReducedMotion());
   const isDisabled = Boolean(disabled || loading);
 
   const setHighlight = useCallback((x: number, y: number) => {
@@ -64,6 +79,18 @@ export function PearlButton({
     [onMouseLeave, setHighlight],
   );
 
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (hapticOnPress && !isDisabled) {
+        feedback.trigger("selection.changed", {
+          sourceElement: event.currentTarget,
+        });
+      }
+      onClick?.(event);
+    },
+    [feedback, hapticOnPress, isDisabled, onClick],
+  );
+
   const accentStyle = likenessAccent
     ? ({ "--likeness-accent": likenessAccent } as React.CSSProperties)
     : undefined;
@@ -83,17 +110,27 @@ export function PearlButton({
       style={{ ...accentStyle, ...style }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
       whileHover={
-        isDisabled
+        isDisabled || reduceMotion
           ? undefined
-          : { scale: 1.015, transition: { duration: 0.15 } }
+          : {
+              scale: motionTokens.scale.selected,
+              transition: { duration: motionTokens.duration.quick },
+            }
       }
       whileTap={
         isDisabled
           ? undefined
-          : { scale: 0.985, y: 1, transition: { duration: 0.08 } }
+          : reduceMotion
+            ? { opacity: 0.92 }
+            : {
+                scale: motionTokens.scale.press,
+                y: 1,
+                transition: { duration: motionTokens.duration.instant },
+              }
       }
-      transition={{ type: "spring", stiffness: 420, damping: 28 }}
+      transition={motionTokens.spring.selection}
       {...props}
     >
       <span className="pearl-button__glass" aria-hidden="true" />
