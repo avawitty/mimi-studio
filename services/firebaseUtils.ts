@@ -1101,8 +1101,11 @@ export const fetchCommunityZines = async (count: number) => {
     }
 };
 
-export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => void) => {
-  const take = 30;
+export const subscribeToCommunityZines = (
+  callback: (data: ZineMetadata[]) => void,
+  opts?: { limit?: number },
+) => {
+  const take = Math.max(1, Math.min(opts?.limit ?? 30, COMMUNITY_ZINE_READ_CAP));
   let cancelled = false;
   let unsubFirestore = () => {};
   let unsubLive: (() => void) | null = null;

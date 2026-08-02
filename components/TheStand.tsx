@@ -143,6 +143,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
       }
 
       if (cancelled) return;
+      // Match initial Floor page size (40) so live hydrate cannot shrink the shelf.
       unsubLive = subscribeToCommunityZines((docs) => {
         if (cancelled) return;
         const list = docs || [];
@@ -156,15 +157,23 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
         // Search is active — refresh hybrid results so deletes/unpublishes drop out.
         void fetchSovereignCommunityZines(40, q)
           .then((results) => {
-            if (!cancelled && results) {
+            if (cancelled) return;
+            if (results) {
               setCommunityZines(results);
               setFloorSearchApplied(q);
+              return;
             }
+            // Miss/503: prune search hits against the refreshed browse shelf so
+            // unpublished/deleted ids cannot linger until the next successful search.
+            const browseIds = new Set(list.map((z) => z.id).filter(Boolean));
+            setCommunityZines((prev) => prev.filter((z) => z?.id && browseIds.has(z.id)));
           })
           .catch(() => {
-            // keep current search hits; browse shelf already updated
+            if (cancelled) return;
+            const browseIds = new Set(list.map((z) => z.id).filter(Boolean));
+            setCommunityZines((prev) => prev.filter((z) => z?.id && browseIds.has(z.id)));
           });
-      });
+      }, { limit: 40 });
     })();
 
     return () => {
