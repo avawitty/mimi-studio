@@ -21,6 +21,7 @@
     "verify:pinterest-preview": "tsx scripts/verifyPinterestBoardPreview.ts",
     "verify:used-context": "tsx scripts/verifyUsedContextFlow.ts",
     "verify:atelier": "tsx scripts/verifyAtelierService.ts",
+    "verify:gateway-generate-text": "tsx scripts/verifyGatewayGenerateText.ts",
     "verify:residue": "tsx scripts/verifyResidueEngine.ts",
     "verify:rss-feed": "tsx scripts/verifyCreatorRssFeed.ts",
     "cursor:prompt": "tsx scripts/cursorAgentPrompt.ts",

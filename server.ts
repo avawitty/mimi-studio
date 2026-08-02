@@ -13,6 +13,7 @@ import { registerTailorRoutes } from './server/tailorRoutes';
 import { buildSessionCookieHeader, clearSessionCookieHeader, SESSION_EXPIRES_MS } from './lib/sessionCookie';
 import { proxySessionLogin } from './lib/proxySessionToFunctions';
 import mimiImageHandler from "./api/mimi-image";
+import generateTextHandler from "./api/mimi/generate-text";
 import createCheckoutSessionHandler from "./api/create-checkout-session";
 import createBillingPortalSessionHandler from "./api/create-billing-portal-session";
 import stripeWebhookHandler from "./api/stripe-webhook";
@@ -1597,6 +1598,17 @@ async function startServer() {
       await mimiImageHandler(req, res);
     } catch (error: any) {
       console.error("MIMI // Route error in /api/mimi-image:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/generate-text", async (req, res) => {
+    try {
+      await generateTextHandler(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/generate-text:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }
