@@ -349,7 +349,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  price 
  } 
  };
- await updatePocketItem(item.userId, item.id, updates);
+ await updatePocketItem(item.id, updates);
  onUpdate(item.id, updates);
  setIsEditing(false);
  };
@@ -390,7 +390,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
  refractionStyle: stylePrompt
  }
  };
- await updatePocketItem(item.userId, item.id, updates);
+ await updatePocketItem(item.id, updates);
  onUpdate(item.id, updates);
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Aesthetic Refraction Complete.", type: 'success' } }));
  } catch (err) {
@@ -765,12 +765,20 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  // IDs ever observed in local pocket — used so event merges can drop deletes
  // without also wiping cloud-only items that never touched local storage.
  const seenLocalPocketIdsRef = useRef<Set<string>>(new Set());
+ const pocketIdentityKey = `${user?.uid ?? ""}:${user?.isAnonymous ? "anon" : "reg"}`;
 
  // Drag-and-drop + folder organization state
  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
  const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null);
  const [isFileDropActive, setIsFileDropActive] = useState(false);
  const [showFolderPicker, setShowFolderPicker] = useState(false);
+
+ // Identity change must drop prior-account seen-local IDs even if the next
+ // loadPocket hits an IndexedDB miss before a successful snapshot.
+ useEffect(() => {
+   seenLocalPocketIdsRef.current = new Set();
+   setItems([]);
+ }, [pocketIdentityKey]);
 
  const loadPocket = useCallback(async (silent = false, opts?: { localOnly?: boolean }) => {
  if (!silent) setLoading(true);
@@ -1004,7 +1012,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const existingTags = item.tags || [];
  const combined = Array.from(new Set([...existingTags, ...tagsToApply.map(t => t.trim().toUpperCase())]));
  if (user?.uid) {
- updatePocketItem(user.uid, item.id, { tags: combined }).catch(console.error);
+ updatePocketItem(item.id, { tags: combined }).catch(console.error);
  }
  return { ...item, tags: combined };
  }
@@ -1044,7 +1052,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const nextContent = { ...folder.content, itemIds: merged };
  setItems(prev => prev.map(i => i.id === folderId ? { ...i, content: nextContent } : i));
  try {
- if (user?.uid) await updatePocketItem(user.uid, folderId, { content: nextContent });
+ if (user?.uid) await updatePocketItem(folderId, { content: nextContent });
  } catch (err) { console.error('Add to folder failed', err); }
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message: `Added ${merged.length - existing.length} to ${folder.content.name || 'collection'}.`, icon: <FolderOpen size={14} /> } }));
  };

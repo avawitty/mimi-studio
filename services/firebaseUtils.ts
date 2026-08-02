@@ -834,11 +834,14 @@ export const createMoodboard = async (uid: string, name: string, itemIds: string
 
 export const updatePocketItem = async (itemId: string, patch: Partial<PocketItem>): Promise<void> => {
   const localPocket = await getLocalPocket();
-  const index = localPocket.findIndex(i => i.id === itemId);
-  if (index !== -1) {
-    const updated = { ...localPocket[index], ...patch };
-    await savePocketItemLocally(updated);
-    window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
+  // null = IndexedDB miss — skip local mutate; cloud path may still run.
+  if (localPocket) {
+    const index = localPocket.findIndex((i) => i.id === itemId);
+    if (index !== -1) {
+      const updated = { ...localPocket[index], ...patch };
+      await savePocketItemLocally(updated);
+      window.dispatchEvent(new CustomEvent("mimi:pocket_updated"));
+    }
   }
   if (isFullyAuthenticated() && navigator.onLine) {
     try {

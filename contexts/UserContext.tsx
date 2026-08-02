@@ -451,7 +451,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const hydrateLocalPocket = async () => {
       const items = await getLocalPocket();
       if (pocketSyncGeneration.current !== gen) return;
-      setPocket(items || []);
+      // null = IndexedDB miss — preserve existing context pocket (same as Pocket.tsx).
+      if (items === null) return;
+      setPocket(items);
     };
 
     void hydrateLocalPocket();
