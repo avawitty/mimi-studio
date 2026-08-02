@@ -21,7 +21,7 @@ export const MmmStrip: React.FC<{ profile: CentralTendencyProfile }> = ({ profil
   const insufficient = summation.interpretation === "insufficient_evidence";
   const modeLabel = insufficient ? "Insufficient evidence" : mode.label;
   return (
-    <article className="border border-nous-border bg-white px-4 py-4 space-y-3">
+    <article className="border border-nous-border bg-nous-base px-4 py-4 space-y-3">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-serif italic text-lg text-nous-text tracking-tight">
           {insufficient ? profile.signalId : mode.label}

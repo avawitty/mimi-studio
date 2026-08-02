@@ -17,7 +17,10 @@ import {
   MMM_METHODOLOGY_VERSION,
   consentFieldsForZine,
   unpublishFieldsForZine,
+  observationsFromEligibleSignals,
+  opaqueContributorKeyFromUserId,
 } from "../services/collective";
+import { collectiveSignalSchema } from "../schemas/collectiveIntelligenceContracts";
 import {
   centralTendencyProfileSchema,
   meanMedianModeReportSchema,
@@ -78,6 +81,80 @@ function testCentralTendencyMath() {
   assert(
     lowSampleSize.summation.interpretation === "insufficient_evidence",
     "sampleSize < 5 → insufficient_evidence even with enough artifacts",
+  );
+
+  const singleCreator = buildCentralTendencyProfile({
+    signalId: "t:single-creator",
+    windowStart,
+    windowEnd,
+    unit: "normalized_intensity",
+    sourceTypeDiversity: 2,
+    observations: Array.from({ length: 10 }, (_, i) => ({
+      value: 0.5,
+      artifactId: `a${i}`,
+      contributorId: "same-creator",
+      label: "shared",
+    })),
+  });
+  assert(
+    singleCreator.uniqueArtifactCount === 10 &&
+      singleCreator.uniqueContributorBand === "1–2",
+    "single creator across many artifacts bands as 1–2",
+  );
+  assert(
+    singleCreator.summation.interpretation === "insufficient_evidence",
+    "low contributor diversity → insufficient_evidence",
+  );
+
+  const keyA = opaqueContributorKeyFromUserId("uid-alice");
+  const keyB = opaqueContributorKeyFromUserId("uid-alice");
+  assert(keyA === keyB && keyA.startsWith("c_"), "opaque contributor key stable");
+  const signals = [
+    collectiveSignalSchema.parse({
+      id: "s1",
+      canonicalLabel: "motif",
+      aliases: [],
+      category: "motif",
+      sourceArtifactId: "z1",
+      sourceType: "public_zine",
+      observedAt: 1,
+      extractedAt: 1,
+      extractionMethod: "user_tagged",
+      opaqueContributorKey: keyA,
+      publicContributionAllowed: true,
+      anonymizationStatus: "eligible",
+      sensitivityFlags: [],
+      provenance: {
+        sourceId: "z1",
+        sourceKind: "public_zine",
+        extractorVersion: "mmm-extract-v1",
+      },
+    }),
+    collectiveSignalSchema.parse({
+      id: "s2",
+      canonicalLabel: "motif",
+      aliases: [],
+      category: "motif",
+      sourceArtifactId: "z2",
+      sourceType: "public_zine",
+      observedAt: 1,
+      extractedAt: 1,
+      extractionMethod: "user_tagged",
+      opaqueContributorKey: keyA,
+      publicContributionAllowed: true,
+      anonymizationStatus: "eligible",
+      sensitivityFlags: [],
+      provenance: {
+        sourceId: "z2",
+        sourceKind: "public_zine",
+        extractorVersion: "mmm-extract-v1",
+      },
+    }),
+  ];
+  const obs = observationsFromEligibleSignals(signals);
+  assert(
+    new Set(obs.map((o) => o.contributorId)).size === 1,
+    "multi-artifact same creator → one contributor id",
   );
 
   const spike = buildCentralTendencyProfile({

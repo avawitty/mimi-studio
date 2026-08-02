@@ -37,12 +37,21 @@ export function confidenceLabelFor(input: {
   uniqueArtifactCount: number;
   sourceTypeDiversity: number;
   sampleSize?: number;
+  /** Distinct opaque contributors — required for collective (not single-creator) confidence. */
+  uniqueContributorCount?: number;
 }): "insufficient" | "tentative" | "moderate" | "strong" {
-  const { uniqueArtifactCount, sourceTypeDiversity, sampleSize } = input;
+  const {
+    uniqueArtifactCount,
+    sourceTypeDiversity,
+    sampleSize,
+    uniqueContributorCount,
+  } = input;
   if (
     (sampleSize !== undefined &&
       sampleSize <= CONFIDENCE_THRESHOLDS.insufficientMaxSampleSize) ||
-    uniqueArtifactCount <= CONFIDENCE_THRESHOLDS.insufficientMaxArtifacts
+    uniqueArtifactCount <= CONFIDENCE_THRESHOLDS.insufficientMaxArtifacts ||
+    (uniqueContributorCount !== undefined &&
+      uniqueContributorCount <= CONFIDENCE_THRESHOLDS.insufficientMaxArtifacts)
   ) {
     return "insufficient";
   }

@@ -116,6 +116,11 @@ export const collectiveSignalSchema = z.object({
   confidence: z.number().min(0).max(1).optional(),
   /** Never shown in public MMM readout. */
   contextExcerpt: z.string().optional(),
+  /**
+   * Opaque stable contributor key for banding (never a raw uid in UI).
+   * Aggregation uses this so multiple artifacts from one creator count as one contributor.
+   */
+  opaqueContributorKey: nonEmpty.optional(),
   publicContributionAllowed: z.boolean(),
   anonymizationStatus: z.enum(["pending", "eligible", "excluded"]),
   sensitivityFlags: z.array(z.string()),

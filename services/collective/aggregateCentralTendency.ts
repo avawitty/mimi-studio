@@ -99,10 +99,12 @@ export function buildCentralTendencyProfile(input: {
   const contributorIds = new Set(observations.map((o) => o.contributorId));
   const sampleSize = values.length;
   const uniqueArtifactCount = artifactIds.size;
+  const uniqueContributorCount = contributorIds.size;
   const conf = confidenceLabelFor({
     uniqueArtifactCount,
     sourceTypeDiversity: input.sourceTypeDiversity ?? 1,
     sampleSize,
+    uniqueContributorCount,
   });
 
   const mean = meanOf(values);
@@ -153,6 +155,9 @@ export function buildCentralTendencyProfile(input: {
 
 /**
  * Eligible signals only — private / non-consent / excluded never enter.
+ * Contributor identity prefers opaqueContributorKey so multi-artifact creators
+ * are not inflated into many contributors. Missing keys collapse to one
+ * conservative "unattributed" bucket (under-counts diversity → insufficient).
  */
 export function observationsFromEligibleSignals(
   signals: CollectiveSignal[],
@@ -166,7 +171,7 @@ export function observationsFromEligibleSignals(
       value: intensityBySignalId?.[signal.id] ?? signal.confidence ?? 1,
       artifactId: signal.sourceArtifactId,
       /** Banded later — never surface this id in public UI. */
-      contributorId: `artifact:${signal.sourceArtifactId}`,
+      contributorId: signal.opaqueContributorKey ?? "unattributed",
       label: signal.canonicalLabel,
     });
   }

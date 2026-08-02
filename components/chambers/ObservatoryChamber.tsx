@@ -3,6 +3,7 @@ import { ChamberShell } from "./ChamberShell";
 import { MeanMedianModePanel } from "../observatory/MeanMedianModePanel";
 import { loadMeanMedianModeReport } from "../../services/collective";
 import {
+  MEAN_MEDIAN_MODE_MODULE_ID,
   OBSERVATORY_CHAMBER_MODULE_ID,
   OBSERVATORY_COPY,
   OBSERVATORY_HANDOFF_TARGETS,
@@ -14,6 +15,8 @@ export const ObservatoryChamber: React.FC<{
   focus?: "overview" | "mmm";
 }> = ({ navigate, focus = "mmm" }) => {
   const report = loadMeanMedianModeReport("demonstration");
+  const moduleId =
+    focus === "mmm" ? MEAN_MEDIAN_MODE_MODULE_ID : OBSERVATORY_CHAMBER_MODULE_ID;
 
   const go = (view: string) => {
     if (navigate) {
@@ -25,7 +28,7 @@ export const ObservatoryChamber: React.FC<{
 
   return (
     <ChamberShell
-      moduleId={OBSERVATORY_CHAMBER_MODULE_ID}
+      moduleId={moduleId}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {OBSERVATORY_HANDOFF_TARGETS.map((target) => (

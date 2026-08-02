@@ -17,6 +17,18 @@ export interface ExtractablePublicZine {
   tone?: string;
   contributeToMeanMedianMode?: boolean;
   isPublic?: boolean;
+  /** Owner uid — hashed into opaqueContributorKey; never stored raw on the signal. */
+  userId?: string;
+}
+
+/** Stable opaque contributor key — not reversible presentation of the uid. */
+export function opaqueContributorKeyFromUserId(userId: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < userId.length; i++) {
+    hash ^= userId.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `c_${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
 export function extractSignalsFromPublicZine(
@@ -26,6 +38,10 @@ export function extractSignalsFromPublicZine(
   if (!zine.isPublic || !zine.contributeToMeanMedianMode) {
     return [];
   }
+
+  const opaqueContributorKey = zine.userId
+    ? opaqueContributorKeyFromUserId(zine.userId)
+    : undefined;
 
   const signals: CollectiveSignal[] = [];
   const tags = (zine.tags ?? []).map((t) => t.trim()).filter(Boolean);
@@ -42,6 +58,7 @@ export function extractSignalsFromPublicZine(
         observedAt: now,
         extractedAt: now,
         extractionMethod: "user_tagged",
+        opaqueContributorKey,
         publicContributionAllowed: true,
         anonymizationStatus: "eligible",
         sensitivityFlags: [],
@@ -66,6 +83,7 @@ export function extractSignalsFromPublicZine(
         observedAt: now,
         extractedAt: now,
         extractionMethod: "rule_based",
+        opaqueContributorKey,
         publicContributionAllowed: true,
         anonymizationStatus: "eligible",
         sensitivityFlags: [],
@@ -90,6 +108,7 @@ export function extractSignalsFromPublicZine(
         observedAt: now,
         extractedAt: now,
         extractionMethod: "rule_based",
+        opaqueContributorKey,
         publicContributionAllowed: true,
         anonymizationStatus: "eligible",
         sensitivityFlags: [],
