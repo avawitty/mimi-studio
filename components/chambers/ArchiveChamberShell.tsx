@@ -31,6 +31,8 @@ export interface ArchiveChamberShellProps {
   actions?: React.ReactNode;
   headerNote?: string;
   compactHeader?: boolean;
+  /** Extra classes on the chamber root (e.g. mobile ink surface for Scry). */
+  surfaceClassName?: string;
 }
 
 export const ArchiveContextPanel: React.FC<{
@@ -82,6 +84,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   actions,
   headerNote,
   compactHeader = false,
+  surfaceClassName,
 }) => {
   const module = getCanonModule(moduleId);
   const isNarrow = useIsNarrow();
@@ -121,7 +124,11 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   const displayName = isNarrow ? module.name.split(" / ")[0] : module.name;
 
   return (
-    <div className="archive-chamber binder-portfolio relative flex flex-col h-full min-h-0">
+    <div
+      className={`archive-chamber binder-portfolio relative flex flex-col h-full min-h-0${
+        surfaceClassName ? ` ${surfaceClassName}` : ""
+      }`}
+    >
       <header
         className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${
           useCompactChrome ? "py-2" : "py-3 md:py-4"
