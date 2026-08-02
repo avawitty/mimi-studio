@@ -1,7 +1,36 @@
 import { createRequire } from "module";
 import { extractMimiSessionToken } from "./mimiSessionToken.js";
-import { isPaidMimiPlan, normalizeMimiPlan } from "./mimiEntitlements.js";
+import {
+  buildCreditGrant,
+  isPaidMimiPlan,
+  normalizeMimiPlan,
+  type MimiBillingInterval,
+} from "./mimiEntitlements.js";
 import { proxyToFunctions } from "./proxyToFunctions.js";
+
+/**
+ * Paid members (lab/atelier/…) must not be forced into BYOK just because
+ * Stripe/webhook never wrote membershipCredits. Heal when the grant is
+ * missing or the billing period has ended — never mid-period when remaining
+ * is simply spent down to zero.
+ */
+export function needsMembershipCreditHeal(
+  grant: { remaining?: unknown; allowance?: unknown; periodEndsAt?: unknown } | null | undefined,
+  now = Date.now(),
+): boolean {
+  if (grant == null || typeof grant !== "object") return true;
+  const hasAllowance = grant.allowance != null && Number.isFinite(Number(grant.allowance));
+  const hasRemaining = grant.remaining != null && Number.isFinite(Number(grant.remaining));
+  if (!hasAllowance && !hasRemaining) return true;
+  const periodEndsAt = Number(grant.periodEndsAt ?? 0);
+  if (Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now) return true;
+  return false;
+}
+
+export function isPaidSubscriptionActive(subscriptionStatus: unknown): boolean {
+  const status = String(subscriptionStatus || "active").trim().toLowerCase();
+  return status !== "inactive" && status !== "canceled" && status !== "cancelled";
+}
 
 const require = createRequire(import.meta.url);
 
@@ -138,16 +167,47 @@ export const resolveMimiFundedGatewayAccess = async (
       const [userDoc, profileDoc] = await Promise.all([userRef.get(), profileRef.get()]);
       const data = { ...(profileDoc.data() || {}), ...(userDoc.data() || {}) };
 
-      const plan = normalizeMimiPlan(data.plan || data.planStatus);
+      const plan = normalizeMimiPlan(data.plan || data.planStatus || data.mimiPlan);
       const isPaid = isPaidMimiPlan(plan);
       let remaining = 0;
 
       if (isPaid) {
-        const active = data.subscriptionStatus !== "inactive" && data.subscriptionStatus !== "canceled";
-        const grant = data.membershipCredits || data.subscription?.credits;
-        remaining = Number(grant?.remaining ?? 0);
+        // Missing subscriptionStatus is common for patron-activated / manually
+        // granted lab seats — treat as active unless explicitly canceled.
+        const active = isPaidSubscriptionActive(data.subscriptionStatus);
+        if (!active) {
+          return { allowed: false, billable: false, uid: decoded.uid, cost };
+        }
 
-        if (!active || remaining < cost) {
+        let grant = data.membershipCredits || data.subscription?.credits;
+        if (needsMembershipCreditHeal(grant)) {
+          const interval = (data.subscriptionInterval || "month") as MimiBillingInterval;
+          const { credits } = buildCreditGrant({
+            plan,
+            interval,
+            currentPeriodEnd: Number(grant?.periodEndsAt) > Date.now()
+              ? Number(grant.periodEndsAt)
+              : undefined,
+          });
+          const healPatch = {
+            membershipCredits: credits,
+            subscriptionStatus: data.subscriptionStatus || "active",
+            mimiPlan: plan,
+          };
+          await Promise.all([
+            userRef.set(healPatch, { merge: true }),
+            profileRef.set(healPatch, { merge: true }),
+          ]);
+          grant = credits;
+          console.info("MIMI // Healed missing/expired membership credits for funded gateway", {
+            uid: decoded.uid,
+            plan,
+            remaining: credits.remaining,
+          });
+        }
+
+        remaining = Number(grant?.remaining ?? 0);
+        if (!Number.isFinite(remaining) || remaining < cost) {
           return { allowed: false, billable: false, uid: decoded.uid, cost };
         }
       } else {

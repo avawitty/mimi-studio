@@ -292,7 +292,7 @@ const extractBearerToken = (req) => {
     return header.replace(/^Bearer\s+/i, '');
 };
 app.post('/api/funded-gateway/access', async (req, res) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f;
     try {
         const token = extractBearerToken(req);
         if (!token) {
@@ -305,11 +305,42 @@ app.post('/api/funded-gateway/access', async (req, res) => {
         const profileRef = db.collection('profiles_public').doc(decoded.uid);
         const [userDoc, profileDoc] = await Promise.all([userRef.get(), profileRef.get()]);
         const data = Object.assign(Object.assign({}, (profileDoc.data() || {})), (userDoc.data() || {}));
-        const plan = normalizeMimiPlan(data.plan || data.planStatus);
+        const plan = normalizeMimiPlan(data.plan || data.planStatus || data.mimiPlan);
         const paid = isPaidMimiPlan(plan);
-        const remaining = paid
-            ? Number((_f = (_c = (_b = data.membershipCredits) === null || _b === void 0 ? void 0 : _b.remaining) !== null && _c !== void 0 ? _c : (_e = (_d = data.subscription) === null || _d === void 0 ? void 0 : _d.credits) === null || _e === void 0 ? void 0 : _e.remaining) !== null && _f !== void 0 ? _f : 0)
-            : Number((_h = (_g = data.trial) === null || _g === void 0 ? void 0 : _g.remainingCredits) !== null && _h !== void 0 ? _h : 0);
+        let remaining = 0;
+        if (paid) {
+            const status = String(data.subscriptionStatus || 'active').trim().toLowerCase();
+            const active = status !== 'inactive' && status !== 'canceled' && status !== 'cancelled';
+            if (!active) {
+                res.status(200).send({ allowed: false, billable: false, uid: decoded.uid, cost });
+                return;
+            }
+            let grant = data.membershipCredits || ((_b = data.subscription) === null || _b === void 0 ? void 0 : _b.credits);
+            const hasAllowance = (grant === null || grant === void 0 ? void 0 : grant.allowance) != null && Number.isFinite(Number(grant.allowance));
+            const hasRemaining = (grant === null || grant === void 0 ? void 0 : grant.remaining) != null && Number.isFinite(Number(grant.remaining));
+            const periodEndsAt = Number((_c = grant === null || grant === void 0 ? void 0 : grant.periodEndsAt) !== null && _c !== void 0 ? _c : 0);
+            const needsHeal = grant == null ||
+                (!hasAllowance && !hasRemaining) ||
+                (Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < Date.now());
+            if (needsHeal) {
+                const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month');
+                const credits = buildCreditGrant(plan, interval);
+                const healPatch = {
+                    membershipCredits: credits,
+                    subscriptionStatus: data.subscriptionStatus || 'active',
+                    mimiPlan: plan,
+                };
+                await Promise.all([
+                    userRef.set(healPatch, { merge: true }),
+                    profileRef.set(healPatch, { merge: true }),
+                ]);
+                grant = credits;
+            }
+            remaining = Number((_d = grant === null || grant === void 0 ? void 0 : grant.remaining) !== null && _d !== void 0 ? _d : 0);
+        }
+        else {
+            remaining = Number((_f = (_e = data.trial) === null || _e === void 0 ? void 0 : _e.remainingCredits) !== null && _f !== void 0 ? _f : 0);
+        }
         res.status(200).send({
             allowed: remaining >= cost,
             billable: remaining >= cost,

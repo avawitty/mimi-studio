@@ -18,43 +18,89 @@ type FundedAccess = {
   cost: number;
 } | null;
 
+type GatewayResolution = {
+  apiKey: string;
+  access: FundedAccess;
+  denialReason?: string;
+  /** Only when AI Gateway is unavailable — escape hatch for personal Gemini keys. */
+  useDirectGemini?: boolean;
+};
+
+const DENIAL_MESSAGES: Record<string, string> = {
+  sign_in_required:
+    "Sign in to use Mimi plan credits on Vercel AI Gateway.",
+  credits_exhausted:
+    "Mimi plan credits for AI Gateway are exhausted. Credits reload with your billing period — or add a personal Gateway key in Settings.",
+  server_gateway_unconfigured:
+    "AI Gateway is not configured on this server. Add AI_GATEWAY_API_KEY, or a personal Gemini key in Settings as a temporary fallback.",
+  missing_personal_or_funded_key:
+    "AI generation requires a signed-in Mimi plan with credits, or a personal Gateway key.",
+  access_denied:
+    "AI Gateway access was denied. Sign in with an active plan and credits remaining.",
+};
+
 /**
  * Resolve a gateway key without statically importing firebase-admin.
- * Credit metering is best-effort; if the funded path fails to load, fall back
- * to the server AI Gateway key (same resilience as /api/proxy/openai).
+ *
+ * Gemini-shaped client calls always prefer Vercel AI Gateway (funded or
+ * server key). Personal `x-api-key` Gemini BYOK no longer skips the gateway —
+ * that path was forcing lab users with a stale key into "configure API keys"
+ * instead of plan-funded gateway routing.
  */
 async function resolveGeminiGatewayKey(
   req: any,
   headerGeminiKey: string,
   cost?: number,
-): Promise<{ apiKey: string; access: FundedAccess }> {
-  if (headerGeminiKey) return { apiKey: "", access: null };
-
+): Promise<GatewayResolution> {
   const serverKey = getServerAiGatewayKey();
-  if (!serverKey) return { apiKey: "", access: null };
 
-  try {
-    const funded = await import("../../lib/mimiFundedGateway.js");
-    const resolvedCost =
-      typeof cost === "number" ? cost : funded.fundedGatewayCreditCost();
-    const resolved = await funded.resolveFundedGatewayApiKey(req, resolvedCost);
-    if (resolved.apiKey) {
-      return { apiKey: resolved.apiKey, access: resolved.access };
+  if (serverKey) {
+    try {
+      const funded = await import("../../lib/mimiFundedGateway.js");
+      const resolvedCost =
+        typeof cost === "number" ? cost : funded.fundedGatewayCreditCost();
+      const resolved = await funded.resolveFundedGatewayApiKey(req, resolvedCost);
+      if (resolved.apiKey) {
+        return { apiKey: resolved.apiKey, access: resolved.access };
+      }
+      // Real credit exhaustion — do not bypass metering with the server key.
+      // Direct Gemini BYOK remains an escape hatch only when the user supplied one.
+      if (resolved.denialReason === "credits_exhausted") {
+        if (headerGeminiKey) {
+          return { apiKey: "", access: resolved.access, useDirectGemini: true };
+        }
+        return {
+          apiKey: "",
+          access: resolved.access,
+          denialReason: "credits_exhausted",
+        };
+      }
+      // Sign-in required or infra denial: prefer server key so generation
+      // stays available (OpenAI/Anthropic proxies already do this).
+      if (process.env.MIMI_REQUIRE_GATEWAY_AUTH === "1") {
+        return {
+          apiKey: "",
+          access: null,
+          denialReason: resolved.denialReason || "access_denied",
+        };
+      }
+      return { apiKey: serverKey, access: null };
+    } catch (err) {
+      console.warn("MIMI // funded gateway unavailable for gemini proxy; using server AI Gateway key:", err);
+      return { apiKey: serverKey, access: null };
     }
-    // Real credit exhaustion — do not bypass metering.
-    if (resolved.denialReason === "credits_exhausted") {
-      return { apiKey: "", access: resolved.access };
-    }
-    // Sign-in required or infra denial: prefer server key so zine/generation
-    // stays available (OpenAI/Anthropic proxies already do this).
-    if (process.env.MIMI_REQUIRE_GATEWAY_AUTH === "1") {
-      return { apiKey: "", access: null };
-    }
-    return { apiKey: serverKey, access: null };
-  } catch (err) {
-    console.warn("MIMI // funded gateway unavailable for gemini proxy; using server AI Gateway key:", err);
-    return { apiKey: serverKey, access: null };
   }
+
+  // No AI Gateway configured — only then fall back to direct Gemini.
+  if (headerGeminiKey) {
+    return { apiKey: "", access: null, useDirectGemini: true };
+  }
+  return {
+    apiKey: "",
+    access: null,
+    denialReason: "server_gateway_unconfigured",
+    useDirectGemini: true,
+  };
 }
 
 async function maybeCharge(
@@ -83,11 +129,12 @@ export default async function handler(req: any, res: any) {
       const funded = await import("../../lib/mimiFundedGateway.js");
       creditCost = funded.fundedGatewayCreditCost(creditCostForTask("embedding"));
     }
-    const { apiKey: gatewayKey, access } = await resolveGeminiGatewayKey(
-      req,
-      headerGeminiKey,
-      creditCost,
-    );
+    const {
+      apiKey: gatewayKey,
+      access,
+      denialReason,
+      useDirectGemini,
+    } = await resolveGeminiGatewayKey(req, headerGeminiKey, creditCost);
 
     if (gatewayKey) {
       if (action === "generateContent") {
@@ -153,10 +200,24 @@ export default async function handler(req: any, res: any) {
       });
     }
 
+    if (denialReason && !useDirectGemini) {
+      return sendJson(res, 403, {
+        error: {
+          message: DENIAL_MESSAGES[denialReason] || DENIAL_MESSAGES.access_denied,
+          code: denialReason,
+        },
+      });
+    }
+
     const apiKey = providerKey(req, "gemini");
     if (!apiKey) {
       return sendJson(res, 403, {
-        error: { message: "Gemini requires a personal API key or MIMI_ENABLE_SERVER_AI=true with GEMINI_API_KEY." },
+        error: {
+          message:
+            DENIAL_MESSAGES[denialReason || "missing_personal_or_funded_key"] ||
+            "Gemini requires AI Gateway (AI_GATEWAY_API_KEY) or a personal Gemini key.",
+          code: denialReason || "missing_personal_or_funded_key",
+        },
       });
     }
 
@@ -209,7 +270,7 @@ export default async function handler(req: any, res: any) {
     sendJson(res, error?.status || error?.code || (isBlocked ? 403 : 500), {
       error: {
         message: isBlocked
-          ? "Gemini key is blocked or missing Generative Language API access. Use an unrestricted key or update Google Cloud API restrictions."
+          ? "Gemini key is blocked or missing Generative Language API access. Prefer Vercel AI Gateway (AI_GATEWAY_API_KEY) for plan-funded generation."
           : raw,
         code: error?.code,
         status: error?.status,
