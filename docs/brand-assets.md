@@ -16,8 +16,8 @@ Never ship all-caps `MIMI` on public/entry surfaces. See `house-style-v2.md`.
 | Homepage / OG lockup | `mimi-homepage-lockup-{light,dark}.svg` | **`Mimi`** | Wide social / header compositions |
 | Loading / stamps / signatures | `mimi-loading-*`, `mimi-*-stamp-*`, `mimi-*-signature-*` | **`Mimi`** | Full name visible → title case |
 | App icon (PWA / home screen) | `mimi-app-icon-crop-{light,dark}.svg` → `/mimi-app-icon.png` | cropped **`mi`** | Mark, not a spelling of the name |
-| Favicon | `/favicon.svg` | cropped **`mi`** | Same family as app icon; light/dark via `prefers-color-scheme` |
-| Apple touch | `/mimi-app-icon.png` (+ `mimi-app-icon-180.png`) | cropped **`mi`** | Regenerated from light icon crop |
+| Favicon | `/favicon-32.png`, `/favicon-16.png`, `/favicon.svg` | cropped **`mi`** | PNG primary (always visible); SVG embeds the raster crop — do **not** use live `<text>` (fonts don’t load in tabs) |
+| Apple touch | `/apple-touch-icon.png` | cropped **`mi`** | Regenerated from light icon crop |
 
 ## Color variants
 
