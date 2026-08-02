@@ -762,6 +762,9 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const [searchResults, setSearchResults] = useState<{ id: string; type: string; relevanceScore: number }[]>([]);
  
  const fileInputRef = useRef<HTMLInputElement>(null);
+ // IDs ever observed in local pocket — used so event merges can drop deletes
+ // without also wiping cloud-only items that never touched local storage.
+ const seenLocalPocketIdsRef = useRef<Set<string>>(new Set());
 
  // Drag-and-drop + folder organization state
  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
@@ -773,6 +776,11 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  if (!silent) setLoading(true);
  try {
  const localData = await getLocalPocket() || [];
+ // Fresh full loads reset the seen-local set for this session user.
+ if (!opts?.localOnly) seenLocalPocketIdsRef.current = new Set();
+ localData.forEach((item) => {
+   if (item?.id) seenLocalPocketIdsRef.current.add(item.id);
+ });
  let cloudData: PocketItem[] = [];
  // Event-driven refreshes stay local-only for registered users — onSnapshot /
  // initial load cover cloud; avoid doubling collection reads on every write.
@@ -789,18 +797,29 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  useEffect(() => {
  loadPocket();
  const handleShardAdded = (e: any) => {
+ if (e?.detail?.id) seenLocalPocketIdsRef.current.add(e.detail.id);
  setItems(prev => [e.detail, ...prev]);
  };
+ // Local pocket_updated: upsert local rows, drop ids removed from local, keep
+ // true cloud-only rows (never seen in local) so we don't re-fetch the collection.
  const handlePocketUpdate = async () => {
    const localData = (await getLocalPocket()) || [];
+   localData.forEach((item) => {
+     if (item?.id) seenLocalPocketIdsRef.current.add(item.id);
+   });
+   const localMap = new Map<string, PocketItem>();
+   localData.forEach((item) => {
+     if (item?.id) localMap.set(item.id, item);
+   });
    setItems((prev) => {
      const registry = new Map<string, PocketItem>();
      prev.forEach((item) => {
-       if (item?.id) registry.set(item.id, item);
+       if (!item?.id) return;
+       // Previously local, now missing from local storage → deleted.
+       if (seenLocalPocketIdsRef.current.has(item.id) && !localMap.has(item.id)) return;
+       if (!localMap.has(item.id)) registry.set(item.id, item);
      });
-     localData.forEach((item) => {
-       if (item?.id) registry.set(item.id, item);
-     });
+     localMap.forEach((item, id) => registry.set(id, item));
      return Array.from(registry.values()).sort((a, b) => b.savedAt - a.savedAt);
    });
  };

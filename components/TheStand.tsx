@@ -35,12 +35,16 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   const [searchQuery, setSearchQuery] = useState('');
   const [commentZineId, setCommentZineId] = useState<string | null>(null);
 
+  // Identity key — Floor fetch must cancel/restart when this changes (uid alone
+  // is not enough when floorLoaded stays false mid-flight).
+  const floorIdentityKey = `${user?.uid ?? ""}:${user?.isAnonymous ? "anon" : "reg"}`;
+
   // Identity change must resettle Floor — don't keep another account's shelf / empty quota state.
   useEffect(() => {
     setFloorLoaded(false);
     setCommunityZines([]);
     setCloudZines([]);
-  }, [user?.uid, user?.isAnonymous]);
+  }, [floorIdentityKey]);
 
 
   useEffect(() => {
@@ -88,6 +92,8 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   }, [user]);
 
   // Lazy-load Floor (sovereign archive first) only when the tab is opened.
+  // Include floorIdentityKey so an in-flight prior-identity fetch is cancelled
+  // even when floorLoaded was still false (deps otherwise wouldn't change).
   useEffect(() => {
     if (mode !== 'floor' || floorLoaded) return;
     let cancelled = false;
@@ -112,7 +118,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     return () => {
       cancelled = true;
     };
-  }, [mode, floorLoaded]);
+  }, [mode, floorLoaded, floorIdentityKey]);
 
   // Server-side Floor search when sovereign is ready; restore full shelf when cleared.
   useEffect(() => {
