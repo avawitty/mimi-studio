@@ -21,7 +21,7 @@ import firebaseConfig from '../firebase-applet-config.json';
 // - mimistudios.firebaseapp.com / mimistudios.web.app (default auth hosts)
 // - www.mimi.you, mimi.you (production)
 // - mimi.rip, www.mimi.rip (inverse public skin)
-// - mimi.fish, www.mimi.fish (future share skin)
+// - mimi.fish, www.mimi.fish (attention / share plate skin)
 // - avainlife.com, www.avainlife.com (production)
 // - mimi-studio-gateway.vercel.app and other *.vercel.app preview URLs
 // Custom domains must also be listed in Vercel project Domains and use the same Firebase web app.

@@ -99,7 +99,7 @@ export const ThePressChamber: React.FC = () => {
                 <li>Publish (make public) so the issue files in your Keep Tabs feed.</li>
                 <li>Review any Intel Hub artifact pack before choosing a Shopify or file export.</li>
                 <li>Validate manifest includes fragmentsUsed and editorial-compile.md when context was applied.</li>
-                <li>Share OG link — previews resolve at mimi.you/zine/:id. Readers Keep Tabs at /u/:handle/feed.xml.</li>
+                <li>Share plate — attention links resolve at mimi.fish/s/:id (canonical issue at mimi.you/zine/:id). Readers Keep Tabs at /u/:handle/feed.xml.</li>
               </>
             )}
           </ul>

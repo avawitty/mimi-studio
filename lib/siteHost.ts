@@ -1,6 +1,6 @@
 /**
- * Host / skin detection for mimi.you (canonical), mimi.rip (inverse), mimi.fish (future).
- * Same SPA; different public skins. Local QA: ?skin=rip or localStorage mimi_site_skin.
+ * Host / skin detection for mimi.you (canonical), mimi.rip (inverse), mimi.fish (share).
+ * Same SPA; different public skins. Local QA: ?skin=rip|fish or localStorage mimi_site_skin.
  */
 
 export type MimiSiteSkin = "you" | "rip" | "fish";
@@ -90,6 +90,37 @@ export function canonicalRipOrigin(): string {
   return "https://mimi.rip";
 }
 
+export function canonicalFishOrigin(): string {
+  return "https://mimi.fish";
+}
+
+/** Canonical attention/share plate URL (mimi.fish/s/:zineId). */
+export function getFishShareUrl(zineId: string): string {
+  const id = String(zineId || "").trim();
+  if (!id) return `${canonicalFishOrigin()}/`;
+  return `${canonicalFishOrigin()}/s/${encodeURIComponent(id)}`;
+}
+
+const HOST_RESERVED_SEGMENTS = new Set([
+  "studio",
+  "tailor",
+  "scribe",
+  "rip",
+  "fish",
+  "mimi-dolls",
+  "mimi-rip",
+  "mimi-fish",
+  "showcase",
+  "privacy",
+  "terms",
+  "api",
+  "auth",
+  "u",
+  "s",
+  "zine",
+  "stacks",
+]);
+
 /** Path on rip host: / → landing, /u/:handle or /:handle → public rip. */
 export function parseRipPublicHandle(pathname: string): string | null {
   const parts = pathname.split("/").filter(Boolean);
@@ -97,24 +128,31 @@ export function parseRipPublicHandle(pathname: string): string | null {
   if (parts[0] === "u" && parts[1]) return parts[1].toLowerCase();
   if (parts[0] === "rip" && parts[1]) return parts[1].toLowerCase();
   // Bare /:handle on rip host (reserve app routes)
-  const reserved = new Set([
-    "studio",
-    "tailor",
-    "scribe",
-    "rip",
-    "mimi-dolls",
-    "mimi-rip",
-    "showcase",
-    "privacy",
-    "terms",
-    "api",
-    "auth",
-    "u",
-    "zine",
-    "stacks",
-  ]);
-  if (parts.length === 1 && !reserved.has(parts[0].toLowerCase())) {
+  if (parts.length === 1 && !HOST_RESERVED_SEGMENTS.has(parts[0].toLowerCase())) {
     return parts[0].toLowerCase();
+  }
+  return null;
+}
+
+/** Fish shelf: /u/:handle or bare /:handle → creator's public plates. */
+export function parseFishShelfHandle(pathname: string): string | null {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length === 0) return null;
+  if (parts[0] === "u" && parts[1]) return parts[1].toLowerCase();
+  if (parts[0] === "fish" && parts[1]) return parts[1].toLowerCase();
+  if (parts.length === 1 && !HOST_RESERVED_SEGMENTS.has(parts[0].toLowerCase())) {
+    return parts[0].toLowerCase();
+  }
+  return null;
+}
+
+/** Extract zine id from /s/:id or /zine/:id share paths. */
+export function parseFishShareId(pathname: string): string | null {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+  if (parts[0] === "s" || parts[0] === "zine") {
+    const id = parts[1].split("?")[0].trim();
+    return id || null;
   }
   return null;
 }
