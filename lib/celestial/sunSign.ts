@@ -5,8 +5,8 @@
  * Accurate enough for unambiguous sun-sign assignment on modern dates;
  * near-ingress (±1°) is flagged as cusp rather than silently rounded.
  *
- * Phase 1 does NOT compute rising sign, houses, or aspects — those require
- * a full ephemeris + timezone/geocode pipeline (documented as unsupported).
+ * Mean-sun fallback when ephemeris path is unavailable. Prefer
+ * astronomy-engine Sun via compileCelestialReadout when a birth instant resolves.
  */
 
 import type { ZodiacSignId } from "../../schemas/celestialCalibrationContracts";
@@ -178,7 +178,7 @@ function isValidCivilDate(year: number, month: number, day: number): boolean {
 export function computeTropicalSunSign(input: {
   birthDate: string;
   birthTime?: string;
-  /** Phase 1 treats civil clock as UTC when no timezone is available. */
+  /** Treat civil clock as UTC when no timezone is available. */
   assumeUtc?: boolean;
 }): SunSignComputation | null {
   const parts = parseBirthDateParts(input.birthDate);

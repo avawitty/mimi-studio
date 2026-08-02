@@ -35,6 +35,12 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          // astronomy-engine package exports point import→ESM, but some
+          // resolvers still hit the CJS build; pin the ESM entry for the client.
+          'astronomy-engine': path.resolve(
+            __dirname,
+            'node_modules/astronomy-engine/esm/astronomy.js',
+          ),
         }
       },
       build: {

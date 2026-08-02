@@ -1,5 +1,5 @@
 /**
- * Offline verify for Celestial Calibration Phase 1.
+ * Offline verify for Celestial Calibration (Phases 1–4).
  * Run: npm run verify:celestial
  */
 import fs from "node:fs";
@@ -20,9 +20,13 @@ import {
 } from "../lib/celestial/sunSign";
 import { seasonFromEclipticLongitude } from "../lib/celestial/seasonalAlignment";
 import {
+  celestialReadoutForOracle,
   celestialTimingForGeneration,
   compileCelestialReadout,
 } from "../lib/celestial/compileCelestialReadout";
+import { zonedCivilToUtc } from "../lib/celestial/timezone";
+import { computeAscendantLongitudeDeg } from "../lib/celestial/risingHouses";
+import { computeNatalChartSlice } from "../lib/celestial/ephemeris";
 import { CANON_MODULES, canonicalizeMimiRoute } from "../lib/productCanon";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,11 +42,9 @@ function assert(cond: unknown, message: string): asserts cond {
 }
 
 function testJulianAndLongitude() {
-  // J2000.0 epoch ≈ JD 2451545.0 — mean sun near Capricorn / early Aquarius depending on formula
   const lonJ2000 = approximateSunEclipticLongitudeDeg(2451545.0);
   assert(lonJ2000 >= 0 && lonJ2000 < 360, "longitude in range at J2000");
 
-  // 2024-03-20 noon UTC — near vernal equinox (Sun ~0° Aries)
   const jdEquinox = julianDayUtc(2024, 3, 20, 12, 0, 0);
   const lonEq = approximateSunEclipticLongitudeDeg(jdEquinox);
   assert(lonEq < 5 || lonEq > 355, `2024-03-20 near 0° Aries (got ${lonEq.toFixed(3)})`);
@@ -79,16 +81,65 @@ function testSignFromLongitude() {
 }
 
 function testCuspFlag() {
-  // Construct via longitude path: degreesIntoSign near 0 or 30
   const near = signFromEclipticLongitude(0.5);
   assert(near.sign === "aries" && near.degreesIntoSign < 1, "near ingress degrees");
   const computed = computeTropicalSunSign({ birthDate: "2024-03-20", birthTime: "12:00" });
   assert(computed, "equinox date computes");
-  // Equinox day should often be on cusp or very early Aries
   assert(
     computed!.onCusp || computed!.degreesIntoSign < 2,
     "equinox flagged cusp or early Aries",
   );
+}
+
+function testTimezoneConversion() {
+  // 1990-06-01 12:00 America/New_York (EDT, UTC-4) → 16:00 UTC
+  const utc = zonedCivilToUtc({
+    year: 1990,
+    month: 6,
+    day: 1,
+    hour: 12,
+    minute: 0,
+    timeZone: "America/New_York",
+  });
+  assert(utc, "zoned conversion returns date");
+  assert(utc!.getUTCHours() === 16, `NY noon → 16 UTC (got ${utc!.getUTCHours()})`);
+  assert(utc!.getUTCDate() === 1, "same civil day");
+}
+
+function testEphemerisAndRising() {
+  // NYC 1990-06-01 12:00 EDT = 16:00 UTC
+  const utc = new Date(Date.UTC(1990, 5, 1, 16, 0, 0));
+  const chart = computeNatalChartSlice({
+    utcDate: utc,
+    latitude: 40.7128,
+    longitude: -74.006,
+    hasBirthTime: true,
+  });
+  assert(chart.bodies.length >= 10, "ten classical bodies");
+  const sun = chart.bodies.find((b) => b.body === "sun");
+  assert(sun?.sign === "gemini", `ephemeris sun gemini (got ${sun?.sign})`);
+  const moon = chart.bodies.find((b) => b.body === "moon");
+  assert(moon, "moon present");
+  assert(chart.aspects.length >= 1, "at least one major aspect");
+  assert(chart.rising, "rising computed with coords + time");
+  assert(chart.houses?.length === 12, "twelve whole-sign houses");
+  assert(
+    chart.houses![0].sign === chart.rising!.sign,
+    "house 1 matches rising sign",
+  );
+
+  const ascLon = computeAscendantLongitudeDeg({
+    utcDate: utc,
+    latitude: 40.7128,
+    longitude: -74.006,
+  });
+  assert(ascLon >= 0 && ascLon < 360, "ascendant longitude in range");
+
+  const noRising = computeNatalChartSlice({
+    utcDate: utc,
+    hasBirthTime: false,
+  });
+  assert(noRising.rising === null, "no rising without time/coords");
 }
 
 function testReadoutAndGeneration() {
@@ -102,13 +153,31 @@ function testReadoutAndGeneration() {
     astrologicalLineage: "Maternal chart stories",
   });
   assert(active.sun?.sign === "gemini", "readout gemini");
+  assert(active.sun?.method === "ephemeris_sun", "ephemeris sun method");
   assert(active.enabled, "enabled");
-  assert(active.unsupported.length >= 3, "lists unsupported");
+  assert(active.chart?.bodies.length, "chart bodies on date-only");
+  assert(active.unsupported.some((u) => u.toLowerCase().includes("rising")), "lists rising unsupported without place");
   assert(
     active.scopeNotice.toLowerCase().includes("symbolic") ||
       active.scopeNotice.toLowerCase().includes("self-expressive"),
     "symbolic scope notice",
   );
+
+  const withPlace = compileCelestialReadout({
+    enabled: true,
+    birthDate: "1990-06-01",
+    birthTime: "12:00",
+    birthTimezone: "America/New_York",
+    birthLatitude: 40.7128,
+    birthLongitude: -74.006,
+    geocodeStatus: "resolved",
+  });
+  assert(withPlace.chart?.rising, "rising when place+time resolve");
+  assert(
+    !withPlace.unsupported.some((u) => u.toLowerCase().includes("rising / ascendant")),
+    "rising removed from unsupported when present",
+  );
+  assert(withPlace.timingPhrase.includes("Rising"), "timing phrase mentions rising");
 
   const gen = celestialTimingForGeneration({
     enabled: true,
@@ -126,6 +195,18 @@ function testReadoutAndGeneration() {
   });
   assert(locked.sun?.sign === "leo", "manual lock wins");
   assert(locked.sun?.method === "manual_override", "manual method");
+
+  const oracle = celestialReadoutForOracle({
+    enabled: true,
+    birthDate: "1990-06-01",
+    birthTime: "12:00",
+    birthTimezone: "America/New_York",
+    birthLatitude: 40.7128,
+    birthLongitude: -74.006,
+  });
+  assert(oracle.sun && (oracle.sun as { sign: string }).sign === "gemini", "oracle payload sun");
+  assert(Array.isArray(oracle.bodies), "oracle payload bodies");
+  assert(oracle.rising, "oracle payload rising");
 }
 
 function testCanonAndFiles() {
@@ -154,6 +235,15 @@ function testCanonAndFiles() {
     "lib/celestial/sunSign.ts",
     "lib/celestial/seasonalAlignment.ts",
     "lib/celestial/compileCelestialReadout.ts",
+    "lib/celestial/timezone.ts",
+    "lib/celestial/resolveBirthInstant.ts",
+    "lib/celestial/astronomyEngine.ts",
+    "lib/celestial/ephemeris.ts",
+    "lib/celestial/aspects.ts",
+    "lib/celestial/risingHouses.ts",
+    "lib/celestial/geocodePlace.ts",
+    "lib/celestial/bodyLabels.ts",
+    "api/celestial/geocode.ts",
     "lib/celestialChamberContract.ts",
     "components/chambers/CelestialCalibrationChamber.tsx",
     "docs/celestial-calibration-chamber-spec.md",
@@ -169,6 +259,22 @@ function testCanonAndFiles() {
       zineGen.includes("celestialCalibration"),
     "zineGenerator wires celestial context",
   );
+
+  const gemini = fs.readFileSync(path.join(root, "services/geminiService.ts"), "utf8");
+  assert(
+    gemini.includes("celestialReadoutForOracle"),
+    "Oracle Latent Space Translation consumes structured readout",
+  );
+
+  const server = fs.readFileSync(path.join(root, "server.ts"), "utf8");
+  assert(
+    server.includes("/api/celestial/geocode"),
+    "dev server mounts celestial geocode",
+  );
+
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  assert(pkg.dependencies?.["astronomy-engine"], "astronomy-engine dependency");
+  assert(pkg.dependencies?.["tz-lookup"], "tz-lookup dependency");
 }
 
 function main() {
@@ -176,6 +282,8 @@ function main() {
   testKnownSunSigns();
   testSignFromLongitude();
   testCuspFlag();
+  testTimezoneConversion();
+  testEphemerisAndRising();
   testReadoutAndGeneration();
   testCanonAndFiles();
   if (failures > 0) {
