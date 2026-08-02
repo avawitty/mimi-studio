@@ -571,6 +571,11 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
   } catch (pocketErr) {
     console.warn("MIMI // Auto-save zine to Pocket failed:", pocketErr);
   }
+  // Public issues always try the sovereign archive (works even when Firestore is capped).
+  if (isPublic) {
+    const { mirrorZineToSovereign } = await import("./sovereignClient");
+    void mirrorZineToSovereign(meta);
+  }
   if (uid && auth.currentUser && navigator.onLine) {
     try {
       console.info("MIMI // saveZineToProfile: Saving zine to Firestore...");
@@ -939,12 +944,38 @@ export const subscribeToUserZines = (
   });
 };
 
+/** Cap Firestore community scans; prefer sovereign archive when available. */
+const COMMUNITY_ZINE_READ_CAP = 60;
+
 export const fetchCommunityZines = async (count: number) => {
+    const take = Math.max(0, Math.min(count || 0, COMMUNITY_ZINE_READ_CAP));
+    if (take === 0) return [];
+
+    // Sovereign archive first — no Firestore free-tier burn for Floor.
+    try {
+      const { fetchSovereignCommunityZines } = await import("./sovereignClient");
+      const sovereign = await fetchSovereignCommunityZines(take);
+      if (sovereign && sovereign.length > 0) {
+        return sovereign;
+      }
+      // Empty sovereign store: still prefer it over Firestore when the host reports ready
+      // with zero publics — fall through only when the endpoint is unavailable (null).
+      if (sovereign && sovereign.length === 0) {
+        // Try Firestore fallback below for transition period.
+      }
+    } catch {
+      // fall through
+    }
+
     if (!auth.currentUser) return [];
     try {
-      const q = query(collection(db, "zines"), where("isPublic", "==", true));
+      const q = query(
+        collection(db, "zines"),
+        where("isPublic", "==", true),
+        limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
+      );
       const docs = (await getDocs(q)).docs.map(d => d.data() as ZineMetadata);
-      return docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, count);
+      return docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, take);
     } catch (e: any) {
       console.warn("MIMI // Community Fetch Error:", e.code);
       return [];
@@ -953,11 +984,37 @@ export const fetchCommunityZines = async (count: number) => {
 
 export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => void) => {
   if (!auth.currentUser) return () => {};
-  const q = query(collection(db, "zines"), where("isPublic", "==", true));
-  return onSnapshot(q, (snapshot) => {
+  const take = 30;
+  let cancelled = false;
+  let unsubFirestore = () => {};
+
+  // One-shot sovereign hydrate, then optional Firestore live updates.
+  (async () => {
+    try {
+      const { fetchSovereignCommunityZines } = await import("./sovereignClient");
+      const sovereign = await fetchSovereignCommunityZines(take);
+      if (!cancelled && sovereign && sovereign.length > 0) {
+        callback(sovereign);
+      }
+    } catch {
+      // ignore
+    }
+  })();
+
+  const q = query(
+    collection(db, "zines"),
+    where("isPublic", "==", true),
+    limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
+  );
+  unsubFirestore = onSnapshot(q, (snapshot) => {
     const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
-    callback(docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 30));
+    callback(docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, take));
   }, (e) => logFirestoreError(e, OperationType.LIST, "zines"));
+
+  return () => {
+    cancelled = true;
+    unsubFirestore();
+  };
 };
 
 /**
@@ -1049,6 +1106,10 @@ export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolea
     await saveZineLocally(metadata);
     syncToShadowMemory(metadata);
     invalidateZineCache();
+    if (metadata.isPublic) {
+      const { mirrorZineToSovereign } = await import("./sovereignClient");
+      void mirrorZineToSovereign(metadata);
+    }
     console.info("MIMI // updateZineMetadata: Update complete");
     return true;
   } catch (e) {

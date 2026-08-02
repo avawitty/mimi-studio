@@ -37,6 +37,10 @@ import { handleCreatorFeedRequest } from "./api/feed";
 import youSearchHandler from "./api/you-search";
 import residueAcquireHandler from "./api/residue-acquire";
 import liveTokenHandler from "./api/live/token";
+import sovereignCommunityHandler from "./api/sovereign/community";
+import sovereignZineHandler from "./api/sovereign/zine";
+import sovereignStatusHandler from "./api/sovereign/status";
+import { sovereignStatus } from "./lib/sovereign/store";
 import { isPaidPatronPlan } from "./constants";
 
 loadEnv({ path: ".env.local", override: false, quiet: true });
@@ -983,8 +987,26 @@ async function startServer() {
         aiGateway: serverAiEnabled && Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
         replicate: serverAiEnabled && Boolean(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY),
       },
+      sovereign: sovereignStatus(),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // Sovereign archive — owned SQLite data plane (Floor / public reads without Firestore)
+  app.get("/api/sovereign/status", async (req, res) => {
+    await sovereignStatusHandler(req, res);
+  });
+  app.get("/api/sovereign/community", async (req, res) => {
+    await sovereignCommunityHandler(req, res);
+  });
+  app.get("/api/sovereign/zines/:id", async (req, res) => {
+    await sovereignZineHandler(req, res);
+  });
+  app.post("/api/sovereign/zines", async (req, res) => {
+    await sovereignZineHandler(req, res);
+  });
+  app.delete("/api/sovereign/zines/:id", async (req, res) => {
+    await sovereignZineHandler(req, res);
   });
 
   app.get("/api/heartbeat", (_req, res) => {

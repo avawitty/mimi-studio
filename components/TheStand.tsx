@@ -51,13 +51,6 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
             },
           );
         }
-
-        try {
-          const community = await fetchCommunityZines(40);
-          setCommunityZines(community || []);
-        } catch (e) {
-          console.warn('Mimi // Stand community feed unavailable', e);
-        }
       } catch (e) {
         console.error(e);
         setLoading(false);
@@ -76,6 +69,23 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
       window.removeEventListener('mimi:artifact_finalized', onFinalize);
     };
   }, [user]);
+
+  // Lazy-load Floor (sovereign archive first) only when the tab is opened.
+  useEffect(() => {
+    if (mode !== 'floor' || communityZines.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const community = await fetchCommunityZines(40);
+        if (!cancelled) setCommunityZines(community || []);
+      } catch (e) {
+        console.warn('Mimi // Stand community feed unavailable', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, communityZines.length]);
 
   const myZines = useMemo(() => {
     const merged = [...localZines, ...cloudZines];
