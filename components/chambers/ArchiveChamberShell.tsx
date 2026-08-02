@@ -125,7 +125,8 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
   const activeIndex = workflowSteps.indexOf(activeWorkflowStep);
   // Short chamber name on mobile (drop alias after slash)
   const displayName = isNarrow ? module.name.split(" / ")[0] : module.name;
-  const showMobileGuideOnly = isNarrow && mobileGuideOnly && Boolean(contextDrawer);
+  // CSS-only hide — do not gate on useIsNarrow (starts false and flashes the header).
+  const hideHeaderOnMobile = mobileGuideOnly && Boolean(contextDrawer);
 
   const guideToggleButton = contextDrawer ? (
     <button
@@ -154,7 +155,7 @@ export const ArchiveChamberShell: React.FC<ArchiveChamberShellProps> = ({
       <header
         className={`archive-chrome shrink-0 border-b archive-border px-4 md:px-8 ${
           useCompactChrome ? "py-2" : "py-3 md:py-4"
-        } ${showMobileGuideOnly ? "hidden md:block" : ""}`}
+        } ${hideHeaderOnMobile ? "hidden md:block" : ""}`}
       >
         <div className="flex items-end justify-between gap-2 md:gap-4">
           <div className="min-w-0">
