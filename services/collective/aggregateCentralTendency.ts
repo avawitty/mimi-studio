@@ -102,6 +102,7 @@ export function buildCentralTendencyProfile(input: {
   const conf = confidenceLabelFor({
     uniqueArtifactCount,
     sourceTypeDiversity: input.sourceTypeDiversity ?? 1,
+    sampleSize,
   });
 
   const mean = meanOf(values);

@@ -18,11 +18,13 @@ const INTERPRETATION_COPY: Record<
 
 export const MmmStrip: React.FC<{ profile: CentralTendencyProfile }> = ({ profile }) => {
   const { mean, median, mode, summation } = profile;
+  const insufficient = summation.interpretation === "insufficient_evidence";
+  const modeLabel = insufficient ? "Insufficient evidence" : mode.label;
   return (
     <article className="border border-nous-border bg-white px-4 py-4 space-y-3">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-serif italic text-lg text-nous-text tracking-tight">
-          {mode.label === "insufficient_evidence" ? profile.signalId : mode.label}
+          {insufficient ? profile.signalId : mode.label}
         </h3>
         <p className="font-mono text-[8px] uppercase tracking-[0.22em] text-nous-subtle">
           {profile.unit.replace(/_/g, " ")} · n={profile.sampleSize} · artifacts{" "}
@@ -43,9 +45,11 @@ export const MmmStrip: React.FC<{ profile: CentralTendencyProfile }> = ({ profil
         </div>
         <div>
           <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-nous-subtle">Mode</p>
-          <p className="font-serif text-lg text-nous-text mt-1 leading-snug">{mode.label}</p>
+          <p className="font-serif text-lg text-nous-text mt-1 leading-snug">{modeLabel}</p>
           <p className="font-sans text-[10px] text-nous-subtle mt-1">
-            count {mode.count} · share {(mode.share * 100).toFixed(0)}%
+            {insufficient
+              ? "No dominant motif until thresholds are met"
+              : `count ${mode.count} · share ${(mode.share * 100).toFixed(0)}%`}
           </p>
         </div>
       </div>

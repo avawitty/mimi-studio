@@ -283,8 +283,9 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
 
     const handlePublishToggle = async (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!user || user.uid !== zine.userId) return;
+      if (!user || user.uid !== zine.userId || isPublishing) return;
       if (zine.isPublic) {
+        setIsPublishing(true);
         try {
           await updateDoc(doc(db, "zines", zine.id), unpublishFieldsForZine());
           window.dispatchEvent(
@@ -298,6 +299,8 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
           window.dispatchEvent(new CustomEvent("mimi:artifact_finalized"));
         } catch (err) {
           console.error("Publish Toggle Failed", err);
+        } finally {
+          setIsPublishing(false);
         }
         return;
       }
@@ -574,11 +577,15 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
               </button>
               <button
                 onClick={handlePublishToggle}
-                className={`p-2 rounded-none transition-all backdrop-blur-md ${zine.isPublic ? "bg-nous-text text-nous-base " : "bg-black/5 text-nous-text hover:bg-black/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"}`}
+                disabled={isPublishing}
+                aria-busy={isPublishing}
+                className={`p-2 rounded-none transition-all backdrop-blur-md disabled:opacity-40 ${zine.isPublic ? "bg-nous-text text-nous-base " : "bg-black/5 text-nous-text hover:bg-black/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"}`}
                 title={
-                  zine.isPublic
-                    ? "Unpublish from The Proscenium"
-                    : "Stage on The Proscenium · Mean Median Mode"
+                  isPublishing
+                    ? "Staging…"
+                    : zine.isPublic
+                      ? "Unpublish from The Proscenium"
+                      : "Stage on The Proscenium · Mean Median Mode"
                 }
               >
                 {zine.isPublic ? <Radio size={12} /> : <EyeOff size={12} />}

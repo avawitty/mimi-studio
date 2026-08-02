@@ -58,6 +58,28 @@ function testCentralTendencyMath() {
   );
   assert(insufficient.mode.label === "insufficient_evidence", "mode suppressed when insufficient");
 
+  const lowSampleSize = buildCentralTendencyProfile({
+    signalId: "t:sample-size",
+    windowStart,
+    windowEnd,
+    unit: "normalized_intensity",
+    sourceTypeDiversity: 2,
+    observations: [
+      { value: 0.5, artifactId: "a1", contributorId: "c1", label: "alpha" },
+      { value: 0.5, artifactId: "a2", contributorId: "c2", label: "alpha" },
+      { value: 0.5, artifactId: "a3", contributorId: "c3", label: "alpha" },
+      { value: 0.5, artifactId: "a4", contributorId: "c4", label: "alpha" },
+    ],
+  });
+  assert(
+    lowSampleSize.sampleSize === 4 && lowSampleSize.uniqueArtifactCount === 4,
+    "fixture has sampleSize 4 with 4 artifacts",
+  );
+  assert(
+    lowSampleSize.summation.interpretation === "insufficient_evidence",
+    "sampleSize < 5 → insufficient_evidence even with enough artifacts",
+  );
+
   const spike = buildCentralTendencyProfile({
     signalId: "t:spike",
     windowStart,

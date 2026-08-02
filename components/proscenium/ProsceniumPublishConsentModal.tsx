@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   MMM_PUBLISH_DISCLOSURE_BODY,
   MMM_PUBLISH_DISCLOSURE_SECONDARY,
@@ -22,6 +22,13 @@ export const ProsceniumPublishConsentModal: React.FC<ProsceniumPublishConsentMod
 }) => {
   const [contribute, setContribute] = useState(true);
   const [acknowledged, setAcknowledged] = useState(false);
+
+  // Reset disclosure gates whenever the modal opens so prior ack cannot bypass.
+  useEffect(() => {
+    if (!open) return;
+    setContribute(true);
+    setAcknowledged(false);
+  }, [open]);
 
   if (!open) return null;
 

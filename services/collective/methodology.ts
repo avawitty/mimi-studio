@@ -14,6 +14,9 @@ export const SPIKE_MEAN_MEDIAN_RATIO = 1.35;
 export const MODE_DOMINANCE_SHARE_GAP = 0.12;
 
 export const CONFIDENCE_THRESHOLDS = {
+  /** sampleSize < 5 → insufficient (spec default). */
+  insufficientMaxSampleSize: 4,
+  /** uniqueArtifactCount < 3 → insufficient (spec default). */
   insufficientMaxArtifacts: 2,
   tentativeMaxArtifacts: 9,
   moderateMaxArtifacts: 29,
@@ -33,9 +36,14 @@ export function contributorBand(uniqueContributors: number): ContributorBand {
 export function confidenceLabelFor(input: {
   uniqueArtifactCount: number;
   sourceTypeDiversity: number;
+  sampleSize?: number;
 }): "insufficient" | "tentative" | "moderate" | "strong" {
-  const { uniqueArtifactCount, sourceTypeDiversity } = input;
-  if (uniqueArtifactCount <= CONFIDENCE_THRESHOLDS.insufficientMaxArtifacts) {
+  const { uniqueArtifactCount, sourceTypeDiversity, sampleSize } = input;
+  if (
+    (sampleSize !== undefined &&
+      sampleSize <= CONFIDENCE_THRESHOLDS.insufficientMaxSampleSize) ||
+    uniqueArtifactCount <= CONFIDENCE_THRESHOLDS.insufficientMaxArtifacts
+  ) {
     return "insufficient";
   }
   if (uniqueArtifactCount <= CONFIDENCE_THRESHOLDS.tentativeMaxArtifacts) {
