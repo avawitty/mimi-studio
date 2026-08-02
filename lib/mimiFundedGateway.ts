@@ -38,6 +38,8 @@ function getFieldValue(): FieldValueLike | null {
 }
 
 export const fundedGatewayCreditCost = (taskCost?: number) => {
+  // Preserve explicit zero (free_internal tasks like embedding indexing).
+  if (taskCost === 0) return 0;
   const value = Number(taskCost ?? process.env.MIMI_TEXT_CREDIT_COST ?? 1);
   return Number.isFinite(value) && value > 0 ? value : 1;
 };
@@ -187,7 +189,7 @@ export const chargeMimiFundedGateway = async (
   access: FundedGatewayAccess,
   meta: { model?: string; usage?: unknown; feature?: string },
 ) => {
-  if (!access.billable || !access.uid) return;
+  if (!access.billable || !access.uid || !(access.cost > 0)) return;
 
   try {
     const { db } = await loadAdmin();

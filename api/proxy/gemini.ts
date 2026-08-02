@@ -1,4 +1,5 @@
 import { cors, providerKey, readJsonBody, requireMethod, sendJson } from "../../lib/apiUtils.js";
+import { creditCostForTask } from "../../lib/aiCreditPolicy.js";
 import {
   embedGeminiContentViaGateway,
   generateGeminiContentViaGateway,
@@ -25,6 +26,7 @@ type FundedAccess = {
 async function resolveGeminiGatewayKey(
   req: any,
   headerGeminiKey: string,
+  cost?: number,
 ): Promise<{ apiKey: string; access: FundedAccess }> {
   if (headerGeminiKey) return { apiKey: "", access: null };
 
@@ -33,7 +35,9 @@ async function resolveGeminiGatewayKey(
 
   try {
     const funded = await import("../../lib/mimiFundedGateway.js");
-    const resolved = await funded.resolveFundedGatewayApiKey(req, funded.fundedGatewayCreditCost());
+    const resolvedCost =
+      typeof cost === "number" ? cost : funded.fundedGatewayCreditCost();
+    const resolved = await funded.resolveFundedGatewayApiKey(req, resolvedCost);
     if (resolved.apiKey) {
       return { apiKey: resolved.apiKey, access: resolved.access };
     }
@@ -57,7 +61,7 @@ async function maybeCharge(
   access: FundedAccess,
   meta: { model?: string; usage?: unknown; feature?: string },
 ) {
-  if (!access?.billable) return;
+  if (!access?.billable || !(access.cost > 0)) return;
   try {
     const funded = await import("../../lib/mimiFundedGateway.js");
     await funded.chargeMimiFundedGateway(access, meta);
@@ -73,7 +77,17 @@ export default async function handler(req: any, res: any) {
   try {
     const { action, params } = await readJsonBody(req);
     const headerGeminiKey = String(req.headers["x-api-key"] || "").trim();
-    const { apiKey: gatewayKey, access } = await resolveGeminiGatewayKey(req, headerGeminiKey);
+    // Embeddings are free_internal (0 credits); other Gemini-compat actions keep the text default.
+    let creditCost: number | undefined;
+    if (action === "embedContent") {
+      const funded = await import("../../lib/mimiFundedGateway.js");
+      creditCost = funded.fundedGatewayCreditCost(creditCostForTask("embedding"));
+    }
+    const { apiKey: gatewayKey, access } = await resolveGeminiGatewayKey(
+      req,
+      headerGeminiKey,
+      creditCost,
+    );
 
     if (gatewayKey) {
       if (action === "generateContent") {
@@ -91,11 +105,7 @@ export default async function handler(req: any, res: any) {
       }
       if (action === "embedContent") {
         const result = await embedGeminiContentViaGateway(params, gatewayKey);
-        await maybeCharge(access, {
-          model: (result as any)?.modelVersion,
-          usage: (result as any)?.usageMetadata,
-          feature: "gemini-compat-embedding",
-        });
+        // free_internal — never charge for indexing embeddings
         return sendJson(res, 200, result);
       }
       if (action === "generateImages") {
