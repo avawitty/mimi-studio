@@ -5,6 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "isPublic", "order": "ASCENDING" },
+        { "fieldPath": "publicProjectionVersion", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     },
@@ -14,6 +15,7 @@
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "isPublic", "order": "ASCENDING" },
+        { "fieldPath": "publicProjectionVersion", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     },
@@ -23,6 +25,7 @@
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "isPublic", "order": "ASCENDING" },
+        { "fieldPath": "publicProjectionVersion", "order": "ASCENDING" },
         { "fieldPath": "publishedAt", "order": "DESCENDING" }
       ]
     },

@@ -109,53 +109,119 @@ export function sanitizeZineForPublicView(
         linkedBoards: [],
       }
     : undefined;
+  const structurePages = (metadata.content.structure?.pages || persistedPages).map(
+    sanitizePage,
+  );
+  const reading = metadata.reading
+    ? {
+        ...metadata.reading,
+        signals: metadata.reading.signals.map((signal) => ({
+          ...signal,
+          sourceIds: signal.sourceIds?.filter((id) => publicIds.has(id)),
+        })),
+        tensions: metadata.reading.tensions?.map((tension) => ({
+          ...tension,
+          sourceIds: tension.sourceIds?.filter((id) => publicIds.has(id)),
+        })),
+        uncertainty: metadata.reading.uncertainty?.map((uncertainty) => ({
+          ...uncertainty,
+          sourceIds: uncertainty.sourceIds?.filter((id) =>
+            publicIds.has(id),
+          ),
+        })),
+      }
+    : undefined;
+  const content: ZineMetadata["content"] = {
+    ...metadata.content,
+    meta: metadata.content.meta
+      ? {
+          ...metadata.content.meta,
+          originalCoverImageUrl: undefined,
+          studioCoverOverlays: undefined,
+        }
+      : metadata.content.meta,
+    structure: metadata.content.structure
+      ? {
+          ...metadata.content.structure,
+          pages: structurePages,
+        }
+      : metadata.content.structure,
+    semiotic_signals: metadata.content.semiotic_signals?.map((signal) => ({
+      ...signal,
+      sourceIds: signal.sourceIds?.filter((id) => publicIds.has(id)),
+    })),
+    pages: persistedPages,
+    pagesJson: metadata.content.pagesJson
+      ? JSON.stringify(persistedPages)
+      : undefined,
+  };
+  const coverSpec = metadata.coverSpec
+    ? {
+        ...metadata.coverSpec,
+        originalImageUrl: undefined,
+        overlays: [],
+      }
+    : undefined;
+  const colophon = metadata.colophon
+    ? {
+        ...metadata.colophon,
+        publicSourceIds: metadata.colophon.publicSourceIds.filter((id) =>
+          publicIds.has(id),
+        ),
+      }
+    : undefined;
 
   return {
-    ...metadata,
-    publicProjectionVersion: 1,
+    id: metadata.id,
     fragmentsUsed: (metadata.fragmentsUsed || []).filter((id) =>
       publicIds.has(id),
     ),
     usedContextSnapshots:
       publicSnapshots.length > 0 ? publicSnapshots : undefined,
+    createdAt: metadata.createdAt,
+    theme: metadata.theme,
+    aestheticVector: {},
+    userId: metadata.userId,
+    userHandle: metadata.userHandle,
+    userAvatar: metadata.userAvatar,
+    title: metadata.title,
+    concept: metadata.concept,
+    summary: metadata.summary,
+    tone: metadata.tone,
+    timestamp: metadata.timestamp,
+    likes: metadata.likes,
+    content,
+    coverImageUrl: metadata.coverImageUrl,
+    isDeepThinking: metadata.isDeepThinking,
+    isLite: metadata.isLite,
+    isQuickPreview: metadata.isQuickPreview,
+    imageEnhancement: metadata.imageEnhancement,
+    imageFilter: metadata.imageFilter,
+    isHighFidelity: metadata.isHighFidelity,
+    isPublic: metadata.isPublic,
+    publishedAt: metadata.publishedAt,
+    contributeToMeanMedianMode: metadata.contributeToMeanMedianMode,
+    disclosedAt: metadata.disclosedAt,
+    disclosureVersion: metadata.disclosureVersion,
+    mmmContributionStatus: metadata.mmmContributionStatus,
+    mmmWithdrawnAt: metadata.mmmWithdrawnAt,
+    isLocked: metadata.isLocked,
+    authorship: metadata.authorship,
+    originalInput: metadata.originalInput,
+    tags: metadata.tags,
+    treatmentId: metadata.treatmentId,
+    artifactSchemaVersion: metadata.artifactSchemaVersion,
+    artifactAuthorship: metadata.artifactAuthorship,
+    lifecycleStatus: metadata.lifecycleStatus,
     sourcePacket,
-    reading: metadata.reading
-      ? {
-          ...metadata.reading,
-          signals: metadata.reading.signals.map((signal) => ({
-            ...signal,
-            sourceIds: signal.sourceIds?.filter((id) => publicIds.has(id)),
-          })),
-          tensions: metadata.reading.tensions?.map((tension) => ({
-            ...tension,
-            sourceIds: tension.sourceIds?.filter((id) => publicIds.has(id)),
-          })),
-          uncertainty: metadata.reading.uncertainty?.map((uncertainty) => ({
-            ...uncertainty,
-            sourceIds: uncertainty.sourceIds?.filter((id) =>
-              publicIds.has(id),
-            ),
-          })),
-        }
-      : undefined,
-    content: {
-      ...metadata.content,
-      semiotic_signals: metadata.content.semiotic_signals?.map((signal) => ({
-        ...signal,
-        sourceIds: signal.sourceIds?.filter((id) => publicIds.has(id)),
-      })),
-      pages: persistedPages,
-      pagesJson: metadata.content.pagesJson
-        ? JSON.stringify(persistedPages)
-        : undefined,
-    },
-    colophon: metadata.colophon
-      ? {
-          ...metadata.colophon,
-          publicSourceIds: metadata.colophon.publicSourceIds.filter((id) =>
-            publicIds.has(id),
-          ),
-        }
-      : undefined,
+    reading,
+    editorialDirection: metadata.editorialDirection,
+    issueStructure: metadata.issueStructure,
+    coverSpec,
+    colophon,
+    publication: metadata.publication,
+    revision: metadata.revision,
+    updatedAt: metadata.updatedAt,
+    publicProjectionVersion: 1,
   };
 }

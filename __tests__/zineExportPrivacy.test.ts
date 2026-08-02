@@ -44,6 +44,19 @@ describe("zine export privacy and ownership", () => {
 
   it("exposes only explicitly public context on public zine reads", () => {
     const metadata = makeLegacyZineMetadata();
+    metadata.artifacts = [
+      {
+        id: "private-media",
+        type: "image",
+        url: "",
+        data: "data:image/png;base64,private",
+        mimeType: "image/png",
+        transcription: "private transcription",
+      },
+    ];
+    metadata.editorialCompileMarkdown = "Private working compile";
+    (metadata as ZineMetadata & { secretWorkingField?: string }).secretWorkingField =
+      "must not survive";
     metadata.usedContextSnapshots![1].visibility = {
       working: true,
       export: true,
@@ -59,6 +72,12 @@ describe("zine export privacy and ownership", () => {
     const publicPages = JSON.parse(publicZine.content.pagesJson || "[]");
     expect(publicPages[0].sourceIds).toEqual([]);
     expect(publicPages[1].sourceIds).toEqual([]);
+    expect(
+      publicZine.content.structure.pages[0].sourceIds,
+    ).toEqual([]);
+    expect(publicZine.artifacts).toBeUndefined();
+    expect(publicZine.editorialCompileMarkdown).toBeUndefined();
+    expect(publicZine).not.toHaveProperty("secretWorkingField");
   });
 
   it("prefers canonical source-packet visibility during export", () => {

@@ -25,8 +25,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { ProofMode } from "./ProofMode";
 import { useUser } from "../contexts/UserContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { db } from "../services/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import {
+  fetchZineById,
+  updateZineMetadata,
+} from "../services/firebaseUtils";
 import { ProsceniumPublishConsentModal } from "./proscenium/ProsceniumPublishConsentModal";
 import {
   buildPublishConsent,
@@ -34,6 +36,12 @@ import {
   publishToastMessage,
   unpublishFieldsForZine,
 } from "../services/collective/consent";
+import { normalizeZineArtifact } from "../lib/zine/normalizeZineArtifact";
+import {
+  artifactRequiresRevision,
+  createArtifactRevision,
+  withCanonicalZinePages,
+} from "../lib/zine/zineMigrations";
 
 const TONE_STYLES: Record<
   string,
@@ -130,6 +138,40 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
       zine.coverImageUrl || zine.content?.hero_image_url,
     );
 
+    const persistCoverRevision = async (
+      coverImageUrl: string,
+      reason: string,
+    ) => {
+      const sourceZine = (await fetchZineById(zine.id)) || zine;
+      const artifact = normalizeZineArtifact(sourceZine);
+      const revisionRequired = artifactRequiresRevision(artifact.status);
+      const revised = revisionRequired
+        ? createArtifactRevision(artifact, { reason })
+        : artifact;
+      const updated = withCanonicalZinePages(
+        {
+          ...sourceZine,
+          coverImageUrl,
+          artifactSchemaVersion: revised.schemaVersion,
+          lifecycleStatus: revised.status,
+          revision: revised.revision,
+          revisions: revised.revisions,
+          isPublic: revisionRequired ? false : sourceZine.isPublic,
+          publishedAt: revisionRequired ? undefined : sourceZine.publishedAt,
+          publication: revisionRequired
+            ? {
+                ...revised.publication,
+                visibility: "private",
+                publishedAt: undefined,
+                revision: revised.revision,
+              }
+            : sourceZine.publication,
+        },
+        revised.pages,
+      );
+      await updateZineMetadata(updated);
+    };
+
     const handleEdit = async () => {
       if (!currentImageUrl || !editPrompt || !user) return;
       setIsEditing(true);
@@ -161,9 +203,7 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
           newImage,
           `zine_artifacts/${zine.id}_${Date.now()}`,
         );
-        await updateDoc(doc(db, "zines", zine.id), {
-          coverImageUrl: uploadedUrl,
-        });
+        await persistCoverRevision(uploadedUrl, "Cover refracted");
 
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
@@ -210,9 +250,7 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
           newImage,
           `zine_artifacts/${zine.id}_${Date.now()}`,
         );
-        await updateDoc(doc(db, "zines", zine.id), {
-          coverImageUrl: uploadedUrl,
-        });
+        await persistCoverRevision(uploadedUrl, "Cover mixed");
 
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
@@ -248,9 +286,7 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
           newImage,
           `zine_artifacts/${zine.id}_${Date.now()}`,
         );
-        await updateDoc(doc(db, "zines", zine.id), {
-          coverImageUrl: uploadedUrl,
-        });
+        await persistCoverRevision(uploadedUrl, "Cover regenerated");
 
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
@@ -288,14 +324,24 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
         setIsPublishing(true);
         try {
           const unpub = unpublishFieldsForZine();
-          await updateDoc(doc(db, "zines", zine.id), unpub);
-          // Mirror unpublish into Sovereign so Floor does not keep a public card.
-          try {
-            const { mirrorZineToSovereign } = await import("../services/sovereignClient");
-            void mirrorZineToSovereign({ ...zine, ...unpub });
-          } catch (mirrorErr) {
-            console.warn("MIMI // Sovereign unpublish mirror failed", mirrorErr);
-          }
+          const sourceZine = (await fetchZineById(zine.id)) || zine;
+          const artifact = normalizeZineArtifact(sourceZine);
+          await updateZineMetadata(
+            withCanonicalZinePages(
+              {
+                ...sourceZine,
+                ...unpub,
+                lifecycleStatus: "approved",
+                publication: {
+                  ...artifact.publication,
+                  visibility: "private",
+                  publishedAt: undefined,
+                  revision: artifact.revision,
+                },
+              },
+              artifact.pages,
+            ),
+          );
           window.dispatchEvent(
             new CustomEvent("mimi:registry_alert", {
               detail: {
@@ -324,13 +370,28 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
           contributeToMeanMedianMode,
         });
         const fields = consentFieldsForZine(consent);
-        await updateDoc(doc(db, "zines", zine.id), fields);
-        try {
-          const { mirrorZineToSovereign } = await import("../services/sovereignClient");
-          void mirrorZineToSovereign({ ...zine, ...fields });
-        } catch (mirrorErr) {
-          console.warn("MIMI // Sovereign publish mirror failed", mirrorErr);
-        }
+        const sourceZine = (await fetchZineById(zine.id)) || zine;
+        const artifact = normalizeZineArtifact(sourceZine);
+        await updateZineMetadata(
+          withCanonicalZinePages(
+            {
+              ...sourceZine,
+              ...fields,
+              artifactSchemaVersion: artifact.schemaVersion,
+              lifecycleStatus: "published",
+              isLocked: true,
+              publication: {
+                ...artifact.publication,
+                visibility: "public",
+                publishedAt: fields.publishedAt,
+                revision: artifact.revision,
+              },
+              revision: artifact.revision,
+              revisions: artifact.revisions,
+            },
+            artifact.pages,
+          ),
+        );
         const handle = zine.userHandle || profile?.handle;
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {

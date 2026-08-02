@@ -54,6 +54,13 @@ assert.match(
   /unpublishForProof[\s\S]*isPublic:\s*unpublishForProof\s*\?\s*false/,
   "post-publication edits must become private proof revisions",
 );
+const zineCard = readFileSync(
+  resolve(process.cwd(), "components/ZineCard.tsx"),
+  "utf8",
+);
+assert.match(zineCard, /persistCoverRevision/);
+assert.match(zineCard, /lifecycleStatus:\s*"published"/);
+assert.match(zineCard, /updateZineMetadata/);
 
 console.log("✓ Mimi zine revision history verified");
 console.log("  - approved edits create a child proof revision");

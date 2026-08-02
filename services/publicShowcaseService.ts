@@ -21,6 +21,7 @@ export const fetchPublicZinesForUser = async (uid: string): Promise<ZineMetadata
       collection(db, "zines"),
       where("userId", "==", uid),
       where("isPublic", "==", true),
+      where("publicProjectionVersion", "==", 1),
     );
     const snap = await getDocs(q);
     return snap.docs
@@ -43,7 +44,12 @@ export const fetchFeaturedPublicZines = async (count = 24): Promise<ZineMetadata
     // fall through
   }
   try {
-    const q = query(collection(db, "zines"), where("isPublic", "==", true), limit(Math.min(count * 3, 60)));
+    const q = query(
+      collection(db, "zines"),
+      where("isPublic", "==", true),
+      where("publicProjectionVersion", "==", 1),
+      limit(Math.min(count * 3, 60)),
+    );
     const snap = await getDocs(q);
     return snap.docs
       .map((docSnap) => docSnap.data() as ZineMetadata)

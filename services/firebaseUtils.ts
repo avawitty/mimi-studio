@@ -572,6 +572,17 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
     id: targetId, userId: uid, userHandle: handle, userAvatar: avatar || null,
     title: zine.title, tone, coverImageUrl: coverUrl || null, timestamp: Date.now(), likes: 0,
     content: zineWithoutThreadData, isDeepThinking: !!deep, isPublic: stagedPublic, isLite: !!isLite, isHighFidelity: !!isHighFidelity,
+    artifactSchemaVersion: 1,
+    lifecycleStatus: stagedPublic ? "published" : "proof",
+    revision: 1,
+    revisions: [],
+    publication: {
+      visibility: stagedPublic ? "public" : "private",
+      publishedAt: stagedPublic
+        ? (consentFields?.publishedAt ?? Date.now())
+        : undefined,
+      revision: 1,
+    },
     publishedAt: stagedPublic ? (consentFields?.publishedAt ?? Date.now()) : undefined,
     ...(consentFields
       ? {
@@ -633,7 +644,13 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
     try {
       console.info("MIMI // saveZineToProfile: Saving zine to Firestore...");
       
-      // 2. Save Zine without threadData and artifacts
+      // 2. Preserve the complete owner-only working state.
+      await setDoc(
+        doc(db, "zine_working", targetId),
+        sanitizeFirestoreData(meta),
+      );
+
+      // 3. Save the public/private projection without threadData and artifacts.
       const publicMeta = stagedPublic
         ? sanitizeZineForPublicView(meta)
         : null;
@@ -645,12 +662,12 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
         : meta;
       await setDoc(doc(db, "zines", targetId), sanitizeFirestoreData(cloudMeta));
       
-      // 3. Save threadData in subcollection
+      // 4. Save threadData in the owner-only subcollection.
       for (const [pageNumber, threadData] of threadDataMap) {
         await setDoc(doc(db, "zines", targetId, "pages", pageNumber.toString()), { threadData: sanitizeFirestoreData(threadData) });
       }
 
-      // 4. Save artifacts in subcollection
+      // 5. Save artifacts in the owner-only subcollection.
       if (artifacts && artifacts.length > 0) {
         const { archiveManager } = await import('./archiveManager');
         for (const artifact of artifacts) {
@@ -1002,9 +1019,14 @@ export const fetchUserZines = async (uid: string, forceRefresh = false) => {
       let q;
       devLog.info("MIMI // fetchUserZines: querying");
       if (auth.currentUser && uid === auth.currentUser.uid) {
-        q = query(collection(db, "zines"), where("userId", "==", uid));
+        q = query(collection(db, "zine_working"), where("userId", "==", uid));
       } else {
-        q = query(collection(db, "zines"), where("userId", "==", uid), where("isPublic", "==", true));
+        q = query(
+          collection(db, "zines"),
+          where("userId", "==", uid),
+          where("isPublic", "==", true),
+          where("publicProjectionVersion", "==", 1),
+        );
       }
       devLog.info("MIMI // fetchUserZines: Querying zines");
       const querySnapshot = await getDocs(q);
@@ -1099,9 +1121,14 @@ export const subscribeToUserZines = (
 
     let q;
     if (uid === auth.currentUser?.uid) {
-      q = query(collection(db, "zines"), where("userId", "==", uid));
+      q = query(collection(db, "zine_working"), where("userId", "==", uid));
     } else {
-      q = query(collection(db, "zines"), where("userId", "==", uid), where("isPublic", "==", true));
+      q = query(
+        collection(db, "zines"),
+        where("userId", "==", uid),
+        where("isPublic", "==", true),
+        where("publicProjectionVersion", "==", 1),
+      );
     }
     unsubFirestore = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
@@ -1154,6 +1181,7 @@ export const fetchCommunityZines = async (count: number) => {
       const q = query(
         collection(db, "zines"),
         where("isPublic", "==", true),
+        where("publicProjectionVersion", "==", 1),
         orderBy("timestamp", "desc"),
         limit(Math.min(take, COMMUNITY_ZINE_READ_CAP)),
       );
@@ -1226,6 +1254,7 @@ export const subscribeToCommunityZines = (
     const q = query(
       collection(db, "zines"),
       where("isPublic", "==", true),
+      where("publicProjectionVersion", "==", 1),
       orderBy("timestamp", "desc"),
       limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
     );
@@ -1307,8 +1336,14 @@ export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolea
         }
     };
 
-    // 2. Save Zine without threadData and artifacts
+    // 2. Preserve the complete owner-only working state.
     console.info("MIMI // updateZineMetadata: Replacing zine document:", metadata.id);
+    await setDoc(
+      doc(db, "zine_working", metadata.id),
+      sanitizeFirestoreData(firestoreMetadata),
+    );
+
+    // 3. Replace the public/private projection.
     const publicMetadata = firestoreMetadata.isPublic
       ? sanitizeZineForPublicView(firestoreMetadata)
       : null;
@@ -1321,12 +1356,12 @@ export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolea
     await setDoc(doc(db, "zines", metadata.id), sanitizeFirestoreData(cloudMetadata));
     console.info("MIMI // updateZineMetadata: document replacement successful");
     
-    // 3. Save threadData in subcollection
+    // 4. Save threadData in the owner-only subcollection
     for (const [pageNumber, threadData] of threadDataMap) {
         await setDoc(doc(db, "zines", metadata.id, "pages", pageNumber.toString()), { threadData: sanitizeFirestoreData(threadData) });
     }
 
-    // 4. Save artifacts in subcollection
+    // 5. Save artifacts in the owner-only subcollection
     if (artifacts && artifacts.length > 0) {
         const { archiveManager } = await import('./archiveManager');
         for (const artifact of artifacts) {
@@ -1390,10 +1425,16 @@ export const fetchZineById = async (id: string) => {
     }
 
     try {
-      const zineDoc = await getDoc(doc(db, "zines", id));
-      if (!zineDoc.exists()) return null;
-      
-      const zine = zineDoc.data() as ZineMetadata;
+      const publicDoc = await getDoc(doc(db, "zines", id));
+      if (!publicDoc.exists()) return null;
+      let zine = publicDoc.data() as ZineMetadata;
+      const isOwner = auth.currentUser?.uid === zine.userId;
+      if (isOwner) {
+        const workingDoc = await getDoc(doc(db, "zine_working", id));
+        if (workingDoc.exists()) {
+          zine = workingDoc.data() as ZineMetadata;
+        }
+      }
       
       // Reconstruct pages from pagesJson
       if (zine.content.pagesJson) {
@@ -1401,23 +1442,27 @@ export const fetchZineById = async (id: string) => {
       }
       
       // Fetch threadData from pages subcollection
-      const pagesSnap = await getDocs(collection(db, "zines", id, "pages"));
-      
-      pagesSnap.forEach((pageDoc) => {
-        const pageNumber = parseInt(pageDoc.id);
-        const threadData = pageDoc.data().threadData;
+      if (isOwner) {
+        const pagesSnap = await getDocs(collection(db, "zines", id, "pages"));
         
-        if (zine.content.pages) {
-            const page = zine.content.pages.find(p => p.pageNumber === pageNumber);
-            if (page) {
-                page.threadData = threadData;
-            }
-        }
-      });
+        pagesSnap.forEach((pageDoc) => {
+          const pageNumber = parseInt(pageDoc.id);
+          const threadData = pageDoc.data().threadData;
+          
+          if (zine.content.pages) {
+              const page = zine.content.pages.find(p => p.pageNumber === pageNumber);
+              if (page) {
+                  page.threadData = threadData;
+              }
+          }
+        });
 
-      // Fetch artifacts from artifacts subcollection
-      const artifactsSnap = await getDocs(collection(db, "zines", id, "artifacts"));
-      zine.artifacts = artifactsSnap.docs.map(doc => doc.data() as MediaFile);
+        // Fetch owner-only artifacts from artifacts subcollection
+        const artifactsSnap = await getDocs(collection(db, "zines", id, "artifacts"));
+        zine.artifacts = artifactsSnap.docs.map(doc => doc.data() as MediaFile);
+      } else {
+        zine.artifacts = [];
+      }
       
       return zine;
     } catch (e) { return null; }

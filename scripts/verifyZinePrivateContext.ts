@@ -68,10 +68,21 @@ const firestoreRules = readFileSync(
   "utf8",
 );
 assert.match(firestoreRules, /publicProjectionVersion == 1/);
+assert.match(firestoreRules, /match \/zine_working\/\{zineId\}/);
 assert.doesNotMatch(
   firestoreRules,
   /match \/artifacts\/\{artifactId\}[\s\S]{0,240}isPublic == true/,
   "public zines must not expose raw artifact subcollections",
+);
+const firebaseUtils = readFileSync(
+  resolve(process.cwd(), "services/firebaseUtils.ts"),
+  "utf8",
+);
+assert.match(firebaseUtils, /collection\(db,\s*"zine_working"\)/);
+assert.match(
+  firebaseUtils,
+  /where\("publicProjectionVersion",\s*"==",\s*1\)/,
+  "Firestore public fallbacks must query only safe projections",
 );
 
 const shopifyExport = readFileSync(

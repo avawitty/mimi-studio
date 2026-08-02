@@ -127,7 +127,8 @@ export async function fetchPublicFeedZines(
   const base = db
     .collection("zines")
     .where("userId", "==", uid)
-    .where("isPublic", "==", true);
+    .where("isPublic", "==", true)
+    .where("publicProjectionVersion", "==", 1);
 
   // timestamp exists on all zines and keeps the limit window deterministic.
   // publishedAt (set on make-public) is preferred for recency when present —
