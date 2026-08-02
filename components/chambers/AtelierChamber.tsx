@@ -5,11 +5,12 @@ import {
   listAtelierObjects,
   subscribeAtelierObjects,
   unpinAtelierObject,
+  updateAtelierObjectIntent,
 } from "../../services/atelierService";
 import type { AtelierObject } from "../../types";
 import { useUser } from "../../contexts/UserContext";
 
-type FilterMode = "all" | "shopify" | "editorial";
+type FilterMode = "all" | "desire" | "reference" | "shopify";
 
 const intentLabel = (intent?: AtelierObject["intent"]): string => {
   switch (intent) {
@@ -45,7 +46,8 @@ export const AtelierChamber: React.FC = () => {
     const q = query.trim().toLowerCase();
     return objects.filter((obj) => {
       if (filter === "shopify" && obj.commerce_source !== "shopify") return false;
-      if (filter === "editorial" && obj.commerce_source === "shopify") return false;
+      if (filter === "desire" && obj.intent === "reference") return false;
+      if (filter === "reference" && obj.intent !== "reference") return false;
       if (!q) return true;
       const haystack = [
         obj.motif,
@@ -78,7 +80,7 @@ export const AtelierChamber: React.FC = () => {
               Objects you keep as taste evidence — desires and buyer orientation, not a shopping list.
             </p>
             <p className="font-sans text-[11px] text-nous-subtle leading-relaxed">
-              Pin commerce touchpoints from a zine to register what resonates. Revisit them here across issues.
+              Desire pins steer Studio and Tailor as buyer orientation. Reference pins stay light cultural context.
             </p>
           </div>
 
@@ -99,8 +101,9 @@ export const AtelierChamber: React.FC = () => {
               {(
                 [
                   ["all", "All"],
+                  ["desire", "Desire"],
+                  ["reference", "Reference"],
                   ["shopify", "Shopify"],
-                  ["editorial", "Editorial"],
                 ] as const
               ).map(([mode, label]) => (
                 <button
@@ -152,15 +155,45 @@ export const AtelierChamber: React.FC = () => {
                   </div>
                   <div className="p-5 flex flex-col flex-1 gap-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-nous-subtle">
-                        {intentLabel(obj.intent)}
-                      </span>
+                      <div className="flex items-center gap-1 border border-nous-border p-0.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateAtelierObjectIntent(
+                              obj.id,
+                              obj.signal_type === "acquisition" ? "acquisition_signal" : "desire",
+                              ownerUid,
+                            )
+                          }
+                          className={`px-2 py-1 font-sans text-[7px] uppercase tracking-widest font-black ${
+                            obj.intent !== "reference"
+                              ? "bg-stone-900 text-white"
+                              : "text-nous-subtle"
+                          }`}
+                        >
+                          Desire
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateAtelierObjectIntent(obj.id, "reference", ownerUid)}
+                          className={`px-2 py-1 font-sans text-[7px] uppercase tracking-widest font-black ${
+                            obj.intent === "reference"
+                              ? "bg-stone-900 text-white"
+                              : "text-nous-subtle"
+                          }`}
+                        >
+                          Reference
+                        </button>
+                      </div>
                       {obj.commerce_source === "shopify" && (
                         <span className="font-mono text-[8px] uppercase tracking-wider text-nous-subtle">
                           Shopify
                         </span>
                       )}
                     </div>
+                    <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-nous-subtle -mt-1">
+                      {intentLabel(obj.intent)}
+                    </span>
                     <h3 className="font-serif italic text-xl text-nous-text tracking-tight leading-snug">
                       {obj.motif}
                     </h3>

@@ -8,6 +8,7 @@ import { fetchFragmentsByStackId } from "./firebase";
 import { scryShadowMemory } from "./vectorSearch";
 import { devLog } from "../lib/devLog";
 import { readIntelHubPressHandoff } from "../lib/intelHubWorkflow";
+import { formatAtelierTasteContextForPrompt } from "./atelierService";
 
 function sanitizeProfile(profile: UserProfile | null): string {
     if (!profile) return "No user profile available.";
@@ -121,6 +122,10 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                 ? `\nSCRIBE ATOMS (Explicit User-Approved Context — MUST influence synthesis, narrative, and visual logic):\n${opts.usedContext.map((a: { title: string; source?: string; content: string; tags?: string[] }) => `- [${a.title}] (${a.source || 'Scribe'}${a.tags?.length ? ` · ${a.tags.join(', ')}` : ''}): ${a.content}`).join('\n')}`
                 : '';
 
+            const atelierTasteContext = formatAtelierTasteContextForPrompt(
+                profile?.uid || opts.atelierOwnerUid,
+            );
+
             const dollContext = opts.dollPromptContext
                 ? `\n${opts.dollPromptContext}`
                 : '';
@@ -186,10 +191,11 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             ${artifactInstruction}
             ${memoryContext}
             ${scribeUsedContext}
+            ${atelierTasteContext}
             ${dollContext}
             
             CORE DIRECTIVE:
-            - BLANK-SLATE VISUAL BASELINE: Do not impose a default palette, color treatment, camera, lens, lighting, film stock, medium, era, genre, mood, art movement, composition, or editorial style. Visual constraints may come only from the current user input, explicit zine brief/options, approved Used Context, uploaded artifacts, a confirmed Tailor profile, or an explicitly selected treatment. The current user input has highest priority. When a dimension is unspecified, leave it open rather than defaulting to monochrome, noir, desaturated, brutalist, cinematic, or high-fashion styling.
+            - BLANK-SLATE VISUAL BASELINE: Do not impose a default palette, color treatment, camera, lens, lighting, film stock, medium, era, genre, mood, art movement, composition, or editorial style. Visual constraints may come only from the current user input, explicit zine brief/options, approved Used Context, Atelier desire signals, uploaded artifacts, a confirmed Tailor profile, or an explicitly selected treatment. The current user input has highest priority. When a dimension is unspecified, leave it open rather than defaulting to monochrome, noir, desaturated, brutalist, cinematic, or high-fashion styling.
             - FORM & PRESENTATION: ${profileToUse?.tailorDraft?.positioningCore?.aestheticCore?.presentation || 'Unspecified — do not infer or constrain presentation.'}
             - PRIORITIZE GROUNDING: If 'useSearch' is enabled, you MUST utilize Google Search to anchor your insights in real-world cultural history, emerging movements, and verified facts. Move beyond the user's immediate profile to provide external perspective.
             - EDUCATIONAL DEPTH: Your responses must be insightful and informative. Do not just repeat the user's preferences; explain the *why* behind the aesthetic connections.

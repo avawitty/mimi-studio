@@ -191,3 +191,121 @@ export function subscribeAtelierObjects(
     window.removeEventListener("storage", handler);
   };
 }
+
+export function updateAtelierObjectIntent(
+  objectId: string,
+  intent: NonNullable<AtelierObject["intent"]>,
+  ownerUid?: string,
+): AtelierObject | null {
+  const owner = resolveOwner(ownerUid);
+  if (!owner?.uid) return null;
+  const current = readStore(owner.uid);
+  const index = current.findIndex((entry) => entry.id === objectId);
+  if (index < 0) return null;
+  const updated: AtelierObject = { ...current[index], intent };
+  const next = [...current];
+  next[index] = updated;
+  writeStore(next, owner.uid);
+  return updated;
+}
+
+function intentWeight(intent?: AtelierObject["intent"]): number {
+  switch (intent) {
+    case "desire":
+      return 3;
+    case "acquisition_signal":
+      return 2;
+    case "reference":
+      return 1;
+    case undefined:
+      return 2;
+    default: {
+      const _exhaustive: never = intent;
+      return _exhaustive;
+    }
+  }
+}
+
+function formatObjectLine(obj: AtelierObject): string {
+  const meta = [obj.vendor, obj.price, obj.semantic_trigger].filter(Boolean).join(" · ");
+  const why = obj.targeting_rationale || obj.context;
+  return `- ${obj.motif}${meta ? ` (${meta})` : ""}${why ? `: ${why}` : ""}`;
+}
+
+export type AtelierPriorSignals = {
+  desire: string[];
+  reference: string[];
+};
+
+/** Compact signals for Tailor prior-context / dossier synthesis. */
+export function summarizeAtelierForPriorContext(
+  ownerUid?: string,
+  limits: { desire?: number; reference?: number } = {},
+): AtelierPriorSignals {
+  const desireLimit = limits.desire ?? 8;
+  const referenceLimit = limits.reference ?? 3;
+  const objects = listAtelierObjects(ownerUid);
+  const desire = objects
+    .filter((obj) => obj.intent !== "reference")
+    .sort((a, b) => intentWeight(b.intent) - intentWeight(a.intent) || b.savedAt - a.savedAt)
+    .slice(0, desireLimit)
+    .map((obj) => {
+      const bits = [obj.motif, obj.vendor, obj.semantic_trigger].filter(Boolean);
+      return bits.join(" · ");
+    });
+  const reference = objects
+    .filter((obj) => obj.intent === "reference")
+    .slice(0, referenceLimit)
+    .map((obj) => {
+      const bits = [obj.motif, obj.vendor].filter(Boolean);
+      return bits.join(" · ");
+    });
+  return { desire, reference };
+}
+
+/**
+ * Soft taste context for Studio/zine generation.
+ * Desire / acquisition pins steer orientation; reference pins are lighter evidence only.
+ */
+export function formatAtelierTasteContextForPrompt(
+  ownerUid?: string,
+  limits: { desire?: number; reference?: number } = {},
+): string {
+  const objects = listAtelierObjects(ownerUid);
+  if (objects.length === 0) return "";
+
+  const desireLimit = limits.desire ?? 8;
+  const referenceLimit = limits.reference ?? 3;
+  const desireObjects = objects
+    .filter((obj) => obj.intent !== "reference")
+    .sort((a, b) => intentWeight(b.intent) - intentWeight(a.intent) || b.savedAt - a.savedAt)
+    .slice(0, desireLimit);
+  const referenceObjects = objects
+    .filter((obj) => obj.intent === "reference")
+    .slice(0, referenceLimit);
+
+  if (desireObjects.length === 0 && referenceObjects.length === 0) return "";
+
+  const lines: string[] = [
+    "\nATELIER TASTE OBJECTS (Pinned commerce/semiotic evidence of the user's desires and buyer orientation — NOT a shopping list or purchase instruction):",
+    "Weight desire signals when shaping motifs, materials, silhouette language, and acquisition-type semiotic_signals. Treat reference-only pins as optional cultural context with lower weight.",
+  ];
+  if (desireObjects.length > 0) {
+    lines.push("DESIRE / BUYER ORIENTATION:");
+    lines.push(...desireObjects.map(formatObjectLine));
+  }
+  if (referenceObjects.length > 0) {
+    lines.push("REFERENCE ONLY (do not treat as purchase intent):");
+    lines.push(...referenceObjects.map(formatObjectLine));
+  }
+  return lines.join("\n");
+}
+
+/** Resolve pin intent from the Desire vs Reference choice. */
+export function resolvePinIntent(
+  choice: "desire" | "reference",
+  signalType?: SemioticSignal["type"],
+): NonNullable<AtelierObject["intent"]> {
+  if (choice === "reference") return "reference";
+  return signalType === "acquisition" ? "acquisition_signal" : "desire";
+}

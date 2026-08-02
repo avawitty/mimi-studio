@@ -5,10 +5,14 @@
 import assert from "node:assert/strict";
 import {
   buildAtelierObjectId,
+  formatAtelierTasteContextForPrompt,
   isAtelierObjectPinned,
   listAtelierObjects,
   pinAtelierObject,
+  resolvePinIntent,
+  summarizeAtelierForPriorContext,
   unpinSignal,
+  updateAtelierObjectIntent,
 } from "../services/atelierService";
 import type { SemioticSignal } from "../types";
 
@@ -59,12 +63,17 @@ const signal: SemioticSignal = {
   product_id: "gid://shopify/Product/1",
 };
 
+assert.equal(resolvePinIntent("desire", "acquisition"), "acquisition_signal");
+assert.equal(resolvePinIntent("desire", "conceptual"), "desire");
+assert.equal(resolvePinIntent("reference", "acquisition"), "reference");
+
 const pinned = pinAtelierObject({
   signal,
   ownerUid: uid,
   zineId: "zine_1",
   zineTitle: "Winter Gravity",
   signalIndex: 0,
+  intent: resolvePinIntent("desire", signal.type),
 });
 
 assert.ok(pinned, "pin should return an object");
@@ -81,6 +90,7 @@ const again = pinAtelierObject({
   zineId: "zine_1",
   zineTitle: "Winter Gravity",
   signalIndex: 0,
+  intent: resolvePinIntent("desire", signal.type),
 });
 assert.equal(listAtelierObjects(uid).length, 1, "re-pin should be idempotent");
 assert.equal(again!.id, pinned!.id);
@@ -94,6 +104,22 @@ const id = buildAtelierObjectId({
   signalIndex: 0,
 });
 assert.equal(id, pinned!.id);
+
+const switched = updateAtelierObjectIntent(id, "reference", uid);
+assert.equal(switched?.intent, "reference");
+
+const prior = summarizeAtelierForPriorContext(uid);
+assert.equal(prior.desire.length, 0, "reference pins excluded from desire prior");
+assert.equal(prior.reference.length, 1);
+
+const prompt = formatAtelierTasteContextForPrompt(uid);
+assert.match(prompt, /REFERENCE ONLY/);
+assert.doesNotMatch(prompt, /DESIRE \/ BUYER ORIENTATION/);
+
+updateAtelierObjectIntent(id, "acquisition_signal", uid);
+const desirePrompt = formatAtelierTasteContextForPrompt(uid);
+assert.match(desirePrompt, /DESIRE \/ BUYER ORIENTATION/);
+assert.match(desirePrompt, /Archive Wool Coat/);
 
 assert.equal(
   unpinSignal(signal, { ownerUid: uid, zineId: "zine_1", signalIndex: 0 }),

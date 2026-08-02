@@ -26,8 +26,11 @@ import {
   isAtelierObjectPinned,
   listAtelierObjects,
   pinAtelierObject,
+  resolvePinIntent,
   subscribeAtelierObjects,
   unpinSignal,
+  updateAtelierObjectIntent,
+  buildAtelierObjectId,
 } from '../services/atelierService';
 import { logProductTasteEvent } from '../services/tasteLogger';
 
@@ -237,14 +240,40 @@ export const AnalysisDisplay: React.FC<{
      signalIndex: index,
    });
 
- const handleToggleTasteSignal = (signal: SemioticSignal, index: number) => {
+ const pinnedIntentFor = (signal: SemioticSignal, index: number): AtelierObject['intent'] | null => {
+   if (!signalIsPinned(signal, index)) return null;
+   const owner = atelierOwnerUid || atelierObjects[0]?.ownerUid;
+   if (!owner) return null;
+   const id = buildAtelierObjectId({
+     ownerUid: owner,
+     productId: signal.product_id,
+     link: signal.link,
+     motif: signal.motif,
+     zineId: metadata.id,
+     signalIndex: index,
+   });
+   return atelierObjects.find((obj) => obj.id === id)?.intent || null;
+ };
+
+ const handlePinTasteSignal = (
+   signal: SemioticSignal,
+   index: number,
+   choice: 'desire' | 'reference',
+ ) => {
    if (!signal.motif) return;
+   const intent = resolvePinIntent(choice, signal.type);
    if (signalIsPinned(signal, index)) {
-     unpinSignal(signal, {
-       ownerUid: atelierOwnerUid,
+     const owner = atelierOwnerUid || atelierObjects[0]?.ownerUid;
+     if (!owner) return;
+     const id = buildAtelierObjectId({
+       ownerUid: owner,
+       productId: signal.product_id,
+       link: signal.link,
+       motif: signal.motif,
        zineId: metadata.id,
        signalIndex: index,
      });
+     updateAtelierObjectIntent(id, intent, atelierOwnerUid);
      return;
    }
    const pinned = pinAtelierObject({
@@ -253,6 +282,7 @@ export const AnalysisDisplay: React.FC<{
      zineId: metadata.id,
      zineTitle: metadata.title || metadata.content?.headlines?.[0] || 'Untitled',
      signalIndex: index,
+     intent,
    });
    if (!pinned) {
      window.dispatchEvent(
@@ -260,17 +290,25 @@ export const AnalysisDisplay: React.FC<{
      );
      return;
    }
-   // Taste aggregation: pin registers desire / buyer orientation, not a cart save.
-   if (pinned.ownerUid && !pinned.ownerUid.startsWith('local_')) {
+   // Taste aggregation: desire pins register buyer orientation (not cart saves).
+   if (choice === 'desire' && pinned.ownerUid && !pinned.ownerUid.startsWith('local_')) {
      void logProductTasteEvent({
        userId: pinned.ownerUid,
        itemId: pinned.product_id || pinned.id,
        dwellTime: 0,
        interactionType: 'save',
-       tags: pinned.tags,
+       tags: [...(pinned.tags || []), 'atelier_desire'],
        timestamp: pinned.savedAt,
      });
    }
+ };
+
+ const handleReleaseTasteSignal = (signal: SemioticSignal, index: number) => {
+   unpinSignal(signal, {
+     ownerUid: atelierOwnerUid,
+     zineId: metadata.id,
+     signalIndex: index,
+   });
  };
  const [readingMode, setReadingMode] = useState<ZineReadingMode>('flipbook');
  const [scribeFragments, setScribeFragments] = useState<MemoryAtom[]>([]);
@@ -1575,21 +1613,46 @@ export const AnalysisDisplay: React.FC<{
  View object
  </span>
  </button>
- <div className="flex items-center justify-between gap-3 px-7 pb-7 pt-0 border-t border-nous-border/0">
- <button
-   type="button"
-   onClick={(e) => { e.stopPropagation(); handleToggleTasteSignal(t, i); }}
-   className={`flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black border-b pb-0.5 ${
-     isPinned ? 'text-[var(--hover-accent)] border-current' : 'text-nous-text border-current'
-   }`}
- >
-   {isPinned ? <Check size={10} /> : <Pin size={10} />}
-   {isPinned ? 'Signal kept' : 'Keep as signal'}
+ <div className="px-7 pb-7 pt-0 space-y-3" onClick={(e) => e.stopPropagation()}>
+ {isPinned ? (
+ <div className="flex flex-wrap items-center justify-between gap-3">
+ <div className="flex items-center gap-2">
+ <Check size={10} className="text-[var(--hover-accent)]" />
+ <span className="font-sans text-[8px] uppercase tracking-widest font-black text-[var(--hover-accent)]">
+ {pinnedIntentFor(t, i) === 'reference' ? 'Reference kept' : 'Desire kept'}
+ </span>
+ <button type="button" onClick={() => handlePinTasteSignal(t, i, pinnedIntentFor(t, i) === 'reference' ? 'desire' : 'reference')} className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle hover:text-nous-text border-b border-transparent hover:border-current pb-0.5">
+ Switch
+ </button>
+ </div>
+ <div className="flex items-center gap-3">
+ <button type="button" onClick={() => handleReleaseTasteSignal(t, i)} className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle hover:text-nous-text">
+ Release
  </button>
  {t.link && (
- <a href={t.link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text">
+ <a href={t.link} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text">
  Open source <ExternalLink size={12} />
  </a>
+ )}
+ </div>
+ </div>
+ ) : (
+ <div className="space-y-2">
+ <p className="font-mono text-[7px] uppercase tracking-[0.2em] text-nous-subtle">Keep as taste signal</p>
+ <div className="flex flex-wrap items-center gap-2">
+ <button type="button" onClick={() => handlePinTasteSignal(t, i, 'desire')} className="flex items-center gap-1.5 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text border border-nous-border px-2.5 py-1.5 hover:border-[var(--hover-accent)] hover:text-[var(--hover-accent)]">
+ <Pin size={10} /> Desire
+ </button>
+ <button type="button" onClick={() => handlePinTasteSignal(t, i, 'reference')} className="flex items-center gap-1.5 font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle border border-nous-border px-2.5 py-1.5 hover:text-nous-text hover:border-stone-400">
+ Reference
+ </button>
+ {t.link && (
+ <a href={t.link} target="_blank" rel="noreferrer" className="ml-auto flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text">
+ Open source <ExternalLink size={12} />
+ </a>
+ )}
+ </div>
+ </div>
  )}
  </div>
  </motion.div>
@@ -1641,23 +1704,43 @@ export const AnalysisDisplay: React.FC<{
  </span>
  </div>
  </button>
- <div className="px-6 pb-6 flex justify-between items-center gap-4">
- <button
-   type="button"
-   onClick={(e) => { e.stopPropagation(); handleToggleTasteSignal(t, i); }}
-   className={`flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black border-b pb-0.5 ${
-     isPinned ? 'text-[var(--hover-accent)] border-current' : 'text-nous-text border-current'
-   }`}
- >
-   {isPinned ? <Check size={10} /> : <Pin size={10} />}
-   {isPinned ? 'Signal kept' : 'Keep as signal'}
+ <div className="px-6 pb-6 space-y-2" onClick={(e) => e.stopPropagation()}>
+ {isPinned ? (
+ <div className="flex flex-wrap items-center justify-between gap-3">
+ <div className="flex items-center gap-2">
+ <Check size={10} className="text-[var(--hover-accent)]" />
+ <span className="font-sans text-[8px] uppercase tracking-widest font-black text-[var(--hover-accent)]">
+ {pinnedIntentFor(t, i) === 'reference' ? 'Reference kept' : 'Desire kept'}
+ </span>
+ <button type="button" onClick={() => handlePinTasteSignal(t, i, pinnedIntentFor(t, i) === 'reference' ? 'desire' : 'reference')} className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle hover:text-nous-text">
+ Switch
+ </button>
+ </div>
+ <div className="flex items-center gap-3">
+ <button type="button" onClick={() => handleReleaseTasteSignal(t, i)} className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle hover:text-nous-text">
+ Release
  </button>
  {t.link ? (
  <a href={t.link} target="_blank" rel="noreferrer" className="text-nous-subtle hover:text-[var(--hover-accent)] transition-colors" aria-label={`Open source for ${t.motif}`}>
  <ExternalLink size={14} />
  </a>
+ ) : null}
+ </div>
+ </div>
  ) : (
- <span />
+ <div className="flex flex-wrap items-center gap-2">
+ <button type="button" onClick={() => handlePinTasteSignal(t, i, 'desire')} className="flex items-center gap-1.5 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text border border-nous-border px-2.5 py-1.5 hover:border-[var(--hover-accent)] hover:text-[var(--hover-accent)]">
+ <Pin size={10} /> Desire
+ </button>
+ <button type="button" onClick={() => handlePinTasteSignal(t, i, 'reference')} className="flex items-center gap-1.5 font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle border border-nous-border px-2.5 py-1.5 hover:text-nous-text">
+ Reference
+ </button>
+ {t.link ? (
+ <a href={t.link} target="_blank" rel="noreferrer" className="ml-auto text-nous-subtle hover:text-[var(--hover-accent)] transition-colors" aria-label={`Open source for ${t.motif}`}>
+ <ExternalLink size={14} />
+ </a>
+ ) : null}
+ </div>
  )}
  </div>
  </>
