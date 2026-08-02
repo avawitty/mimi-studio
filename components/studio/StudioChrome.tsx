@@ -61,13 +61,19 @@ export const StudioChrome: React.FC<{
     };
   }, []);
 
-  const creatorPath = CREATOR_PATH.map((step) => ({
+  const creatorPath = CREATOR_PATH.map((step, index) => ({
+    index,
     label: step.label,
     modes: [...step.modes],
   }));
   const activePathIndex = Math.max(
     0,
     creatorPath.findIndex((step) => step.modes.includes(viewMode)),
+  );
+  const visibleCreatorPath = creatorPath.filter(
+    (step) =>
+      step.index >= activePathIndex - 1 &&
+      step.index <= activePathIndex + 1,
   );
 
   const [timeString, setTimeString] = React.useState("");
@@ -230,7 +236,8 @@ export const StudioChrome: React.FC<{
         </div>
       ) : (
         <nav aria-label="Creator path" className="hidden lg:flex items-center gap-1.5">
-          {creatorPath.map((step, index) => {
+          {visibleCreatorPath.map((step) => {
+            const index = step.index;
             const isActiveStep = index === activePathIndex;
             const isComplete = index < activePathIndex;
             return (

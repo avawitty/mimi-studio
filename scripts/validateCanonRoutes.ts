@@ -12,6 +12,7 @@ import {
   CANON_ROUTE_ALIASES,
   canonicalizeMimiRoute,
 } from "../lib/productCanon";
+import { resolveChamberIntent } from "../lib/chamberIntents";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -38,6 +39,7 @@ const IMPLEMENTED_MODES = new Set([
   "mimi-dolls",
   "mimi-rip",
   "chamber-map",
+  "codex",
   "atelier",
   "house",
   "proscenium",
@@ -51,6 +53,8 @@ const IMPLEMENTED_MODES = new Set([
 
 /** Primary chamber component paths (Milestone 1 registry) */
 const CHAMBER_COMPONENT_FILES: Record<string, string> = {
+  StudioWorktable: "components/worktable/StudioWorktable.tsx",
+  CodexView: "components/CodexView.tsx",
   ScribeChamber: "components/chambers/ScribeChamber.tsx",
   MimiDollsChamber: "components/chambers/MimiDollsChamber.tsx",
   RipChamber: "components/chambers/RipChamber.tsx",
@@ -109,6 +113,40 @@ for (const module of CANON_MODULES) {
 
   if (!module.userFlow?.trim()) {
     failures.push(`${module.id}: missing userFlow`);
+  }
+
+  if (!module.family || !module.phase || !module.visibility) {
+    failures.push(`${module.id}: incomplete Studio OS taxonomy`);
+  }
+
+  if (!Array.isArray(module.atmosphere)) {
+    failures.push(`${module.id}: atmosphere must be an array`);
+  }
+
+  if (!module.primaryAction?.label.trim() || !module.primaryAction.intent?.type) {
+    failures.push(`${module.id}: missing primary action intent`);
+  } else {
+    try {
+      const intentMode = resolveChamberIntent(module.primaryAction.intent);
+      if (!IMPLEMENTED_MODES.has(intentMode)) {
+        failures.push(
+          `${module.id}: primary action resolves to unknown mode "${intentMode}"`,
+        );
+      }
+    } catch (error) {
+      failures.push(
+        `${module.id}: primary action does not resolve (${String(error)})`,
+      );
+    }
+  }
+
+  if (
+    module.suggestedNext &&
+    !IMPLEMENTED_MODES.has(module.suggestedNext.mode)
+  ) {
+    failures.push(
+      `${module.id}: suggested next mode "${module.suggestedNext.mode}" is not implemented`,
+    );
   }
 
   const componentName = module.component?.split(/[\s/]/)[0];

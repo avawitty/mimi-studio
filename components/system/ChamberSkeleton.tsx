@@ -14,7 +14,7 @@ export interface ChamberSkeletonProps {
  * Replaces the generic ViewSkeleton for route transitions.
  */
 export const ChamberSkeleton: React.FC<ChamberSkeletonProps> = ({
-  family = "system",
+  family = "orientation",
   voidPlate = false,
   label,
 }) => {
@@ -38,7 +38,7 @@ export const ChamberSkeleton: React.FC<ChamberSkeletonProps> = ({
     >
       <div className="flex items-center justify-between gap-4">
         <div className={`w-1/3 h-10 ${plate} animate-pulse`} />
-        {family === "reflect" || family === "observe" ? (
+        {family === "intelligence" || family === "capture" ? (
           <div
             className="w-16 h-4 animate-pulse"
             style={{ background: "var(--mimi-cobalt, #9BB8CE)", opacity: 0.35 }}
@@ -47,7 +47,7 @@ export const ChamberSkeleton: React.FC<ChamberSkeletonProps> = ({
       </div>
       <div className={`w-1/4 h-4 ${soft} animate-pulse`} />
 
-      {family === "create" || family === "refine" ? (
+      {family === "production" || family === "services" ? (
         <div className="flex-1 mt-4 flex flex-col gap-3 min-h-0">
           <div className={`flex-1 w-full ${plate} animate-pulse`} />
           <div className={`h-14 w-full ${soft} animate-pulse`} />

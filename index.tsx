@@ -95,6 +95,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AgentProvider } from './contexts/AgentContext';
+import { DossierProvider } from './components/studio-os/DossierContext';
 import { installStaleAssetListeners } from './lib/staleChunkRecovery';
 
 installStaleAssetListeners();
@@ -107,7 +108,9 @@ if (rootElement) {
         <ThemeProvider>
           <UserProvider>
             <AgentProvider>
-              <App />
+              <DossierProvider>
+                <App />
+              </DossierProvider>
             </AgentProvider>
           </UserProvider>
         </ThemeProvider>
