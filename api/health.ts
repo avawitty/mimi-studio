@@ -29,7 +29,7 @@ const sovereignStatusSafe = async () => {
     const { sovereignStatus } = await import("../lib/sovereign/store.js");
     return await Promise.race([
       sovereignStatus(),
-      new Promise<Awaited<ReturnType<typeof sovereignStatus>>>((resolve) => {
+      new Promise<typeof fallback>((resolve) => {
         setTimeout(() => resolve(fallback), SOVEREIGN_HEALTH_BUDGET_MS);
       }),
     ]);

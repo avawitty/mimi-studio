@@ -44,6 +44,8 @@ Feed (`/api/feed`) and OG (`/api/og/zine`) read sovereign first when ready.
 | **Firebase `__session` cookie** | Admin `verifySessionCookie` (checkRevoked) | SSE + same-origin credentialed calls | Requires `/api/sessionLogin` after sign-in |
 | **Ingest key** (`x-mimi-ingest-key` / `x-api-key`) | Shared secret `MIMI_SOVEREIGN_INGEST_KEY` | Firestore→sovereign export, ops seed | Not end-user identity; pair with `x-user-id` for acting-as |
 | **Soft `x-user-id`** | Trusted only when not strict | Local single-tenant dev | Spoofable — **off in production** unless `MIMI_SOVEREIGN_TRUST_USER_HEADER=1` |
+| **Neon Auth (Managed Better Auth)** | `NEON_AUTH_BASE_URL` / `VITE_NEON_AUTH_URL`; users in `neon_auth` schema | Greenfield Neon+RLS apps; branchable auth | Replaces Firebase identity; SDK oriented to Next/Vite Better Auth — conflicts with Stripe/`__session`/credits today |
+| **Neon Stack Auth (legacy)** | `STACK_*` / `NEXT_PUBLIC_STACK_*` | Old Neon Auth resources only | **Do not use** for new work (pre–2026-01-12) |
 | **Neon / Postgres RLS** | DB-enforced policies with JWT claims | Direct client→DB (not current architecture) | Would bypass Express slim/cache/SSE; more ops surface |
 | **Clerk / Auth.js / Supabase Auth** | Replace Firebase identity | Greenfield apps | High migration cost; billing + existing `__session` already Firebase |
 
@@ -55,6 +57,8 @@ Feed (`/api/feed`) and OG (`/api/og/zine`) read sovereign first when ready.
 2. Always accept `__session` for SSE / cookie-only channels (now implemented).
 3. Use ingest key only for migration/import jobs.
 4. Never enable soft `x-user-id` on Vercel/production.
+
+**Neon Auth** is enabled on mimineon (`NEON_AUTH_BASE_URL`) and is fine to leave provisioned, but **do not adopt it as Mimi’s login** until Firebase (and Stripe customer linkage) is intentionally migrated. Status exposes `neonAuthConfigured` / `neonAuthHost` for ops visibility (`lib/sovereign/neonAuth.ts`). Ignore legacy Stack Auth vars.
 
 Do **not** move to Neon RLS or a second auth vendor until Firestore is fully demoted and identity is a deliberate rewrite. For scale, stay with Express/API ownership + Neon pooled Postgres; add a long-lived Express host (Fly) when SSE fan-out matters more than serverless.
 

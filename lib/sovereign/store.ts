@@ -7,8 +7,14 @@ import {
   isSovereignGatewayEmbedEnabled,
   scheduleZineEmbedding,
   searchPublicZinesSemantic,
+<<<<<<< HEAD
 } from "./embeddings.js";
 import { emitSovereignEvent } from "./events.js";
+=======
+} from "./embeddings";
+import { emitSovereignEvent } from "./events";
+import { neonAuthStatusSnippet } from "./neonAuth";
+>>>>>>> 655986a (Probe Neon Auth config without adopting it as login)
 
 const COMMUNITY_CAP = 60;
 const FLOOR_CACHE_TTL_MS = 30_000;
@@ -54,6 +60,7 @@ export const slimZineForFloor = (zine: ZineMetadata): ZineMetadata => {
 
 export const sovereignStatus = async () => {
   const gatewayEmbed = isSovereignGatewayEmbedEnabled();
+  const neonAuth = neonAuthStatusSnippet();
   const empty = {
     enabled: isSovereignEnabled(),
     ready: false,
@@ -67,6 +74,7 @@ export const sovereignStatus = async () => {
     latencyMs: null as number | null,
     gatewayEmbed,
     embeddedCount: 0,
+    ...neonAuth,
   };
 
   try {
@@ -116,6 +124,7 @@ export const sovereignStatus = async () => {
       latencyMs,
       gatewayEmbed,
       embeddedCount,
+      ...neonAuth,
     };
   } catch (error) {
     console.warn("MIMI // Sovereign status failed:", error);
