@@ -112,7 +112,8 @@ export const TheForecast: React.FC<{
       }),
     );
 
-    if (contentForecast) {
+    // Anonymous culture views keep the offline MMM report only — no gateway synthesis.
+    if (contentForecast || !user) {
       return () => {
         cancelled = true;
       };
@@ -138,7 +139,7 @@ export const TheForecast: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [selectedVector, contentForecast, apiKeys]);
+  }, [selectedVector, contentForecast, apiKeys, user]);
 
   const go = (view: string) => {
     if (navigate) {
