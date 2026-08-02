@@ -1,5 +1,5 @@
 /**
- * Mimi Residue Engine — public API (Phases 2–5).
+ * Mimi Residue Engine — public API (Phases 2–6).
  */
 
 export * from "./constants";
@@ -57,3 +57,22 @@ export {
   buildInterpretiveMeanMedianMode,
   buildLiteralMeanMedianMode,
 } from "./shared/meanMedianMode";
+export {
+  adaptResidueToIntelligenceReport,
+  intelligenceReportSchema,
+  type IntelligenceReport,
+} from "./adapters/intelligenceReportAdapter";
+export {
+  RESIDUE_INTEL_HUB_CHANGED,
+  RESIDUE_INTEL_HUB_KEY,
+  adaptResidueToIntelHubObject,
+  buildResidueHubBundle,
+  createIntelProjectRunFromResidue,
+  createResidueIntelHubRegistry,
+  filterResidueIntelHubObjects,
+  persistReportArtifactForRun,
+  pinFindingOnIntelObject,
+  residueIntelHubObjectSchema,
+  residueToIntelEvidenceItems,
+  type ResidueIntelHubObject,
+} from "./adapters/intelHubAdapter";

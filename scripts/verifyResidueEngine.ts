@@ -29,8 +29,15 @@ import {
   literalMode,
   meanMedianModeResultSchema,
   redactSensitiveText,
+  adaptResidueToIntelligenceReport,
+  adaptResidueToIntelHubObject,
   adaptResidueToMeanMedianMode,
   buildLiteralMeanMedianMode,
+  buildResidueHubBundle,
+  createIntelProjectRunFromResidue,
+  createResidueIntelHubRegistry,
+  filterResidueIntelHubObjects,
+  persistReportArtifactForRun,
   runCulturalResidue,
   runEmotionalResidue,
   safeParseCulturalResidueResult,
@@ -633,7 +640,93 @@ async function main() {
     "emotional mode pattern",
   );
 
-  console.log("OK — Residue Phase 2–5 checks passed.");
+  // --- Phase 6: Intel Hub + Intelligence Report adapters ---
+  const report = adaptResidueToIntelligenceReport(culturalEngine.result, {
+    researchQuestion: "How did indie sleaze travel into retail?",
+  });
+  assert(report.mode === "cultural", "report mode");
+  assert(report.executiveSummary.length > 0, "report executive summary");
+  assert(report.majorFindings.length > 0, "report findings");
+  assert(report.timeline.length > 0, "report timeline");
+  assert(report.meanMedianMode.analysisKind === "interpretive-metaphor", "report embeds MMM");
+  assert(report.sourceManifest.total >= 1, "report source manifest");
+  assert(report.recommendedNextResearchQuestions.length >= 2, "next questions");
+  assert(report.evidenceAudit.evidenceCount === culturalEngine.result.evidence.length, "audit count");
+
+  const emotionalReport = adaptResidueToIntelligenceReport(mindRead.result);
+  assert(emotionalReport.mode === "emotional", "emotional report mode");
+  assert(!!emotionalReport.safetyNotice, "emotional report safety notice");
+  assert(/diagnos/i.test(emotionalReport.safetyNotice || ""), "emotional report non-diagnostic");
+
+  const intel = adaptResidueToIntelHubObject(culturalEngine.result);
+  assert(intel.version === 1, "intel object version");
+  assert(intel.runId === culturalEngine.result.metadata.runId, "intel run link");
+  assert(intel.availableOutputs.includes("intelligence-report"), "intel can open report");
+  assert(intel.sourceIds.length === culturalEngine.result.sources.length, "intel source index");
+
+  const registryStore: Record<string, string> = {};
+  const registry = createResidueIntelHubRegistry({
+    getItem: (k) => registryStore[k] ?? null,
+    setItem: (k, v) => {
+      registryStore[k] = v;
+    },
+  });
+  registry.save(culturalEngine.result);
+  registry.save(mindRead.result, { pinned: true });
+  assert(registry.list().length === 2, "hub history size");
+  assert(registry.list({ mode: "emotional" }).length === 1, "hub filter mode");
+  assert(registry.list({ pinnedOnly: true }).length === 1, "hub filter pinned");
+  assert(
+    filterResidueIntelHubObjects(registry.list(), { topicIncludes: "indie" }).length === 1,
+    "hub topic filter",
+  );
+
+  const pinned = registry.pinFinding(intel.intelId, culturalEngine.result.definition.claimId);
+  assert(pinned?.pinnedFindingIds.includes(culturalEngine.result.definition.claimId), "pin finding");
+
+  const compare = registry.compare(
+    registry.list({ mode: "cultural" })[0].intelId,
+    registry.list({ mode: "emotional" })[0].intelId,
+  );
+  assert(!!compare && compare.modes.includes("cultural") && compare.modes.includes("emotional"), "compare runs");
+
+  const projectRun = createIntelProjectRunFromResidue(culturalEngine.result, 123);
+  assert(projectRun.projectName.includes("Residue"), "project run naming");
+  assert(projectRun.evidenceCount === culturalEngine.result.evidence.length, "project evidence count");
+  assert(projectRun.artifactPackId === culturalEngine.result.metadata.runId, "project links run");
+
+  const bundle = buildResidueHubBundle(culturalEngine.result);
+  assert(bundle.report.reportId.startsWith("report_"), "bundle report");
+  assert(bundle.evidenceItems.length > 0, "bundle evidence items");
+
+  // Artifact delete does not delete research run (report artifact path)
+  const memStore = createMemoryResidueStore();
+  const hubRunDoc = buildResidueRunDocument({
+    runId: culturalEngine.result.metadata.runId,
+    ownerUid: "user_hub",
+    mode: "cultural",
+    status: "complete",
+    retention: "persisted",
+    consentToStore: true,
+    inputHash: culturalEngine.result.metadata.inputHash,
+    queryOrExperience: culturalEngine.result.query,
+    sourceCount: culturalEngine.result.sources.length,
+    confidenceSummary: culturalEngine.result.confidenceSummary,
+  });
+  await memStore.saveRun(hubRunDoc);
+  const persistedReport = await persistReportArtifactForRun({
+    ownerUid: "user_hub",
+    result: culturalEngine.result,
+    store: memStore,
+  });
+  await memStore.deleteArtifact("user_hub", persistedReport.reportId);
+  assert(
+    (await memStore.getRun("user_hub", culturalEngine.result.metadata.runId))?.runId ===
+      culturalEngine.result.metadata.runId,
+    "run survives report artifact delete",
+  );
+
+  console.log("OK — Residue Phase 2–6 checks passed.");
 }
 
 main().catch((err) => {
