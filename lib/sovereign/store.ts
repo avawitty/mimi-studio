@@ -1,6 +1,11 @@
 import type { PocketItem, UserProfile, ZineMetadata } from "../../types.js";
 import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache.js";
-import { getSovereignDb, isSovereignEnabled, resolveSovereignDbPath } from "./db.js";
+import {
+  getSovereignDb,
+  getSovereignLastInitError,
+  isSovereignEnabled,
+  resolveSovereignDbPath,
+} from "./db.js";
 import { SOVEREIGN_SCHEMA_VERSION, type SovereignDriver } from "./driver.js";
 import {
   countIndexedEmbeddings,
@@ -74,7 +79,10 @@ export const sovereignStatus = async () => {
 
   try {
     const db = await getSovereignDb();
-    if (!db) return empty;
+    if (!db) {
+      const openError = getSovereignLastInitError();
+      return openError ? { ...empty, openError } : empty;
+    }
 
     let latencyMs: number | null = null;
     if (db.ping) {

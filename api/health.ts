@@ -3,8 +3,8 @@ import { isSovereignEnabled } from "../lib/sovereign/db.js";
 import { isSovereignGatewayEmbedEnabled } from "../lib/sovereign/embeddings.js";
 import { neonAuthStatusSnippet } from "../lib/sovereign/neonAuth.js";
 
-/** Keep /api/health under typical serverless wait budgets when Neon is slow. */
-const SOVEREIGN_HEALTH_BUDGET_MS = 9_000;
+/** Keep /api/health under serverless wait budgets; above Neon connect (15s). */
+const SOVEREIGN_HEALTH_BUDGET_MS = 18_000;
 
 const fallbackSovereignStatus = () => ({
   enabled: isSovereignEnabled(),

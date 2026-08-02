@@ -87,12 +87,20 @@ export const openPostgresDriver = async (connectionString: string): Promise<Sove
     allowExitOnIdle: Boolean(process.env.VERCEL),
     application_name: process.env.MIMI_SOVEREIGN_APP_NAME || "mimi-sovereign",
     ssl: { rejectUnauthorized: true },
-    // Apply to every new connection (pool.query SET only touches one).
-    options: "-c statement_timeout=12000",
+    // Do NOT pass `options: -c statement_timeout=…` here. Neon’s pooled
+    // host (PgBouncer) rejects/fails startup parameters and leaves the
+    // archive permanently offline. Bound queries per-connection instead.
   });
 
   pool.on("error", (error) => {
     console.warn("MIMI // Sovereign pg pool error:", error);
+  });
+
+  // Bound runaway queries (ms). Neon / Postgres GUC — safe on pooler.
+  pool.on("connect", (client) => {
+    void client.query("SET statement_timeout = 12000").catch(() => {
+      // ignore — some roles may lack permission
+    });
   });
 
   // Neon/pg often reject multi-statement queries — run one at a time.

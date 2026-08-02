@@ -7,7 +7,9 @@ import {
 import { isSovereignGatewayEmbedEnabled } from "../../lib/sovereign/embeddings.js";
 import { neonAuthStatusSnippet } from "../../lib/sovereign/neonAuth.js";
 
-const STATUS_BUDGET_MS = 12_000;
+// Must exceed Neon connectionTimeoutMillis (15s) + schema apply headroom,
+// otherwise cold starts always report offline while open is still racing.
+const STATUS_BUDGET_MS = 18_000;
 
 /** Path hint for degraded status — never claim SQLite on Postgres/Neon hosts. */
 const statusPathHint = (): string | null => {
