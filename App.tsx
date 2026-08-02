@@ -2373,9 +2373,29 @@ export const App: React.FC = () => {
         <MobileProfileModal
           isOpen={isMobileProfileOpen}
           onClose={() => setIsMobileProfileOpen(false)}
-          onOpenSettings={() => {
+          onOpenShare={() => {
+            try {
+              sessionStorage.setItem("mimi:profile_pane", "share");
+            } catch {
+              /* ignore */
+            }
             setIsMobileProfileOpen(false);
             setViewMode("profile");
+            window.dispatchEvent(
+              new CustomEvent("mimi:profile_pane", { detail: "share" }),
+            );
+          }}
+          onOpenSettings={() => {
+            try {
+              sessionStorage.setItem("mimi:profile_pane", "settings");
+            } catch {
+              /* ignore */
+            }
+            setIsMobileProfileOpen(false);
+            setViewMode("profile");
+            window.dispatchEvent(
+              new CustomEvent("mimi:profile_pane", { detail: "settings" }),
+            );
           }}
         />
       </Suspense>

@@ -154,6 +154,29 @@ export const UserProfileView: React.FC = () => {
   const [profilePane, setProfilePane] = useState<'share' | 'settings'>('share');
   const [isPatronActive, setIsPatronActive] = useState(false);
   const [isBillingPortalLoading, setIsBillingPortalLoading] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<
+    "identity" | "workspace" | "agents" | "account"
+  >("identity");
+
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem("mimi:profile_pane");
+      if (pending === "share" || pending === "settings") {
+        setProfilePane(pending);
+        sessionStorage.removeItem("mimi:profile_pane");
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+    const onPane = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail === "share" || detail === "settings") {
+        setProfilePane(detail);
+      }
+    };
+    window.addEventListener("mimi:profile_pane", onPane);
+    return () => window.removeEventListener("mimi:profile_pane", onPane);
+  }, []);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -365,15 +388,35 @@ export const UserProfileView: React.FC = () => {
           sentinelBudget,
         },
       });
-      setMessage({ text: "Sovereign Registry Anchored.", type: "success" });
+      setMessage({ text: "Profile updated.", type: "success" });
       setShowHandleConfirm(false);
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), 2800);
     } catch (e) {
-      setMessage({ text: "Handshake Error.", type: "error" });
+      setMessage({ text: "Could not save profile. Try again.", type: "error" });
     } finally {
       setIsSaving(false);
     }
   };
+
+  const baselineArchetype =
+    (profile?.tasteProfile?.dominant_archetypes?.[0] as TypographicArchetype) ||
+    "minimalist-sans";
+  const isDirty = Boolean(
+    profile &&
+      (handle !== (profile.handle || "") ||
+        displayName !== (profile.displayName || "") ||
+        avatar !== (profile.photoURL || null) ||
+        genderExpression !== (profile.genderExpression || "") ||
+        formerPresentation !== (profile.formerPresentation || "") ||
+        tasteDefinition !== (profile.tasteProfile?.inspirations || "") ||
+        archetype !== baselineArchetype ||
+        curatorEnabled !== (profile.agentConfig?.curatorEnabled ?? true) ||
+        sentinelEnabled !== (profile.agentConfig?.sentinelEnabled ?? true) ||
+        curatorBudget !== (profile.agentConfig?.curatorBudget ?? 50) ||
+        sentinelBudget !== (profile.agentConfig?.sentinelBudget ?? 50) ||
+        JSON.stringify(externalLinks) !==
+          JSON.stringify(profile.externalLinks || [])),
+  );
 
   const handleCreateMask = async () => {
     if (!newPersonaName.trim()) return;
@@ -465,16 +508,71 @@ export const UserProfileView: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto no-scrollbar bg-nous-base text-nous-text p-4 md:p-8">
+    <div className="w-full h-full overflow-y-auto no-scrollbar bg-nous-base text-nous-text px-4 py-5 md:p-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
       <AnimatePresence>
         {message && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className={`fixed top-24 z-[10000] px-8 py-3 rounded-none font-sans text-[10px] uppercase tracking-widest font-black border ${message.type === "success" ? "bg-nous-text text-nous-base border-nous-text " : "bg-red-500 text-white border-red-400"}`}
+            className={`fixed left-1/2 -translate-x-1/2 top-20 md:top-24 z-[10000] max-w-[calc(100vw-2rem)] px-6 py-3 rounded-none font-sans text-[10px] uppercase tracking-widest font-black border shadow-sm ${message.type === "success" ? "bg-nous-text text-nous-base border-nous-text" : "bg-red-500 text-white border-red-400"}`}
           >
             {message.text}
+          </motion.div>
+        )}
+        {showHandleConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10001] bg-black/40 backdrop-blur-[1px] flex items-end sm:items-center justify-center p-4"
+            role="presentation"
+            onClick={() => setShowHandleConfirm(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              onClick={(e) => e.stopPropagation()}
+              role="alertdialog"
+              aria-labelledby="handle-confirm-title"
+              className="w-full max-w-md border border-nous-border bg-nous-base p-6 space-y-4"
+            >
+              <h3
+                id="handle-confirm-title"
+                className="font-serif italic text-2xl text-nous-text"
+              >
+                Change handle?
+              </h3>
+              <p className="text-sm text-nous-subtle leading-relaxed">
+                Your public URL will move from{" "}
+                <span className="font-mono text-nous-text">
+                  @{profile?.handle || "—"}
+                </span>{" "}
+                to{" "}
+                <span className="font-mono text-nous-text">
+                  @{handle.trim().toLowerCase()}
+                </span>
+                . Old links may stop resolving.
+              </p>
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowHandleConfirm(false)}
+                  className="px-4 py-3 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle"
+                >
+                  Keep current
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-4 py-3 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest"
+                >
+                  {isSaving ? "Saving…" : "Confirm & save"}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
         {showDevSettings && (
@@ -483,60 +581,77 @@ export const UserProfileView: React.FC = () => {
         {showWard && <TheWard onClose={() => setShowWard(false)} />}
       </AnimatePresence>
 
-      <header className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
-        <div>
-          <span className="text-[10px] uppercase tracking-[0.3em] font-mono text-nous-subtle mb-1 block">
-            Share Card · Settings
-          </span>
-          <h1 className="font-serif text-4xl italic">
-            Profile
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setProfilePane('share')}
-            className={`px-4 py-2 border font-mono text-[9px] uppercase tracking-widest ${
-              profilePane === 'share'
-                ? 'border-nous-text text-nous-text bg-nous-base0/40'
-                : 'border-nous-border text-nous-subtle'
-            }`}
+      <header className="max-w-4xl mx-auto mb-6 md:mb-8 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
+          <div>
+            <span className="text-[10px] uppercase tracking-[0.3em] font-mono text-nous-subtle mb-1 block">
+              {profilePane === "share" ? "Public face" : "Identity registry"}
+            </span>
+            <h1 className="font-serif text-3xl md:text-4xl italic">Profile</h1>
+          </div>
+          <div
+            className="flex w-full sm:w-auto border border-nous-border"
+            role="tablist"
+            aria-label="Profile panes"
           >
-            Share Card
-          </button>
-          <button
-            type="button"
-            onClick={() => setProfilePane('settings')}
-            className={`px-4 py-2 border font-mono text-[9px] uppercase tracking-widest ${
-              profilePane === 'settings'
-                ? 'border-nous-text text-nous-text bg-nous-base0/40'
-                : 'border-nous-border text-nous-subtle'
-            }`}
-          >
-            Settings
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={profilePane === "share"}
+              onClick={() => setProfilePane("share")}
+              className={`flex-1 sm:flex-none px-4 py-2.5 font-mono text-[9px] uppercase tracking-widest transition-colors ${
+                profilePane === "share"
+                  ? "bg-nous-text text-nous-base"
+                  : "text-nous-subtle hover:text-nous-text"
+              }`}
+            >
+              Share card
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={profilePane === "settings"}
+              onClick={() => setProfilePane("settings")}
+              className={`flex-1 sm:flex-none px-4 py-2.5 font-mono text-[9px] uppercase tracking-widest border-l border-nous-border transition-colors ${
+                profilePane === "settings"
+                  ? "bg-nous-text text-nous-base"
+                  : "text-nous-subtle hover:text-nous-text"
+              }`}
+            >
+              Settings
+              {isDirty && profilePane === "share" && (
+                <span className="ml-2 inline-block w-1.5 h-1.5 bg-nous-subtle align-middle" />
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
-      {profilePane === 'share' && (
-        <section className="w-full max-w-3xl mx-auto mb-10">
+      {profilePane === "share" && (
+        <section className="w-full max-w-4xl mx-auto mb-8 md:mb-10 space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="border border-nous-border bg-white dark:bg-nous-base0/20 p-8 md:p-10 relative overflow-hidden"
+            className="border border-nous-border bg-white dark:bg-nous-base p-6 md:p-10 relative overflow-hidden"
           >
             <div
               className="absolute inset-0 pointer-events-none opacity-30"
               style={{
                 backgroundImage:
-                  'linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px)',
-                backgroundSize: 'calc(100% / 8) 100%',
+                  "linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px)",
+                backgroundSize: "calc(100% / 8) 100%",
               }}
+              aria-hidden
             />
-            <div className="relative flex flex-col md:flex-row gap-8 items-start">
-              <div className="w-24 h-24 border border-nous-border bg-nous-base shrink-0 overflow-hidden">
-                {avatar ? (
-                  <img src={avatar} className="w-full h-full object-cover" referrerPolicy="no-referrer" alt="" />
+            <div className="relative flex flex-col md:flex-row gap-6 md:gap-8 items-start">
+              <div className="w-20 h-20 md:w-24 md:h-24 border border-nous-border bg-nous-base shrink-0 overflow-hidden">
+                {avatar || profile?.photoURL ? (
+                  <img
+                    src={avatar || profile?.photoURL || ""}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    alt=""
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-nous-subtle">
                     <Camera size={22} />
@@ -545,57 +660,161 @@ export const UserProfileView: React.FC = () => {
               </div>
               <div className="flex-1 space-y-3 min-w-0">
                 <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-nous-subtle">
-                  {profile?.handle ? `@${profile.handle}` : truncateUid(user?.uid)?.toUpperCase() || 'GUEST'}
+                  {profile?.handle
+                    ? `@${profile.handle}`
+                    : truncateUid(user?.uid)?.toUpperCase() || "GUEST"}
                 </p>
                 <h2 className="font-serif italic text-3xl md:text-4xl text-nous-text leading-none truncate">
-                  {profile?.displayName || handle || 'Untitled Curator'}
+                  {profile?.displayName || handle || "Untitled Curator"}
                 </h2>
                 <p className="font-sans text-sm text-nous-subtle leading-relaxed max-w-lg">
                   {profile?.tasteProfile?.aestheticSignature?.moodCluster ||
                     profile?.tailorDraft?.strategicSummary?.identityVector ||
-                    'Aesthetic intelligence in progress. Publish issues to The Stand to flesh this card.'}
+                    "Aesthetic intelligence in progress. Publish issues to The Stand to flesh this card."}
                 </p>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() =>
-                      window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'stand' }))
+                      window.dispatchEvent(
+                        new CustomEvent("mimi:change_view", {
+                          detail: "stand",
+                        }),
+                      )
                     }
-                    className="px-4 py-2 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest"
+                    className="px-4 py-2.5 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest"
                   >
                     View Stand
                   </button>
                   <button
                     type="button"
                     onClick={() =>
-                      window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'signature' }))
+                      window.dispatchEvent(
+                        new CustomEvent("mimi:change_view", {
+                          detail: "signature",
+                        }),
+                      )
                     }
-                    className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
+                    className="px-4 py-2.5 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
                   >
                     Signature
                   </button>
                   <button
                     type="button"
                     onClick={() =>
-                      window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'tailor/evidence' }))
+                      window.dispatchEvent(
+                        new CustomEvent("mimi:change_view", {
+                          detail: "tailor/evidence",
+                        }),
+                      )
                     }
-                    className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
+                    className="px-4 py-2.5 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
                   >
                     Add evidence
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSettingsSection("identity");
+                      setProfilePane("settings");
+                    }}
+                    className="px-4 py-2.5 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-text hover:bg-nous-base"
+                  >
+                    Edit identity →
                   </button>
                 </div>
               </div>
             </div>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="border border-nous-border bg-nous-base p-5 md:p-8"
+          >
+            <div className="flex justify-between items-start gap-4 mb-5">
+              <div>
+                <h2 className="font-serif italic text-xl md:text-2xl text-nous-text">
+                  Aesthetic identity
+                </h2>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle mt-1">
+                  Read-only summary · edit in Settings
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("mimi:change_view", { detail: "thimble" }),
+                  )
+                }
+                className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text border-b border-nous-border pb-0.5 shrink-0"
+              >
+                Taste dashboard
+              </button>
+            </div>
+            {profile?.tasteProfile?.dominant_archetypes?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {profile.tasteProfile.dominant_archetypes.map((arch, i) => (
+                  <span
+                    key={`${arch}-${i}`}
+                    className="px-3 py-1.5 border border-nous-border font-mono text-[10px] text-nous-text"
+                  >
+                    {arch}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-nous-subtle italic">
+                No archetypes yet. Extract a taste graph or add evidence to seed
+                this card.
+              </p>
+            )}
+          </motion.div>
         </section>
       )}
 
-      <main className={`w-full max-w-3xl mx-auto flex flex-col gap-8 pb-20 ${profilePane === 'share' ? 'opacity-90' : ''}`}>
+      {profilePane === "settings" && (
+      <main className="w-full max-w-4xl mx-auto flex flex-col gap-6 md:gap-8 pb-28 md:pb-24">
+        <nav
+          className="flex gap-1 overflow-x-auto no-scrollbar border-b border-nous-border -mx-1 px-1"
+          aria-label="Settings sections"
+        >
+          {(
+            [
+              ["identity", "Identity"],
+              ["workspace", "Workspace"],
+              ["agents", "Agents & masks"],
+              ["account", "Account"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setSettingsSection(id);
+                document
+                  .getElementById(`profile-settings-${id}`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className={`shrink-0 px-3 py-2.5 font-mono text-[9px] uppercase tracking-widest border-b-2 -mb-px transition-colors ${
+                settingsSection === id
+                  ? "border-nous-text text-nous-text"
+                  : "border-transparent text-nous-subtle hover:text-nous-text"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
         {/* Clean Identity Card */}
         <motion.div
+          id="profile-settings-identity"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full bg-nous-base rounded-none overflow-hidden border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none overflow-hidden border border-nous-border p-5 md:p-8 scroll-mt-24"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -623,10 +842,16 @@ export const UserProfileView: React.FC = () => {
                 accept="image/*"
               />
               <button
+                type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity"
+                aria-label="Update avatar"
+                className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-100 md:opacity-0 md:hover:opacity-100 transition-opacity"
               >
-                <Camera size={16} className="text-white" />
+                {isUploading ? (
+                  <Loader2 size={16} className="text-white animate-spin" />
+                ) : (
+                  <Camera size={16} className="text-white" />
+                )}
               </button>
             </div>
             <div className="flex-grow space-y-2">
@@ -777,8 +1002,6 @@ export const UserProfileView: React.FC = () => {
               <p className="text-[10px] text-nous-subtle mb-3 leading-relaxed">
                 Server AI Gateway covers most flows. Bring-your-own keys remain available for power users who want sovereign compute, but they are no longer required for the default product path.
               </p>
-              {profilePane === 'settings' ? (
-              <>
               <div className="p-4 border border-nous-border bg-nous-base/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-mono text-xs">
                 <div className="flex items-center gap-3">
                   <div className="relative flex items-center justify-center w-8 h-8 bg-nous-base border border-nous-border">
@@ -888,16 +1111,6 @@ export const UserProfileView: React.FC = () => {
                   )}
                 </div>
               )}
-              </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setProfilePane('settings')}
-                  className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
-                >
-                  Manage keys in Settings →
-                </button>
-              )}
             </div>
 
             <div className="mt-8 pt-6 border-t border-nous-border">
@@ -972,7 +1185,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none border border-nous-border p-5 md:p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -1131,10 +1344,11 @@ export const UserProfileView: React.FC = () => {
 
         {/* Workspace Interface Configuration */}
         <motion.div
+          id="profile-settings-workspace"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="w-full bg-nous-base rounded-none border border-nous-border p-8"
+          className="w-full bg-nous-base rounded-none border border-nous-border p-5 md:p-8 scroll-mt-24"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1342,10 +1556,11 @@ export const UserProfileView: React.FC = () => {
 
         {/* Global Structural Logic (Agent Configuration) */}
         <motion.div
+          id="profile-settings-agents"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-white dark:bg-nous-base rounded-none border border-nous-border p-5 md:p-8 scroll-mt-24"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1455,7 +1670,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-white dark:bg-nous-base rounded-none border border-nous-border p-5 md:p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1594,10 +1809,11 @@ export const UserProfileView: React.FC = () => {
 
         {/* Patron Status & Social Resonance */}
         <motion.div
+          id="profile-settings-account"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-white dark:bg-nous-base rounded-none border border-nous-border p-5 md:p-8 scroll-mt-24"
         >
           {/* Patron Status Bar */}
           <div className="mb-8 pb-8 border-b border-nous-border">
@@ -1731,14 +1947,11 @@ export const UserProfileView: React.FC = () => {
             </div>
             <div className="flex-grow overflow-y-auto no-scrollbar min-h-[150px]">
               <ConnectionsManager embedded />
-              {profilePane === 'settings' && (
-                <>
-                  <div className="p-4 mb-4 border border-nous-border bg-nous-base/40 text-nous-subtle text-xs font-mono leading-relaxed">
-                    Optional BYOK vault. Prefer server AI Gateway for default flows; keep local keys only if you need sovereign override.
-                  </div>
-                  <ApiKeyRing />
-                </>
-              )}
+              <div className="p-4 mb-4 mt-4 border border-nous-border bg-nous-base/40 text-nous-subtle text-xs font-mono leading-relaxed">
+                Optional BYOK vault. Prefer server AI Gateway for default flows;
+                keep local keys only if you need sovereign override.
+              </div>
+              <ApiKeyRing />
             </div>
           </div>
         </motion.div>
@@ -1748,63 +1961,130 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="w-full bg-white rounded-none border border-nous-border p-8"
+          className="w-full bg-white dark:bg-nous-base rounded-none border border-nous-border p-5 md:p-8"
         >
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex flex-col gap-4 w-full md:w-auto">
+          <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-6 md:gap-8">
+            <div className="flex flex-col gap-4 w-full md:w-auto md:flex-1">
               <div>
                 <h2 className="font-serif text-2xl italic mb-2">
-                  Sovereign Backup
+                  Backup &amp; session
                 </h2>
                 <p className="text-[10px] uppercase tracking-widest font-mono text-nous-subtle">
-                  Last commit: {new Date().toLocaleTimeString()} UTC
+                  Export archive or end this session
                 </p>
               </div>
               <button
+                type="button"
                 onClick={handleExportData}
                 disabled={isExporting}
-                className="flex items-center justify-center gap-2 px-6 py-4 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-colors rounded-none w-full"
+                className="flex items-center justify-center gap-2 px-6 py-3.5 border border-nous-border text-[10px] uppercase tracking-widest hover:bg-nous-base transition-colors rounded-none w-full md:w-auto"
               >
                 {isExporting ? (
                   <Loader2 size={14} className="animate-spin" />
                 ) : (
                   <Download size={14} />
                 )}
-                Export Archive (.json)
+                Export archive (.json)
               </button>
             </div>
 
-            <div className="flex flex-col gap-4 w-full md:w-auto">
+            <div className="flex flex-col gap-3 w-full md:w-auto">
               <button
+                type="button"
                 onClick={handleSave}
-                disabled={isSaving}
-                className="px-8 py-4 bg-nous-base dark:bg-stone-200 text-nous-base text-[10px] uppercase tracking-widest hover:bg-stone-700 dark:hover:bg-white transition-colors rounded-none font-medium"
+                disabled={isSaving || !isDirty}
+                className="px-8 py-3.5 bg-nous-text text-nous-base text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity rounded-none font-medium disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isSaving ? "Committing..." : "Commit Global Handshake"}
+                {isSaving ? "Saving…" : isDirty ? "Save profile updates" : "All changes saved"}
               </button>
               <button
+                type="button"
                 onClick={logout}
-                className="px-8 py-4 border border-red-200 text-red-600 text-[10px] uppercase tracking-widest hover:bg-red-50 transition-colors rounded-none"
+                className="px-8 py-3.5 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 text-[10px] uppercase tracking-widest hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors rounded-none"
               >
-                De-Anchor Account
+                Log out
               </button>
             </div>
           </div>
         </motion.div>
-      </main>
 
-      <footer className="max-w-7xl mx-auto mt-12 mb-8 flex flex-col md:flex-row justify-between items-center text-nous-subtle font-mono text-[9px] uppercase tracking-widest">
-        <div>© {new Date().getFullYear()} Mimi Zine Logic Registry</div>
-        <div className="flex gap-8 mt-4 md:mt-0">
-          <a href="#" className="hover:text-nous-text">
-            Protocol Documentation
-          </a>
-          <a href="#" className="hover:text-nous-text">
-            Identity FAQ
-          </a>
-          <a href="#" className="hover:text-nous-text">
-            Terms of Sovereignty
-          </a>
+        <AnimatePresence>
+          {isDirty && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] md:bottom-6 z-[90] px-3 md:px-0 pointer-events-none"
+            >
+              <div className="max-w-4xl mx-auto pointer-events-auto border border-nous-border bg-nous-base/95 backdrop-blur-sm shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-nous-subtle">
+                    Unsaved changes
+                  </p>
+                  <p className="font-serif italic text-base text-nous-text truncate">
+                    Update your registry before leaving
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!profile) return;
+                      setHandle(profile.handle || "");
+                      setDisplayName(profile.displayName || "");
+                      setAvatar(profile.photoURL || null);
+                      setGenderExpression(profile.genderExpression || "");
+                      setFormerPresentation(profile.formerPresentation || "");
+                      setExternalLinks(profile.externalLinks || []);
+                      setArchetype(baselineArchetype);
+                      setTasteDefinition(
+                        profile.tasteProfile?.inspirations || "",
+                      );
+                      if (profile.agentConfig) {
+                        setCuratorEnabled(profile.agentConfig.curatorEnabled);
+                        setSentinelEnabled(profile.agentConfig.sentinelEnabled);
+                        setCuratorBudget(profile.agentConfig.curatorBudget);
+                        setSentinelBudget(profile.agentConfig.sentinelBudget);
+                      }
+                      setShowHandleConfirm(false);
+                    }}
+                    className="flex-1 sm:flex-none px-4 py-2.5 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving || handleAvailable === false}
+                    className="flex-1 sm:flex-none px-5 py-2.5 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest disabled:opacity-40"
+                  >
+                    {isSaving ? "Saving…" : "Save updates"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+      )}
+
+      <footer className="max-w-4xl mx-auto mt-10 mb-6 flex flex-col md:flex-row justify-between items-center text-nous-subtle font-mono text-[9px] uppercase tracking-widest gap-3">
+        <div>© {new Date().getFullYear()} Mimi</div>
+        <div className="flex gap-6">
+          <button
+            type="button"
+            onClick={() => setProfilePane("share")}
+            className="hover:text-nous-text"
+          >
+            Share card
+          </button>
+          <button
+            type="button"
+            onClick={() => setProfilePane("settings")}
+            className="hover:text-nous-text"
+          >
+            Settings
+          </button>
         </div>
       </footer>
     </div>
