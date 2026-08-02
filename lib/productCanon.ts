@@ -718,7 +718,7 @@ export const CANON_MODULES: CanonModule[] = [
     family: "capture",
     phase: "shape",
     visibility: "primary",
-    atmosphere: ["dark-plate", "specimen", "worktable"],
+    atmosphere: ["specimen", "worktable"],
     primaryAction: {
       label: "Develop source material",
       intent: { type: "capture" },
