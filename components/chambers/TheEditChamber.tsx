@@ -46,6 +46,7 @@ export const TheEditChamber: React.FC = () => {
             {tab === "compile" ? (
               <>
                 <li>Approve Used Context in the compile tray.</li>
+                <li>Open an issue and Compose spreads on Visual Plates before Press.</li>
                 <li>Frame thesis and preview markdown.</li>
                 <li>Send compiled read to The Press for manifest export.</li>
               </>
