@@ -376,12 +376,10 @@ export async function withResilience<T>(
       originalMessage.includes("personal API key or MIMI_ENABLE_SERVER_AI") ||
       originalMessage.includes("Gemini requires");
 
-    // Personal-key failures only — proxy/session traffic must not look like BYOK void.
-    const usingFundedProxyPath =
-      keyUsed === "Proxy" ||
-      keyUsed === "" ||
-      source === "Secure Server Proxy" ||
-      globalKeyRing.length === 0;
+    // Personal-key failures only. keyUsed === "Proxy" means no personal Gemini
+    // key was attached — do not infer "funded" from source === "Secure Server
+    // Proxy" (browser always uses that label even for BYOK).
+    const usingFundedProxyPath = keyUsed === "Proxy" || keyUsed === "";
 
     const isKeyError = 
       !isCreditOrGatewayError &&
@@ -406,10 +404,27 @@ export async function withResilience<T>(
     }
     
     const originalMsg = error.message || "";
+
+    if (errCode === "sign_in_required") {
+      if (!suppressGlobalEvents && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimi:registry_alert", {
+          detail: {
+            type: "error",
+            message: originalMsg || "Sign in to use Mimi AI Gateway.",
+          },
+        }));
+      }
+      const signInError = new Error(originalMsg || "Sign in to use Mimi AI Gateway.") as any;
+      signInError.code = "sign_in_required";
+      throw signInError;
+    }
+
+    // Prefer structured denial codes — do not match sign_in copy that mentions credits.
     const isPlanCreditsExhausted =
       errCode === "credits_exhausted" ||
-      originalMsg.includes("plan credits") ||
-      originalMsg.includes("billing period");
+      (errCode !== "sign_in_required" &&
+        (originalMsg.includes("membership credits") ||
+          (originalMsg.includes("exhausted") && originalMsg.includes("billing period"))));
     const isCreditsDepleted =
       isCreditOrGatewayError ||
       originalMsg.includes("RESOURCE_EXHAUSTED") ||
@@ -423,13 +438,13 @@ export async function withResilience<T>(
             type: "error",
             message: originalMsg.includes("exhausted")
               ? originalMsg
-              : "Mimi plan credits for AI Gateway are exhausted. Credits reload with your billing period.",
+              : "Mimi membership credits for AI Gateway are exhausted. Credits reload with your billing period.",
           },
         }));
       }
       const creditsError = new Error(
         originalMsg ||
-          "Mimi plan credits for AI Gateway are exhausted. Credits reload with your billing period.",
+          "Mimi membership credits for AI Gateway are exhausted. Credits reload with your billing period.",
       ) as any;
       creditsError.code = "credits_exhausted";
       throw creditsError;
@@ -494,11 +509,7 @@ export async function withResilience<T>(
                         originalMsg.includes("PERMISSION_DENIED") ||
                         originalMsg.includes("blocked");
       // Proxy / session path is plan-funded AI Gateway — never demand BYOK.
-      const usingFundedProxy =
-        keyUsed === "Proxy" ||
-        keyUsed === "" ||
-        source === "Secure Server Proxy" ||
-        globalKeyRing.length === 0;
+      const usingFundedProxy = keyUsed === "Proxy" || keyUsed === "";
 
       if (!suppressGlobalEvents) {
         if (usingFundedProxy) {
