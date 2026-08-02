@@ -290,6 +290,21 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         keywords: ["intel", "hub", "campaign", "strategy", "intel hub"],
       },
       {
+        mode: "residue",
+        label: "Residue",
+        note: "cultural / emotional travel maps",
+        keywords: [
+          "residue",
+          "cultural residue",
+          "emotional residue",
+          "lineage",
+          "neighborhoods",
+          "mean median mode",
+          "provenance",
+          "non-diagnostic",
+        ],
+      },
+      {
         mode: "brand-intake",
         label: "Intelligence Report",
         note: "brand intelligence report with format selection",

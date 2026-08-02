@@ -68,6 +68,10 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   correspondents: "proscenium",
   cliques: "proscenium",
   clique: "proscenium",
+  residue: "residue",
+  "residue-engine": "residue",
+  "cultural-residue": "residue",
+  "emotional-residue": "residue",
 };
 
 export const canonicalizeMimiRoute = (segment: string): string => {
@@ -494,6 +498,44 @@ export const CANON_MODULES: CanonModule[] = [
       "Enter the Stage to witness transmissions, open Correspondents for follows and connections, or manage invite-only Cliques — all under one arch.",
     notes:
       "Legacy /connections and /cliques redirect to /proscenium/correspondents and /proscenium/cliques. Local Echoes are demonstration specimens only.",
+  },
+  {
+    id: "residue",
+    name: "Residue",
+    layer: "chamber",
+    engine: "Residue Engine",
+    priority: 20,
+    status: "live",
+    canonicalRoute: "/residue",
+    implementedMode: "residue",
+    component: "ResidueChamber",
+    aliases: ["Residue Engine", "Cultural Residue", "Emotional Residue"],
+    inputs: [
+      "cultural queries",
+      "reported experiences",
+      "manual notes / excerpts",
+      "optional source URLs",
+    ],
+    generations: [
+      "cultural travel maps",
+      "interpretive neighborhoods",
+      "mean/median/mode readouts",
+      "intelligence reports",
+      "product adapter proposals",
+    ],
+    outputs: [
+      "structured residue results",
+      "intelligence reports",
+      "zine page specs",
+      "editorial direction proposals",
+      "forecast scenarios",
+      "taste-graph deltas (suggested)",
+      "memory atom proposals",
+    ],
+    userFlow:
+      "Compose a cultural or emotional inquiry, run offline-first Residue analysis, read the report and MMM panels, then inspect proposed product outputs without auto-merging Memory or Taste Graph.",
+    notes:
+      "Emotional mode always shows a non-diagnostic safety notice. Memory atoms and taste nodes remain proposals until approved. Apify acquisition is Phase 9.",
   },
 ];
 
