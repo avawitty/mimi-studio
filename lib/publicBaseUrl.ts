@@ -63,3 +63,13 @@ export const getZineCanonicalUrl = (zineId: string, baseUrl?: string): string =>
   const base = (baseUrl || getPublicBaseUrl()).replace(/\/$/, "");
   return `${base}/zine/${encodeURIComponent(zineId)}`;
 };
+
+/** Attention/share plate URL — prefers mimi.fish when no override base is given. */
+export const getZineShareUrl = (zineId: string, baseUrl?: string): string => {
+  const id = String(zineId || "").trim();
+  if (!id) return baseUrl ? String(baseUrl).replace(/\/$/, "") : "https://mimi.fish";
+  if (baseUrl) {
+    return `${String(baseUrl).replace(/\/$/, "")}/s/${encodeURIComponent(id)}`;
+  }
+  return `https://mimi.fish/s/${encodeURIComponent(id)}`;
+};

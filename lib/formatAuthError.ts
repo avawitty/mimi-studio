@@ -1,5 +1,5 @@
 const AUTH_DOMAIN_HINT =
-  "Add this site in Firebase Console → Authentication → Settings → Authorized domains (e.g. mimi.you, mimi.rip, avainlife.com, and your Vercel *.vercel.app preview URL).";
+  "Add this site in Firebase Console → Authentication → Settings → Authorized domains (e.g. mimi.you, mimi.rip, mimi.fish, avainlife.com, and your Vercel *.vercel.app preview URL).";
 
 export const formatAuthError = (codeOrMessage?: string | null): string => {
   if (!codeOrMessage) return "Authentication failed. Please try again.";

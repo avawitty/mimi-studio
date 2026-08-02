@@ -20,7 +20,7 @@ import firebaseConfig from '../firebase-applet-config.json';
 // - gen-lang-client-02106746-1e8ee.firebaseapp.com (default authDomain)
 // - mimi.you, www.mimi.you (production)
 // - mimi.rip, www.mimi.rip (inverse public skin)
-// - mimi.fish, www.mimi.fish (future share skin)
+// - mimi.fish, www.mimi.fish (attention / share plate skin)
 // - avainlife.com, www.avainlife.com (production)
 // - *.vercel.app preview URLs for this project
 // Custom domains must also be listed in Vercel project Domains and use the same Firebase web app.
