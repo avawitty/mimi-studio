@@ -268,6 +268,9 @@ export async function withResilience<T>(
             }
             return await aiProvider.generateContent(params);
         },
+        // Embeddings always route through the Gemini proxy (/api/proxy/gemini), which
+        // remaps embedContent to Gateway when a server key is present.
+        embedContent: async (params: any) => await realAi.models.embedContent(params),
         generateImages: async (params: any) => await realAi.models.generateImages(params)
       }
     };

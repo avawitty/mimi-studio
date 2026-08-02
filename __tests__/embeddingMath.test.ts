@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cosineSimilarity, embeddingsCompatible, meanEmbedding } from "../lib/embeddingMath";
+import { cosineSimilarity, embeddingsCompatible, meanEmbedding, partitionByEmbeddingWidth } from "../lib/embeddingMath";
 
 describe("embeddingMath", () => {
   it("returns 1 for identical vectors", () => {
@@ -30,5 +30,16 @@ describe("embeddingMath", () => {
       [1, 2, 3], // ignored
     ]);
     expect(mean).toEqual([1, 1]);
+  });
+
+  it("partitions items by embedding width", () => {
+    const items = [
+      { id: "a", v: Array(768).fill(1) },
+      { id: "b", v: Array(768).fill(2) },
+      { id: "c", v: Array(1536).fill(3) },
+    ];
+    const groups = partitionByEmbeddingWidth(items, (i) => i.v);
+    expect(groups.get(768)?.map((i) => i.id)).toEqual(["a", "b"]);
+    expect(groups.get(1536)?.map((i) => i.id)).toEqual(["c"]);
   });
 });

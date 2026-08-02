@@ -3,6 +3,7 @@ import { db, auth } from "./firebaseInit";
 import { getClient } from "./geminiService";
 import { getAllShadowMemory } from "./vectorSearch";
 import { handleFirestoreError, OperationType } from "./firebaseUtils";
+import { partitionByEmbeddingWidth } from "../lib/embeddingMath";
 import { cosineSimilarity } from "../lib/embeddingMath";
 
 export interface ThemeNode {
@@ -96,34 +97,35 @@ export const generateClusterAnchors = async () => {
       return;
     }
 
-    // Determine K (number of clusters)
-    // Rule of thumb: sqrt(n/2) or just a fixed number for now
-    const k = Math.max(2, Math.min(8, Math.floor(Math.sqrt(embeddable.length / 2))));
-
-    const vectors = embeddable.map((m: any) => m.embedding_field);
-    const { centroids, assignments } = kMeans(vectors, k);
-
     const { ai } = getClient();
     if (!ai) return;
 
     const newThemes: ThemeNode[] = [];
+    const widthGroups = partitionByEmbeddingWidth(embeddable, (m: any) => m.embedding_field);
 
-    // For each cluster, find the top items and ask Gemini for a label
-    for (let c = 0; c < k; c++) {
-      const clusterMemories = embeddable.filter((_, i) => assignments[i] === c);
-      if (clusterMemories.length === 0) continue;
+    // Run k-means per embedding width — mixed Gemini (768) and Gateway (1536) vectors
+    // must never share a centroid space.
+    for (const [, group] of widthGroups) {
+      if (group.length < 2) continue;
 
-      // Sort by distance to centroid
-      clusterMemories.sort((a: any, b: any) => {
-        const simA = cosineSimilarity(a.embedding_field, centroids[c]);
-        const simB = cosineSimilarity(b.embedding_field, centroids[c]);
-        return simB - simA; // Descending
-      });
+      const k = Math.max(2, Math.min(8, Math.floor(Math.sqrt(group.length / 2))));
+      const vectors = group.map((m: any) => m.embedding_field);
+      const { centroids, assignments } = kMeans(vectors, k);
 
-      const topItems = clusterMemories.slice(0, 5);
-      const textToAnalyze = topItems.map((m: any) => m.content_preview).join("\n\n");
+      for (let c = 0; c < k; c++) {
+        const clusterMemories = group.filter((_, i) => assignments[i] === c);
+        if (clusterMemories.length === 0) continue;
 
-      const prompt = `You are Mimi, an aesthetic intelligence system. Analyze the following artifacts which have been clustered together based on semantic similarity.
+        clusterMemories.sort((a: any, b: any) => {
+          const simA = cosineSimilarity(a.embedding_field, centroids[c]);
+          const simB = cosineSimilarity(b.embedding_field, centroids[c]);
+          return simB - simA;
+        });
+
+        const topItems = clusterMemories.slice(0, 5);
+        const textToAnalyze = topItems.map((m: any) => m.content_preview).join("\n\n");
+
+        const prompt = `You are Mimi, an aesthetic intelligence system. Analyze the following artifacts which have been clustered together based on semantic similarity.
       
 Artifacts:
 ${textToAnalyze}
@@ -131,24 +133,30 @@ ${textToAnalyze}
 What is the underlying aesthetic, emotional, or thematic thread connecting these items? 
 Provide ONLY a short, poetic, 2-4 word label for this cluster (e.g., "Late Night Introspection", "Digital Brutalism", "Ethereal Nostalgia"). Do not include quotes or any other text.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
-        contents: prompt,
-      });
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: prompt,
+        });
 
-      const label = response.text?.trim().replace(/["']/g, '') || "Unknown Cluster";
+        const label = response.text?.trim().replace(/["']/g, '') || "Unknown Cluster";
 
-      const themeId = `theme_${Date.now()}_${c}`;
-      const theme: ThemeNode = {
-        id: themeId,
-        label,
-        centroid_vector: centroids[c],
-        artifact_ids: clusterMemories.map((m: any) => m.id),
-        created_at: Date.now(),
-        updated_at: Date.now()
-      };
+        const themeId = `theme_${Date.now()}_${newThemes.length}`;
+        const theme: ThemeNode = {
+          id: themeId,
+          label,
+          centroid_vector: centroids[c],
+          artifact_ids: clusterMemories.map((m: any) => m.id),
+          created_at: Date.now(),
+          updated_at: Date.now()
+        };
 
-      newThemes.push(theme);
+        newThemes.push(theme);
+      }
+    }
+
+    if (newThemes.length === 0) {
+      console.log("MIMI // Not enough same-width embedded artifacts to form clusters.");
+      return;
     }
 
     // Save themes to Firestore

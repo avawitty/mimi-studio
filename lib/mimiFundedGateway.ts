@@ -11,6 +11,8 @@ export type FundedGatewayAccess = {
 };
 
 export const fundedGatewayCreditCost = (taskCost?: number) => {
+  // Preserve explicit zero (free_internal tasks like embedding indexing).
+  if (taskCost === 0) return 0;
   const value = Number(taskCost ?? process.env.MIMI_TEXT_CREDIT_COST ?? 1);
   return Number.isFinite(value) && value > 0 ? value : 1;
 };

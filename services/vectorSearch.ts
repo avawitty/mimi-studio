@@ -2,7 +2,7 @@ import { Product } from '../types';
 import { auth, db } from "./firebaseInit";
 import { signInAnonymously } from "firebase/auth";
 import { collection, doc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
-import { embeddingModelId, getClient, getEmbedding } from "./geminiService";
+import { getClient, getEmbedding, getEmbeddingWithMeta } from "./geminiService";
 import { cosineSimilarity, embeddingsCompatible } from "../lib/embeddingMath";
 
 const getAiClient = () => {
@@ -78,7 +78,7 @@ export const syncToShadowMemory = async (item: any) => {
     // 2000 chars is safe for almost all embedding models
     if (textToEmbed.length > 2000) textToEmbed = textToEmbed.slice(0, 2000);
 
-    const embedding = await getEmbedding([{ text: textToEmbed }]);
+    const { values: embedding, model: embeddingModel } = await getEmbeddingWithMeta([{ text: textToEmbed }]);
     if (embedding?.length) {
       await setDoc(doc(db, `users/${uid}/memory`, item.id), {
         kind: 'embedding_shadow',
@@ -89,8 +89,7 @@ export const syncToShadowMemory = async (item: any) => {
         synced_at: Date.now(),
         embedding_field: embedding,
         embedding_dims: embedding.length,
-        // Requested Gemini role model; gateway proxy may substitute openai/text-embedding-3-small.
-        embedding_model: embeddingModelId(),
+        embedding_model: embeddingModel,
         tone: item.tone || null
       }, { merge: true });
     }

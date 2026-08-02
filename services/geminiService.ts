@@ -868,14 +868,28 @@ export const embeddingModelId = (): string => modelFor("embedding", "gemini");
  * OpenAI-width even though this call requests the Gemini role model. Callers that
  * persist vectors should store `embedding_dims` and skip dim-mismatched compares.
  */
+export interface EmbeddingResult {
+  values: number[] | undefined;
+  model: string;
+}
+
+export const getEmbeddingWithMeta = async (content: Part[], apiKey?: string): Promise<EmbeddingResult> => {
+  return await withResilience(async (ai) => {
+    const response = await ai.models.embedContent({
+      model: embeddingModelId(),
+      contents: content,
+    });
+    const model =
+      (response as { modelVersion?: string }).modelVersion ||
+      (response as { model?: string }).model ||
+      embeddingModelId();
+    return { values: response.embeddings?.[0]?.values, model };
+  }, apiKey);
+};
+
 export const getEmbedding = async (content: Part[], apiKey?: string) => {
-    return await withResilience(async (ai) => {
-        const response = await ai.models.embedContent({
-            model: embeddingModelId(),
-            contents: content,
-        });
-        return response.embeddings?.[0]?.values;
-    }, apiKey);
+  const { values } = await getEmbeddingWithMeta(content, apiKey);
+  return values;
 };
 
 export const compressImage = async (base64: string, quality = 0.7, maxWidth = 1024): Promise<string> => {

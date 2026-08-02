@@ -35,6 +35,22 @@ export function embeddingsCompatible(
   return Boolean(vecA?.length && vecB?.length && vecA.length === vecB.length);
 }
 
+/** Group items by embedding vector width (ignores missing/empty fields). */
+export function partitionByEmbeddingWidth<T>(
+  items: T[],
+  getVector: (item: T) => number[] | undefined | null,
+): Map<number, T[]> {
+  const groups = new Map<number, T[]>();
+  for (const item of items) {
+    const dim = getVector(item)?.length;
+    if (!dim) continue;
+    const group = groups.get(dim) ?? [];
+    group.push(item);
+    groups.set(dim, group);
+  }
+  return groups;
+}
+
 /** Mean vector (center of gravity). Skips empty / mismatched-width members. */
 export function meanEmbedding(embeddings: number[][]): number[] {
   const usable = embeddings.filter((v) => Array.isArray(v) && v.length > 0);
