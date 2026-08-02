@@ -54,9 +54,29 @@ export interface IntelHubPressHandoff {
   thesis: string;
   approvedContext: UsedContextSnapshot[];
   commerceQuery: string;
+  /** Primary / first selected candidate (backward compatible). */
   selectedCandidate?: IntelCatalogCandidate;
+  /** Up to three Press-approved catalog objects for zine hydration. */
+  selectedCandidates?: IntelCatalogCandidate[];
   compiledAt: number;
   status: "review_required";
+}
+
+export const INTEL_MAX_SELECTED_CANDIDATES = 3;
+
+/** Resolve approved commerce candidates from a handoff (multi or legacy single). */
+export function resolveSelectedCandidates(
+  handoff: IntelHubPressHandoff | null | undefined,
+): IntelCatalogCandidate[] {
+  if (!handoff) return [];
+  if (Array.isArray(handoff.selectedCandidates) && handoff.selectedCandidates.length > 0) {
+    return handoff.selectedCandidates
+      .filter((candidate) => candidate?.id && candidate?.title)
+      .slice(0, INTEL_MAX_SELECTED_CANDIDATES);
+  }
+  return handoff.selectedCandidate?.id && handoff.selectedCandidate?.title
+    ? [handoff.selectedCandidate]
+    : [];
 }
 
 export type IntelProjectStage =
@@ -129,8 +149,11 @@ export function createIntelProjectRunFromHandoff(
       selectedReviewCount: handoff.approvedContext.length,
       approvedContextCount: handoff.approvedContext.length,
       commerceQuery: handoff.commerceQuery,
-      catalogCandidateCount: handoff.selectedCandidate ? 1 : 0,
-      selectedCandidateId: handoff.selectedCandidate?.id,
+      catalogCandidateCount: Math.max(
+        resolveSelectedCandidates(handoff).length,
+        handoff.selectedCandidate ? 1 : 0,
+      ),
+      selectedCandidateId: resolveSelectedCandidates(handoff)[0]?.id,
       artifactPackId: handoff.id,
       pressStatus: "review_required",
     },

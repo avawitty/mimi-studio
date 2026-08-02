@@ -2,6 +2,10 @@ import type { AtelierObject, SemioticSignal } from "../types";
 
 const STORAGE_KEY = "mimi_atelier_objects";
 export const ATELIER_CHANGED = "mimi:atelier-changed";
+/** Soft archive size — prefer pruning stale references before desire pins. */
+export const ATELIER_SOFT_CAP = 40;
+/** Pins older than this without a resonance confirm surface “Still resonant?” */
+export const ATELIER_RESONANCE_STALE_MS = 1000 * 60 * 60 * 24 * 21;
 
 function getScopedKey(uid: string): string {
   return `${STORAGE_KEY}::${uid}`;
@@ -50,6 +54,26 @@ function writeStore(entries: AtelierObject[], ownerUid: string): void {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(getScopedKey(ownerUid), JSON.stringify(entries));
   emitChanged(ownerUid);
+}
+
+/** Drop oldest reference pins first, then oldest overall, until at/under soft cap. */
+export function enforceAtelierSoftCap(entries: AtelierObject[]): AtelierObject[] {
+  if (entries.length <= ATELIER_SOFT_CAP) return entries;
+  const rankedForDrop = [...entries].sort((a, b) => {
+    const refBias = (obj: AtelierObject) => (obj.intent === "reference" ? 0 : 1);
+    return refBias(a) - refBias(b) || a.savedAt - b.savedAt;
+  });
+  const dropCount = entries.length - ATELIER_SOFT_CAP;
+  const dropIds = new Set(rankedForDrop.slice(0, dropCount).map((entry) => entry.id));
+  return entries.filter((entry) => !dropIds.has(entry.id));
+}
+
+export function isAtelierObjectStale(
+  obj: AtelierObject,
+  now = Date.now(),
+): boolean {
+  const anchor = obj.lastResonantAt || obj.savedAt;
+  return now - anchor >= ATELIER_RESONANCE_STALE_MS;
 }
 
 /** Stable identity for a zine signal so pin/unpin is idempotent. */
@@ -137,8 +161,45 @@ export function pinAtelierObject(input: {
   };
 
   const existing = readStore(owner.uid).filter((entry) => entry.id !== id);
-  writeStore([next, ...existing], owner.uid);
-  return next;
+  const capped = enforceAtelierSoftCap([next, ...existing]);
+  writeStore(capped, owner.uid);
+  return capped.find((entry) => entry.id === id) || next;
+}
+
+export function confirmAtelierResonance(
+  objectId: string,
+  ownerUid?: string,
+): AtelierObject | null {
+  const owner = resolveOwner(ownerUid);
+  if (!owner?.uid) return null;
+  const current = readStore(owner.uid);
+  const index = current.findIndex((entry) => entry.id === objectId);
+  if (index < 0) return null;
+  const now = Date.now();
+  const updated: AtelierObject = {
+    ...current[index],
+    lastResonantAt: now,
+    savedAt: now,
+  };
+  const next = [...current];
+  next[index] = updated;
+  writeStore(next, owner.uid);
+  return updated;
+}
+
+export function getAtelierCapacity(ownerUid?: string): {
+  count: number;
+  cap: number;
+  remaining: number;
+  atCap: boolean;
+} {
+  const count = listAtelierObjects(ownerUid).length;
+  return {
+    count,
+    cap: ATELIER_SOFT_CAP,
+    remaining: Math.max(0, ATELIER_SOFT_CAP - count),
+    atCap: count >= ATELIER_SOFT_CAP,
+  };
 }
 
 export function unpinAtelierObject(

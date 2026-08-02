@@ -446,8 +446,8 @@ export const CANON_MODULES: CanonModule[] = [
     inputs: ["zine commerce touchpoints", "Shopify-verified product metadata", "semiotic rationale"],
     generations: ["taste-signal persistence", "cross-issue object clustering"],
     outputs: ["pinned taste objects", "desire / buyer-orientation evidence"],
-    userFlow: "Pin semiotic commerce objects from a zine as taste signals, then revisit them here across issues. Not a wishlist or cart.",
-    notes: "Distinct from the Atelier membership plan. Local-first archive under mimi_atelier_objects::{uid}.",
+    userFlow: "Pin semiotic commerce objects from a zine as Desire or Reference taste signals, then revisit them here. Desire steers Studio/Tailor; reference stays light. Soft-capped archive, not a wishlist.",
+    notes: "Distinct from the Atelier membership plan. Thimble=sourcing, Pocket=media, Atelier=commerce-as-taste. Soft cap 40; oldest references prune first.",
   }
 ];
 
