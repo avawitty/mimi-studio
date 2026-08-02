@@ -322,11 +322,46 @@ app.post('/api/funded-gateway/access', async (req, res) => {
     const profileRef = db.collection('profiles_public').doc(decoded.uid);
     const [userDoc, profileDoc] = await Promise.all([userRef.get(), profileRef.get()]);
     const data = { ...(profileDoc.data() || {}), ...(userDoc.data() || {}) };
-    const plan = normalizeMimiPlan(data.plan || data.planStatus);
+    const plan = normalizeMimiPlan(data.plan || data.planStatus || data.mimiPlan);
     const paid = isPaidMimiPlan(plan);
-    const remaining = paid
-      ? Number(data.membershipCredits?.remaining ?? data.subscription?.credits?.remaining ?? 0)
-      : Number(data.trial?.remainingCredits ?? 0);
+
+    let remaining = 0;
+    if (paid) {
+      const status = String(data.subscriptionStatus || 'active').trim().toLowerCase();
+      const active = status !== 'inactive' && status !== 'canceled' && status !== 'cancelled';
+      if (!active) {
+        res.status(200).send({ allowed: false, billable: false, uid: decoded.uid, cost });
+        return;
+      }
+
+      let grant = data.membershipCredits || data.subscription?.credits;
+      const hasAllowance = grant?.allowance != null && Number.isFinite(Number(grant.allowance));
+      const hasRemaining = grant?.remaining != null && Number.isFinite(Number(grant.remaining));
+      const periodEndsAt = Number(grant?.periodEndsAt ?? 0);
+      const needsHeal =
+        grant == null ||
+        (!hasAllowance && !hasRemaining) ||
+        (Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < Date.now());
+
+      if (needsHeal) {
+        const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month') as MimiBillingInterval;
+        const credits = buildCreditGrant(plan, interval);
+        const healPatch = {
+          membershipCredits: credits,
+          subscriptionStatus: data.subscriptionStatus || 'active',
+          mimiPlan: plan,
+        };
+        await Promise.all([
+          userRef.set(healPatch, { merge: true }),
+          profileRef.set(healPatch, { merge: true }),
+        ]);
+        grant = credits;
+      }
+
+      remaining = Number(grant?.remaining ?? 0);
+    } else {
+      remaining = Number(data.trial?.remainingCredits ?? 0);
+    }
 
     res.status(200).send({
       allowed: remaining >= cost,
