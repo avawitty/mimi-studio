@@ -9,7 +9,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "./firebaseInit";
-import { handleFirestoreError, OperationType } from "./firebaseUtils";
+import { handleFirestoreError, OperationType, sanitizeFirestoreData } from "./firebaseUtils";
 import type { RipReading } from "../types";
 import { buildPublicRipSnapshot, buildRipReadingDraft, type RipBuildInput } from "./ripEngine";
 
@@ -34,7 +34,9 @@ export async function saveRipReading(
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(doc(ripCol(userId), id), full);
+  // Firestore rejects `undefined` field values; optional ids (project/taste/doll)
+  // are often absent for users without a bound Doll.
+  await setDoc(doc(ripCol(userId), id), sanitizeFirestoreData(full));
   return full;
 }
 
@@ -47,7 +49,7 @@ export async function updateRipReading(
   try {
     await setDoc(
       doc(ripCol(userId), ripId),
-      { ...updates, updatedAt: Date.now() },
+      sanitizeFirestoreData({ ...updates, updatedAt: Date.now() }),
       { merge: true },
     );
   } catch (e) {
