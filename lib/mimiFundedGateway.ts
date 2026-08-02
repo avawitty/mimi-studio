@@ -189,7 +189,7 @@ export const chargeMimiFundedGateway = async (
   access: FundedGatewayAccess,
   meta: { model?: string; usage?: unknown; feature?: string },
 ) => {
-  if (!access.billable || !access.uid) return;
+  if (!access.billable || !access.uid || !(access.cost > 0)) return;
 
   try {
     const { db } = await loadAdmin();

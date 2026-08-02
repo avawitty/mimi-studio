@@ -879,11 +879,16 @@ export const getEmbeddingWithMeta = async (content: Part[], apiKey?: string): Pr
       model: embeddingModelId(),
       contents: content,
     });
-    const model =
+    const fromResponse =
       (response as { modelVersion?: string }).modelVersion ||
-      (response as { model?: string }).model ||
-      embeddingModelId();
-    return { values: response.embeddings?.[0]?.values, model };
+      (response as { model?: string }).model;
+    // When the Gemini proxy remaps to Gateway, prefer the actual gateway embedding id
+    // over the requested Gemini role label (text-embedding-004).
+    const fallback =
+      (response as { provider?: string }).provider === "vercel-ai-gateway"
+        ? modelFor("embedding", "gateway")
+        : embeddingModelId();
+    return { values: response.embeddings?.[0]?.values, model: fromResponse || fallback };
   }, apiKey);
 };
 

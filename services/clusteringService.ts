@@ -104,9 +104,9 @@ export const generateClusterAnchors = async () => {
     const widthGroups = partitionByEmbeddingWidth(embeddable, (m: any) => m.embedding_field);
 
     // Run k-means per embedding width — mixed Gemini (768) and Gateway (1536) vectors
-    // must never share a centroid space.
+    // must never share a centroid space. Keep the original ≥5 threshold per width group.
     for (const [, group] of widthGroups) {
-      if (group.length < 2) continue;
+      if (group.length < 5) continue;
 
       const k = Math.max(2, Math.min(8, Math.floor(Math.sqrt(group.length / 2))));
       const vectors = group.map((m: any) => m.embedding_field);
