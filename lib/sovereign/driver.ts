@@ -38,6 +38,7 @@ export const SCHEMA_STATEMENTS = [
   cover_image_url TEXT,
   likes INTEGER NOT NULL DEFAULT 0,
   data TEXT NOT NULL,
+  card_data TEXT,
   updated_at BIGINT NOT NULL
 )`,
   `CREATE TABLE IF NOT EXISTS pocket_items (
@@ -51,6 +52,11 @@ export const SCHEMA_STATEMENTS = [
 
 /** Joined form for SQLite `exec` convenience. */
 export const SCHEMA_SQL = `${SCHEMA_STATEMENTS.join(";\n")};`;
+
+/** Additive migrations for archives created before card_data existed. */
+export const MIGRATION_SQL = [
+  `ALTER TABLE zines ADD COLUMN card_data TEXT`,
+];
 
 export const INDEX_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_zines_public_ts ON zines (is_public, timestamp DESC)`,

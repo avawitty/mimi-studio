@@ -44,6 +44,7 @@ import sovereignProfileHandler from "./api/sovereign/profile";
 import sovereignPocketHandler from "./api/sovereign/pocket";
 import sovereignImportHandler from "./api/sovereign/import";
 import sovereignEventsHandler from "./api/sovereign/events";
+import sovereignPingHandler from "./api/sovereign/ping";
 import { sovereignStatus } from "./lib/sovereign/store";
 import { isPaidPatronPlan } from "./constants";
 
@@ -999,6 +1000,9 @@ async function startServer() {
   // Sovereign archive — owned SQLite data plane (Floor / public reads without Firestore)
   app.get("/api/sovereign/status", async (req, res) => {
     await sovereignStatusHandler(req, res);
+  });
+  app.get("/api/sovereign/ping", async (req, res) => {
+    await sovereignPingHandler(req, res);
   });
   app.get("/api/sovereign/community", async (req, res) => {
     await sovereignCommunityHandler(req, res);

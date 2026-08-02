@@ -21,10 +21,16 @@ export default async function handler(req: any, res: any) {
     pocketCount: 0,
   };
   try {
+    // Dynamic import so a sovereign/driver crash cannot take down /api/health.
     const { sovereignStatus } = await import("../lib/sovereign/store.js");
     sovereign = await sovereignStatus();
   } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error || "unknown");
     console.warn("MIMI // health: sovereign status failed", error);
+    sovereign = {
+      ...sovereign,
+      error: message.slice(0, 240),
+    };
   }
 
   const openaiKey = process.env["OPENAI" + "_API_KEY"];

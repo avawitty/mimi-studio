@@ -44,13 +44,14 @@ describe("sovereign db url resolution", () => {
     expect(resolvePostgresUrl()).toContain("ep-b");
   });
 
-  it("strips sslmode/uselibpqcompat so explicit TLS verify is not overridden", () => {
+  it("strips sslmode/uselibpqcompat/channel_binding so drivers control TLS", () => {
     const raw =
       "postgresql://u:p@ep-x.neon.tech/neondb?sslmode=require&uselibpqcompat=true&channel_binding=require";
     const cleaned = stripPgSslQueryParams(raw);
     expect(cleaned).not.toMatch(/sslmode=/i);
     expect(cleaned).not.toMatch(/uselibpqcompat=/i);
-    expect(cleaned).toContain("channel_binding=require");
+    expect(cleaned).not.toMatch(/channel_binding=/i);
+    expect(cleaned).toContain("ep-x.neon.tech");
   });
 
   it("converts sqlite-style placeholders to postgres", () => {

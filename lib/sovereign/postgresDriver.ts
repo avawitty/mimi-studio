@@ -1,9 +1,11 @@
-import type {
-  SovereignDriver,
-  SovereignRunResult,
-  SovereignStatement,
+import {
+  INDEX_SQL,
+  MIGRATION_SQL,
+  SCHEMA_STATEMENTS,
+  type SovereignDriver,
+  type SovereignRunResult,
+  type SovereignStatement,
 } from "./driver";
-import { INDEX_SQL, SCHEMA_STATEMENTS } from "./driver";
 
 /** Convert `?` placeholders to Postgres `$1`, `$2`, … */
 export const toPgPlaceholders = (sql: string): string => {
@@ -15,9 +17,8 @@ export const toPgPlaceholders = (sql: string): string => {
 };
 
 /**
- * Strip sslmode / uselibpqcompat so node-pg's connection-string parser cannot
- * override an explicit `ssl: { rejectUnauthorized: true }` (sslmode=require
- * resolves to rejectUnauthorized:false under uselibpqcompat).
+ * Strip sslmode / uselibpqcompat / channel_binding so node-pg / Neon HTTP
+ * control TLS explicitly (sslmode=require can weaken rejectUnauthorized).
  */
 export const stripPgSslQueryParams = (connectionString: string): string => {
   try {
@@ -25,11 +26,13 @@ export const stripPgSslQueryParams = (connectionString: string): string => {
     url.searchParams.delete("sslmode");
     url.searchParams.delete("uselibpqcompat");
     url.searchParams.delete("ssl");
+    url.searchParams.delete("channel_binding");
     return url.toString();
   } catch {
     return connectionString
       .replace(/([?&])sslmode=[^&]*/gi, "$1")
       .replace(/([?&])uselibpqcompat=[^&]*/gi, "$1")
+      .replace(/([?&])channel_binding=[^&]*/gi, "$1")
       .replace(/[?&]$/, "")
       .replace(/\?&/, "?");
   }
@@ -41,6 +44,13 @@ const redactUrl = (connectionString: string): string =>
 const applySchema = async (exec: (sql: string) => Promise<void>): Promise<void> => {
   for (const sql of SCHEMA_STATEMENTS) {
     await exec(sql);
+  }
+  for (const sql of MIGRATION_SQL) {
+    try {
+      await exec(sql);
+    } catch {
+      // column may already exist
+    }
   }
   for (const sql of INDEX_SQL) {
     try {
@@ -54,7 +64,6 @@ const applySchema = async (exec: (sql: string) => Promise<void>): Promise<void> 
 /** Neon HTTP driver — preferred on Vercel (no node:sqlite, no pg SSL quirks). */
 const openNeonHttpDriver = async (connectionString: string): Promise<SovereignDriver> => {
   const { neon } = await import("@neondatabase/serverless");
-  // neon() manages TLS to Neon; do not inject sslmode=require overrides.
   const sql = neon(stripPgSslQueryParams(connectionString), {
     fullResults: true,
   });
@@ -102,7 +111,6 @@ const openNodePgDriver = async (connectionString: string): Promise<SovereignDriv
     max: 5,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
-    // Verify TLS when the host speaks TLS (remote URLs). Localhost stays plain.
     ssl: /localhost|127\.0\.0\.1/i.test(connectionString)
       ? undefined
       : { rejectUnauthorized: true },

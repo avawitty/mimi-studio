@@ -16,6 +16,7 @@ import {
   seedDemoShelfIfEmpty,
   slimZineForFloor,
   sovereignStatus,
+  toPublicProfileProjection,
   upsertPocketItem,
   upsertProfile,
   upsertZine,
@@ -119,8 +120,13 @@ describe("sovereign store", () => {
       uid: "user_1",
       handle: "Ava",
       displayName: "Ava",
+      // private prefs must not be persisted on the public projection
+      tailorDrafts: { secret: true },
     } as UserProfile);
-    expect((await getProfileByHandle("ava"))?.displayName).toBe("Ava");
+    const stored = await getProfileByHandle("ava");
+    expect(stored?.displayName).toBe("Ava");
+    expect((stored as any)?.tailorDrafts).toBeUndefined();
+    expect(toPublicProfileProjection(stored as UserProfile).uid).toBe("user_1");
 
     const item = {
       id: "pocket_1",
@@ -133,6 +139,14 @@ describe("sovereign store", () => {
     expect(await listPocketItems("user_1")).toHaveLength(1);
     expect(await deletePocketItem("pocket_1", "user_1")).toBe(true);
     expect(await listPocketItems("user_1")).toHaveLength(0);
+  });
+
+  it("persists write-time card projections for Floor lists", async () => {
+    await upsertZine(sampleZine({ id: "carded" }));
+    const listed = await listPublicZines(5);
+    const hit = listed.find((z) => z.id === "carded");
+    expect(hit?.content.pagesJson).toBeUndefined();
+    expect(hit?.content.pages?.[0]?.threadData).toBeUndefined();
   });
 
   it("imports batches and can seed demo shelf", async () => {

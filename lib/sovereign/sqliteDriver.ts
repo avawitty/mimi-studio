@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   INDEX_SQL,
+  MIGRATION_SQL,
   SCHEMA_SQL,
   type SovereignDriver,
   type SovereignRunResult,
@@ -18,6 +19,13 @@ export const openSqliteDriver = async (dbPath: string): Promise<SovereignDriver>
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec(SCHEMA_SQL);
+  for (const sql of MIGRATION_SQL) {
+    try {
+      db.exec(sql);
+    } catch {
+      // column may already exist
+    }
+  }
   for (const sql of INDEX_SQL) {
     try {
       db.exec(sql);

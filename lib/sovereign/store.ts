@@ -10,13 +10,15 @@ const asZine = (raw: string): ZineMetadata => JSON.parse(raw) as ZineMetadata;
 const asProfile = (raw: string): UserProfile => JSON.parse(raw) as UserProfile;
 const asPocket = (raw: string): PocketItem => JSON.parse(raw) as PocketItem;
 
-/** Slim payload safe for Floor cards (no full pages / artifacts blobs). */
+/** Slim payload safe for Floor / Mine cards (no full pages / artifacts blobs). */
 export const slimZineForFloor = (zine: ZineMetadata): ZineMetadata => {
   const content = zine.content || ({} as ZineMetadata["content"]);
   return {
     ...zine,
     artifacts: undefined,
     embedding: undefined,
+    editorialCompileMarkdown: undefined,
+    usedContextSnapshots: undefined,
     content: {
       ...content,
       pages: Array.isArray(content.pages)
@@ -35,6 +37,19 @@ export const slimZineForFloor = (zine: ZineMetadata): ZineMetadata => {
     },
   };
 };
+
+/** Public identity only — never mirror Tailor prefs / private UserPreferences. */
+export const toPublicProfileProjection = (profile: UserProfile): UserProfile =>
+  ({
+    uid: profile.uid,
+    handle: profile.handle,
+    displayName: profile.displayName,
+    photoURL: profile.photoURL ?? null,
+    bio: profile.bio,
+    publicShowcase: profile.publicShowcase,
+    createdAt: profile.createdAt,
+    currentSeason: profile.currentSeason || "blooming",
+  }) as UserProfile;
 
 export const sovereignStatus = async () => {
   const db = await getSovereignDb();
@@ -86,11 +101,11 @@ export const listPublicZines = async (
   const cached = cacheGet<ZineMetadata[]>(cacheKey);
   if (cached) return cached;
 
-  let rows: Array<{ data: string }>;
+  let rows: Array<{ data: string; card_data?: string | null }>;
   if (q) {
     rows = await db
       .prepare(
-        `SELECT data FROM zines
+        `SELECT data, card_data FROM zines
          WHERE is_public = 1
            AND (
              lower(title) LIKE ? OR
@@ -100,19 +115,28 @@ export const listPublicZines = async (
          ORDER BY timestamp DESC
          LIMIT ?`,
       )
-      .all<{ data: string }>(`%${q}%`, `%${q}%`, `%${q}%`, take);
+      .all<{ data: string; card_data?: string | null }>(`%${q}%`, `%${q}%`, `%${q}%`, take);
   } else {
     rows = await db
       .prepare(
-        `SELECT data FROM zines
+        `SELECT data, card_data FROM zines
          WHERE is_public = 1
          ORDER BY timestamp DESC
          LIMIT ?`,
       )
-      .all<{ data: string }>(take);
+      .all<{ data: string; card_data?: string | null }>(take);
   }
 
-  const result = rows.map((row) => slimZineForFloor(asZine(row.data)));
+  const result = rows.map((row) => {
+    if (row.card_data) {
+      try {
+        return asZine(row.card_data);
+      } catch {
+        // fall through
+      }
+    }
+    return slimZineForFloor(asZine(row.data));
+  });
   cacheSet(cacheKey, result, FLOOR_CACHE_TTL_MS);
   return result;
 };
@@ -138,29 +162,40 @@ export const getZineById = async (
 
 export const listUserZines = async (
   userId: string,
-  opts?: { publicOnly?: boolean; limit?: number },
+  opts?: { publicOnly?: boolean; limit?: number; cardsOnly?: boolean },
 ): Promise<ZineMetadata[]> => {
   const db = await getSovereignDb();
   if (!db || !userId) return [];
   const take = Math.max(1, Math.min(opts?.limit || 100, 200));
+  const cardsOnly = opts?.cardsOnly !== false;
   const rows = opts?.publicOnly
     ? await db
         .prepare(
-          `SELECT data FROM zines
+          `SELECT data, card_data FROM zines
            WHERE user_id = ? AND is_public = 1
            ORDER BY timestamp DESC
            LIMIT ?`,
         )
-        .all<{ data: string }>(userId, take)
+        .all<{ data: string; card_data?: string | null }>(userId, take)
     : await db
         .prepare(
-          `SELECT data FROM zines
+          `SELECT data, card_data FROM zines
            WHERE user_id = ?
            ORDER BY timestamp DESC
            LIMIT ?`,
         )
-        .all<{ data: string }>(userId, take);
-  return rows.map((row) => asZine(row.data));
+        .all<{ data: string; card_data?: string | null }>(userId, take);
+  return rows.map((row) => {
+    if (cardsOnly && row.card_data) {
+      try {
+        return asZine(row.card_data);
+      } catch {
+        // fall through
+      }
+    }
+    const full = asZine(row.data);
+    return cardsOnly ? slimZineForFloor(full) : full;
+  });
 };
 
 export const upsertZine = async (zine: ZineMetadata): Promise<void> => {
@@ -177,13 +212,14 @@ export const upsertZine = async (zine: ZineMetadata): Promise<void> => {
   const timestamp = Number(zine.timestamp || zine.createdAt || now);
   const publishedAt = zine.publishedAt ?? (isPublic ? timestamp : null);
   const payload = JSON.stringify(zine);
+  const cardPayload = JSON.stringify(slimZineForFloor(zine));
 
   await db
     .prepare(
       `INSERT INTO zines (
       id, user_id, user_handle, title, tone, is_public, published_at,
-      timestamp, cover_image_url, likes, data, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      timestamp, cover_image_url, likes, data, card_data, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       user_id = excluded.user_id,
       user_handle = excluded.user_handle,
@@ -195,6 +231,7 @@ export const upsertZine = async (zine: ZineMetadata): Promise<void> => {
       cover_image_url = excluded.cover_image_url,
       likes = excluded.likes,
       data = excluded.data,
+      card_data = excluded.card_data,
       updated_at = excluded.updated_at`,
     )
     .run(
@@ -209,6 +246,7 @@ export const upsertZine = async (zine: ZineMetadata): Promise<void> => {
       zine.coverImageUrl || null,
       Number(zine.likes || 0),
       payload,
+      cardPayload,
       now,
     );
   cacheInvalidatePrefix("floor:");
@@ -244,6 +282,7 @@ export const upsertProfile = async (profile: UserProfile): Promise<void> => {
   if (!profile?.uid) throw new Error("Profile uid is required");
 
   const handle = (profile.handle || "").trim().toLowerCase() || null;
+  const publicProjection = toPublicProfileProjection(profile);
   await db
     .prepare(
       `INSERT INTO profiles (uid, handle, display_name, photo_url, data, updated_at)
@@ -258,9 +297,9 @@ export const upsertProfile = async (profile: UserProfile): Promise<void> => {
     .run(
       profile.uid,
       handle,
-      profile.displayName || null,
-      profile.photoURL || null,
-      JSON.stringify(profile),
+      publicProjection.displayName || null,
+      publicProjection.photoURL || null,
+      JSON.stringify(publicProjection),
       Date.now(),
     );
   emitSovereignEvent({ type: "profile_upsert", uid: profile.uid });
