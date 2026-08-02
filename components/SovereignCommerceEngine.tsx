@@ -5,6 +5,7 @@ import { useUser } from "../contexts/UserContext";
 import { createCheckoutSession, openBillingPortal } from "../services/stripe";
 import { ManifestIdentityGate } from "./ManifestIdentityGate";
 import type { BillingInterval } from "../constants";
+import { hasAccess } from "../constants";
 import {
   PATRONAGE_TIERS,
   formatPatronagePrice,
@@ -287,17 +288,23 @@ export const useSovereignGate = () => {
   const userRole = profile?.planStatus || "free";
 
   const hasAccessToFeature = (feature: "cloudSync" | "affiliate" | "layer4Prompts"): boolean => {
-    if (userRole === "lab") {
-      return true;
+    // Mirror lib/mimiEntitlements feature flags: sync at Initiation+, affiliate at Atelier+, layer4 at Lab+.
+    switch (feature) {
+      case "cloudSync":
+        return hasAccess(userRole, "core");
+      case "affiliate":
+        return hasAccess(userRole, "pro");
+      case "layer4Prompts":
+        return hasAccess(userRole, "lab");
+      default: {
+        const _exhaustive: never = feature;
+        return _exhaustive;
+      }
     }
-    if (userRole === "pro" || userRole === "optioning") {
-      return feature === "cloudSync" || feature === "affiliate";
-    }
-    return false;
   };
 
   const checkGenerationsQuota = (currentUsed: number): { canProceed: boolean; limit: number } => {
-    const limit = userRole === "lab" || userRole === "pro" || userRole === "optioning" || userRole === "core" ? 9999 : 3;
+    const limit = hasAccess(userRole, "core") ? 9999 : 3;
     return {
       canProceed: currentUsed < limit,
       limit,

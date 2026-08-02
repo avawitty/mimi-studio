@@ -85,9 +85,53 @@ export type BillingInterval = 'month' | 'year';
 
 export type PlanTier = 'free' | 'core' | 'optioning' | 'pro' | 'lab';
 
+const PLAN_TIER_ORDER: PlanTier[] = ["free", "core", "optioning", "pro", "lab"];
+
+/** Collapse mimiPlan / legacy labels onto checkout PlanTier for gating. */
+export function normalizePlanTier(plan: PlanTier | string | undefined | null): PlanTier {
+  const value = String(plan || "free").trim().toLowerCase();
+  switch (value) {
+    case "core":
+    case "initiation":
+    case "interpreter":
+      return "core";
+    case "optioning":
+    case "option":
+    case "tailor":
+      return "optioning";
+    case "pro":
+    case "atelier":
+    case "couturier":
+      return "pro";
+    case "lab":
+    case "maison":
+    case "sovereign":
+      return "lab";
+    case "trial":
+    case "ghost":
+    case "expired":
+    case "free":
+      return "free";
+    default:
+      return "free";
+  }
+}
+
 export function hasAccess(userPlan: PlanTier | string | undefined | null, requiredPlan: PlanTier): boolean {
-  const order = ["free", "core", "optioning", "pro", "lab"];
-  const userIndex = order.indexOf(userPlan || "free");
-  const requiredIndex = order.indexOf(requiredPlan);
+  const userIndex = PLAN_TIER_ORDER.indexOf(normalizePlanTier(userPlan));
+  const requiredIndex = PLAN_TIER_ORDER.indexOf(requiredPlan);
   return userIndex >= requiredIndex;
 }
+
+/** Any paid patronage tier (Initiation+), including mimiPlan aliases. */
+export function isPaidPatronPlan(plan: PlanTier | string | undefined | null): boolean {
+  return hasAccess(plan, "core");
+}
+
+export const PATRONAGE_PLAN_LABELS: Record<PlanTier, string> = {
+  free: "Visitor",
+  core: "Initiation",
+  optioning: "Optioning",
+  pro: "Atelier",
+  lab: "Lab",
+};
