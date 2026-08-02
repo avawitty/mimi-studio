@@ -418,50 +418,85 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
       </div>
 
       <div className="relative max-w-6xl mx-auto px-6 md:px-12 pt-16 md:pt-20 pb-32">
-        {/* Hero — one composition */}
+        {/* Hero — full composition on Stage entry; compact masthead in other wings */}
         <motion.header
+          layout
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="relative min-h-[min(72vh,640px)] flex flex-col justify-end pb-10 mb-4"
+          data-testid="proscenium-hero"
+          className={`relative flex flex-col justify-end mb-4 ${
+            wing === "stage" && !entered
+              ? "min-h-[min(72vh,640px)] pb-10"
+              : wing === "stage"
+                ? "min-h-[min(42vh,420px)] pb-8"
+                : "pb-6 pt-2"
+          }`}
         >
-          <div className="absolute top-0 left-0 right-0 flex items-start justify-between gap-4">
+          <div
+            className={`flex items-start justify-between gap-4 ${
+              wing === "stage" ? "absolute top-0 left-0 right-0" : ""
+            }`}
+          >
             <PressMark label="Proscenium" tone="olive" />
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.35 }}
               className="flex items-center gap-2 font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-stone,#78716c)]"
             >
-              {isOfflineMode ? <WifiOff size={10} /> : <Eye size={10} className="animate-pulse" />}
-              {channelLabel}
+              {isOfflineMode ? (
+                <WifiOff size={10} />
+              ) : (
+                <Eye size={10} className="animate-pulse" />
+              )}
+              {wing === "stage" ? channelLabel : WINGS.find((w) => w.id === wing)?.label}
             </motion.div>
           </div>
 
-          <div className="space-y-6 max-w-2xl pt-16">
-            <MimiWordmark size="lg" as="p" />
-            <h1 className="font-serif italic text-5xl md:text-7xl tracking-tighter leading-[0.92] text-[var(--mimi-ink,#0a0a0a)]">
-              The Proscenium.
-            </h1>
-            <p className="font-serif italic text-lg md:text-xl text-[var(--mimi-stone,#78716c)] leading-relaxed border-l border-[var(--mimi-olive,#5A5A40)] pl-5 max-w-xl">
-              The arch framing the performance — public transmissions,
-              correspondents, and named cliques in one stage.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <PublicCTA onClick={() => selectWing("stage")}>
-                Enter the Stage <ArrowRight size={12} />
-              </PublicCTA>
-              <PublicCTA
-                variant="ghost"
-                onClick={() => selectWing("correspondents")}
-              >
-                Correspondents
-              </PublicCTA>
-              <PublicCTA variant="ghost" onClick={() => selectWing("cliques")}>
-                Cliques
-              </PublicCTA>
+          {wing === "stage" ? (
+            <div className="space-y-6 max-w-2xl pt-16">
+              <MimiWordmark size="lg" as="p" />
+              <h1 className="font-serif italic text-5xl md:text-7xl tracking-tighter leading-[0.92] text-[var(--mimi-ink,#0a0a0a)]">
+                The Proscenium.
+              </h1>
+              <p className="font-serif italic text-lg md:text-xl text-[var(--mimi-stone,#78716c)] leading-relaxed border-l border-[var(--mimi-olive,#5A5A40)] pl-5 max-w-xl">
+                The arch framing the performance — public transmissions,
+                correspondents, and named cliques in one stage.
+              </p>
+              {!entered && (
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <PublicCTA onClick={() => selectWing("stage")}>
+                    Enter the Stage <ArrowRight size={12} />
+                  </PublicCTA>
+                  <PublicCTA
+                    variant="ghost"
+                    onClick={() => selectWing("correspondents")}
+                  >
+                    Correspondents
+                  </PublicCTA>
+                  <PublicCTA
+                    variant="ghost"
+                    onClick={() => selectWing("cliques")}
+                  >
+                    Cliques
+                  </PublicCTA>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3 max-w-2xl pt-10 md:pt-12">
+              <MimiWordmark size="md" as="p" />
+              <h1 className="font-serif italic text-4xl md:text-5xl tracking-tighter leading-none text-[var(--mimi-ink,#0a0a0a)]">
+                The Proscenium.
+              </h1>
+              <p className="font-serif italic text-base text-[var(--mimi-stone,#78716c)] max-w-lg">
+                {wing === "correspondents"
+                  ? "Manage soft follows and mutual consonants beneath the arch."
+                  : "Named invite-only circles for boards, critique, and collab seats."}
+              </p>
+            </div>
+          )}
         </motion.header>
 
         <ColumnRule className="mb-8" />
@@ -469,6 +504,7 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
         {/* Wing nav */}
         <nav
           aria-label="Proscenium wings"
+          data-testid="proscenium-wings"
           className="sticky top-0 z-20 -mx-2 px-2 py-3 mb-10 bg-[var(--mimi-field,#ffffff)]/90 backdrop-blur-sm border-b border-[var(--mimi-hairline,#d4d4d4)]"
         >
           <div className="flex flex-wrap gap-x-8 gap-y-2">
@@ -478,6 +514,7 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
                 <button
                   key={w.id}
                   type="button"
+                  data-testid={`proscenium-wing-${w.id}`}
                   onClick={() => selectWing(w.id)}
                   className={`relative pb-2 flex items-center gap-2 transition-colors ${
                     active
