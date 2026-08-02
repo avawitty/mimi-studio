@@ -1,16 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { useUser } from '../contexts/UserContext';
 import {
-  ArrowUpRight,
   BookOpen,
   ChevronRight,
-  Crown,
   Loader2,
   Mail,
 } from 'lucide-react';
 import { fetchFeaturedPublicZines } from '../services/publicShowcaseService';
 import type { ZineMetadata } from '../types';
+import { PublicField, EditorialPlate } from './public-face';
+import { PressReveal } from './motion/PressReveal';
 
 interface EditorialFrontPageProps {
   onSelectZine: (zineId: string) => void;
@@ -47,7 +46,6 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
   onSelectZine,
   onOpenGateway,
 }) => {
-  const { user } = useUser();
   const [zines, setZines] = useState<ZineMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -118,71 +116,39 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
     window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'showcase' }));
   };
 
+  const featured = zines[0];
+  const heroImage =
+    featured?.coverImageUrl ||
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80';
+
   return (
-    <div className="w-full h-full min-h-0 overflow-y-auto bg-[#FAF8F5] dark:bg-[#080808] text-stone-900 dark:text-stone-100 font-sans transition-colors duration-300 pb-32">
-      <section className="border-b border-stone-200 dark:border-stone-850 px-6 py-12 md:py-24 max-w-7xl mx-auto flex flex-col gap-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-stone-200 dark:border-stone-850 pb-8 gap-4">
-          <div className="space-y-1">
-            <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-stone-500 font-bold">
-              Public archive · published issues only
-            </p>
-            <h1 className="leading-none">
-              <span className="sr-only">Mimi Zine</span>
-              <img
-                src="/brand/official/mimi-primary-wordmark-light.svg"
-                alt=""
-                className="w-full max-w-[34rem] h-auto object-contain object-left dark:hidden"
-              />
-              <img
-                src="/brand/official/mimi-primary-wordmark-dark.svg"
-                alt=""
-                className="hidden w-full max-w-[34rem] h-auto object-contain object-left dark:block"
-              />
-            </h1>
-          </div>
-          <div className="text-left md:text-right font-mono text-[9px] uppercase tracking-wider text-stone-500 space-y-1">
-            <p>{loading ? 'Loading…' : `${zines.length} public issue${zines.length === 1 ? '' : 's'}`}</p>
-            <button
-              type="button"
-              onClick={goShowcase}
-              className="text-stone-800 dark:text-stone-200 font-bold hover:underline"
-            >
-              Open full showcase →
-            </button>
-          </div>
-        </div>
+    <PublicField className="w-full h-full min-h-0 overflow-y-auto font-sans transition-colors duration-300 pb-32">
+      <PressReveal>
+        <EditorialPlate
+          thesis="Taste made inspectable — not averaged."
+          supporting="Read what creators published with Approved Used Context. A quiet public archive for original expression and evidence you can audit."
+          actionLabel={featured ? 'Read latest issue' : 'Enter the archive'}
+          onAction={() => {
+            if (featured) {
+              onSelectZine(featured.id);
+              return;
+            }
+            const el = document.getElementById('mimi-front-issue');
+            el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          folioLabel="Archive"
+          visual={
+            <img
+              src={heroImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover grayscale"
+            />
+          }
+        />
+      </PressReveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4">
-          <div className="md:col-span-8">
-            <p className="font-serif italic text-xl md:text-3xl text-stone-800 dark:text-stone-200 leading-snug">
-              Read what creators published with Approved Used Context — taste made inspectable, not averaged.
-            </p>
-          </div>
-          <div className="md:col-span-4 flex flex-col justify-end gap-4">
-            <div className="p-4 bg-stone-100 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none">
-                <Crown size={72} />
-              </div>
-              <h4 className="font-mono text-[8px] uppercase tracking-widest font-black text-stone-500 mb-2">
-                Identity gateway
-              </h4>
-              <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-normal mb-3">
-                Create a Mimi identity to capture evidence, approve memory, and publish your own issues.
-              </p>
-              <button
-                type="button"
-                onClick={onOpenGateway}
-                className="w-full flex items-center justify-between text-left font-mono text-[9px] uppercase tracking-wider font-extrabold border border-stone-800 dark:border-stone-200 px-3 py-1.5 hover:bg-stone-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all"
-              >
-                <span>{user && !user.isAnonymous ? 'Manage identity' : 'Initialize identity'}</span>
-                <ArrowUpRight size={12} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <section id="mimi-front-issue" className="px-6 py-12 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 border-t border-[var(--mimi-hairline,#d4d4d4)]">
 
-      <section className="px-6 py-12 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-8 flex flex-col gap-10">
           <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-850 pb-4">
             <h3 className="font-mono text-[10px] uppercase tracking-widest font-black text-stone-500">
@@ -458,6 +424,6 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
           </div>
         </div>
       </section>
-    </div>
+    </PublicField>
   );
 };

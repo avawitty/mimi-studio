@@ -17,6 +17,8 @@ const ALLOWED_ORIGIN_PATTERNS: Array<string | RegExp> = [
   'https://mimi.you',
   'https://www.mimi.rip',
   'https://mimi.rip',
+  'https://mimi.fish',
+  'https://www.mimi.fish',
   'https://avainlife.com',
   'https://www.avainlife.com',
   /^https:\/\/[\w-]+\.vercel\.app$/,
@@ -59,7 +61,8 @@ const normalizeMimiPlan = (planInput?: unknown): MimiPlan => {
 const toLegacyPlanStatus = (planInput?: unknown) => {
   const plan = normalizeMimiPlan(planInput);
   if (plan === 'initiation') return 'core';
-  if (plan === 'optioning' || plan === 'atelier') return 'pro';
+  if (plan === 'optioning') return 'optioning';
+  if (plan === 'atelier') return 'pro';
   if (plan === 'lab' || plan === 'sovereign') return 'lab';
   if (plan === 'trial') return 'trial';
   return 'free';
@@ -116,6 +119,7 @@ const writeMembershipEntitlements = async ({
     plan: legacyPlan === 'free' ? 'free' : legacyPlan,
     planStatus: legacyPlan,
     membershipPlan: legacyPlan,
+    mimiPlan,
     subscriptionStatus: isActive ? 'active' : 'inactive',
     subscriptionInterval: interval,
     membershipCredits: credits,

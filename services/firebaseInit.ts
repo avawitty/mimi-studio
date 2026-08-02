@@ -15,12 +15,15 @@ import firebaseConfig from '../firebase-applet-config.json';
 // Deploy: cd functions && npm run build && firebase deploy --only functions --project gen-lang-client-0210674664
 // Optional env: VITE_FIREBASE_FUNCTIONS_URL or FIREBASE_FUNCTIONS_URL (defaults to us-central1 + projectId).
 
+// Authorized domains (Firebase Console → Authentication → Settings → Authorized domains):
 // Primary production host: www.mimi.you (keep apex mimi.you authorized for redirects).
-// Pre-DNS go-live: mimi.rip / www.mimi.rip also authorized for the rip cutover.
-// Authorized domains on mimistudios include: www.mimi.you, mimi.you, mimi.rip, www.mimi.rip,
-// avainlife.com, www.avainlife.com, mimizine.app, mimizine.com, localhost,
-// mimistudios.firebaseapp.com, mimistudios.web.app, mimi-studio-gateway.vercel.app,
-// plus assorted *.run.app hosts.
+// - localhost (dev)
+// - mimistudios.firebaseapp.com / mimistudios.web.app (default auth hosts)
+// - www.mimi.you, mimi.you (production)
+// - mimi.rip, www.mimi.rip (inverse public skin)
+// - mimi.fish, www.mimi.fish (future share skin)
+// - avainlife.com, www.avainlife.com (production)
+// - mimi-studio-gateway.vercel.app and other *.vercel.app preview URLs
 // Custom domains must also be listed in Vercel project Domains and use the same Firebase web app.
 
 // Support environment variable overrides for all Firebase config fields safely

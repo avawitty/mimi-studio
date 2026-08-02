@@ -4,87 +4,13 @@ import { X, Loader2, Check, Crown, Fingerprint, ChevronDown } from 'lucide-react
 import { useUser } from '../contexts/UserContext';
 import { createCheckoutSession } from '../services/stripe';
 import { ManifestIdentityGate } from './ManifestIdentityGate';
+import type { BillingInterval } from '../constants';
 import {
-  PLAN_MONTHLY_USD,
-  PLAN_ANNUAL_USD,
-  type BillingInterval,
-  type PlanTier,
-} from '../constants';
-
-type CheckoutPlan = 'core' | 'optioning' | 'pro' | 'lab';
-
-interface Tier {
-  plan: CheckoutPlan;
-  name: string;
-  role: string;
-  cta: string;
-  features: string[];
-  recommended?: boolean;
-  dark?: boolean;
-}
-
-const TIERS: Tier[] = [
-  {
-    plan: 'core',
-    name: 'The Initiation',
-    role: 'Interpreter',
-    cta: 'Understand Your Taste',
-    features: [
-      '500 generation credits monthly',
-      'Persistent Archive saves',
-      'Full Aesthetic DNA editing',
-      'Advanced Analysis maps',
-    ],
-  },
-  {
-    plan: 'optioning',
-    name: 'Optioning',
-    role: 'Tailor',
-    cta: 'Tailor Your Taste',
-    recommended: true,
-    features: [
-      'Everything in Initiation',
-      '1,500 generation credits monthly',
-      'Tailor visual treatments',
-      'Priority generation queue',
-    ],
-  },
-  {
-    plan: 'pro',
-    name: 'The Atelier',
-    role: 'Couturier',
-    cta: 'Apply Your Taste',
-    features: [
-      'Everything in Optioning',
-      '3,000 generation credits monthly',
-      'Multi-project workspaces',
-      'Brand positioning outputs',
-      'Strategic roadmap generation',
-    ],
-  },
-  {
-    plan: 'lab',
-    name: 'The Lab',
-    role: 'Maison',
-    cta: 'Shape The System',
-    dark: true,
-    features: [
-      'Everything in the Atelier',
-      '10,000 generation credits monthly',
-      'Experimental features',
-      'Advanced embeddings tuning',
-      'API / Integrations',
-    ],
-  },
-];
-
-const formatPrice = (plan: CheckoutPlan, interval: BillingInterval) => {
-  if (interval === 'year') {
-    const perMonth = Math.round(PLAN_ANNUAL_USD[plan] / 12);
-    return { big: `$${perMonth}`, small: '/mo', note: `$${PLAN_ANNUAL_USD[plan]} billed yearly` };
-  }
-  return { big: `$${PLAN_MONTHLY_USD[plan]}`, small: '/mo', note: 'billed monthly' };
-};
+  PATRONAGE_TIERS,
+  formatPatronagePrice,
+  resolveActiveCheckoutPlan,
+  type PatronageCheckoutPlan,
+} from '../lib/patronageTiers';
 
 export const ImperialPatronageModal: React.FC<{
   isOpen: boolean;
@@ -95,12 +21,12 @@ export const ImperialPatronageModal: React.FC<{
   const { activatePatron, user, profile } = useUser();
   const [keyInput, setKeyInput] = useState(prefillKey || '');
   const [status, setStatus] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
-  const [isCheckoutLoading, setIsCheckoutLoading] = useState<CheckoutPlan | null>(null);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState<PatronageCheckoutPlan | null>(null);
   const [interval, setInterval] = useState<BillingInterval>('year');
   const [keyOpen, setKeyOpen] = useState(!!prefillKey);
 
-  const activePaidPlan: PlanTier | null =
-    profile?.subscriptionStatus === 'active' ? (profile?.planStatus as PlanTier) : null;
+  const activePaidPlan = resolveActiveCheckoutPlan(profile);
+  const hasActiveSubscription = !!activePaidPlan;
 
   useEffect(() => {
     if (prefillKey) {
@@ -126,7 +52,7 @@ export const ImperialPatronageModal: React.FC<{
     }
   };
 
-  const handleSubscribe = async (plan: CheckoutPlan) => {
+  const handleSubscribe = async (plan: PatronageCheckoutPlan) => {
     if (!user) return;
     setIsCheckoutLoading(plan);
     try {
@@ -185,7 +111,6 @@ export const ImperialPatronageModal: React.FC<{
         </AnimatePresence>
 
         <div className="relative z-10 w-full px-5 md:px-10 pt-14 pb-10 flex flex-col items-center">
-          {/* HEADER */}
           <div className="text-center space-y-4 w-full border-b border-nous-text/10 pb-8">
             <div className="flex justify-center text-nous-text opacity-80">
               <Crown size={28} strokeWidth={1} />
@@ -205,7 +130,6 @@ export const ImperialPatronageModal: React.FC<{
             )}
           </div>
 
-          {/* BILLING TOGGLE */}
           <div className="mt-8 flex flex-col items-center gap-2">
             <div
               role="tablist"
@@ -238,10 +162,9 @@ export const ImperialPatronageModal: React.FC<{
             </div>
           </div>
 
-          {/* TIERS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5 w-full text-left mt-8">
-            {TIERS.map((tier) => {
-              const price = formatPrice(tier.plan, interval);
+            {PATRONAGE_TIERS.map((tier) => {
+              const price = formatPatronagePrice(tier.plan, interval);
               const isCurrent =
                 activePaidPlan === tier.plan &&
                 (!profile?.subscriptionInterval || profile.subscriptionInterval === interval);
@@ -296,7 +219,15 @@ export const ImperialPatronageModal: React.FC<{
                               : 'border-nous-text/30 hover:bg-nous-text hover:text-nous-base'
                       }`}
                     >
-                      {loading ? <Loader2 size={14} className="animate-spin" /> : isCurrent ? 'Current Plan' : tier.cta}
+                      {loading ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : isCurrent ? (
+                        'Current Plan'
+                      ) : hasActiveSubscription ? (
+                        'Change plan'
+                      ) : (
+                        tier.cta
+                      )}
                     </button>
                   </ManifestIdentityGate>
                 </div>
@@ -304,7 +235,6 @@ export const ImperialPatronageModal: React.FC<{
             })}
           </div>
 
-          {/* DOWNPLAYED SOVEREIGN KEY */}
           <div className="mt-10 pt-6 border-t border-nous-text/10 w-full max-w-sm mx-auto text-center">
             <button
               onClick={() => setKeyOpen((v) => !v)}

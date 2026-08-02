@@ -16,6 +16,10 @@
           "https://www.mimi.rip/__/auth/handler",
           "https://mimi.rip",
           "https://mimi.rip/__/auth/handler",
+          "https://www.mimi.fish",
+          "https://www.mimi.fish/__/auth/handler",
+          "https://mimi.fish",
+          "https://mimi.fish/__/auth/handler",
           "http://localhost"
         ]
       }

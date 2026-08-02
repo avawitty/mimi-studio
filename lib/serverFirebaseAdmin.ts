@@ -3,11 +3,18 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import firebaseConfig from "../firebase-applet-config.json";
 
-/** Named DB from client config; `(default)` does not exist on mimistudios. */
-const MIMI_FIRESTORE_DATABASE_ID =
-  process.env.FIREBASE_FIRESTORE_DATABASE_ID ||
-  (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId ||
-  "ai-studio-mimi-4c383b50-c596-4b43-8a2e-61d0645e590a";
+/**
+ * Named DB from client config; `(default)` does not exist on mimistudios.
+ * Resolved at call time (not module import) so `server.ts` dotenv / `.env.local`
+ * can override before Admin-backed routes touch Firestore.
+ */
+function resolveMimiFirestoreDatabaseId(): string {
+  return (
+    process.env.FIREBASE_FIRESTORE_DATABASE_ID ||
+    (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId ||
+    "ai-studio-mimi-4c383b50-c596-4b43-8a2e-61d0645e590a"
+  );
+}
 
 const parseServiceAccount = () => {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -31,7 +38,7 @@ export const getServerFirebaseAdmin = () => {
 
   return {
     auth: getAuth(),
-    db: getFirestore(MIMI_FIRESTORE_DATABASE_ID),
+    db: getFirestore(resolveMimiFirestoreDatabaseId()),
   };
 };
 

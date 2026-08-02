@@ -4,6 +4,8 @@ import { Video, Image as ImageIcon, Loader2, Play, Sparkles, Upload, X, Terminal
 import { getClient } from '../services/geminiClient';
 import { GoogleGenAI } from '@google/genai';
 import { modelFor } from '../services/modelConfig';
+import { WorktableShell } from './worktable/WorktableShell';
+import { MimiWordmark } from './public-face/MimiWordmark';
 
 interface CatalystData {
  url: string;
@@ -270,9 +272,19 @@ export const DarkroomGeneration: React.FC = () => {
  };
 
  return (
- <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
- {/* LEFT COLUMN: STAGES 01 & 02 */}
- <div className="lg:col-span-4 space-y-12">
+ <WorktableShell
+ toolsLabel="Develop"
+ defaultToolsOpen={false}
+ chrome={
+ <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-3">
+ <div className="space-y-0.5">
+ <MimiWordmark size="sm" />
+ <p className="font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">Darkroom · Synthesis</p>
+ </div>
+ </div>
+ }
+ tools={
+ <div className="space-y-12">
  
  {/* STAGE 01: CATALYST INGESTION */}
  <div className="space-y-6">
@@ -532,8 +544,9 @@ export const DarkroomGeneration: React.FC = () => {
  </div>
  </div>
 
- {/* RIGHT COLUMN: STAGE 03 */}
- <div className="lg:col-span-8 space-y-6 flex flex-col">
+ }
+ >
+ <div className="h-full min-h-[70vh] lg:min-h-0 overflow-y-auto space-y-6 flex flex-col p-4 md:p-6">
  <div className="flex items-center gap-3 mb-4 border-b border-nous-text/10 dark:border-nous-base/10 pb-4">
  <h2 className="text-3xl font-serif italic text tracking-tight">Stage 03 // The Output Vat</h2>
  </div>
@@ -623,6 +636,6 @@ export const DarkroomGeneration: React.FC = () => {
 
  </div>
  </div>
- </div>
+ </WorktableShell>
  );
 };

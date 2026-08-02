@@ -53,6 +53,8 @@ const ALLOWED_ORIGIN_PATTERNS = [
     'https://mimi.you',
     'https://www.mimi.rip',
     'https://mimi.rip',
+    'https://mimi.fish',
+    'https://www.mimi.fish',
     'https://avainlife.com',
     'https://www.avainlife.com',
     /^https:\/\/[\w-]+\.vercel\.app$/,
@@ -90,7 +92,9 @@ const toLegacyPlanStatus = (planInput) => {
     const plan = normalizeMimiPlan(planInput);
     if (plan === 'initiation')
         return 'core';
-    if (plan === 'optioning' || plan === 'atelier')
+    if (plan === 'optioning')
+        return 'optioning';
+    if (plan === 'atelier')
         return 'pro';
     if (plan === 'lab' || plan === 'sovereign')
         return 'lab';
@@ -130,7 +134,7 @@ const writeMembershipEntitlements = async ({ uid, plan, interval = 'month', stri
     const isActive = status === 'active';
     const currentPeriodEnd = credits.periodEndsAt;
     const now = Date.now();
-    const userPatch = Object.assign({ plan: legacyPlan === 'free' ? 'free' : legacyPlan, planStatus: legacyPlan, membershipPlan: legacyPlan, subscriptionStatus: isActive ? 'active' : 'inactive', subscriptionInterval: interval, membershipCredits: credits }, (stripeCustomerId ? { stripeCustomerId } : {}));
+    const userPatch = Object.assign({ plan: legacyPlan === 'free' ? 'free' : legacyPlan, planStatus: legacyPlan, membershipPlan: legacyPlan, mimiPlan, subscriptionStatus: isActive ? 'active' : 'inactive', subscriptionInterval: interval, membershipCredits: credits }, (stripeCustomerId ? { stripeCustomerId } : {}));
     await Promise.all([
         db.collection('users').doc(uid).set(userPatch, { merge: true }),
         db.collection('profiles_public').doc(uid).set(userPatch, { merge: true }),
