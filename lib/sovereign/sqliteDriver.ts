@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import {
   INDEX_SQL,
   SCHEMA_SQL,
+  applySchemaMigrations,
   type SovereignDriver,
   type SovereignRunResult,
   type SovereignStatement,
@@ -12,6 +13,10 @@ import {
 export const openSqliteDriver = async (dbPath: string): Promise<SovereignDriver> => {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
+  db.exec("PRAGMA journal_mode = WAL;");
+  db.exec("PRAGMA synchronous = NORMAL;");
+  db.exec("PRAGMA foreign_keys = ON;");
+  db.exec("PRAGMA busy_timeout = 5000;");
   db.exec(SCHEMA_SQL);
   for (const sql of INDEX_SQL) {
     try {
@@ -35,15 +40,38 @@ export const openSqliteDriver = async (dbPath: string): Promise<SovereignDriver>
     };
   };
 
-  return {
+  const driver: SovereignDriver = {
     backend: "sqlite",
     pathOrUrl: dbPath,
     exec: async (sql: string) => {
       db.exec(sql);
     },
     prepare,
+    withTransaction: async <T>(fn: () => Promise<T>): Promise<T> => {
+      db.exec("BEGIN");
+      try {
+        const value = await fn();
+        db.exec("COMMIT");
+        return value;
+      } catch (error) {
+        try {
+          db.exec("ROLLBACK");
+        } catch {
+          // ignore
+        }
+        throw error;
+      }
+    },
+    ping: async () => {
+      const started = Date.now();
+      db.prepare("SELECT 1").get();
+      return Date.now() - started;
+    },
     close: async () => {
       db.close();
     },
   };
+
+  await applySchemaMigrations(driver);
+  return driver;
 };

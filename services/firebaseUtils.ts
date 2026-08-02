@@ -1149,11 +1149,12 @@ export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => vo
     const q = query(
       collection(db, "zines"),
       where("isPublic", "==", true),
+      orderBy("timestamp", "desc"),
       limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
     );
     unsubFirestore = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
-      callback(docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, take));
+      callback(docs.slice(0, take));
     }, (e) => {
       if (isFirestoreQuotaError(e)) {
         console.warn("MIMI // Community subscribe: Firestore quota exhausted");
@@ -2152,6 +2153,16 @@ export const deleteZine = async (zineId: string): Promise<void> => {
     } catch (e: any) {
       handleFirestoreError(e, OperationType.DELETE, `zines/${zineId}`);
     }
+  }
+  // Keep the owned archive in sync so deleted issues leave Floor / Mine.
+  try {
+    const uid = auth.currentUser?.uid;
+    if (uid && zineId) {
+      const { deleteSovereignZine } = await import("./sovereignClient");
+      void deleteSovereignZine(zineId, uid);
+    }
+  } catch {
+    // ignore mirror failures
   }
 };
 

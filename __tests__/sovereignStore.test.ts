@@ -7,11 +7,13 @@ import { cacheClear } from "../lib/sovereign/cache";
 import { resetSovereignDbForTests } from "../lib/sovereign/db";
 import {
   deletePocketItem,
+  deleteZine,
   getProfileByHandle,
   getZineById,
   importZines,
   listPocketItems,
   listPublicZines,
+  listPublicZinesPage,
   listUserZines,
   seedDemoShelfIfEmpty,
   slimZineForFloor,
@@ -136,14 +138,51 @@ describe("sovereign store", () => {
   });
 
   it("imports batches and can seed demo shelf", async () => {
-    const { imported, skipped } = await importZines([
+    const { imported, skipped, truncated } = await importZines([
       sampleZine({ id: "i1" }),
       { id: "", userId: "" } as ZineMetadata,
     ]);
     expect(imported).toBe(1);
     expect(skipped).toBe(1);
+    expect(truncated).toBe(false);
 
     process.env.MIMI_SOVEREIGN_SEED_DEMO = "1";
     expect(await seedDemoShelfIfEmpty()).toBe(0);
+  });
+
+  it("unpublish flips is_public off the Floor", async () => {
+    await upsertZine(sampleZine({ id: "pub1", isPublic: true, timestamp: 50 }));
+    expect((await listPublicZines(10)).map((z) => z.id)).toEqual(["pub1"]);
+    await upsertZine(sampleZine({ id: "pub1", isPublic: false, timestamp: 50 }));
+    expect(await listPublicZines(10)).toEqual([]);
+    expect(
+      (await getZineById("pub1", { requesterUid: "user_1", includePrivate: true }))?.isPublic,
+    ).toBe(false);
+  });
+
+  it("deletes zines from the archive", async () => {
+    await upsertZine(sampleZine({ id: "del1" }));
+    expect(await deleteZine("del1", "user_1")).toBe(true);
+    expect(await getZineById("del1")).toBeNull();
+  });
+
+  it("paginates public Floor with keyset cursor", async () => {
+    await upsertZine(sampleZine({ id: "a", timestamp: 300 }));
+    await upsertZine(sampleZine({ id: "b", timestamp: 200 }));
+    await upsertZine(sampleZine({ id: "c", timestamp: 100 }));
+    const page1 = await listPublicZinesPage(2);
+    expect(page1.zines.map((z) => z.id)).toEqual(["a", "b"]);
+    expect(page1.nextCursor).toBe(200);
+    const page2 = await listPublicZinesPage(2, "", page1.nextCursor);
+    expect(page2.zines.map((z) => z.id)).toEqual(["c"]);
+    expect(page2.nextCursor).toBeNull();
+  });
+
+  it("reports schema version and latency when ready", async () => {
+    await upsertZine(sampleZine());
+    const status = await sovereignStatus();
+    expect(status.ready).toBe(true);
+    expect(status.schemaVersion).toBeGreaterThanOrEqual(1);
+    expect(typeof status.latencyMs === "number" || status.latencyMs === null).toBe(true);
   });
 });

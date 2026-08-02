@@ -1,14 +1,22 @@
 import type { PocketItem, UserProfile, ZineMetadata } from "../../types";
 import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache";
 import { getSovereignDb, isSovereignEnabled, resolveSovereignDbPath } from "./db";
+import { SOVEREIGN_SCHEMA_VERSION } from "./driver";
 import { emitSovereignEvent } from "./events";
 
 const COMMUNITY_CAP = 60;
 const FLOOR_CACHE_TTL_MS = 30_000;
+const IMPORT_BATCH_CAP = 500;
+const POCKET_LIST_CAP = 200;
 
 const asZine = (raw: string): ZineMetadata => JSON.parse(raw) as ZineMetadata;
 const asProfile = (raw: string): UserProfile => JSON.parse(raw) as UserProfile;
 const asPocket = (raw: string): PocketItem => JSON.parse(raw) as PocketItem;
+
+export type PublicZinePage = {
+  zines: ZineMetadata[];
+  nextCursor: number | null;
+};
 
 /** Slim payload safe for Floor cards (no full pages / artifacts blobs). */
 export const slimZineForFloor = (zine: ZineMetadata): ZineMetadata => {
@@ -48,8 +56,20 @@ export const sovereignStatus = async () => {
       publicCount: 0,
       profileCount: 0,
       pocketCount: 0,
+      schemaVersion: null as number | null,
+      latencyMs: null as number | null,
     };
   }
+
+  let latencyMs: number | null = null;
+  if (db.ping) {
+    try {
+      latencyMs = await db.ping();
+    } catch {
+      latencyMs = null;
+    }
+  }
+
   const total = await db.prepare("SELECT COUNT(*) AS n FROM zines").get<{ n: number | string }>();
   const pub = await db
     .prepare("SELECT COUNT(*) AS n FROM zines WHERE is_public = 1")
@@ -60,6 +80,10 @@ export const sovereignStatus = async () => {
   const pocket = await db
     .prepare("SELECT COUNT(*) AS n FROM pocket_items")
     .get<{ n: number | string }>();
+  const schema = await db
+    .prepare("SELECT value FROM schema_meta WHERE key = ?")
+    .get<{ value: string }>("schema_version");
+
   return {
     enabled: true,
     ready: true,
@@ -69,52 +93,103 @@ export const sovereignStatus = async () => {
     publicCount: Number(pub?.n || 0),
     profileCount: Number(profiles?.n || 0),
     pocketCount: Number(pocket?.n || 0),
+    schemaVersion: Number(schema?.value || SOVEREIGN_SCHEMA_VERSION),
+    latencyMs,
   };
+};
+
+export const listPublicZinesPage = async (
+  count: number,
+  queryText = "",
+  cursor?: number | null,
+): Promise<PublicZinePage> => {
+  const db = await getSovereignDb();
+  if (!db) return { zines: [], nextCursor: null };
+  const take = Math.max(0, Math.min(count || 0, COMMUNITY_CAP));
+  if (take === 0) return { zines: [], nextCursor: null };
+
+  const q = queryText.trim().toLowerCase();
+  const cursorTs =
+    typeof cursor === "number" && Number.isFinite(cursor) && cursor > 0 ? cursor : null;
+  const cacheKey = `floor:${db.backend}:${take}:${q}:c=${cursorTs ?? "head"}`;
+  const cached = cacheGet<PublicZinePage>(cacheKey);
+  if (cached) return cached;
+
+  let rows: Array<{ data: string; timestamp: number | string }>;
+  if (q) {
+    rows = cursorTs
+      ? await db
+          .prepare(
+            `SELECT data, timestamp FROM zines
+             WHERE is_public = 1
+               AND timestamp < ?
+               AND (
+                 lower(title) LIKE ? OR
+                 lower(user_handle) LIKE ? OR
+                 lower(coalesce(tone, '')) LIKE ?
+               )
+             ORDER BY timestamp DESC
+             LIMIT ?`,
+          )
+          .all<{ data: string; timestamp: number | string }>(
+            cursorTs,
+            `%${q}%`,
+            `%${q}%`,
+            `%${q}%`,
+            take,
+          )
+      : await db
+          .prepare(
+            `SELECT data, timestamp FROM zines
+             WHERE is_public = 1
+               AND (
+                 lower(title) LIKE ? OR
+                 lower(user_handle) LIKE ? OR
+                 lower(coalesce(tone, '')) LIKE ?
+               )
+             ORDER BY timestamp DESC
+             LIMIT ?`,
+          )
+          .all<{ data: string; timestamp: number | string }>(
+            `%${q}%`,
+            `%${q}%`,
+            `%${q}%`,
+            take,
+          );
+  } else {
+    rows = cursorTs
+      ? await db
+          .prepare(
+            `SELECT data, timestamp FROM zines
+             WHERE is_public = 1 AND timestamp < ?
+             ORDER BY timestamp DESC
+             LIMIT ?`,
+          )
+          .all<{ data: string; timestamp: number | string }>(cursorTs, take)
+      : await db
+          .prepare(
+            `SELECT data, timestamp FROM zines
+             WHERE is_public = 1
+             ORDER BY timestamp DESC
+             LIMIT ?`,
+          )
+          .all<{ data: string; timestamp: number | string }>(take);
+  }
+
+  const zines = rows.map((row) => slimZineForFloor(asZine(row.data)));
+  const nextCursor =
+    rows.length === take ? Number(rows[rows.length - 1]?.timestamp || 0) || null : null;
+  const page = { zines, nextCursor };
+  cacheSet(cacheKey, page, FLOOR_CACHE_TTL_MS);
+  return page;
 };
 
 export const listPublicZines = async (
   count: number,
   queryText = "",
 ): Promise<ZineMetadata[]> => {
-  const db = await getSovereignDb();
-  if (!db) return [];
-  const take = Math.max(0, Math.min(count || 0, COMMUNITY_CAP));
-  if (take === 0) return [];
-
-  const q = queryText.trim().toLowerCase();
-  const cacheKey = `floor:${db.backend}:${take}:${q}`;
-  const cached = cacheGet<ZineMetadata[]>(cacheKey);
-  if (cached) return cached;
-
-  let rows: Array<{ data: string }>;
-  if (q) {
-    rows = await db
-      .prepare(
-        `SELECT data FROM zines
-         WHERE is_public = 1
-           AND (
-             lower(title) LIKE ? OR
-             lower(user_handle) LIKE ? OR
-             lower(coalesce(tone, '')) LIKE ?
-           )
-         ORDER BY timestamp DESC
-         LIMIT ?`,
-      )
-      .all<{ data: string }>(`%${q}%`, `%${q}%`, `%${q}%`, take);
-  } else {
-    rows = await db
-      .prepare(
-        `SELECT data FROM zines
-         WHERE is_public = 1
-         ORDER BY timestamp DESC
-         LIMIT ?`,
-      )
-      .all<{ data: string }>(take);
-  }
-
-  const result = rows.map((row) => slimZineForFloor(asZine(row.data)));
-  cacheSet(cacheKey, result, FLOOR_CACHE_TTL_MS);
-  return result;
+  const page = await listPublicZinesPage(count, queryText, null);
+  return page.zines;
 };
 
 export const getZineById = async (
@@ -286,16 +361,21 @@ export const getProfileByHandle = async (handle: string): Promise<UserProfile | 
   return row ? asProfile(row.data) : null;
 };
 
-export const listPocketItems = async (userId: string): Promise<PocketItem[]> => {
+export const listPocketItems = async (
+  userId: string,
+  opts?: { limit?: number },
+): Promise<PocketItem[]> => {
   const db = await getSovereignDb();
   if (!db || !userId) return [];
+  const take = Math.max(1, Math.min(opts?.limit || POCKET_LIST_CAP, POCKET_LIST_CAP));
   const rows = await db
     .prepare(
       `SELECT data FROM pocket_items
        WHERE user_id = ?
-       ORDER BY saved_at DESC`,
+       ORDER BY saved_at DESC
+       LIMIT ?`,
     )
-    .all<{ data: string }>(userId);
+    .all<{ data: string }>(userId, take);
   return rows.map((row) => asPocket(row.data));
 };
 
@@ -339,22 +419,31 @@ export const deletePocketItem = async (id: string, userId?: string): Promise<boo
 
 export const importZines = async (
   zines: ZineMetadata[],
-): Promise<{ imported: number; skipped: number }> => {
+): Promise<{ imported: number; skipped: number; truncated: boolean }> => {
+  const db = await getSovereignDb();
+  if (!db) throw new Error("Sovereign archive unavailable");
+
+  const truncated = zines.length > IMPORT_BATCH_CAP;
+  const batch = zines.slice(0, IMPORT_BATCH_CAP);
   let imported = 0;
   let skipped = 0;
-  for (const zine of zines) {
-    if (!zine?.id || !zine.userId) {
-      skipped += 1;
-      continue;
+
+  await db.withTransaction(async () => {
+    for (const zine of batch) {
+      if (!zine?.id || !zine.userId) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        await upsertZine(zine);
+        imported += 1;
+      } catch {
+        skipped += 1;
+      }
     }
-    try {
-      await upsertZine(zine);
-      imported += 1;
-    } catch {
-      skipped += 1;
-    }
-  }
-  return { imported, skipped };
+  });
+
+  return { imported, skipped, truncated };
 };
 
 /** Seed a small public demo shelf when the archive is empty (opt-in). */

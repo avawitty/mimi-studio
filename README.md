@@ -100,12 +100,13 @@ The canonical architecture is documented in [`docs/mimi-system-architecture.md`]
 The **sovereign archive** is Mimi’s owned data plane for Stand Floor, Keep Tabs feeds, and Mine sync — so public reads do not depend on Firestore free-tier quotas.
 
 - **Local / Fly / Docker:** enabled by default with SQLite at `.data/sovereign.sqlite` (override with `MIMI_SOVEREIGN_DB`).
-- **Postgres:** set `MIMI_SOVEREIGN_DATABASE_URL`, or `MIMI_SOVEREIGN_USE_DATABASE_URL=1` plus `DATABASE_URL`.
+- **Postgres / Neon:** set `MIMI_SOVEREIGN_DATABASE_URL`, or a `neon.tech` `DATABASE_URL` (auto). TLS cert verification is enforced.
 - **Vercel:** off unless a durable Postgres URL or explicit DB path is configured (serverless disk is ephemeral).
+- **Auth:** Firebase ID token + `__session` cookie (for SSE); ingest key for imports. Soft `x-user-id` is local-only.
 - **Live updates:** `GET /api/sovereign/events` (SSE) on the long-lived Express host; clients fall back to polling on serverless.
 - **Seed / import:** `npm run sovereign:seed`, `npm run sovereign:import -- ./export.json`, `npm run sovereign:export-firestore`.
 
-See `.env.example` for `MIMI_SOVEREIGN_*` variables. Health reports archive status at `GET /api/health` → `sovereign`.
+See [`docs/sovereign-archive.md`](docs/sovereign-archive.md) for auth options, scale posture, and ops. Health reports archive status at `GET /api/health` → `sovereign`.
 
 ## Run locally
 

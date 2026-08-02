@@ -13,10 +13,22 @@ export type SovereignDriver = {
   pathOrUrl: string;
   exec: (sql: string) => Promise<void>;
   prepare: (sql: string) => SovereignStatement;
+  /** Run work inside a single transaction when the backend supports it. */
+  withTransaction: <T>(fn: () => Promise<T>) => Promise<T>;
   close: () => Promise<void>;
+  /** Optional ping — returns round-trip ms or throws. */
+  ping?: () => Promise<number>;
 };
 
+/** Schema version stored in schema_meta. Bump when adding migrations. */
+export const SOVEREIGN_SCHEMA_VERSION = 2;
+
 export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS schema_meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS profiles (
   uid TEXT PRIMARY KEY,
   handle TEXT UNIQUE,
@@ -53,5 +65,44 @@ CREATE TABLE IF NOT EXISTS pocket_items (
 export const INDEX_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_zines_public_ts ON zines (is_public, timestamp DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_zines_user_ts ON zines (user_id, timestamp DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_zines_handle ON zines (user_handle)`,
   `CREATE INDEX IF NOT EXISTS idx_pocket_user_saved ON pocket_items (user_id, saved_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_profiles_updated ON profiles (updated_at DESC)`,
 ];
+
+/** Apply additive migrations after base schema. Idempotent. */
+export const applySchemaMigrations = async (driver: SovereignDriver): Promise<void> => {
+  const row = await driver
+    .prepare("SELECT value FROM schema_meta WHERE key = ?")
+    .get<{ value: string }>("schema_version");
+  const current = Number(row?.value || 0);
+
+  if (current < 1) {
+    await driver
+      .prepare(
+        `INSERT INTO schema_meta (key, value) VALUES (?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      )
+      .run("schema_version", "1");
+  }
+
+  if (current < 2) {
+    // v2: scale indexes (IF NOT EXISTS — safe on re-run)
+    for (const sql of [
+      `CREATE INDEX IF NOT EXISTS idx_zines_handle ON zines (user_handle)`,
+      `CREATE INDEX IF NOT EXISTS idx_profiles_updated ON profiles (updated_at DESC)`,
+    ]) {
+      try {
+        await driver.exec(sql);
+      } catch {
+        // ignore dialect quirks
+      }
+    }
+    await driver
+      .prepare(
+        `INSERT INTO schema_meta (key, value) VALUES (?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      )
+      .run("schema_version", String(SOVEREIGN_SCHEMA_VERSION));
+  }
+};

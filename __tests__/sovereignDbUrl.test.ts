@@ -5,6 +5,7 @@ import {
   looksLikePostgresUrl,
   resolvePostgresUrl,
 } from "../lib/sovereign/db";
+import { normalizePostgresConnectionString } from "../lib/sovereign/postgresDriver";
 
 const keys = [
   "MIMI_SOVEREIGN_DATABASE_URL",
@@ -41,5 +42,14 @@ describe("sovereign db url resolution", () => {
     process.env.MIMI_SOVEREIGN_DATABASE_URL =
       "postgresql://u:p@ep-b.neon.tech/mimi";
     expect(resolvePostgresUrl()).toContain("ep-b");
+  });
+
+  it("strips sslmode so Pool ssl owns cert verification", () => {
+    const normalized = normalizePostgresConnectionString(
+      "postgresql://u:p@ep-x.neon.tech/neondb?sslmode=require&uselibpqcompat=true&channel_binding=require",
+    );
+    expect(normalized).not.toMatch(/sslmode=/i);
+    expect(normalized).not.toMatch(/uselibpqcompat=/i);
+    expect(normalized).toMatch(/channel_binding=require/);
   });
 });

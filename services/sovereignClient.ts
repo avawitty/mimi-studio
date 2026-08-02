@@ -4,16 +4,20 @@ import type { PocketItem, UserProfile, ZineMetadata } from "../types";
 export type SovereignArchiveStatus = {
   enabled?: boolean;
   ready?: boolean;
+  backend?: "sqlite" | "postgres" | null;
   publicCount?: number;
   zineCount?: number;
   profileCount?: number;
   pocketCount?: number;
+  schemaVersion?: number | null;
+  latencyMs?: number | null;
   message?: string;
 };
 
 type CommunityResponse = {
   zines?: ZineMetadata[];
   count?: number;
+  nextCursor?: number | null;
   archive?: SovereignArchiveStatus;
   error?: { message?: string; code?: string };
 };
@@ -71,12 +75,14 @@ export const isSovereignOnline = async (): Promise<boolean> => {
 export const fetchSovereignCommunityZines = async (
   count: number,
   queryText = "",
+  cursor?: number | null,
 ): Promise<ZineMetadata[] | null> => {
   try {
     const params = new URLSearchParams({
       limit: String(count),
     });
     if (queryText.trim()) params.set("q", queryText.trim());
+    if (cursor && Number.isFinite(cursor)) params.set("cursor", String(cursor));
     const res = await fetch(`/api/sovereign/community?${params}`, {
       credentials: "same-origin",
     });
@@ -107,6 +113,26 @@ export const mirrorZineToSovereign = async (zine: ZineMetadata): Promise<boolean
     return res.ok;
   } catch (error) {
     console.warn("MIMI // Sovereign mirror failed:", error);
+    return false;
+  }
+};
+
+/** Remove a zine from the sovereign archive (delete / unpublish cleanup). */
+export const deleteSovereignZine = async (
+  zineId: string,
+  userId: string,
+): Promise<boolean> => {
+  if (!zineId || !userId) return false;
+  try {
+    const res = await fetch(`/api/sovereign/zines/${encodeURIComponent(zineId)}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+      headers: await authHeaders(userId),
+    });
+    if (res.ok) cachedStatus = { at: 0, value: null };
+    return res.ok;
+  } catch (error) {
+    console.warn("MIMI // Sovereign delete failed:", error);
     return false;
   }
 };

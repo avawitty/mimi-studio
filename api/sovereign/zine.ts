@@ -4,6 +4,7 @@ import {
   resolveSovereignRequesterUid,
 } from "../../lib/sovereign/auth.js";
 import { isSovereignEnabled } from "../../lib/sovereign/db.js";
+import { allowSovereignWrite } from "../../lib/sovereign/rateLimit.js";
 import {
   deleteZine,
   getZineById,
@@ -83,6 +84,9 @@ export default async function handler(req: any, res: any) {
       const auth = await authorizeSovereignWrite(req, parsed.zine.userId);
       if (auth.ok === false) {
         return sendError(res, auth.status, auth.message, auth.code);
+      }
+      if (!allowSovereignWrite(`zine:${auth.uid}`)) {
+        return sendError(res, 429, "Too many sovereign writes", "RATE_LIMITED");
       }
 
       await upsertZine(parsed.zine);

@@ -66,11 +66,12 @@ export default async function handler(req: any, res: any) {
       profilesUpserted += 1;
     }
 
-    const { imported, skipped } = await importZines(parsed.zines || []);
+    const { imported, skipped, truncated } = await importZines(parsed.zines || []);
     return sendJson(res, 200, {
       ok: true,
       imported,
       skipped,
+      truncated,
       profilesUpserted,
       archive: await sovereignStatus(),
     });
