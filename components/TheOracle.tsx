@@ -7,6 +7,8 @@ import { generateCelestialReading, generateExecutionLayer, generateSessionSynthe
 import { Sparkles, Loader2, Fingerprint, Activity, BookOpen, Orbit, Waves, Compass, Briefcase, Network, GitMerge, LayoutTemplate, FileText, Mic } from 'lucide-react';
 import { ExecutionBlock } from './ExecutionBlock';
 import { ExecutionLayer } from '../types';
+import { OracleSpecimenHero } from './public-face';
+import './public-face/atelier.css';
 
 const OracleDiscourse: React.FC = React.memo(() => (
   <motion.div
@@ -105,9 +107,19 @@ export const TheOracle: React.FC = () => {
   const sig = profile?.tasteProfile?.aestheticSignature;
   const draft = activePersona?.tailorDraft || profile?.tailorDraft;
 
+  const openChamberWithQuestion = (_question: string) => {
+    // Chamber opens on Cyrus; question text is the ritual prompt on the specimen plate.
+    window.dispatchEvent(new CustomEvent('mimi:open_scribe', { detail: 'cyrus' }));
+  };
+
   // Mobile Dashboard View
   const MobileDashboard = () => (
     <div className="flex flex-col h-full bg-nous-base overflow-y-auto pb-32 md:hidden">
+      <OracleSpecimenHero
+        onAsk={openChamberWithQuestion}
+        reading={reading}
+        loading={loadingReading}
+      />
       <div className="p-6 pt-8 space-y-8">
         <div>
           <h1 className="text-4xl font-serif italic text-nous-text mb-2 flex items-center gap-3">
@@ -198,6 +210,11 @@ export const TheOracle: React.FC = () => {
     <>
       <MobileDashboard />
       <div className="hidden md:flex flex-col h-full bg overflow-y-auto pb-32">
+        <OracleSpecimenHero
+          onAsk={openChamberWithQuestion}
+          reading={reading}
+          loading={loadingReading}
+        />
         <div className="p-4 md:p-8 pt-6 md:pt-10 space-y-10 max-w-5xl mx-auto w-full">
           
           {/* HEADER */}

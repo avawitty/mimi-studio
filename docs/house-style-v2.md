@@ -38,6 +38,15 @@ Use `data-surface="public"` on Front Page, Share, Signature, Stand, and public s
 - Signature: ticket notches, olive geometry, light-blue secondary, soft dossier tab
 - Never purple glow or cream/terracotta lifestyle fill on public plates
 
+## Atelier collage (Desk / Index)
+
+Optional archival ephemera on public Front Page — polaroid, receipt, paperclip, doily, manila folder rows. Tokens: `--mimi-artifact-bone`, `--mimi-pencil`, `--mimi-periwinkle`, `--mimi-seal`.
+
+- Bone / newsprint appear **only as object surfaces**, never as `--mimi-field`
+- At most one seal-red mark per viewport
+- Courier Prime for case-file labels; La Belle Aurore for sparse annotations
+- Source direction: atelier desk prototype (Kimi) + Pinterest “mimi” board
+
 ## Anti-drift checklist
 
 - [ ] Brand test without nav still reads as Mimi
@@ -45,7 +54,7 @@ Use `data-surface="public"` on Front Page, Share, Signature, Stand, and public s
 - [ ] No large warm-cream panel as primary public field
 - [ ] No terracotta / purple / glow on public face
 - [ ] Olive / light blue are accents only, not theme fills
-- [ ] Manila folder stays on dossier surfaces (not Front Page hero)
+- [ ] Manila folder stays on dossier / Index folder rows (not a cream page wash)
 - [ ] Cards avoided unless needed for interaction
 
 ## Oracle
