@@ -3,9 +3,14 @@ name: Fix bot PR comments
 # Fires when review bots leave feedback; launches a Cursor cloud agent via SDK.
 # Requires repo secret CURSOR_API_KEY. Without it the job is skipped.
 
+# Per-event groups so a burst of bot comments does not cancel sibling runs
+# (cancelled conclusions were leaving the PR merge state UNSTABLE).
 concurrency:
-  group: fix-bot-pr-comments-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  group: >-
+    fix-bot-pr-comments-${{ github.event.pull_request.number || github.run_id }}-${{
+      github.event.comment.id || github.event.review.id || github.run_id
+    }}
+  cancel-in-progress: false
 
 on:
   pull_request_review_comment:

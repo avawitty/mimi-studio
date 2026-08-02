@@ -117,12 +117,13 @@ const GUIDE_DATA: GuideItem[] = [
   },
   {
     id: "chambers-house",
-    title: "House tools: Atelier · Residue · Intel · GEO · System",
+    title: "House tools: Atelier · Residue · Observatory · Intel · GEO · System",
     category: "chambers",
-    description: "Strategy, commerce signals, residue maps, and system docs — listed once under All Chambers.",
+    description: "Strategy, commerce signals, residue maps, collective readout, and system docs — listed once under All Chambers.",
     details: [
       "Atelier: Taste-signal objects pinned from zines (not Memberships / plan tiers).",
-      "Residue: Cultural / emotional residue maps with M/M/M and proposed product handoffs (not diagnosis).",
+      "Residue: Cultural / emotional residue maps with per-run M/M/M and proposed product handoffs (not diagnosis).",
+      "The Observatory · Mean Median Mode: Consent-gated collective central tendency (not Residue’s per-run tab).",
       "Intel Hub · Intelligence Report · GEO Engine: Strategy and AI-readable signal packaging.",
       "System (Codex) · Chamber Map · The Voice: Architecture manual, registry inspector, brand-voice dossier."
     ],
@@ -132,6 +133,9 @@ const GUIDE_DATA: GuideItem[] = [
       "cultural residue",
       "emotional residue",
       "mmm",
+      "observatory",
+      "mean median mode",
+      "collective",
       "intel",
       "geo",
       "codex",

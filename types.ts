@@ -650,6 +650,12 @@ export interface ZineMetadata {
   isPublic?: boolean;
   /** When the zine was last made public (Keep Tabs / RSS pubDate). */
   publishedAt?: number;
+  /** After Proscenium disclosure — eligible for Mean Median Mode aggregates. */
+  contributeToMeanMedianMode?: boolean;
+  /** Timestamp of Mean Median Mode publish disclosure acknowledgment. */
+  disclosedAt?: number;
+  /** Disclosure copy version (e.g. mmm-consent-v1). */
+  disclosureVersion?: string;
   isLocked?: boolean;
   mask?: string;
   useSearch?: boolean;
