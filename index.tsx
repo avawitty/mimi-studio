@@ -95,6 +95,9 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AgentProvider } from './contexts/AgentContext';
+import { installStaleAssetListeners } from './lib/staleChunkRecovery';
+
+installStaleAssetListeners();
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
