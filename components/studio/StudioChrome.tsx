@@ -3,20 +3,11 @@ import { GripVertical, Menu, Moon, Sparkles, Sun, User, Layers } from "lucide-re
 import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
-
-/** Routes that should read as editorial plates — quieter chrome, less icon density */
-const PUBLIC_FACE_MODES = new Set([
-  "editorial-home",
-  "stand",
-  "signature",
-  "showcase",
-  "archival",
-  "mimi-rip",
-  "scry",
-]);
-
-/** Public faces that sit on a forced-dark plate (chrome must match) */
-const DARK_PLATE_MODES = new Set(["mimi-rip", "scry"]);
+import {
+  CREATOR_PATH,
+  DARK_PLATE_MODES,
+  PUBLIC_FACE_MODES,
+} from "../../lib/design-system";
 
 export const StudioChrome: React.FC<{
   theme: StudioTheme;
@@ -69,12 +60,10 @@ export const StudioChrome: React.FC<{
     };
   }, []);
 
-  const creatorPath = [
-    { label: "Collect", modes: ["scribe", "darkroom"] },
-    { label: "Shape", modes: ["pocket", "wardrobe", "the-edit", "tailor"] },
-    { label: "Create", modes: ["studio", "briefs", "quiet-studio", "moodboard"] },
-    { label: "Publish", modes: ["the-press", "editorial-home"] },
-  ];
+  const creatorPath = CREATOR_PATH.map((step) => ({
+    label: step.label,
+    modes: [...step.modes],
+  }));
   const activePathIndex = Math.max(
     0,
     creatorPath.findIndex((step) => step.modes.includes(viewMode)),
@@ -278,7 +267,7 @@ export const StudioChrome: React.FC<{
             type="button"
             onClick={onOpenMenu}
             aria-label="Open full menu"
-            className={`md:hidden w-9 h-9 border flex items-center justify-center active:scale-90 transition-all duration-300 ${chromeBtn}`}
+            className={`md:hidden min-w-12 min-h-12 w-12 h-12 border flex items-center justify-center touch-manipulation active:scale-90 transition-all duration-300 ${chromeBtn}`}
           >
             <Menu size={16} strokeWidth={1.5} />
           </button>
@@ -300,7 +289,7 @@ export const StudioChrome: React.FC<{
             onClick={() =>
               window.dispatchEvent(new CustomEvent(POCKET_STASH_TOGGLE_EVENT))
             }
-            className={`w-9 h-9 border studio-border flex items-center justify-center transition-all duration-300 ${
+            className={`min-w-12 min-h-12 w-12 h-12 md:w-9 md:h-9 md:min-w-9 md:min-h-9 border studio-border flex items-center justify-center touch-manipulation transition-all duration-300 ${
               stashOpen
                 ? "bg-black text-[#f3f1ea] border-black dark:bg-[#f3f1ea] dark:text-black dark:border-[#f3f1ea]"
                 : isGenerating
@@ -321,7 +310,7 @@ export const StudioChrome: React.FC<{
             onClick={() =>
               window.dispatchEvent(new CustomEvent("mimi:open_scribe", { detail: "mimi" }))
             }
-            className={`w-9 h-9 border studio-border flex items-center justify-center studio-text-muted transition-all duration-300 ${
+            className={`min-w-12 min-h-12 w-12 h-12 md:w-9 md:h-9 md:min-w-9 md:min-h-9 border studio-border flex items-center justify-center studio-text-muted touch-manipulation transition-all duration-300 ${
               isGenerating
                 ? "opacity-60 cursor-not-allowed"
                 : "hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 hover:scale-105"
@@ -333,27 +322,29 @@ export const StudioChrome: React.FC<{
 
         <button
           type="button"
+          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
           title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           onClick={onToggleTheme}
           className={`${
             isPublicFace ? "hidden sm:flex" : "flex"
-          } w-9 h-9 border items-center justify-center active:scale-90 transition-all hover:scale-105 duration-300 ${chromeBtn}`}
+          } min-w-12 min-h-12 w-12 h-12 md:w-9 md:h-9 md:min-w-9 md:min-h-9 border items-center justify-center touch-manipulation active:scale-90 transition-all hover:scale-105 duration-300 ${chromeBtn}`}
         >
           {isDark ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />}
         </button>
 
         {isLoading ? (
           <div
-            className={`w-24 h-9 animate-pulse border ${
+            className={`w-24 min-h-12 h-12 md:h-9 md:min-h-9 animate-pulse border ${
               isDarkPlate ? "bg-white/10 border-white/15" : "bg-stone-200 dark:bg-stone-800 studio-border"
             }`}
           />
         ) : user && !user.isAnonymous ? (
           <button
             type="button"
+            aria-label={`Open profile for ${profile?.handle || "Swan"}`}
             disabled={isGenerating}
             onClick={() => window.dispatchEvent(new CustomEvent("mimi:change_view", { detail: "profile" }))}
-            className={`flex items-center gap-2 px-3 py-1.5 border active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black h-9 ${chromeIdentity} ${
+            className={`flex items-center gap-2 px-3 py-1.5 border touch-manipulation active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black min-h-12 h-12 md:h-9 md:min-h-9 ${chromeIdentity} ${
               isGenerating ? "opacity-75 cursor-wait" : ""
             }`}
           >
@@ -367,15 +358,16 @@ export const StudioChrome: React.FC<{
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <User size={12} strokeWidth={1.5} className="shrink-0" />
+              <User size={12} strokeWidth={1.5} className="shrink-0" aria-hidden />
             )}
             <span className="truncate max-w-[80px]">{profile?.handle || "Swan"}</span>
           </button>
         ) : (
           <button
             type="button"
+            aria-label="Sign on to Mimi"
             onClick={() => window.dispatchEvent(new CustomEvent("mimi:open_gateway"))}
-            className={`px-3.5 py-1.5 border active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black h-9 ${chromeIdentity}`}
+            className={`px-3.5 py-1.5 border touch-manipulation active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black min-h-12 h-12 md:h-9 md:min-h-9 ${chromeIdentity}`}
           >
             Sign On
           </button>
