@@ -253,13 +253,50 @@ Each PR: `review:mobile` on touched public/chamber faces; no new right-edge FABs
 
 ---
 
-## 9. Open product questions
+## 9. Decisions
 
-1. **Forecast ownership** — Is Forecast a child of Observatory (tile + handoff) or a peer Intelligence chamber? *(Recommendation: peer in menu, child in narrative.)*
-2. **Observatory darkness** — Full void plate like Rip/Scry, or dim ink on house white with a large printed eye? *(Recommendation: dim plate + quiet dark chrome — ephemeris, not death-mirror.)*
-3. **Eye art source** — Custom SVG/CSS aperture vs generated plate asset vs shader iris? *(Recommendation: CSS/SVG aperture v1 for ship speed; optional generated plate later.)*
-4. **Rip multi-doll** — One published rip per user, or per doll? *(Recommendation: one public rip; binding remembers source doll id.)*
-5. **Demo honesty vs empty** — Show MMM demo forever on Observatory, or empty-state push to Proscenium when no consent corpus? *(Keep demo + banner until live corpus exists.)*
+| # | Question | Decision |
+|---|----------|----------|
+| 1 | Forecast ownership | **Locked:** peer in menu (Intelligence), narrative child of Observatory (tile + handoff). |
+| 2 | Observatory darkness | **Locked:** dim ephemeris plate + quiet dark chrome — not Rip/Scry void. |
+| 3 | Eye art source | **Locked (rec):** CSS/SVG aperture v1; optional generated plate later. See §9.1. |
+| 4 | Rip multi-doll | **Locked (rec):** one public rip per user/handle; chamber binding remembers `sourceDollId`. See §9.2. |
+| 5 | Demo honesty vs empty | **Still open / default:** keep MMM demo + banner until live corpus exists. |
+
+### 9.1 Why CSS/SVG aperture beats a generated eye (v1)
+
+| | CSS/SVG aperture | Generated plate / shader iris |
+|--|------------------|-------------------------------|
+| Maps to MMM data | Rings/pupil can bind to mean·median·mode + atmosphere density | Image is mostly costume unless rebuilt per report |
+| Motion | Aperture settle / focus rack are cheap and intentional | Video/shader cost; reduced-motion harder |
+| House fit | Ink, grain, olive press — same kit as public face | Risks purple-glow / stock “AI eye” |
+| Ship risk | No image API, no asset pipeline, works offline/demo | Needs generate + cache + fallback |
+| Later polish | Can sit *under* or *inside* a generated plate later | Harder to retrofit data into pixels |
+
+**Ship:** vector aperture as the instrument. Optional later: a still generated “lens plate” behind it for atmosphere only — numbers stay in the SVG layer.
+
+Dim (not void) palette sketch: charcoal/ink field `#12141a`–`#1c1f28`, hairline stone, olive press accent, soft vignette — quieter than Rip’s rose/void.
+
+### 9.2 Rip: one public card vs per-doll (more info)
+
+**What the code already assumes**
+- Public URL is `mimi.rip/u/:handle` — one handle, one card.
+- Profile stores a single `publicRip?: PublicRipSnapshot | null`.
+- Private `RipReading` already has optional `sourceDollId` (engine writes it); public snapshot does **not** currently expose which doll fed it.
+- Landing copy: inverse of Taste Graph; “canonical presence stays on mimi.you.”
+
+**Per-user (recommended)**
+- Publish overwrites the one public card (current behavior).
+- Chamber: doll picker chooses *which doll/likeness feeds the next derive*; stored on the reading as `sourceDollId`.
+- UX: “Bound to [Doll name] · Re-derive” before publish; switching doll + re-derive replaces the public card when they publish again.
+- Fits “one inverse twin of your public face” — mirrors one mimi.you card.
+
+**Per-doll (heavier)**
+- Needs new URLs (`/u/:handle/:dollSlug` or query), profile shape (`publicRips[]` or subcollection), and a chooser on the public landing.
+- Product meaning shifts: many inverses, not one dark twin — easier to confuse with identity/costume.
+- Worth revisiting only if multi-doll creators clearly need simultaneous public inverses.
+
+**Recommendation:** keep **one public rip per handle**; fix the binding UX (picker + show source doll). Optionally add `sourceDollLabel` onto `PublicRipSnapshot` later as quiet provenance — not a second card.
 
 ---
 
