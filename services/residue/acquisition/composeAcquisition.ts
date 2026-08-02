@@ -3,7 +3,6 @@
  */
 
 import { ManualSourceProvider } from "./providers/manualSourceProvider";
-import { createApifySourceAcquisitionProvider } from "./providers/apify/apifySourceAcquisitionProvider";
 import type { SourceAcquisitionProvider } from "./SourceAcquisitionProvider";
 import { normalizeSources } from "../shared/normalizeSources";
 import type { ResidueMode, SourceReference } from "../validation";
@@ -42,7 +41,19 @@ export async function acquireResidueSources(input: {
   let apifyStatus: string | undefined;
 
   if (input.useApify) {
-    const apify = input.apifyProvider ?? createApifySourceAcquisitionProvider();
+    // Lazily load the Apify adapter so `apify-client` (a Node-only package that
+    // depends on Node built-ins) never enters the browser bundle. The engine
+    // core is reachable from client components (e.g. ResidueChamber), and the
+    // offline client path never sets `useApify`. Tests inject `apifyProvider`.
+    let apify: SourceAcquisitionProvider;
+    if (input.apifyProvider) {
+      apify = input.apifyProvider;
+    } else {
+      const { createApifySourceAcquisitionProvider } = await import(
+        "./providers/apify/apifySourceAcquisitionProvider"
+      );
+      apify = createApifySourceAcquisitionProvider();
+    }
     if (!apify.isAvailable()) {
       warnings.push(
         "Apify acquisition requested but unavailable (APIFY_TOKEN missing or provider disabled).",
