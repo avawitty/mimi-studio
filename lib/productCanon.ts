@@ -2,6 +2,9 @@ export type CanonLayer = "chamber" | "engine" | "artifact" | "infrastructure";
 
 export type CanonModuleStatus = "live" | "aliased" | "stub" | "missing";
 
+/** Optional product-maturity signal — distinct from route registration status. */
+export type CanonModuleMaturity = "prototype" | "evolving" | "established";
+
 export interface CanonModule {
   id: string;
   name: string;
@@ -9,6 +12,8 @@ export interface CanonModule {
   engine: string;
   priority: number;
   status: CanonModuleStatus;
+  /** Product maturity when known; omit when unset (no badge on Chamber Map). */
+  maturity?: CanonModuleMaturity;
   canonicalRoute: string;
   implementedMode?: string;
   component?: string;
@@ -523,6 +528,7 @@ export const CANON_MODULES: CanonModule[] = [
     engine: "Public Stage / Social Circle",
     priority: 8,
     status: "live",
+    maturity: "prototype",
     canonicalRoute: "/proscenium",
     implementedMode: "proscenium",
     component: "ProsceniumView",
@@ -592,6 +598,7 @@ export const CANON_MODULES: CanonModule[] = [
     engine: "Collective Perception",
     priority: 9,
     status: "live",
+    maturity: "prototype",
     canonicalRoute: "/observatory",
     implementedMode: "observatory",
     component: "ObservatoryChamber",
@@ -621,6 +628,7 @@ export const CANON_MODULES: CanonModule[] = [
     engine: "Collective Central Tendency",
     priority: 9.1,
     status: "live",
+    maturity: "prototype",
     canonicalRoute: "/mean-median-mode",
     implementedMode: "mean-median-mode",
     component: "ObservatoryChamber",
