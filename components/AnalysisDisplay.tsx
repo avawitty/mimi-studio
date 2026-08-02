@@ -30,6 +30,7 @@ import {
   unpinSignal,
 } from '../services/atelierService';
 import { logProductTasteEvent } from '../services/tasteLogger';
+import { getFishShareUrl } from '../lib/siteHost';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -1037,7 +1038,7 @@ export const AnalysisDisplay: React.FC<{
  };
 
  const handleShareLink = async () => {
- const shareUrl = `${window.location.origin}/s/${metadata.id}`;
+ const shareUrl = getFishShareUrl(metadata.id);
  if (navigator.share) {
  try {
  await navigator.share({
