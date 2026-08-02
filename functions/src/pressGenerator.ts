@@ -1,9 +1,9 @@
-import { getFirestore } from 'firebase-admin/firestore';
 import { getPersonalizedEdit } from './commerceService';
 import { createPressIssue } from './pressService';
+import { getMimiFirestore } from './firestore';
 
 export const generateDailyPressIssue = async () => {
-    const db = getFirestore();
+    const db = getMimiFirestore();
     const usersSnapshot = await db.collection('users').get();
     
     for (const userDoc of usersSnapshot.docs) {
