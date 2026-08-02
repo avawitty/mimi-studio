@@ -90,11 +90,24 @@ export const PublicShowcasePage: React.FC<PublicShowcasePageProps> = ({
           </div>
           {showcase ? (
             <div
-              className="shrink-0 w-28 h-28 md:w-36 md:h-36 rounded-full border-2 flex flex-col items-center justify-center text-center p-4 shadow-[0_0_40px_rgba(0,0,0,0.06)]"
+              className="shrink-0 w-28 h-28 md:w-36 md:h-36 border-2 flex flex-col items-center justify-center text-center overflow-hidden relative shadow-[0_0_40px_rgba(0,0,0,0.06)]"
               style={{ borderColor: accent, backgroundColor: `${accent}18` }}
             >
-              <Sparkles size={18} style={{ color: accent }} />
-              <p className="font-mono text-[7px] uppercase tracking-widest mt-2 leading-tight">Active likeness</p>
+              {showcase.dollPortraitUrl ? (
+                <img
+                  src={showcase.dollPortraitUrl}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <>
+                  <Sparkles size={18} style={{ color: accent }} />
+                  <p className="font-mono text-[7px] uppercase tracking-widest mt-2 leading-tight">
+                    Active likeness
+                  </p>
+                </>
+              )}
             </div>
           ) : null}
         </div>

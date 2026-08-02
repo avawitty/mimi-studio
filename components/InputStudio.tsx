@@ -1209,6 +1209,7 @@ ${finalInput}`;
       usedContext: approvedContext,
       activeDoll: studioDoll.activeDoll,
       dollPromptContext: studioDoll.dollPromptContext,
+      dollImageReferences: studioDoll.enabled ? studioDoll.imageReferences : [],
       studioCoverUrl: coverExport.coverImageUrl,
       studioCoverOverlays: coverExport.studioCoverOverlays,
       lineage: linkedZineIds,
@@ -1244,6 +1245,8 @@ ${finalInput}`;
     studioDoll.enabled,
     studioDoll.dollPromptContext,
     studioDoll.activeDoll,
+    studioDoll.imageReferences,
+    studioDoll.enabled,
     coverOverlay,
     coverOverlayLayers,
     mediaFiles,
@@ -2212,13 +2215,19 @@ ${finalInput}`;
                 enabled={studioDoll.enabled}
                 loading={studioDoll.loading}
                 dolls={studioDoll.dolls}
+                masks={studioDoll.masks}
                 activeDollId={studioDoll.activeDollId}
+                activeMaskId={studioDoll.activeMaskId}
                 onToggle={(next) => {
                   studioDoll.toggleDollInjection(next);
                   playClick();
                 }}
                 onSelectDoll={(id) => {
                   studioDoll.setActiveDollId(id);
+                  playClick();
+                }}
+                onSelectMask={(id) => {
+                  studioDoll.setActiveMaskId(id);
                   playClick();
                 }}
               />

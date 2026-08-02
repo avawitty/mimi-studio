@@ -7,6 +7,7 @@ import { isHandleAvailable, fetchCommunityZines } from '../services/firebaseUtil
 import { listDolls } from '../services/tailorService';
 import { getLocalPocket } from '../services/localArchive';
 import { fetchPocketItems } from '../services/firebase';
+import { normalizePlanTier, PATRONAGE_PLAN_LABELS } from "../constants";
 
 interface ProfileHoverCardProps {
  isOpen: boolean;
@@ -271,13 +272,8 @@ export const ProfileHoverCard: React.FC<ProfileHoverCardProps> = ({ isOpen, onCl
  <div className="space-y-3 pt-4 border-t border-nous-border">
  <div className="flex justify-between items-center">
  <span className="font-sans text-[10px] uppercase tracking-widest text-nous-subtle">Membership Tier</span>
- <span className={`font-serif italic text-sm ${
- profile?.plan === 'lab' ? 'text-nous-subtle ' :
- profile?.plan === 'pro' ? 'text-purple-600 dark:text-purple-400' :
- profile?.plan === 'core' ? 'text-orange-600 dark:text-orange-400' :
- 'text-nous-subtle '
- }`}>
- Mimi {profile?.plan ? profile.plan.charAt(0).toUpperCase() + profile.plan.slice(1) : 'Free'}
+ <span className="font-serif italic text-sm text-nous-text">
+ {PATRONAGE_PLAN_LABELS[normalizePlanTier(profile?.plan || profile?.planStatus)]}
  {profile?.subscriptionInterval === 'year' && ' (Annual)'}
  </span>
  </div>

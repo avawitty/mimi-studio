@@ -1,8 +1,20 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Float } from '@react-three/drei';
 import * as THREE from 'three';
-import { Sparkles, Palette, Sliders, Play, RefreshCw, Wand2 } from 'lucide-react';
+import { Palette, Sliders, Wand2, Save } from 'lucide-react';
+import type { Doll } from '../../types';
+import {
+  deriveProceduralAesthetic,
+  type ProceduralDollAesthetic,
+} from '../../services/dollEngine';
+
+export interface ProceduralDollStudioProps {
+  /** When set, dresser initializes from this Doll projection. */
+  boundDoll?: Doll | null;
+  onAestheticCommit?: (aesthetic: ProceduralDollAesthetic) => void;
+  headerLabel?: string;
+}
 
 // Custom Vertex and Fragment Shaders for the high-fidelity, shader-animated doll
 const vertexShader = `
@@ -191,8 +203,12 @@ const DollMesh: React.FC<{
   );
 };
 
-// Main procedural doll studio view
-export const ProceduralDollStudio: React.FC = () => {
+// Main procedural doll studio view — bound to Taste Graph Doll when provided
+export const ProceduralDollStudio: React.FC<ProceduralDollStudioProps> = ({
+  boundDoll = null,
+  onAestheticCommit,
+  headerLabel,
+}) => {
   const [pattern, setPattern] = useState<string>(() => localStorage.getItem('mimi_doll_pattern') || 'ripples');
   const [primaryColor, setPrimaryColor] = useState<string>(() => localStorage.getItem('mimi_doll_primaryColor') || '#9d62f2');
   const [secondaryColor, setSecondaryColor] = useState<string>(() => localStorage.getItem('mimi_doll_secondaryColor') || '#131313');
@@ -213,6 +229,25 @@ export const ProceduralDollStudio: React.FC = () => {
     return v ? parseFloat(v) : 0.8;
   });
   const [accessoryMode, setAccessoryMode] = useState<string>(() => localStorage.getItem('mimi_doll_accessoryMode') || 'halo');
+  const [dirty, setDirty] = useState(false);
+
+  const applyAesthetic = useCallback((aesthetic: ProceduralDollAesthetic) => {
+    setPattern(aesthetic.pattern);
+    setPrimaryColor(aesthetic.primaryColor);
+    setSecondaryColor(aesthetic.secondaryColor);
+    setComplexity(aesthetic.complexity);
+    setWarpSpeed(aesthetic.warpSpeed);
+    setWarpIntensity(aesthetic.warpIntensity);
+    setGlossiness(aesthetic.glossiness);
+    setAccessoryMode(aesthetic.accessoryMode);
+  }, []);
+
+  // Re-derive from bound Doll when selection changes
+  useEffect(() => {
+    if (!boundDoll) return;
+    applyAesthetic(deriveProceduralAesthetic(boundDoll));
+    setDirty(false);
+  }, [boundDoll?.id, boundDoll?.updatedAt, applyAesthetic, boundDoll]);
 
   // Synchronize design parameters with local storage to persist doll across navigation
   useEffect(() => {
@@ -225,6 +260,26 @@ export const ProceduralDollStudio: React.FC = () => {
     localStorage.setItem('mimi_doll_glossiness', String(glossiness));
     localStorage.setItem('mimi_doll_accessoryMode', accessoryMode);
   }, [pattern, primaryColor, secondaryColor, complexity, warpSpeed, warpIntensity, glossiness, accessoryMode]);
+
+  const currentAesthetic = useCallback((): ProceduralDollAesthetic => ({
+    pattern: pattern as ProceduralDollAesthetic['pattern'],
+    primaryColor,
+    secondaryColor,
+    complexity,
+    warpSpeed,
+    warpIntensity,
+    glossiness,
+    accessoryMode: accessoryMode as ProceduralDollAesthetic['accessoryMode'],
+    userLocked: true,
+    updatedAt: Date.now(),
+  }), [pattern, primaryColor, secondaryColor, complexity, warpSpeed, warpIntensity, glossiness, accessoryMode]);
+
+  const markDirty = useCallback(<T,>(setter: React.Dispatch<React.SetStateAction<T>>) => {
+    return (value: T | ((prev: T) => T)) => {
+      setDirty(true);
+      setter(value);
+    };
+  }, []);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [textureCanvas, setTextureCanvas] = useState<HTMLCanvasElement | null>(null);
@@ -301,6 +356,7 @@ export const ProceduralDollStudio: React.FC = () => {
 
   // Presets trigger function
   const applyPreset = (presetName: string) => {
+    setDirty(true);
     if (presetName === 'cyberpunk') {
       setPattern('grid');
       setPrimaryColor('#00f0ff');
@@ -340,16 +396,39 @@ export const ProceduralDollStudio: React.FC = () => {
     }
   };
 
+  const handleCommit = () => {
+    const aesthetic = currentAesthetic();
+    onAestheticCommit?.(aesthetic);
+    setDirty(false);
+  };
+
+  const handleResetToDoll = () => {
+    if (boundDoll) {
+      applyAesthetic(deriveProceduralAesthetic({ ...boundDoll, proceduralAesthetic: undefined }));
+      setDirty(true);
+      return;
+    }
+    setPattern('ripples');
+    setPrimaryColor('#9d62f2');
+    setSecondaryColor('#131313');
+    setComplexity(5);
+    setWarpSpeed(1.2);
+    setWarpIntensity(0.12);
+    setGlossiness(0.8);
+    setAccessoryMode('halo');
+    setDirty(true);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[650px] min-h-0 bg-stone-950 text-stone-100 p-4 border border-stone-800 rounded-none">
       {/* Three.js 3D Viewer Panel */}
       <div className="lg:col-span-7 relative h-full bg-stone-900 border border-stone-800 overflow-hidden">
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 pointer-events-none">
           <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-purple-400 bg-purple-950/80 px-2 py-1">
-            Real-time Rendering Active
+            {boundDoll ? 'Bound Projection' : 'Realtime Shader'}
           </span>
           <span className="font-serif italic text-sm text-stone-300">
-            Procedural Doll Curation
+            {headerLabel || (boundDoll ? boundDoll.name : 'Procedural Doll Curation')}
           </span>
         </div>
 
@@ -389,7 +468,9 @@ export const ProceduralDollStudio: React.FC = () => {
               <Wand2 size={13} className="text-purple-400" /> Aesthetic Dresser
             </h2>
             <p className="text-[10px] text-stone-400 mt-1">
-              Select designer presets or map custom vector waveforms directly to the canvas-texture pipeline.
+              {boundDoll
+                ? `Driven by Doll projection “${boundDoll.name}” — palette, materials, and motifs map into the shader pipeline. Save to persist on the Doll record.`
+                : 'Select designer presets or map custom vector waveforms. Bind a Tailor Doll from the chamber to sync with the Taste Graph.'}
             </p>
           </div>
 
@@ -438,7 +519,7 @@ export const ProceduralDollStudio: React.FC = () => {
                   <input
                     type="color"
                     value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    onChange={(e) => markDirty(setPrimaryColor)(e.target.value)}
                     className="w-8 h-8 bg-transparent border border-stone-700 cursor-pointer rounded-none"
                   />
                   <span className="font-mono text-[10px] text-stone-300 uppercase">{primaryColor}</span>
@@ -450,7 +531,7 @@ export const ProceduralDollStudio: React.FC = () => {
                   <input
                     type="color"
                     value={secondaryColor}
-                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    onChange={(e) => markDirty(setSecondaryColor)(e.target.value)}
                     className="w-8 h-8 bg-transparent border border-stone-700 cursor-pointer rounded-none"
                   />
                   <span className="font-mono text-[10px] text-stone-300 uppercase">{secondaryColor}</span>
@@ -468,7 +549,7 @@ export const ProceduralDollStudio: React.FC = () => {
               {['ripples', 'grid', 'marble', 'halftone'].map((pat) => (
                 <button
                   key={pat}
-                  onClick={() => setPattern(pat)}
+                  onClick={() => markDirty(setPattern)(pat)}
                   className={`px-3 py-2 border font-mono text-[9px] text-center uppercase transition-all ${
                     pattern === pat
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'
@@ -498,7 +579,7 @@ export const ProceduralDollStudio: React.FC = () => {
                 max="10"
                 step="1"
                 value={complexity}
-                onChange={(e) => setComplexity(parseInt(e.target.value))}
+                onChange={(e) => markDirty(setComplexity)(parseInt(e.target.value))}
                 className="w-full accent-purple-500 bg-stone-800 h-1 rounded-none outline-none"
               />
             </div>
@@ -514,7 +595,7 @@ export const ProceduralDollStudio: React.FC = () => {
                 max="3"
                 step="0.1"
                 value={warpSpeed}
-                onChange={(e) => setWarpSpeed(parseFloat(e.target.value))}
+                onChange={(e) => markDirty(setWarpSpeed)(parseFloat(e.target.value))}
                 className="w-full accent-purple-500 bg-stone-800 h-1 rounded-none outline-none"
               />
             </div>
@@ -530,7 +611,7 @@ export const ProceduralDollStudio: React.FC = () => {
                 max="0.3"
                 step="0.01"
                 value={warpIntensity}
-                onChange={(e) => setWarpIntensity(parseFloat(e.target.value))}
+                onChange={(e) => markDirty(setWarpIntensity)(parseFloat(e.target.value))}
                 className="w-full accent-purple-500 bg-stone-800 h-1 rounded-none outline-none"
               />
             </div>
@@ -546,7 +627,7 @@ export const ProceduralDollStudio: React.FC = () => {
                 max="2"
                 step="0.05"
                 value={glossiness}
-                onChange={(e) => setGlossiness(parseFloat(e.target.value))}
+                onChange={(e) => markDirty(setGlossiness)(parseFloat(e.target.value))}
                 className="w-full accent-purple-500 bg-stone-800 h-1 rounded-none outline-none"
               />
             </div>
@@ -561,7 +642,7 @@ export const ProceduralDollStudio: React.FC = () => {
               {['none', 'halo', 'crown'].map((mode) => (
                 <button
                   key={mode}
-                  onClick={() => setAccessoryMode(mode)}
+                  onClick={() => markDirty(setAccessoryMode)(mode)}
                   className={`flex-1 px-2 py-1.5 border font-mono text-[9px] text-center uppercase transition-all ${
                     accessoryMode === mode
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'
@@ -577,21 +658,26 @@ export const ProceduralDollStudio: React.FC = () => {
 
         <div className="border-t border-stone-800 mt-6 pt-4 flex gap-2">
           <button
-            onClick={() => {
-              // Reset
-              setPattern('ripples');
-              setPrimaryColor('#9d62f2');
-              setSecondaryColor('#131313');
-              setComplexity(5);
-              setWarpSpeed(1.2);
-              setWarpIntensity(0.12);
-              setGlossiness(0.8);
-              setAccessoryMode('halo');
-            }}
+            type="button"
+            onClick={handleResetToDoll}
             className="flex-1 px-3 py-2 border border-stone-700 bg-transparent hover:bg-stone-800 font-mono text-[9px] text-center uppercase transition-all"
           >
-            Reset Design
+            {boundDoll ? 'Re-derive from Doll' : 'Reset Design'}
           </button>
+          {boundDoll && onAestheticCommit && (
+            <button
+              type="button"
+              onClick={handleCommit}
+              disabled={!dirty}
+              className={`flex-1 px-3 py-2 border font-mono text-[9px] text-center uppercase transition-all flex items-center justify-center gap-1 ${
+                dirty
+                  ? 'border-purple-500 bg-purple-500/15 text-purple-200 hover:bg-purple-500/25'
+                  : 'border-stone-800 text-stone-600 cursor-not-allowed'
+              }`}
+            >
+              <Save size={11} /> Save to Doll
+            </button>
+          )}
         </div>
       </div>
     </div>

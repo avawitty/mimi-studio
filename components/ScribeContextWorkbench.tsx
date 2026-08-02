@@ -57,6 +57,7 @@ export const ScribeContextWorkbench: React.FC<Props> = ({ userId, pocket }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     decisions: true,
+    dollIdentity: true,
     tasteSignals: true,
     specimens: true,
     research: true,
@@ -237,6 +238,7 @@ export const ScribeContextWorkbench: React.FC<Props> = ({ userId, pocket }) => {
   // Group context items for accordion rendering
   const contextGroups = {
     decisions: retrievedContext.filter(item => item.kind === 'approved_decision' || item.kind === 'tailor_intake'),
+    dollIdentity: retrievedContext.filter(item => item.kind === 'doll_identity'),
     tasteSignals: retrievedContext.filter(item => item.kind === 'taste_signal'),
     specimens: retrievedContext.filter(item => item.kind === 'specimen'),
     research: retrievedContext.filter(item => item.kind === 'research_record'),
@@ -629,6 +631,41 @@ export const ScribeContextWorkbench: React.FC<Props> = ({ userId, pocket }) => {
                             </span>
                             <div className="text-[10px] font-bold text-stone-900 dark:text-stone-100 mt-1">{item.title}</div>
                             <p className="text-[9px] text-stone-500 line-clamp-2 mt-0.5">{item.excerpt}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 1b. Doll companion identity */}
+                <div className="border border-stone-200 dark:border-stone-800 rounded">
+                  <button 
+                    onClick={() => toggleSection('dollIdentity')}
+                    className="w-full p-3 flex items-center justify-between font-mono text-[9px] uppercase tracking-wider bg-stone-100/50 dark:bg-stone-800/50 font-black border-b border-stone-200 dark:border-stone-800"
+                  >
+                    <span>Doll Companion ({contextGroups.dollIdentity.length})</span>
+                    {expandedSections.dollIdentity ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                  {expandedSections.dollIdentity && (
+                    <div className="p-2 space-y-2 max-h-60 overflow-y-auto">
+                      {contextGroups.dollIdentity.length === 0 ? (
+                        <div className="text-[10px] italic text-stone-400 p-2">No active Doll companion. Generate one in Tailor / Mimi Dolls.</div>
+                      ) : (
+                        contextGroups.dollIdentity.map(item => (
+                          <div key={item.id} className="p-2 border border-stone-100 dark:border-stone-800 relative group hover:bg-stone-50 dark:hover:bg-stone-800/30">
+                            <button 
+                              onClick={() => handleRemoveContextItem(item.id)}
+                              className="absolute top-2 right-2 text-stone-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Remove from Answer"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                            <span className="text-[8px] font-mono uppercase bg-rose-500/10 text-rose-600 dark:text-rose-400 px-1 rounded">
+                              doll identity
+                            </span>
+                            <div className="text-[10px] font-bold text-stone-900 dark:text-stone-100 mt-1">{item.title}</div>
+                            <p className="text-[9px] text-stone-500 line-clamp-3 mt-0.5">{item.excerpt}</p>
                           </div>
                         ))
                       )}

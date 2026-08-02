@@ -406,9 +406,9 @@ export const CANON_MODULES: CanonModule[] = [
     aliases: ["Dolls", "mimi.you"],
     inputs: ["Tailor profile", "Research Memory", "moodboards", "generation controls"],
     generations: ["identity consistency tracking", "art-historical reinterpretation", "editorial portrait generation"],
-    outputs: ["Mimi Shell portraits (shell-v1 staple)", "badges", "profile cards", "report covers"],
+    outputs: ["Mimi Shell portraits (shell-v1 staple)", "identity pack refs", "badges", "profile cards", "report covers"],
     userFlow: "Project taste onto a house porcelain-BJD shell — same species for every creator; wardrobe and motifs vary.",
-    notes: "Staple Imagen/flash-image prompt in services/dollEngine/staplePrompt.ts (prd/doll-staple-shell.md). Public cards remain at /u/:handle.",
+    notes: "Staple in services/dollEngine/staplePrompt.ts (prd/doll-staple-shell.md). Engine also: procedural aesthetic + identity pack + masks + companion. Public cards at /u/:handle.",
   },
   {
     id: "mimi-rip",

@@ -5,13 +5,22 @@ import {
   Star, Crosshair, ArrowLeft, Layers, Cpu, Eye, Palette, 
   HelpCircle, Volume2, Info, BookOpen, AlertTriangle
 } from "lucide-react";
-import type { Doll } from '../../types';
+import type { Doll, DollMask } from '../../types';
 import { DollPortraitStage } from "./DollPortraitStage";
 import { getAIProvider } from '../../services/aiProvider';
 import { DollHouseDressingRoom } from "./DollHouseDressingRoom";
 import { useUser } from '../../contexts/UserContext';
-import { updateDoll } from '../../services/tailorService';
-import { buildMimiShellImagePrompt } from '../../services/dollEngine';
+import {
+  ensureDefaultDollMasks,
+  listDollMasks,
+  updateDoll,
+} from '../../services/tailorService';
+import {
+  buildIdentityViewPrompt,
+  identityPackCompleteness,
+  mergeIdentityReference,
+  type DollIdentityView,
+} from '../../services/dollEngine';
 
 interface DollProfileScreenProps {
   doll: Doll;
@@ -89,10 +98,28 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   const { user } = useUser();
   const [currentDoll, setCurrentDoll] = useState<Doll>(doll);
   const [isGeneratingPortrait, setIsGeneratingPortrait] = useState(false);
+  const [identityView, setIdentityView] = useState<DollIdentityView>('portrait');
+  /** One-shot cultish onboarding: first open without a portrait auto-runs shell projection. */
+  const autoShellProjectedRef = useRef(false);
+  const [masks, setMasks] = useState<DollMask[]>([]);
+  const [activeMaskId, setActiveMaskId] = useState<string | null>(doll.activeMaskId || null);
 
   useEffect(() => {
     setCurrentDoll(doll);
+    setActiveMaskId(doll.activeMaskId || null);
   }, [doll]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    void (async () => {
+      let next = await listDollMasks(user.uid, doll.id);
+      if (next.length === 0) {
+        next = await ensureDefaultDollMasks(user.uid, doll);
+      }
+      setMasks(next);
+      if (!activeMaskId && next[0]) setActiveMaskId(next[0].id);
+    })();
+  }, [user?.uid, doll.id]);
 
   const [activeTab, setActiveTab] = useState<'conditioning' | 'wardrobe' | 'blueprint'>('conditioning');
   const [isDollState, setIsDollState] = useState<boolean>(() => {
@@ -119,8 +146,6 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
       }
     ];
   });
-  /** One-shot cultish onboarding: first open without a portrait auto-runs shell projection. */
-  const autoShellProjectedRef = useRef(false);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [ritualOutput, setRitualOutput] = useState<string | null>(null);
@@ -133,14 +158,20 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  const handleRegeneratePortrait = async () => {
+  const handleRegeneratePortrait = async (view: DollIdentityView = identityView) => {
     if (isGeneratingPortrait) return;
     setIsGeneratingPortrait(true);
     triggerSound('transition');
 
-    // House Mimi Shell staple — porcelain BJD species lock; taste only accents wardrobe.
-    const imagePrompt = buildMimiShellImagePrompt(currentDoll, { view: "portrait" });
-    
+    const imagePrompt = buildIdentityViewPrompt(currentDoll, view);
+    const aspectRatio = view === 'full_body' ? '2:3' : '3:4';
+
+    // Pass existing portrait as stable-face ref when generating other views
+    const portraitLock =
+      view !== 'portrait'
+        ? currentDoll.identityReferences?.portraitUrl || currentDoll.generatedImageUrl
+        : undefined;
+
     try {
       const response = await fetch('/api/mimi-image', {
         method: 'POST',
@@ -149,9 +180,18 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         },
         body: JSON.stringify({
           prompt: imagePrompt,
-          aspectRatio: '3:4',
+          aspectRatio,
           allowFaces: true,
-          // Omit provider — /api/mimi-image prefers AI Gateway when configured
+          references: portraitLock
+            ? [
+                {
+                  name: 'Doll Portrait',
+                  description: `Calibrated identity lock for ${currentDoll.name}`,
+                  url: portraitLock,
+                  tags: ['doll', 'portrait', 'identity-lock'],
+                },
+              ]
+            : undefined,
         }),
       });
       
@@ -163,26 +203,40 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
         throw new Error(data?.warnings?.[0] || 'Image provider returned simulated plate');
       }
       if (data?.imageUrl) {
-        setCurrentDoll(prev => ({ ...prev, generatedImageUrl: data.imageUrl }));
+        const identityReferences = mergeIdentityReference(
+          currentDoll.identityReferences,
+          view,
+          data.imageUrl,
+        );
+        const updates: Partial<Doll> = {
+          identityReferences,
+          ...(view === 'portrait' ? { generatedImageUrl: data.imageUrl } : {}),
+        };
+        setCurrentDoll((prev) => ({ ...prev, ...updates }));
         
         if (user?.uid) {
-          await updateDoll(user.uid, currentDoll.id, { generatedImageUrl: data.imageUrl });
+          await updateDoll(user.uid, currentDoll.id, updates);
         }
         
         triggerSound('click');
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
-            detail: { message: `Mimi Shell projected for ${currentDoll.name}`, type: "success" },
+            detail: {
+              message: `Mimi Shell ${view.replace('_', ' ')} projected for ${currentDoll.name}`,
+              type: "success",
+            },
           })
         );
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            role: "system",
-            content: "Shell projection complete. Species locked. Begin conditioning.",
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          },
-        ]);
+        if (view === 'portrait') {
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              role: "system",
+              content: "Shell projection complete. Species locked. Begin conditioning.",
+              timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            },
+          ]);
+        }
       } else {
         throw new Error(data?.error?.message || 'Empty image response');
       }
@@ -207,13 +261,23 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
     }
   };
 
+  const handleSelectMask = async (maskId: string) => {
+    setActiveMaskId(maskId);
+    setCurrentDoll((prev) => ({ ...prev, activeMaskId: maskId }));
+    if (user?.uid) {
+      await updateDoll(user.uid, currentDoll.id, { activeMaskId: maskId });
+    }
+  };
+
+  const packStatus = identityPackCompleteness(currentDoll);
+
   // Cultish onboarding beat: first visit without a portrait auto-projects the house shell.
   useEffect(() => {
     if (autoShellProjectedRef.current) return;
     if (currentDoll.generatedImageUrl) return;
     if (isGeneratingPortrait) return;
     autoShellProjectedRef.current = true;
-    void handleRegeneratePortrait();
+    void handleRegeneratePortrait('portrait');
     // Intentionally one-shot per mount when shell image is missing.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onboarding auto-project
   }, [currentDoll.id, currentDoll.generatedImageUrl]);
@@ -560,7 +624,11 @@ GUIDELINES FOR THE RESPONSE:
                   transform: isConstructShifting ? `translateX(${chromaticOffset}px) scale(${1 + Math.abs(chromaticOffset) * 0.005})` : 'none'
                 }}
               >
-                <DollPortraitStage doll={currentDoll} className="w-full h-full" />
+                <DollPortraitStage
+                  doll={currentDoll}
+                  view={identityView}
+                  className="w-full h-full"
+                />
               </motion.div>
 
               {/* Construct Shift Glitch Overlay */}
@@ -623,9 +691,35 @@ GUIDELINES FOR THE RESPONSE:
               </div>
             </motion.div>
             
-            <div className="mt-3">
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-1">
+                {([
+                  ['portrait', 'Portrait'],
+                  ['full_body', 'Full Body'],
+                  ['profile', 'Profile'],
+                ] as const).map(([view, label]) => (
+                  <button
+                    key={view}
+                    type="button"
+                    onClick={() => setIdentityView(view)}
+                    className={`flex-1 py-1.5 border font-mono text-[7px] uppercase tracking-widest ${
+                      identityView === view
+                        ? 'border-amber-500/60 bg-amber-500/10 text-amber-500'
+                        : 'border-stone-800 text-stone-500 hover:border-stone-600'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="font-mono text-[7px] uppercase tracking-widest text-stone-500">
+                Identity pack {packStatus.filled}/{packStatus.total}
+                {packStatus.missing.length
+                  ? ` · missing ${packStatus.missing.join(', ')}`
+                  : ' · calibrated'}
+              </p>
               <button
-                onClick={handleRegeneratePortrait}
+                onClick={() => handleRegeneratePortrait(identityView)}
                 disabled={isGeneratingPortrait}
                 className="w-full py-2.5 border border-stone-200 dark:border-stone-800 hover:border-amber-500/50 bg-[#12110F] text-[8px] uppercase tracking-[0.25em] font-black text-amber-600 dark:text-amber-500 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
@@ -641,6 +735,24 @@ GUIDELINES FOR THE RESPONSE:
                   </>
                 )}
               </button>
+              {masks.length > 0 && (
+                <div className="pt-1">
+                  <label className="font-mono text-[7px] uppercase tracking-widest text-stone-500 block mb-1">
+                    Active Mask (companion role)
+                  </label>
+                  <select
+                    value={activeMaskId ?? ''}
+                    onChange={(e) => void handleSelectMask(e.target.value)}
+                    className="w-full border border-stone-800 bg-[#12110F] font-mono text-[9px] uppercase tracking-wider px-2 py-1.5 text-stone-300"
+                  >
+                    {masks.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} · {m.role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 

@@ -57,6 +57,8 @@ import {
 } from '../../lib/analytics';
 import { PearlButton } from '../ui/PearlButton';
 import { buildPublicShowcaseSnapshot } from '../../lib/publicShowcaseSnapshot';
+import { listDolls } from '../../services/tailorService';
+import { readStoredActiveDollId } from '../../services/dollEngine';
 
 type Step = 'upload' | 'scrying' | 'dossier';
 
@@ -200,12 +202,21 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
 
       if (isSignedIn && updateProfile && profile) {
         const handle = profile.handle || user?.email?.split('@')[0]?.toLowerCase() || 'creator';
+        let showcaseDoll = null;
+        if (user?.uid) {
+          const dolls = await listDolls(user.uid).catch((): Awaited<ReturnType<typeof listDolls>> => []);
+          const preferredId = readStoredActiveDollId();
+          showcaseDoll =
+            (preferredId && dolls.find((d) => d.id === preferredId)) ||
+            dolls[0] ||
+            null;
+        }
         await updateProfile({
           ...profile,
           likenessManifest: manifest,
           evidenceDossier: dossier,
           useLikeness: true,
-          publicShowcase: buildPublicShowcaseSnapshot(handle, dossier),
+          publicShowcase: buildPublicShowcaseSnapshot(handle, dossier, showcaseDoll),
         });
       }
       trackLikenessAccepted();

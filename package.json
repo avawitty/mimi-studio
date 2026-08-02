@@ -23,6 +23,7 @@
     "verify:atelier": "tsx scripts/verifyAtelierService.ts",
     "verify:gateway-generate-text": "tsx scripts/verifyGatewayGenerateText.ts",
     "verify:residue": "tsx scripts/verifyResidueEngine.ts",
+    "verify:doll-engine": "tsx scripts/verifyDollEngine.ts",
     "verify:rip": "tsx scripts/verifyRipEngine.ts",
     "verify:fish": "tsx scripts/verifyFishShare.ts",
     "verify:doll-staple": "tsx scripts/verifyDollStaplePrompt.ts",

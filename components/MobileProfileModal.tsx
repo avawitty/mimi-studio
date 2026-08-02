@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
+import { normalizePlanTier, PATRONAGE_PLAN_LABELS } from '../constants';
 
 interface Props {
  isOpen: boolean;
@@ -50,15 +51,20 @@ export const MobileProfileModal: React.FC<Props> = ({ isOpen, onClose, onOpenSet
  <h3 className="text-xl font-medium text-nous-text">{profile?.displayName || 'Anonymous'}</h3>
  <p className="text-sm text-nous-subtle mt-1">{user.email}</p>
  
- {profile?.plan && profile.plan !== 'free' && (
+ {profile?.plan && profile.plan !== 'free' && (() => {
+   const tier = normalizePlanTier(profile.plan);
+   return (
  <div className={`mt-4 px-4 py-1.5 rounded-none text-xs font-bold uppercase tracking-widest border ${
- profile.plan === 'lab' ? 'bg-nous-base text-nous-subtle border-nous-border /20 ' :
- profile.plan === 'pro' ? 'bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800' :
- 'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800'
+ tier === 'lab'
+   ? 'bg-nous-text text-nous-base border-nous-text'
+   : tier === 'pro' || tier === 'optioning'
+     ? 'bg-nous-base text-nous-text border-nous-text/30'
+     : 'bg-nous-base/60 text-nous-subtle border-nous-border'
  }`}>
- Mimi {profile.plan}
+ {PATRONAGE_PLAN_LABELS[tier]}
  </div>
- )}
+   );
+ })()}
  </div>
 
  <div className="space-y-3">

@@ -103,7 +103,7 @@ Manual E2E on signed-in preview still recommended (see `docs/DEMO_SCRIPT.md`).
 ### Remaining polish (not blocking M2 demo)
 
 1. **Pocket shared persistence contract** — atom mirror works; cross-chamber sync polish remains
-2. **Mimi Dolls companion depth** — richer doll ↔ Scribe/Studio identity injection (Phase 3)
+2. **Mimi Dolls companion depth** — Phase 3 engine landed (`services/dollEngine`): procedural dresser bound to Firestore Doll, multi-view identity pack, default Masks, Studio mask select + prompt injection, Scribe `doll_identity` retrieval, public showcase portrait coherence. Remaining: multimodal image-ref attachment into zine media pipeline when refs are remote-only URLs.
 3. **Full narrative thread data in 3JS scene** — orbital UI live; deep graph data wiring optional
 
 ## Milestone 3 (Memory Loop) — Complete

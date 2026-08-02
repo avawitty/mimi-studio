@@ -1,3 +1,5 @@
+import { isPaidPatronPlan } from '../constants';
+
 export const STORAGE_KEYS = {
   anthropic: 'mimi_byok_anthropic',
   openai: 'mimi_byok_openai',
@@ -70,8 +72,8 @@ export function resolveApiKey(
     return { key: stored, source: 'byok' };
   }
 
-  // 3. Patron proxy (pro/lab — server handles the actual key)
-  if (planStatus === 'pro' || planStatus === 'lab') {
+  // 3. Patron proxy (Initiation+ — server handles the actual key)
+  if (isPaidPatronPlan(planStatus)) {
     return { key: null, source: 'patron' }; // null = use server proxy with auth token
   }
 
