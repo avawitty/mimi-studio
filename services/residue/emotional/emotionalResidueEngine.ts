@@ -5,7 +5,8 @@
  * Non-diagnostic: multiple neighborhoods, research ≠ community, safety notice.
  */
 
-import { ManualSourceProvider } from "../acquisition/providers/manualSourceProvider";
+import { acquireResidueSources } from "../acquisition/composeAcquisition";
+import type { SourceAcquisitionProvider } from "../acquisition/SourceAcquisitionProvider";
 import {
   EMOTIONAL_SAFETY_NOTICE,
   RESIDUE_PROMPT_VERSION,
@@ -68,6 +69,10 @@ export interface EmotionalResidueRunOptions {
   runId?: string;
   llm?: ResidueLlmOptions;
   sources?: SourceReference[];
+  /** When true and APIFY_TOKEN is available (Node), merge Apify-acquired sources. */
+  useApify?: boolean;
+  /** Injectable Apify provider (tests / custom clients). */
+  apifyProvider?: SourceAcquisitionProvider;
   now?: string;
 }
 
@@ -120,19 +125,19 @@ export async function runEmotionalResidue(
 
   let sources = options.sources;
   if (!sources) {
-    const manual = new ManualSourceProvider();
-    const acquisition = await manual.acquire({
+    const acquisition = await acquireResidueSources({
+      // Do not send raw emotional text to external acquisition providers.
       inquiry: redactSensitiveText(input.experience, 0),
       mode: "emotional",
       sourceUrls: input.sourceUrls,
+      userNotes: input.userNotes,
       maxItems: input.analysisDepth === "deep" ? 40 : input.analysisDepth === "quick" ? 10 : 25,
+      useApify: options.useApify,
+      apifyProvider: options.apifyProvider,
+      now,
     });
     warnings.push(...acquisition.warnings);
-    sources = normalizeSources({
-      acquired: acquisition.sources,
-      userNotes: input.userNotes,
-      accessedAt: now,
-    });
+    sources = acquisition.sources;
   } else if (input.userNotes?.length) {
     sources = [
       ...sources,

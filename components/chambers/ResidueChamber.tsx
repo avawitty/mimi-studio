@@ -1,4 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
+/**
+ * Residue Engine chamber — Phase 8 UI (main #124) + Phase 9 Apify toggle.
+ * Offline-first cultural / emotional runs with optional token-gated acquisition.
+ */
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Play, Radar } from "lucide-react";
 import { ChamberShell } from "./ChamberShell";
 import {
@@ -10,6 +15,7 @@ import {
   type ResidueEngineTab,
   type ResidueResultTab,
 } from "../../lib/residueChamberContract";
+import { auth } from "../../services/firebase";
 import {
   adaptResidueToMeanMedianMode,
   buildResidueProductOutputBundle,
@@ -18,6 +24,7 @@ import {
   type CulturalResidueResult,
   type EmotionalResidueResult,
   type MeanMedianModeResult,
+  type SourceReference,
 } from "../../services/residue";
 import { ResidueSafetyBanner } from "../residue/ResidueSafetyBanner";
 import {
@@ -39,6 +46,7 @@ interface SessionRun {
   label: string;
   createdAt: string;
   usedLlm: boolean;
+  usedApify: boolean;
   cultural?: CulturalResidueResult;
   emotional?: EmotionalResidueResult;
   mmm: {
@@ -64,6 +72,10 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<SessionRun[]>([]);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [useApify, setUseApify] = useState(false);
+  const [apifyAvailable, setApifyAvailable] = useState(false);
+  const [apifyNotice, setApifyNotice] = useState<string | null>(null);
+  const [apifyActorId, setApifyActorId] = useState<string | null>(null);
 
   const activeRun = useMemo(
     () => history.find((r) => r.runId === activeRunId) ?? history[0] ?? null,
@@ -72,6 +84,33 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
 
   const showEmotionalSafety =
     engineTab === "emotional" || activeRun?.mode === "emotional";
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/residue-acquire");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          available?: boolean;
+          notice?: string;
+          actorId?: string;
+        };
+        if (cancelled) return;
+        setApifyAvailable(Boolean(data.available));
+        setApifyNotice(data.notice || null);
+        setApifyActorId(data.actorId || null);
+      } catch {
+        if (!cancelled) {
+          setApifyAvailable(false);
+          setApifyNotice("Could not reach Residue Apify status endpoint.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const go = useCallback(
     (view: string) => {
@@ -100,13 +139,28 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
         .map((n) => n.trim())
         .filter(Boolean);
 
-      if (engineTab === "cultural") {
-        const { result, usedLlm } = await runCulturalResidue({
-          query: trimmed,
-          userNotes: noteList.length ? noteList : undefined,
-          retention: "temporary",
-          consentToStore: false,
+      let apifySources: SourceReference[] | undefined;
+      if (useApify) {
+        apifySources = await fetchApifySourcesForResidue({
+          mode: engineTab,
+          inquiry:
+            engineTab === "cultural" ? trimmed : "[redacted-emotional-input]",
         });
+      }
+
+      if (engineTab === "cultural") {
+        const { result, usedLlm } = await runCulturalResidue(
+          {
+            query: trimmed,
+            userNotes: noteList.length ? noteList : undefined,
+            retention: "temporary",
+            consentToStore: false,
+          },
+          {
+            llm: { offline: true },
+            sources: apifySources,
+          },
+        );
         const mmm = adaptResidueToMeanMedianMode(result, {
           includeLiteralCompanion: true,
         });
@@ -117,6 +171,7 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
           label: result.query,
           createdAt: result.metadata.createdAt,
           usedLlm,
+          usedApify: Boolean(apifySources?.length),
           cultural: result,
           mmm,
           products,
@@ -125,12 +180,18 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
         setActiveRunId(session.runId);
         setResultTab("synthesis");
       } else {
-        const { result, usedLlm } = await runEmotionalResidue({
-          experience: trimmed,
-          userNotes: noteList.length ? noteList : undefined,
-          retention: "temporary",
-          consentToStore: false,
-        });
+        const { result, usedLlm } = await runEmotionalResidue(
+          {
+            experience: trimmed,
+            userNotes: noteList.length ? noteList : undefined,
+            retention: "temporary",
+            consentToStore: false,
+          },
+          {
+            llm: { offline: true },
+            sources: apifySources,
+          },
+        );
         const mmm = adaptResidueToMeanMedianMode(result, {
           includeLiteralCompanion: true,
         });
@@ -141,6 +202,7 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
           label: result.normalizedExperience.slice(0, 72),
           createdAt: result.metadata.createdAt,
           usedLlm,
+          usedApify: Boolean(apifySources?.length),
           emotional: result,
           mmm,
           products,
@@ -155,7 +217,7 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
     } finally {
       setRunning(false);
     }
-  }, [engineTab, notes, query]);
+  }, [engineTab, notes, query, useApify]);
 
   const resultBody = (() => {
     if (!activeRun) {
@@ -222,6 +284,7 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
                   <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-nous-subtle">
                     {run.mode} · {new Date(run.createdAt).toLocaleString()} ·{" "}
                     {run.usedLlm ? "gateway" : "offline"}
+                    {run.usedApify ? " · apify" : ""}
                   </p>
                   <p className="font-serif text-[15px] text-nous-text mt-1">
                     {run.label}
@@ -319,6 +382,27 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
               />
             </label>
 
+            <label className="flex items-start gap-3 border border-nous-border px-3 py-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={useApify}
+                disabled={!apifyAvailable}
+                onChange={(e) => setUseApify(e.target.checked)}
+              />
+              <span className="space-y-1">
+                <span className="block font-mono text-[8px] uppercase tracking-[0.22em] text-nous-subtle">
+                  Acquire via Apify {apifyAvailable ? "(live)" : "(unavailable)"}
+                </span>
+                <span className="block font-sans text-[11px] text-nous-subtle leading-relaxed">
+                  {apifyAvailable
+                    ? `Signed-in live scrape via ${apifyActorId || "configured Actor"}. Emotional mode sends a redacted inquiry only.`
+                    : apifyNotice ||
+                      "Set APIFY_TOKEN on the server to enable. Offline notes still work."}
+                </span>
+              </span>
+            </label>
+
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
@@ -331,10 +415,14 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
                 ) : (
                   <Play size={12} />
                 )}
-                {running ? "Running…" : "Run offline pass"}
+                {running
+                  ? "Running…"
+                  : useApify
+                    ? "Run pass (+ Apify)"
+                    : "Run offline pass"}
               </button>
               <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-nous-subtle">
-                Offline-first · gateway enrichment optional later
+                Offline-first · Apify optional · gateway enrichment optional
               </span>
             </div>
 
@@ -364,6 +452,7 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
               <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-nous-subtle">
                 Active · {activeRun.mode} · {activeRun.runId} ·{" "}
                 {activeRun.usedLlm ? "gateway" : "offline heuristics"}
+                {activeRun.usedApify ? " · apify sources" : ""}
               </p>
             ) : null}
 
@@ -374,3 +463,39 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
     </ChamberShell>
   );
 };
+
+async function fetchApifySourcesForResidue(input: {
+  mode: ResidueEngineTab;
+  inquiry: string;
+}): Promise<SourceReference[]> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const token = await auth.currentUser?.getIdToken();
+  if (token) headers["x-user-token"] = `Bearer ${token}`;
+
+  const res = await fetch("/api/residue-acquire", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      inquiry: input.inquiry,
+      mode: input.mode,
+      maxItems: 5,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message =
+      data?.error?.message ||
+      (res.status === 401
+        ? "Sign in required for Apify acquisition."
+        : "Apify acquisition failed.");
+    throw new Error(message);
+  }
+  if (data?.status === "disabled") {
+    throw new Error(data?.warnings?.[0] || "Apify acquisition disabled.");
+  }
+  const refs = Array.isArray(data?.sourceReferences) ? data.sourceReferences : [];
+  if (!refs.length) {
+    throw new Error(data?.warnings?.[0] || "Apify returned no sources.");
+  }
+  return refs as SourceReference[];
+}

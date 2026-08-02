@@ -2000,6 +2000,38 @@ export const App: React.FC = () => {
             (await resolveExportCoverUrl(coverUrl, opts.studioCoverOverlays)) ?? coverUrl;
         }
 
+        // Hi-fi issues pre-develop cover + plates before save so reveal opens finished.
+        const targetUidForBake = profile?.uid || user?.uid || "ghost";
+        if (opts.isHighFidelity && !opts.isLite && !opts.isQuickPreview) {
+          try {
+            const { bakeZineVisualPlates } = await import("./lib/bakeZinePlates");
+            window.dispatchEvent(
+              new CustomEvent("mimi:registry_alert", {
+                detail: { message: "Developing hi-fi plates for this issue…" },
+              }),
+            );
+            const baked = await bakeZineVisualPlates({
+              content: result.content,
+              profile,
+              apiKey: personaKey,
+              artifacts: media,
+              treatmentId: opts.zineOptions?.selectedTreatmentId,
+              isLite: opts.isLite,
+              isHighFidelity: opts.isHighFidelity,
+              isQuickPreview: opts.isQuickPreview,
+              existingCoverUrl: coverUrl,
+              ownerUid: targetUidForBake === "ghost" ? undefined : targetUidForBake,
+            });
+            result.content = baked.content;
+            if (baked.coverUrl) coverUrl = baked.coverUrl;
+            if (baked.failures.length) {
+              console.warn("MIMI // Hi-fi plate bake partial failures:", baked.failures);
+            }
+          } catch (bakeError) {
+            console.warn("MIMI // Hi-fi plate bake skipped:", bakeError);
+          }
+        }
+
         let cost = 2; // Default for full zine
         if (opts.isLite) cost = 1;
         if (opts.isHighFidelity || opts.deepThinking) cost = 3;
@@ -2274,9 +2306,19 @@ export const App: React.FC = () => {
     if (["tailor", "loom", "action-board", "the-edit", "the-press", "wardrobe", "mimi-drop"].includes(mode))
       return "refine";
     if (
-      ["signature", "ward", "profile", "taste-graph", "pocket", "scribe", "mimi-dolls", "mimi-rip", "atelier"].includes(
-        mode,
-      )
+      [
+        "signature",
+        "ward",
+        "profile",
+        "taste-graph",
+        "pocket",
+        "scribe",
+        "mimi-dolls",
+        "mimi-rip",
+        "atelier",
+        "residue",
+        "intel-hub",
+      ].includes(mode)
     )
       return "signature";
     if (["nebula", "proscenium"].includes(mode)) return "observe";

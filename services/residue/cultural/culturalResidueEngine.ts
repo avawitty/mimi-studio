@@ -6,7 +6,8 @@
  * generateGatewayObject when llm.apiKey is provided.
  */
 
-import { ManualSourceProvider } from "../acquisition/providers/manualSourceProvider";
+import { acquireResidueSources } from "../acquisition/composeAcquisition";
+import type { SourceAcquisitionProvider } from "../acquisition/SourceAcquisitionProvider";
 import {
   RESIDUE_PROMPT_VERSION,
   RESIDUE_SCHEMA_VERSION,
@@ -63,6 +64,10 @@ export interface CulturalResidueRunOptions {
   llm?: ResidueLlmOptions;
   /** Pre-normalized sources (skips URL acquisition). */
   sources?: SourceReference[];
+  /** When true and APIFY_TOKEN is available (Node), merge Apify-acquired sources. */
+  useApify?: boolean;
+  /** Injectable Apify provider (tests / custom clients). */
+  apifyProvider?: SourceAcquisitionProvider;
   now?: string;
 }
 
@@ -120,20 +125,18 @@ export async function runCulturalResidue(
   // 2) Acquire / normalize sources
   let acquiredSources = options.sources;
   if (!acquiredSources) {
-    const manual = new ManualSourceProvider();
-    const acquisition = await manual.acquire({
+    const acquisition = await acquireResidueSources({
       inquiry: normalizedQuery,
       mode: "cultural",
       sourceUrls: input.sourceUrls,
+      userNotes: input.userNotes,
       maxItems: input.analysisDepth === "deep" ? 40 : input.analysisDepth === "quick" ? 10 : 25,
+      useApify: options.useApify,
+      apifyProvider: options.apifyProvider,
+      now,
     });
     warnings.push(...acquisition.warnings);
-    acquiredSources = normalizeSources({
-      acquired: acquisition.sources,
-      sourceUrls: undefined,
-      userNotes: input.userNotes,
-      accessedAt: now,
-    });
+    acquiredSources = acquisition.sources;
   } else if (input.userNotes?.length) {
     acquiredSources = [
       ...acquiredSources,
