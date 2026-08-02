@@ -19,6 +19,7 @@ import {
   unpublishFieldsForZine,
   observationsFromEligibleSignals,
   opaqueContributorKeyFromUserId,
+  extractSignalsFromPublicZine,
 } from "../services/collective";
 import { collectiveSignalSchema } from "../schemas/collectiveIntelligenceContracts";
 import {
@@ -286,6 +287,18 @@ function testContributePipeline() {
     tags: ["leak"],
   });
   assert(noDisclosure.signals.length === 0, "no disclosure → no signals");
+
+  const extractBypass = extractSignalsFromPublicZine({
+    id: "bypass-1",
+    isPublic: true,
+    contributeToMeanMedianMode: true,
+    tags: ["should-not-extract"],
+    theme: "leak",
+  });
+  assert(
+    extractBypass.length === 0,
+    "extract itself rejects contribute=true without disclosure fields",
+  );
 
   const ok = contributePublicZineToMeanMedianMode({
     id: "public-1",

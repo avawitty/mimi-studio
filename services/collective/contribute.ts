@@ -13,10 +13,7 @@ import {
 } from "./extractSignals";
 
 export function contributePublicZineToMeanMedianMode(
-  zine: ExtractablePublicZine & {
-    disclosedAt?: number;
-    disclosureVersion?: string;
-  },
+  zine: ExtractablePublicZine,
 ): { signals: CollectiveSignal[]; receipt: ContributionReceipt | null } {
   if (
     !mayContributeToMeanMedianMode({

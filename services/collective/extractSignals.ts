@@ -7,6 +7,7 @@ import {
   collectiveSignalSchema,
   type CollectiveSignal,
 } from "../../schemas/collectiveIntelligenceContracts";
+import { mayContributeToMeanMedianMode } from "./consent";
 import { MMM_EXTRACTOR_VERSION } from "./methodology";
 
 export interface ExtractablePublicZine {
@@ -17,6 +18,10 @@ export interface ExtractablePublicZine {
   tone?: string;
   contributeToMeanMedianMode?: boolean;
   isPublic?: boolean;
+  /** Proscenium disclosure timestamp — required for contribution. */
+  disclosedAt?: number;
+  /** Disclosure copy version (e.g. mmm-consent-v1). */
+  disclosureVersion?: string;
   /** Owner uid — hashed into opaqueContributorKey; never stored raw on the signal. */
   userId?: string;
 }
@@ -35,7 +40,16 @@ export function extractSignalsFromPublicZine(
   zine: ExtractablePublicZine,
   now = Date.now(),
 ): CollectiveSignal[] {
-  if (!zine.isPublic || !zine.contributeToMeanMedianMode) {
+  // Hard gate: public stage + disclosure version/timestamp + contribute flag.
+  // Callers must not extract from silent isPublic toggles.
+  if (
+    !zine.isPublic ||
+    !mayContributeToMeanMedianMode({
+      disclosedAt: zine.disclosedAt,
+      disclosureVersion: zine.disclosureVersion,
+      contributeToMeanMedianMode: zine.contributeToMeanMedianMode,
+    })
+  ) {
     return [];
   }
 
