@@ -43,7 +43,16 @@ export const MIMI_PLAN_ORDER: MimiPlan[] = [
 ];
 
 export const MIMI_PRICE_ID_PLAN_MAP: Record<string, MimiPlan> = {
-  // Current Maison Mimi Patronage catalog (see constants.ts STRIPE_PRICES*)
+  // Live Maison Mimi Patronage catalog (see constants.ts STRIPE_PRICES*)
+  price_1TfuI49AUz0q2nVCHuy4k4Sq: "initiation",
+  price_1TgUdR9AUz0q2nVC1EoBOgBi: "optioning",
+  price_1TgVQC9AUz0q2nVC5POSYpI7: "atelier",
+  price_1TfwLC9AUz0q2nVCxNzPtunX: "lab",
+  price_1Tzntj9AUz0q2nVCO66J6Wps: "initiation",
+  price_1Tznti9AUz0q2nVC83IIz3KG: "optioning",
+  price_1Tznti9AUz0q2nVCo7L96nzL: "atelier",
+  price_1Tzntj9AUz0q2nVCsBYJKVze: "lab",
+  // Legacy / migrated / sandbox price IDs
   price_1TyH1dPelakqdIL6lWwNf7Hw: "initiation",
   price_1TyH1dPelakqdIL6qnkLnvan: "optioning",
   price_1TyH1ePelakqdIL6cL56uAzp: "atelier",
@@ -52,15 +61,10 @@ export const MIMI_PRICE_ID_PLAN_MAP: Record<string, MimiPlan> = {
   price_1TyHpcPelakqdIL6XOTs86AM: "optioning",
   price_1TyHpcPelakqdIL6TADmS9HW: "atelier",
   price_1TyHpdPelakqdIL6L5g4CKKw: "lab",
-  // Legacy / migrated price IDs
   price_1TwwYS8wdWcoxOPehfAp8HnJ: "initiation",
   price_1TwwYZ8wdWcoxOPeUxr0fReB: "atelier",
   price_1TwwYh8wdWcoxOPeK7j6HSm0: "lab",
-  price_1TfuI49AUz0q2nVCHuy4k4Sq: "initiation",
-  price_1TgUdR9AUz0q2nVC1EoBOgBi: "optioning",
   price_1TfwGE9AUz0q2nVCwqXHJ6TM: "atelier",
-  price_1TgVQC9AUz0q2nVC5POSYpI7: "atelier",
-  price_1TfwLC9AUz0q2nVCxNzPtunX: "lab",
   price_1TfwyY9AUz0q2nVC6AVQcM7t: "sovereign",
 };
 

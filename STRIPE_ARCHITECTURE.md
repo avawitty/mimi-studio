@@ -18,8 +18,20 @@ Model **one Stripe Product per patronage tier**, with monthly and annual Prices 
 Do **not** put different tiers on a single Product — Checkout/invoice line items show the
 Product name, so shared products make tiers indistinguishable.
 
-Canonical price IDs live in `constants.ts` (`STRIPE_PRICES` / `STRIPE_PRICES_ANNUAL`) and
-can be overridden with `STRIPE_PRICE_*` / `STRIPE_PRICE_*_ANNUAL` env vars.
+Canonical **live** price IDs live in `constants.ts` (`STRIPE_PRICES` / `STRIPE_PRICES_ANNUAL`)
+for account `acct_1T0fAo9AUz0q2nVC` and can be overridden with `STRIPE_PRICE_*` /
+`STRIPE_PRICE_*_ANNUAL` env vars.
+
+| Tier | Product | Monthly Price | Annual Price |
+| --- | --- | --- | --- |
+| The Initiation | `prod_UfElsz9OHHpgEd` | `price_1TfuI49AUz0q2nVCHuy4k4Sq` | `price_1Tzntj9AUz0q2nVCO66J6Wps` |
+| Optioning | `prod_UfqKthj95UDo7m` | `price_1TgUdR9AUz0q2nVC1EoBOgBi` | `price_1Tznti9AUz0q2nVC83IIz3KG` |
+| The Atelier | `prod_UfGndT7RktzUlE` | `price_1TgVQC9AUz0q2nVC5POSYpI7` | `price_1Tznti9AUz0q2nVCo7L96nzL` |
+| The Lab | `prod_UfGsM5PmAimbKy` | `price_1TfwLC9AUz0q2nVCxNzPtunX` | `price_1Tzntj9AUz0q2nVCsBYJKVze` |
+
+**Customer Portal (Dashboard):** allow subscription updates across the four products above
+(both monthly + annual prices), with proration on upgrades (`create_prorations`) and
+period-end scheduling for downgrades. Cancel at period end is already enabled.
 
 ## Checkout (new subscribers)
 

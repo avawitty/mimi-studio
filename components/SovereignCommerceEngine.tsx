@@ -15,7 +15,8 @@ import {
 // 1. SUBSCRIPTION MATRIX — Maison Mimi Patronage
 export const SubscriptionMatrix: React.FC = () => {
   const { user, profile } = useUser();
-  const [interval, setInterval] = useState<BillingInterval>("month");
+  // Default annual — 2 months free is the conversion lever; monthly stays one click away.
+  const [interval, setInterval] = useState<BillingInterval>("year");
   const [loadingPlan, setLoadingPlan] = useState<PatronageCheckoutPlan | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
