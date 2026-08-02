@@ -6,6 +6,7 @@ import {
   normalizeIntelCatalogCandidate,
   readIntelHubPressHandoff,
   readIntelProjectRun,
+  resolveSelectedCandidates,
   updateIntelProjectRun,
   writeIntelHubPressHandoff,
   writeIntelProjectRun,
@@ -97,6 +98,38 @@ writeIntelHubPressHandoff(handoff);
 const restored = readIntelHubPressHandoff();
 assert(restored?.id === handoff.id, "Press handoff should round-trip through storage.");
 assert(restored?.status === "review_required", "Press handoff must require human review.");
+assert(
+  resolveSelectedCandidates(restored).length === 1,
+  "Legacy single selectedCandidate should resolve to one object.",
+);
+
+const secondCandidate = normalizeIntelCatalogCandidate(
+  {
+    id: "gid://shopify/Product/2",
+    title: "Cast Bronze Buckle",
+    vendor: "Atelier Test",
+    price: "90.00",
+    image: { url: "https://example.com/buckle.jpg" },
+    onlineStoreUrl: "https://example.com/buckle",
+  },
+  1,
+);
+const multiHandoff: IntelHubPressHandoff = {
+  ...handoff,
+  id: "intel-pack-multi",
+  selectedCandidate: candidate,
+  selectedCandidates: [candidate, secondCandidate],
+};
+assert(
+  resolveSelectedCandidates(multiHandoff).length === 2,
+  "Multi-select handoff should resolve both commerce objects.",
+);
+writeIntelHubPressHandoff(multiHandoff);
+assert(
+  resolveSelectedCandidates(readIntelHubPressHandoff()).length === 2,
+  "Multi-select handoff should persist.",
+);
+
 const restoredFromHandoff = createIntelProjectRunFromHandoff(handoff);
 assert(
   restoredFromHandoff.stage === "press-review",

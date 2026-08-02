@@ -4,13 +4,23 @@
  */
 import assert from "node:assert/strict";
 import {
+  ATELIER_SOFT_CAP,
   buildAtelierObjectId,
+  confirmAtelierResonance,
+  enforceAtelierSoftCap,
+  formatAtelierTasteContextForPrompt,
+  getAtelierCapacity,
   isAtelierObjectPinned,
+  isAtelierObjectStale,
   listAtelierObjects,
   pinAtelierObject,
+  resolvePinIntent,
+  summarizeAtelierForPriorContext,
+  unpinAtelierObject,
   unpinSignal,
+  updateAtelierObjectIntent,
 } from "../services/atelierService";
-import type { SemioticSignal } from "../types";
+import type { AtelierObject, SemioticSignal } from "../types";
 
 const memory = new Map<string, string>();
 const listeners = new Map<string, Set<EventListener>>();
@@ -59,12 +69,17 @@ const signal: SemioticSignal = {
   product_id: "gid://shopify/Product/1",
 };
 
+assert.equal(resolvePinIntent("desire", "acquisition"), "acquisition_signal");
+assert.equal(resolvePinIntent("desire", "conceptual"), "desire");
+assert.equal(resolvePinIntent("reference", "acquisition"), "reference");
+
 const pinned = pinAtelierObject({
   signal,
   ownerUid: uid,
   zineId: "zine_1",
   zineTitle: "Winter Gravity",
   signalIndex: 0,
+  intent: resolvePinIntent("desire", signal.type),
 });
 
 assert.ok(pinned, "pin should return an object");
@@ -81,6 +96,7 @@ const again = pinAtelierObject({
   zineId: "zine_1",
   zineTitle: "Winter Gravity",
   signalIndex: 0,
+  intent: resolvePinIntent("desire", signal.type),
 });
 assert.equal(listAtelierObjects(uid).length, 1, "re-pin should be idempotent");
 assert.equal(again!.id, pinned!.id);
@@ -95,10 +111,67 @@ const id = buildAtelierObjectId({
 });
 assert.equal(id, pinned!.id);
 
+const switched = updateAtelierObjectIntent(id, "reference", uid);
+assert.equal(switched?.intent, "reference");
+
+const prior = summarizeAtelierForPriorContext(uid);
+assert.equal(prior.desire.length, 0, "reference pins excluded from desire prior");
+assert.equal(prior.reference.length, 1);
+
+const prompt = formatAtelierTasteContextForPrompt(uid);
+assert.match(prompt, /REFERENCE ONLY/);
+assert.doesNotMatch(prompt, /DESIRE \/ BUYER ORIENTATION/);
+
+updateAtelierObjectIntent(id, "acquisition_signal", uid);
+const desirePrompt = formatAtelierTasteContextForPrompt(uid);
+assert.match(desirePrompt, /DESIRE \/ BUYER ORIENTATION/);
+assert.match(desirePrompt, /Archive Wool Coat/);
+
+const resonated = confirmAtelierResonance(id, uid);
+assert.ok(resonated?.lastResonantAt, "resonance confirm should stamp lastResonantAt");
+assert.equal(isAtelierObjectStale(resonated!), false);
+
 assert.equal(
   unpinSignal(signal, { ownerUid: uid, zineId: "zine_1", signalIndex: 0 }),
   true,
 );
+assert.equal(listAtelierObjects(uid).length, 0);
+
+// Soft-cap: prefer dropping oldest reference pins.
+const bulk: AtelierObject[] = Array.from({ length: ATELIER_SOFT_CAP + 3 }, (_, i) => ({
+  id: `cap_${i}`,
+  ownerUid: uid,
+  motif: `Object ${i}`,
+  intent: i < 5 ? "reference" : "desire",
+  savedAt: 1000 + i,
+}));
+const capped = enforceAtelierSoftCap(bulk);
+assert.equal(capped.length, ATELIER_SOFT_CAP);
+assert.equal(
+  capped.filter((entry) => entry.intent === "reference").length,
+  2,
+  "oldest references should prune first",
+);
+
+for (let i = 0; i < ATELIER_SOFT_CAP + 2; i += 1) {
+  pinAtelierObject({
+    signal: {
+      ...signal,
+      motif: `Cap Coat ${i}`,
+      product_id: `gid://shopify/Product/cap-${i}`,
+      link: `https://example.com/coat-${i}`,
+      type: "acquisition",
+    },
+    ownerUid: uid,
+    zineId: `zine_cap_${i}`,
+    signalIndex: 0,
+    intent: i % 2 === 0 ? "reference" : "desire",
+  });
+}
+const capacity = getAtelierCapacity(uid);
+assert.equal(capacity.count, ATELIER_SOFT_CAP);
+assert.equal(capacity.atCap, true);
+listAtelierObjects(uid).forEach((entry) => unpinAtelierObject(entry.id, uid));
 assert.equal(listAtelierObjects(uid).length, 0);
 
 console.log("verify:atelier — ok");
