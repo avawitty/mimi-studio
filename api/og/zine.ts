@@ -1,5 +1,4 @@
 import { sendJson } from "../../lib/apiUtils.js";
-import { getServerFirebaseAdmin } from "../../lib/serverFirebaseAdmin.js";
 import { proxyToFunctions } from "../../lib/proxyToFunctions.js";
 import { getZineById } from "../../lib/sovereign/store.js";
 
@@ -68,6 +67,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    const { getServerFirebaseAdmin } = await import("../../lib/serverFirebaseAdmin.js");
     const { db } = getServerFirebaseAdmin();
     if (!db) {
       const proxied = await proxyToFunctions("/api/og/zine", {

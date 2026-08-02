@@ -1,6 +1,5 @@
 import { extractSessionCookie } from "../sessionCookie.js";
 import { extractMimiSessionToken } from "../mimiSessionToken.js";
-import { getServerFirebaseAdmin } from "../serverFirebaseAdmin.js";
 
 export type SovereignAuthVia = "ingest_key" | "id_token" | "session_cookie" | "user_header";
 
@@ -34,8 +33,18 @@ const tryIngestKey = (
   return { matched: true, headerUid: readHeader(headers, "x-user-id") };
 };
 
+/**
+ * Lazy Admin accessors — never statically import serverFirebaseAdmin from this
+ * module. Vercel isolates crash at load (FUNCTION_INVOCATION_FAILED) when the
+ * firebase-admin graph is pulled into the sovereign write/SSE bundles.
+ */
+const loadAdmin = async () => {
+  const { getServerFirebaseAdmin } = await import("../serverFirebaseAdmin.js");
+  return getServerFirebaseAdmin();
+};
+
 const verifyIdTokenUid = async (token: string): Promise<string | null> => {
-  const { auth } = getServerFirebaseAdmin();
+  const { auth } = await loadAdmin();
   if (!auth) return null;
   try {
     const decoded = await auth.verifyIdToken(token);
@@ -46,7 +55,7 @@ const verifyIdTokenUid = async (token: string): Promise<string | null> => {
 };
 
 const verifySessionCookieUid = async (cookie: string): Promise<string | null> => {
-  const { auth } = getServerFirebaseAdmin();
+  const { auth } = await loadAdmin();
   if (!auth) return null;
   try {
     const decoded = await auth.verifySessionCookie(cookie, true);
@@ -82,7 +91,7 @@ export const authorizeSovereignWrite = async (
 
   const token = extractMimiSessionToken(headers);
   if (token) {
-    const { auth } = getServerFirebaseAdmin();
+    const { auth } = await loadAdmin();
     if (auth) {
       const uid = await verifyIdTokenUid(token);
       if (!uid) {
@@ -108,7 +117,7 @@ export const authorizeSovereignWrite = async (
   // EventSource and some same-origin credentialed calls only send cookies.
   const sessionCookie = extractSessionCookie(headers);
   if (sessionCookie) {
-    const { auth } = getServerFirebaseAdmin();
+    const { auth } = await loadAdmin();
     if (auth) {
       const uid = await verifySessionCookieUid(sessionCookie);
       if (!uid) {

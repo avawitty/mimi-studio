@@ -1,11 +1,6 @@
 import { z } from "zod";
 import { readJsonBody, requireMethod, sendError, sendJson, validateBody } from "../lib/apiUtils.js";
 import {
-  getServerFirebaseAdmin,
-  verifyMimiSession,
-} from "../lib/serverFirebaseAdmin.js";
-import { getStripeClient } from "../lib/stripeMembership.js";
-import {
   getMimiPlanForCheckout,
   getStripePriceForPlan,
   parseBillingInterval,
@@ -32,6 +27,12 @@ export default async function handler(req: any, res: any) {
       return;
     }
     const interval = parseBillingInterval(parsed.interval);
+
+    // Lazy-load Admin + Stripe — static serverFirebaseAdmin imports crash Vercel isolates.
+    const { getServerFirebaseAdmin, verifyMimiSession } = await import(
+      "../lib/serverFirebaseAdmin.js"
+    );
+    const { getStripeClient } = await import("../lib/stripeMembership.js");
 
     const decoded = await verifyMimiSession(req.headers || {});
     if (decoded.firebase?.sign_in_provider === "anonymous") {

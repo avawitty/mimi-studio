@@ -1,10 +1,4 @@
 import { sendJson, sendText } from "../lib/apiUtils.js";
-import { getServerFirebaseAdmin } from "../lib/serverFirebaseAdmin.js";
-import {
-  getStripeClient,
-  handleStripeWebhookEvent,
-  readRawBody,
-} from "../lib/stripeMembership.js";
 import { proxyToFunctions } from "../lib/proxyToFunctions.js";
 
 export const config = {
@@ -26,6 +20,11 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    const { getStripeClient, handleStripeWebhookEvent, readRawBody } = await import(
+      "../lib/stripeMembership.js"
+    );
+    const { getServerFirebaseAdmin } = await import("../lib/serverFirebaseAdmin.js");
+
     const stripe = getStripeClient();
     const rawBody = await readRawBody(req);
     const signature = req.headers["stripe-signature"];
