@@ -18,7 +18,7 @@
 ## Delivered
 
 - `runCulturalResidue()` staged pipeline (normalize → sources → evidence → associations/lineage/codes/countersignals → confidence → validate)
-- Offline heuristics for `office siren`-class fixtures (CI-safe)
+- Offline heuristics for `indie sleaze`-class fixtures (CI-safe)
 - Optional AI Gateway structured stages when `llm.apiKey` is provided (retry on invalid schema)
 - Cultural prompts + LLM intermediate Zod schemas
 - Model-proposed associations remain labeled; unknown source IDs dropped
@@ -32,7 +32,7 @@ npm run verify:residue
 
 ## Tests passed
 
-Offline Cultural Residue run for **office siren** validates schema, builds lineage/codes/used context, keeps model-proposed edges honest, and does not call the gateway.
+Offline Cultural Residue run for **indie sleaze** validates schema, builds lineage/codes/used context, keeps model-proposed edges honest, and does not call the gateway.
 
 ## Known limitations
 

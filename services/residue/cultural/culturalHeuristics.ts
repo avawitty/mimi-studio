@@ -188,10 +188,10 @@ export function generateAssociationsOffline(input: {
   associations.push({
     associationId: "assoc_model_antecedent",
     originNodeId: input.query,
-    targetNodeId: "earlier-secretary-chic-media",
+    targetNodeId: "earlier-adjacent-subcultures",
     relationship: "descends-from",
     description:
-      "Possible descent from earlier secretary-chic / corporate-sexy media tropes (model-proposed unless evidenced).",
+      "Possible descent from earlier adjacent subcultures or media tropes (model-proposed unless evidenced).",
     evidenceIds: [],
     confidence: 0.2,
     status: "model-proposed",

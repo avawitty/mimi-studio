@@ -45,12 +45,12 @@ function fixtureCultural() {
   const sources = [
     {
       sourceId: "src_1",
-      title: "Office Siren Explainer",
-      url: "https://example.com/office-siren",
+      title: "Indie Sleaze Explainer",
+      url: "https://example.com/indie-sleaze",
       sourceType: "journalism" as const,
       accessedAt: now,
       evidenceLayer: "B" as const,
-      excerpt: "The look migrated from niche TikTok edits into retail lookbooks.",
+      excerpt: "The look migrated from niche party blogs into short-form revival edits and retail capsules.",
     },
     {
       sourceId: "src_2",
@@ -58,7 +58,7 @@ function fixtureCultural() {
       sourceType: "reddit" as const,
       accessedAt: now,
       evidenceLayer: "C" as const,
-      excerpt: "People report seeing the silhouette everywhere at work.",
+      excerpt: "People report seeing flash photography and thrifted partywear everywhere again.",
     },
   ];
 
@@ -66,8 +66,8 @@ function fixtureCultural() {
     {
       evidenceId: "ev_1",
       sourceId: "src_1",
-      claimSupported: "Office siren amplified on short-form video platforms.",
-      excerpt: "migrated from niche TikTok edits",
+      claimSupported: "Indie sleaze amplified on short-form revival platforms.",
+      excerpt: "migrated from niche party blogs",
       evidenceStrength: "moderate" as const,
       sourceQualityScore: 0.7,
       relevanceScore: 0.9,
@@ -77,7 +77,7 @@ function fixtureCultural() {
     {
       evidenceId: "ev_2",
       sourceId: "src_2",
-      claimSupported: "Community reports workplace adoption.",
+      claimSupported: "Community reports nightlife revival adoption.",
       evidenceStrength: "weak" as const,
       sourceQualityScore: 0.4,
       relevanceScore: 0.6,
@@ -89,7 +89,7 @@ function fixtureCultural() {
   const definition = {
     claimId: "cl_def",
     statement:
-      "Office siren names a Y2K-adjacent corporate-sexy silhouette circulating on social platforms.",
+      "Indie sleaze names a 2010s-adjacent nightlife aesthetic circulating again across social platforms.",
     status: "interpretive" as const,
     evidenceIds: ["ev_1", "ev_2"],
     counterEvidenceIds: [] as string[],
@@ -109,7 +109,7 @@ function fixtureCultural() {
     metadata: createRunMetadata({
       runId: "run_cultural_fixture",
       mode: "cultural",
-      inputHash: hashResidueInput(["office siren", "cultural"]),
+      inputHash: hashResidueInput(["indie sleaze", "cultural"]),
       sourceCount: sources.length,
       warnings: [],
       status: "complete",
@@ -117,7 +117,7 @@ function fixtureCultural() {
       consentToStore: false,
       createdAt: now,
     }),
-    query: "office siren",
+    query: "indie sleaze",
     definition,
     origins: [],
     lineage: [
@@ -126,7 +126,7 @@ function fixtureCultural() {
         label: "Amplification",
         stage: "amplification",
         startYear: 2022,
-        description: "Short-form circulation increased visibility of the silhouette.",
+        description: "Short-form revival circulation increased visibility of the look.",
         evidenceIds: ["ev_1"],
         confidence: 0.55,
       },
@@ -136,8 +136,8 @@ function fixtureCultural() {
       {
         codeId: "code_1",
         category: "visual",
-        label: "Low-rise pencil skirt + thin knit",
-        description: "Recurring wardrobe code in look roundups.",
+        label: "Flash photography + thrifted partywear",
+        description: "Recurring visual codes in look roundups.",
         evidenceIds: ["ev_1"],
         confidence: 0.5,
       },
@@ -148,7 +148,7 @@ function fixtureCultural() {
     computationallyIntroducedMeanings: [
       {
         claimId: "cl_model",
-        statement: "Possible link to earlier secretary-chic media tropes (model-proposed).",
+        statement: "Possible link to earlier adjacent nightlife media tropes (model-proposed).",
         status: "model-proposed",
         evidenceIds: [],
         counterEvidenceIds: [],
@@ -302,7 +302,7 @@ async function main() {
   assert(literalMode(["a", "b", "a"])?.value === "a", "literal mode");
 
   const mmm = meanMedianModeResultSchema.parse({
-    subject: "office siren meanings",
+    subject: "indie sleaze meanings",
     analysisKind: "interpretive-metaphor",
     mean: {
       synthesis: "Blended center across journalism and community reports.",
@@ -310,12 +310,12 @@ async function main() {
       caveats: ["Interpretive metaphor, not a numeric average of culture."],
     },
     median: {
-      centralPosition: "Platform-amplified corporate-sexy silhouette.",
+      centralPosition: "Platform-amplified nightlife revival aesthetic.",
       excludedOrDownweightedOutliers: ["Fringe parody-only readings"],
       contributingSignalIds: ["ev_1"],
     },
     mode: {
-      dominantPattern: "TikTok-to-retail circulation narrative",
+      dominantPattern: "Short-form-to-retail circulation narrative",
       frequency: 2,
       contributingSignalIds: ["ev_1", "ev_2"],
     },
@@ -338,7 +338,7 @@ async function main() {
   // Acquisition stubs
   const manual = new ManualSourceProvider();
   const manualResult = await manual.acquire({
-    inquiry: "office siren",
+    inquiry: "indie sleaze",
     mode: "cultural",
     sourceUrls: ["https://example.com/a"],
     maxItems: 10,
@@ -347,7 +347,7 @@ async function main() {
 
   const apify = new ApifySourceAcquisitionProvider();
   const apifyResult = await apify.acquire({
-    inquiry: "office siren",
+    inquiry: "indie sleaze",
     mode: "cultural",
     maxItems: 10,
   });
@@ -364,7 +364,7 @@ async function main() {
     retention: "persisted",
     consentToStore: true,
     inputHash: hashResidueInput(["x"]),
-    queryOrExperience: "office siren",
+    queryOrExperience: "indie sleaze",
     sourceCount: 2,
     confidenceSummary: conf,
   });
@@ -413,13 +413,13 @@ async function main() {
   // --- Phase 3: Cultural Residue engine (offline / no gateway required) ---
   const engineOut = await runCulturalResidue(
     {
-      query: "office siren",
-      researchQuestion: "How did office siren travel from niche feeds into retail?",
-      sourceUrls: ["https://example.com/office-siren-explainer"],
+      query: "indie sleaze",
+      researchQuestion: "How did indie sleaze travel from niche nightlife media into retail?",
+      sourceUrls: ["https://example.com/indie-sleaze-explainer"],
       userNotes: [
-        "Office siren emerged on TikTok with pencil skirts and thin knits, then amplified on the FYP.",
-        "Retail lookbooks at Zara absorbed the silhouette; some users now report fatigue and backlash.",
-        "Possible descent from earlier secretary-chic media tropes remains speculative.",
+        "Indie sleaze emerged from party blogs and nightlife photography, then amplified on short-form revival feeds.",
+        "Retail lookbooks absorbed the thrifted partywear codes; some users now report fatigue and backlash.",
+        "Possible descent from earlier club-kid and digicam party cultures remains partly speculative.",
       ],
       analysisDepth: "standard",
       retention: "temporary",
@@ -427,13 +427,13 @@ async function main() {
     },
     {
       llm: { offline: true },
-      runId: "run_office_siren_offline",
+      runId: "run_indie_sleaze_offline",
       now,
     },
   );
 
   assert(engineOut.usedLlm === false, "offline engine does not call LLM");
-  assert(engineOut.result.query.toLowerCase().includes("office siren"), "query preserved");
+  assert(engineOut.result.query.toLowerCase().includes("indie sleaze"), "query preserved");
   assert(engineOut.result.evidence.length > 0, "engine extracted evidence");
   assert(engineOut.result.lineage.length > 0, "engine built lineage");
   assert(engineOut.result.culturalCodes.length > 0, "engine detected cultural codes");
