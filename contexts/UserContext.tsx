@@ -647,16 +647,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 2. Setup Real-time Listeners
       unsubscribeProfile.current = subscribeToUserProfile(uid, async (pData) => {
          try {
-             // Reuse boot-time subscription for ghosts; only re-fetch for registered users.
-             const nextSub = liveIsAnonymous()
-               ? null
-               : await fetchUserSubscription(uid);
+             // Ghosts never carry billing — clear explicitly (null ?? prev would keep stale sub).
+             const isGhost = liveIsAnonymous();
+             const nextSub = isGhost ? null : await fetchUserSubscription(uid);
              setProfile(prev => {
                  const merged = {
                    ...(prev || {}),
                    ...pData,
                    uid: uid,
-                   subscription: nextSub ?? prev?.subscription ?? null,
+                   subscription: isGhost ? null : (nextSub ?? prev?.subscription ?? null),
                  } as UserProfile;
                  return ensurePersonas(merged);
              });
@@ -667,14 +666,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       unsubscribePrefs.current = subscribeToUserPreferences(uid, async (prefsData) => {
          try {
-             const nextSub = liveIsAnonymous()
-               ? null
-               : await fetchUserSubscription(uid);
+             const isGhost = liveIsAnonymous();
+             const nextSub = isGhost ? null : await fetchUserSubscription(uid);
              setProfile(prev => {
                  const merged = {
                    ...(prev || {}),
                    ...prefsData,
-                   subscription: nextSub ?? prev?.subscription ?? null,
+                   subscription: isGhost ? null : (nextSub ?? prev?.subscription ?? null),
                  } as UserProfile;
                  return ensurePersonas(merged);
              });
@@ -827,8 +825,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (local) setProfile(ensurePersonas(local));
       }
     } finally {
-      setLoading(false);
-      reconciliationInProgress.current = null;
+      // Only clear the guard if this invocation still owns it — an aborted
+      // mid-flight reconcile must not wipe a newer reconcile's in-progress key.
+      if (reconciliationInProgress.current === reconcileKey) {
+        reconciliationInProgress.current = null;
+        setLoading(false);
+      }
       document.body.classList.add('hydrated');
     }
   }, [isEnvironmentRestricted]);

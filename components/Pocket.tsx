@@ -769,12 +769,16 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const [isFileDropActive, setIsFileDropActive] = useState(false);
  const [showFolderPicker, setShowFolderPicker] = useState(false);
 
- const loadPocket = useCallback(async (silent = false) => {
+ const loadPocket = useCallback(async (silent = false, opts?: { localOnly?: boolean }) => {
  if (!silent) setLoading(true);
  try {
  const localData = await getLocalPocket() || [];
  let cloudData: PocketItem[] = [];
- if (user && !user.isAnonymous) cloudData = await fetchPocketItems(user.uid) || []; 
+ // Event-driven refreshes stay local-only for registered users — onSnapshot /
+ // initial load cover cloud; avoid doubling collection reads on every write.
+ if (user && !user.isAnonymous && !opts?.localOnly) {
+   cloudData = await fetchPocketItems(user.uid) || [];
+ }
  const registry = new Map<string, PocketItem>();
  localData.forEach(item => { if (item && item.id) registry.set(item.id, item); });
  cloudData.forEach(item => { if (item && item.id) registry.set(item.id, item); });
@@ -787,7 +791,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const handleShardAdded = (e: any) => {
  setItems(prev => [e.detail, ...prev]);
  };
- const handlePocketUpdate = () => loadPocket(true);
+ const handlePocketUpdate = () => loadPocket(true, { localOnly: true });
  window.addEventListener('mimi:shard_added', handleShardAdded);
  window.addEventListener('mimi:pocket_updated', handlePocketUpdate);
  return () => {

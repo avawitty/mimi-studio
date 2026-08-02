@@ -45,7 +45,7 @@ const testConnection = async () => {
         break;
       }
 
-      // Quota / resource exhaustion: do not retry or reset network (makes it worse).
+      // Quota / resource exhaustion: stop immediately — no further probes.
       if (
         code === 'resource-exhausted' ||
         errorMessage.includes('RESOURCE_EXHAUSTED') ||
@@ -53,6 +53,7 @@ const testConnection = async () => {
         errorMessage.includes('quota')
       ) {
         console.warn("MIMI // Connection Test: Firestore quota exhausted; skipping retries.");
+        retries = 0;
         break;
       }
 
@@ -64,12 +65,12 @@ const testConnection = async () => {
 
       console.warn(`MIMI // Connection Test: Attempt failed (${retries} left). Error: ${errorMessage}`);
 
-      if (retries > 1) {
+      retries -= 1;
+      if (retries > 0) {
         await new Promise(resolve => setTimeout(resolve, 1000));
       } else if (errorMessage.includes('not-found') || errorMessage.includes('offline') || errorMessage.includes('does not exist')) {
         logFirestoreError(error, OperationType.GET, 'system/connection_test');
       }
-      retries--;
     }
   }
 };

@@ -32,6 +32,13 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   const [searchQuery, setSearchQuery] = useState('');
   const [commentZineId, setCommentZineId] = useState<string | null>(null);
 
+  // Identity change must resettle Floor — don't keep another account's shelf / empty quota state.
+  useEffect(() => {
+    setFloorSettled(false);
+    setCommunityZines([]);
+    setCloudZines([]);
+  }, [user?.uid, user?.isAnonymous]);
+
   useEffect(() => {
     let unsubUser = () => {};
     const load = async () => {
