@@ -23,6 +23,7 @@ Dolls are **projections**, not identity SoT. The staple Imagen (or Gateway flash
 2. Portrait regenerate calls image API with `allowFaces: true`.
 3. Studio doll companion context names the shell so zine plates preserve species lock.
 4. Offline verify script asserts staple invariants (neck, porcelain/BJD, serene, face allowed).
+5. First open of a doll without `generatedImageUrl` auto-runs shell projection (cultish onboarding beat).
 
 ## Implementation map
 - `services/dollEngine/staplePrompt.ts` — staple + builders

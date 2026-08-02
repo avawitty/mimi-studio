@@ -11,7 +11,11 @@ const PUBLIC_FACE_MODES = new Set([
   "signature",
   "showcase",
   "archival",
+  "mimi-rip",
 ]);
+
+/** Public faces that sit on a forced-dark plate (chrome must match) */
+const DARK_PLATE_MODES = new Set(["mimi-rip"]);
 
 export const StudioChrome: React.FC<{
   theme: StudioTheme;
@@ -43,6 +47,7 @@ export const StudioChrome: React.FC<{
   const { user, profile } = useUser();
   const isDark = theme === "dark";
   const isPublicFace = PUBLIC_FACE_MODES.has(viewMode);
+  const isDarkPlate = DARK_PLATE_MODES.has(viewMode);
   const [stashOpen, setStashOpen] = React.useState(pocketStashOpen);
 
   React.useEffect(() => {
@@ -126,7 +131,12 @@ export const StudioChrome: React.FC<{
       case "the-edit":
         return "The Edit";
       case "mimi-drop":
-        return "Mimi Drop";
+        // Avoid "Mimi …" under CSS uppercase → never render as MIMI DROP
+        return "Drop";
+      case "mimi-dolls":
+        return "Dolls";
+      case "mimi-rip":
+        return "mimi.rip";
       case "proscenium":
         return "Proscenium";
       case "sanctuary":
@@ -144,13 +154,28 @@ export const StudioChrome: React.FC<{
     }
   };
 
+  const pageTitle = getPageTitle(viewMode);
+  // Domains / brand-safe labels must not sit under uppercase (→ MIMI RIP)
+  const titleNeedsCasePreserve =
+    pageTitle.includes(".") || /^mimi/i.test(pageTitle);
+  const chromeBtn = isDarkPlate
+    ? "border-white/15 text-stone-400 hover:text-stone-100 hover:bg-white/5"
+    : "studio-border studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5";
+  const chromeIdentity = isDarkPlate
+    ? "border-white/15 text-stone-100 hover:bg-white/5"
+    : "studio-border studio-text-ink hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5";
+
   return (
     <header
-      className={`studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 flex items-center justify-between gap-3 z-20 studio-chrome--mobile-safe ${
+      className={`studio-chrome relative shrink-0 border-b px-4 md:px-8 flex items-center justify-between gap-3 z-20 studio-chrome--mobile-safe ${
         isPublicFace ? "pb-2.5" : "pb-3.5"
+      } ${
+        isDarkPlate
+          ? "border-white/10 bg-[#050506] text-stone-100"
+          : "studio-border"
       }`}
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.875rem)" }}
-      data-chrome={isPublicFace ? "public-face" : "worktable"}
+      data-chrome={isPublicFace ? (isDarkPlate ? "public-face-dark" : "public-face") : "worktable"}
     >
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (
@@ -180,12 +205,22 @@ export const StudioChrome: React.FC<{
                 }
               }}
             >
-              <span className="block font-serif italic text-[27px] leading-none tracking-[0.01em] studio-text-ink">
+              <span
+                className={`block font-serif italic text-[27px] leading-none tracking-[0.01em] ${
+                  isDarkPlate ? "text-stone-100" : "studio-text-ink"
+                }`}
+              >
                 Mimi
               </span>
             </button>
-            <span className="font-mono text-[9px] uppercase tracking-[0.32em] studio-text-muted mt-1.5 font-bold flex items-center gap-1.5">
-              {getPageTitle(viewMode)}
+            <span
+              className={`font-mono text-[9px] mt-1.5 font-bold flex items-center gap-1.5 ${
+                titleNeedsCasePreserve
+                  ? "normal-case tracking-[0.18em]"
+                  : "uppercase tracking-[0.32em]"
+              } ${isDarkPlate ? "text-stone-500" : "studio-text-muted"}`}
+            >
+              {pageTitle}
             </span>
           </>
         )}
@@ -242,7 +277,7 @@ export const StudioChrome: React.FC<{
             type="button"
             onClick={onOpenMenu}
             aria-label="Open full menu"
-            className="md:hidden w-9 h-9 border studio-border flex items-center justify-center studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 transition-all duration-300"
+            className={`md:hidden w-9 h-9 border flex items-center justify-center active:scale-90 transition-all duration-300 ${chromeBtn}`}
           >
             <Menu size={16} strokeWidth={1.5} />
           </button>
@@ -301,19 +336,23 @@ export const StudioChrome: React.FC<{
           onClick={onToggleTheme}
           className={`${
             isPublicFace ? "hidden sm:flex" : "flex"
-          } w-9 h-9 border studio-border items-center justify-center studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 transition-all hover:scale-105 duration-300`}
+          } w-9 h-9 border items-center justify-center active:scale-90 transition-all hover:scale-105 duration-300 ${chromeBtn}`}
         >
           {isDark ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />}
         </button>
 
         {isLoading ? (
-          <div className="w-24 h-9 bg-stone-200 dark:bg-stone-800 animate-pulse border studio-border" />
+          <div
+            className={`w-24 h-9 animate-pulse border ${
+              isDarkPlate ? "bg-white/10 border-white/15" : "bg-stone-200 dark:bg-stone-800 studio-border"
+            }`}
+          />
         ) : user && !user.isAnonymous ? (
           <button
             type="button"
             disabled={isGenerating}
             onClick={() => window.dispatchEvent(new CustomEvent("mimi:change_view", { detail: "profile" }))}
-            className={`flex items-center gap-2 px-3 py-1.5 border studio-border hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black studio-text-ink h-9 ${
+            className={`flex items-center gap-2 px-3 py-1.5 border active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black h-9 ${chromeIdentity} ${
               isGenerating ? "opacity-75 cursor-wait" : ""
             }`}
           >
@@ -321,7 +360,9 @@ export const StudioChrome: React.FC<{
               <img
                 src={profile.photoURL}
                 alt=""
-                className="w-4 h-4 object-cover grayscale border studio-border rounded-none shrink-0"
+                className={`w-4 h-4 object-cover grayscale border rounded-none shrink-0 ${
+                  isDarkPlate ? "border-white/20" : "studio-border"
+                }`}
                 referrerPolicy="no-referrer"
               />
             ) : (
@@ -333,7 +374,7 @@ export const StudioChrome: React.FC<{
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent("mimi:open_gateway"))}
-            className="px-3.5 py-1.5 border studio-border hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black studio-text-ink h-9"
+            className={`px-3.5 py-1.5 border active:scale-95 transition-all hover:scale-[1.02] duration-300 font-mono text-[9px] uppercase tracking-widest font-black h-9 ${chromeIdentity}`}
           >
             Sign On
           </button>

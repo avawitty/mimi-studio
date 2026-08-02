@@ -29,6 +29,7 @@
     "verify:rss-feed": "tsx scripts/verifyCreatorRssFeed.ts",
     "cursor:prompt": "tsx scripts/cursorAgentPrompt.ts",
     "cursor:cloud-review": "tsx scripts/cursorCloudReview.ts",
+    "cursor:fix-bot-comments": "tsx scripts/cursorFixBotComments.ts",
     "review:mobile": "node scripts/mobile-ux-review.mjs",
     "brand:icons": "node scripts/renderBrandIcons.mjs",
     "test:e2e": "playwright test",

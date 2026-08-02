@@ -108,14 +108,19 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
     const saved = localStorage.getItem(`mimi_doll_chat_${doll.id}`);
     if (saved) return JSON.parse(saved);
+    const awakening = doll.generatedImageUrl
+      ? `Shell online. Creator, I am ${doll.name}. Ego partitioned, cognitive lace taut — ready for conditioning.`
+      : `Shell dormant. Creator, I am ${doll.name}. Projecting the Mimi Shell onto your graph — porcelain species lock, then conditioning.`;
     return [
       {
         role: 'assistant',
-        content: `Neural system active. Creator, I am ${doll.name}. My ego is partitioned, my cognitive lace is taut, and I am ready for conditioning. Select an outfit implant or input a direct stimulus.`,
+        content: awakening,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ];
   });
+  /** One-shot cultish onboarding: first open without a portrait auto-runs shell projection. */
+  const autoShellProjectedRef = useRef(false);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [ritualOutput, setRitualOutput] = useState<string | null>(null);
