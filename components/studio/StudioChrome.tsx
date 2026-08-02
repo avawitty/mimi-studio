@@ -4,10 +4,17 @@ import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
 import {
+<<<<<<< HEAD
+  chromeDataAttr,
+  isDarkPlateMode,
+  isPublicFaceMode,
+} from "../../lib/chamberChrome";
+=======
   CREATOR_PATH,
   DARK_PLATE_MODES,
   PUBLIC_FACE_MODES,
 } from "../../lib/design-system";
+>>>>>>> origin/main
 
 export const StudioChrome: React.FC<{
   theme: StudioTheme;
@@ -38,8 +45,8 @@ export const StudioChrome: React.FC<{
 }) => {
   const { user, profile } = useUser();
   const isDark = theme === "dark";
-  const isPublicFace = PUBLIC_FACE_MODES.has(viewMode);
-  const isDarkPlate = DARK_PLATE_MODES.has(viewMode);
+  const isPublicFace = isPublicFaceMode(viewMode);
+  const isDarkPlate = isDarkPlateMode(viewMode);
   const [stashOpen, setStashOpen] = React.useState(pocketStashOpen);
 
   React.useEffect(() => {
@@ -165,7 +172,7 @@ export const StudioChrome: React.FC<{
           : "studio-border"
       }`}
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.875rem)" }}
-      data-chrome={isPublicFace ? (isDarkPlate ? "public-face-dark" : "public-face") : "worktable"}
+      data-chrome={chromeDataAttr(viewMode)}
     >
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (
