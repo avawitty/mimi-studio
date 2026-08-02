@@ -44,9 +44,8 @@ export default async function handler(req: any, res: any) {
 
     const unsubscribe = subscribeSovereignEvents((event) => {
       if (scope === "public") {
-        if (event.type === "zine_upsert" && event.isPublic) {
-          res.write(`event: zine\ndata: ${JSON.stringify(event)}\n\n`);
-        } else if (event.type === "zine_delete") {
+        // Include unpublish (isPublic:false) so Floor clients refetch and drop it.
+        if (event.type === "zine_upsert" || event.type === "zine_delete") {
           res.write(`event: zine\ndata: ${JSON.stringify(event)}\n\n`);
         }
         return;

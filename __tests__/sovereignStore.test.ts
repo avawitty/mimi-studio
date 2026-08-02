@@ -160,6 +160,16 @@ describe("sovereign store", () => {
     ).toBe(false);
   });
 
+  it("refuses upsert that would steal another user's zine id", async () => {
+    await upsertZine(sampleZine({ id: "owned", userId: "owner_a" }));
+    await expect(
+      upsertZine(sampleZine({ id: "owned", userId: "owner_b", title: "Hijack" })),
+    ).rejects.toThrow(/owned by another user/i);
+    expect((await getZineById("owned", { requesterUid: "owner_a", includePrivate: true }))?.title).toBe(
+      "Floor Signal",
+    );
+  });
+
   it("deletes zines from the archive", async () => {
     await upsertZine(sampleZine({ id: "del1" }));
     expect(await deleteZine("del1", "user_1")).toBe(true);

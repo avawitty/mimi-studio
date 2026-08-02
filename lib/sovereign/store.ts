@@ -54,62 +54,73 @@ export const slimZineForFloor = (zine: ZineMetadata): ZineMetadata => {
 
 export const sovereignStatus = async () => {
   const gatewayEmbed = isSovereignGatewayEmbedEnabled();
-  const db = await getSovereignDb();
-  if (!db) {
-    return {
-      enabled: isSovereignEnabled(),
-      ready: false,
-      backend: null as "sqlite" | "postgres" | null,
-      path: null as string | null,
-      zineCount: 0,
-      publicCount: 0,
-      profileCount: 0,
-      pocketCount: 0,
-      schemaVersion: null as number | null,
-      latencyMs: null as number | null,
-      gatewayEmbed,
-      embeddedCount: 0,
-    };
-  }
-
-  let latencyMs: number | null = null;
-  if (db.ping) {
-    try {
-      latencyMs = await db.ping();
-    } catch {
-      latencyMs = null;
-    }
-  }
-
-  const total = await db.prepare("SELECT COUNT(*) AS n FROM zines").get<{ n: number | string }>();
-  const pub = await db
-    .prepare("SELECT COUNT(*) AS n FROM zines WHERE is_public = 1")
-    .get<{ n: number | string }>();
-  const profiles = await db
-    .prepare("SELECT COUNT(*) AS n FROM profiles")
-    .get<{ n: number | string }>();
-  const pocket = await db
-    .prepare("SELECT COUNT(*) AS n FROM pocket_items")
-    .get<{ n: number | string }>();
-  const schema = await db
-    .prepare("SELECT value FROM schema_meta WHERE key = ?")
-    .get<{ value: string }>("schema_version");
-  const embeddedCount = await countIndexedEmbeddings();
-
-  return {
-    enabled: true,
-    ready: true,
-    backend: db.backend,
-    path: db.backend === "sqlite" ? resolveSovereignDbPath() : db.pathOrUrl,
-    zineCount: Number(total?.n || 0),
-    publicCount: Number(pub?.n || 0),
-    profileCount: Number(profiles?.n || 0),
-    pocketCount: Number(pocket?.n || 0),
-    schemaVersion: Number(schema?.value || SOVEREIGN_SCHEMA_VERSION),
-    latencyMs,
+  const empty = {
+    enabled: isSovereignEnabled(),
+    ready: false,
+    backend: null as "sqlite" | "postgres" | null,
+    path: null as string | null,
+    zineCount: 0,
+    publicCount: 0,
+    profileCount: 0,
+    pocketCount: 0,
+    schemaVersion: null as number | null,
+    latencyMs: null as number | null,
     gatewayEmbed,
-    embeddedCount,
+    embeddedCount: 0,
   };
+
+  try {
+    const db = await getSovereignDb();
+    if (!db) return empty;
+
+    let latencyMs: number | null = null;
+    if (db.ping) {
+      try {
+        latencyMs = await db.ping();
+      } catch {
+        latencyMs = null;
+      }
+    }
+
+    const total = await db.prepare("SELECT COUNT(*) AS n FROM zines").get<{ n: number | string }>();
+    const pub = await db
+      .prepare("SELECT COUNT(*) AS n FROM zines WHERE is_public = 1")
+      .get<{ n: number | string }>();
+    const profiles = await db
+      .prepare("SELECT COUNT(*) AS n FROM profiles")
+      .get<{ n: number | string }>();
+    const pocket = await db
+      .prepare("SELECT COUNT(*) AS n FROM pocket_items")
+      .get<{ n: number | string }>();
+    const schema = await db
+      .prepare("SELECT value FROM schema_meta WHERE key = ?")
+      .get<{ value: string }>("schema_version");
+
+    let embeddedCount = 0;
+    try {
+      embeddedCount = await countIndexedEmbeddings();
+    } catch {
+      embeddedCount = 0;
+    }
+
+    return {
+      enabled: true,
+      ready: true,
+      backend: db.backend,
+      path: db.backend === "sqlite" ? resolveSovereignDbPath() : db.pathOrUrl,
+      zineCount: Number(total?.n || 0),
+      publicCount: Number(pub?.n || 0),
+      profileCount: Number(profiles?.n || 0),
+      pocketCount: Number(pocket?.n || 0),
+      schemaVersion: Number(schema?.value || SOVEREIGN_SCHEMA_VERSION),
+      latencyMs,
+      gatewayEmbed,
+      embeddedCount,
+    };
+  } catch (error) {
+    console.warn("MIMI // Sovereign status failed:", error);
+    return empty;
+  }
 };
 
 export const listPublicZinesPage = async (
@@ -190,10 +201,8 @@ export const listPublicZinesPage = async (
 
     const page: PublicZinePage = {
       zines: ranked.map((row) => slimZineForFloor(asZine(row.data))),
-      nextCursor:
-        ranked.length === take
-          ? Number(ranked[ranked.length - 1]?.timestamp || 0) || null
-          : null,
+      // Hybrid rank order is not timestamp-keyset compatible — no page 2.
+      nextCursor: null,
       searchMode: usedGateway && hits.length > 0 ? "hybrid" : "keyword",
       embeddingModel: model,
     };
@@ -297,10 +306,11 @@ export const getZineById = async (
     .get<{ data: string; is_public: number | string; user_id: string }>(id);
   if (!row) return null;
   const zine = asZine(row.data);
-  const isPublic = Boolean(Number(row.is_public) || zine.isPublic);
-  if (isPublic) return zine;
+  // Trust the SQL column — JSON `isPublic` can lag after unpublish.
+  const isPublic = Number(row.is_public) === 1;
+  if (isPublic) return { ...zine, isPublic: true };
   if (opts?.includePrivate && opts.requesterUid && opts.requesterUid === row.user_id) {
-    return zine;
+    return { ...zine, isPublic: false };
   }
   return null;
 };
@@ -344,11 +354,19 @@ export const upsertZine = async (
     throw new Error("Zine id and userId are required");
   }
 
+  const existing = await db
+    .prepare("SELECT user_id FROM zines WHERE id = ?")
+    .get<{ user_id: string }>(zine.id);
+  if (existing?.user_id && existing.user_id !== zine.userId) {
+    throw new Error("Zine id is owned by another user");
+  }
+
   const now = Date.now();
   const isPublic = zine.isPublic ? 1 : 0;
   const timestamp = Number(zine.timestamp || zine.createdAt || now);
   const publishedAt = zine.publishedAt ?? (isPublic ? timestamp : null);
-  const payload = JSON.stringify(zine);
+  // Keep JSON payload aligned with the SQL visibility column.
+  const payload = JSON.stringify({ ...zine, isPublic: Boolean(isPublic) });
 
   await db
     .prepare(
@@ -357,7 +375,6 @@ export const upsertZine = async (
       timestamp, cover_image_url, likes, data, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
-      user_id = excluded.user_id,
       user_handle = excluded.user_handle,
       title = excluded.title,
       tone = excluded.tone,
@@ -367,7 +384,8 @@ export const upsertZine = async (
       cover_image_url = excluded.cover_image_url,
       likes = excluded.likes,
       data = excluded.data,
-      updated_at = excluded.updated_at`,
+      updated_at = excluded.updated_at
+    WHERE zines.user_id = excluded.user_id`,
     )
     .run(
       zine.id,
@@ -394,6 +412,16 @@ export const upsertZine = async (
   if (!opts?.skipEmbed) {
     scheduleZineEmbedding(zine);
   }
+};
+
+/** Destructive — used by export --replace to avoid stale Floor rows. */
+export const clearAllZines = async (): Promise<number> => {
+  const db = await getSovereignDb();
+  if (!db) return 0;
+  const before = await db.prepare("SELECT COUNT(*) AS n FROM zines").get<{ n: number | string }>();
+  await db.prepare("DELETE FROM zines").run();
+  cacheInvalidatePrefix("floor:");
+  return Number(before?.n || 0);
 };
 
 export const deleteZine = async (id: string, userId?: string): Promise<boolean> => {
@@ -529,21 +557,19 @@ export const importZines = async (
   let imported = 0;
   let skipped = 0;
 
-  await db.withTransaction(async () => {
-    for (const zine of batch) {
-      if (!zine?.id || !zine.userId) {
-        skipped += 1;
-        continue;
-      }
-      try {
-        // Defer Gateway embeds to /api/sovereign/reindex so imports stay fast.
-        await upsertZine(zine, { skipEmbed: true });
-        imported += 1;
-      } catch {
-        skipped += 1;
-      }
+  // Sequential upserts (no shared prepare hijack). Embeds deferred to reindex.
+  for (const zine of batch) {
+    if (!zine?.id || !zine.userId) {
+      skipped += 1;
+      continue;
     }
-  });
+    try {
+      await upsertZine(zine, { skipEmbed: true });
+      imported += 1;
+    } catch {
+      skipped += 1;
+    }
+  }
 
   return { imported, skipped, truncated };
 };
