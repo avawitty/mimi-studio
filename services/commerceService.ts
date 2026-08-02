@@ -3,7 +3,11 @@ import { withResilience, ORACLE_PERSONA } from './geminiService';
 import { Type } from '@google/genai';
 import { CodexState } from './codexService';
 
-// Mock product database
+/**
+ * Sample catalog used only when Firestore `products` is empty.
+ * Affiliate URLs are placeholders — The Edit prefers live product docs.
+ * @deprecated Prefer Firestore `products` or Shopify catalog results.
+ */
 export const MOCK_PRODUCTS: Product[] = [
   {
     id: 'p1',

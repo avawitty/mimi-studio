@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Loader2, Copy, Check, ShoppingBag, ExternalLink, Network, Layers, Database } from 'lucide-react';
+import { Search, Loader2, Copy, Check, ExternalLink, Network, Layers, Database } from 'lucide-react';
 
 interface AestheticRetrievalResult {
  visualTokens: {
@@ -16,31 +16,75 @@ interface AestheticRetrievalResult {
  marketplaces: { name: string; count: number }[];
 }
 
-const MOCK_DATA: AestheticRetrievalResult = {
- visualTokens: {
- structure: ['corset seam', 'paneling', 'boning illusion'],
- baseGarment: ['button-down', 'shirting', 'poplin'],
- fitLogic: ['cinched waist', 'A-line', 'mini'],
- fabricSignal: ['crisp cotton', 'matte', 'slightly stiff']
- },
- foundations: {
- designers: ['Dion Lee', 'Danielle Guizio', 'Orseund Iris'],
- googleItems: ['Structured Poplin Corset Dress', 'Black Tailored Mini']
- },
- interpretations: [
- 'black corset shirt dress',
- 'black structured button down dress',
- 'black cinched waist poplin dress',
- 'black tailored mini dress structured waist',
- 'black panel seam dress fitted waist'
- ],
- marketplaces: [
- { name: 'Depop', count: 12 },
- { name: 'The RealReal', count: 4 },
- { name: 'Vestiaire', count: 7 },
- { name: 'eBay', count: 23 },
- { name: 'Poshmark', count: 8 }
- ]
+const EMPTY_RESULT: AestheticRetrievalResult = {
+ visualTokens: { structure: [], baseGarment: [], fitLogic: [], fabricSignal: [] },
+ foundations: { designers: [], googleItems: [] },
+ interpretations: [],
+ marketplaces: [],
+};
+
+const MARKETPLACE_FAN = [
+  "Depop",
+  "The RealReal",
+  "Vestiaire",
+  "eBay",
+  "Poshmark",
+  "Grailed",
+] as const;
+
+const parseRetrievalJson = (raw: string): AestheticRetrievalResult | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        parsed = JSON.parse(trimmed.slice(start, end + 1));
+      } catch {
+        return null;
+      }
+    }
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+
+  const asStringArray = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.map((v) => String(v).trim()).filter(Boolean).slice(0, 12)
+      : [];
+
+  const tokens = parsed.visualTokens || {};
+  const interpretations = asStringArray(parsed.interpretations);
+  const marketplaces = Array.isArray(parsed.marketplaces)
+    ? parsed.marketplaces
+        .map((m: any) => ({
+          name: String(m?.name || "").trim(),
+          count: Math.max(0, Math.min(99, Number(m?.count) || 0)),
+        }))
+        .filter((m: { name: string }) => m.name)
+        .slice(0, 8)
+    : MARKETPLACE_FAN.map((name) => ({
+        name,
+        count: Math.max(1, Math.min(20, interpretations.length * 2)),
+      }));
+
+  return {
+    visualTokens: {
+      structure: asStringArray(tokens.structure),
+      baseGarment: asStringArray(tokens.baseGarment),
+      fitLogic: asStringArray(tokens.fitLogic),
+      fabricSignal: asStringArray(tokens.fabricSignal),
+    },
+    foundations: {
+      designers: asStringArray(parsed.foundations?.designers),
+      googleItems: asStringArray(parsed.foundations?.googleItems),
+    },
+    interpretations,
+    marketplaces,
+  };
 };
 
 interface TheThimbleProps {
@@ -50,8 +94,9 @@ interface TheThimbleProps {
 
 export const TheThimble: React.FC<TheThimbleProps> = ({ profile, isOpen }) => {
  const [anchorQuery, setAnchorQuery] = useState('');
- const [retrievalState, setRetrievalState] = useState<'idle' | 'extracting' | 'expanding' | 'fanning' | 'complete'>('idle');
- const [mockResults, setMockResults] = useState<AestheticRetrievalResult | null>(null);
+ const [retrievalState, setRetrievalState] = useState<'idle' | 'extracting' | 'expanding' | 'fanning' | 'complete' | 'error'>('idle');
+ const [results, setResults] = useState<AestheticRetrievalResult | null>(null);
+ const [errorMessage, setErrorMessage] = useState<string | null>(null);
  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
  if (!isOpen) return null;
@@ -59,17 +104,75 @@ export const TheThimble: React.FC<TheThimbleProps> = ({ profile, isOpen }) => {
  const handleRetrieve = async () => {
  if (!anchorQuery.trim()) return;
  setRetrievalState('extracting');
- setMockResults(null);
- 
- await new Promise(r => setTimeout(r, 1200));
- setRetrievalState('expanding');
- 
- await new Promise(r => setTimeout(r, 1200));
- setRetrievalState('fanning');
- 
- await new Promise(r => setTimeout(r, 1200));
- setMockResults(MOCK_DATA);
- setRetrievalState('complete');
+ setResults(null);
+ setErrorMessage(null);
+
+ try {
+   const headers: Record<string, string> = { "Content-Type": "application/json" };
+   try {
+     const { auth } = await import("../services/firebaseInit");
+     const token = await auth.currentUser?.getIdToken();
+     if (token) headers["x-user-token"] = `Bearer ${token}`;
+   } catch {
+     // unsigned sessions may still use server gateway
+   }
+
+   setRetrievalState("expanding");
+   const profileHint = profile?.aestheticSignature || profile?.currentSeason || "";
+   const res = await fetch("/api/mimi/generate-text", {
+     method: "POST",
+     headers,
+     body: JSON.stringify({
+       role: "textDeep",
+       temperature: 0.45,
+       system:
+         "You are Mimi Engine 4 (The Thimble). Return ONLY valid JSON for aesthetic procurement retrieval. No markdown.",
+       prompt: `Extract visual DNA and marketplace search interpretations for this anchor.
+
+Anchor: ${anchorQuery.trim()}
+User context: ${profileHint || "none"}
+
+Return JSON:
+{
+  "visualTokens": {
+    "structure": ["..."],
+    "baseGarment": ["..."],
+    "fitLogic": ["..."],
+    "fabricSignal": ["..."]
+  },
+  "foundations": {
+    "designers": ["emerging or archival designers"],
+    "googleItems": ["literal product descriptors"]
+  },
+  "interpretations": ["5-8 boolean-friendly search queries"],
+  "marketplaces": [{"name":"Depop","count":0}]
+}
+
+marketplace count is a relative expected hit density 0-30, not live inventory.`,
+     }),
+   });
+
+   setRetrievalState("fanning");
+   if (!res.ok) {
+     const err = await res.json().catch(() => ({}));
+     const message =
+       err?.error?.message || err?.error || `Retrieval failed (${res.status})`;
+     throw new Error(typeof message === "string" ? message : "Retrieval failed");
+   }
+
+   const payload = await res.json();
+   const parsed = parseRetrievalJson(String(payload?.text || ""));
+   if (!parsed || parsed.interpretations.length === 0) {
+     throw new Error("Oracle returned an empty retrieval map. Retry with a sharper anchor.");
+   }
+   setResults(parsed);
+   setRetrievalState("complete");
+ } catch (err: any) {
+   console.error("MIMI // Thimble retrieval failed:", err);
+   setErrorMessage(err?.message || "Aesthetic retrieval unavailable");
+   setResults(EMPTY_RESULT);
+   setRetrievalState("error");
+ }
  };
 
  const copyToClipboard = (text: string, index: number) => {
@@ -109,10 +212,10 @@ export const TheThimble: React.FC<TheThimbleProps> = ({ profile, isOpen }) => {
  
  <button
  onClick={handleRetrieve}
- disabled={retrievalState !== 'idle' && retrievalState !== 'complete'}
+ disabled={retrievalState === 'extracting' || retrievalState === 'expanding' || retrievalState === 'fanning'}
  className="w-full bg-nous-text text-nous-base p-3 font-bold uppercase tracking-widest hover:bg-nous-text0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 rounded-none"
  >
- {retrievalState === 'idle' || retrievalState === 'complete' ? (
+ {retrievalState === 'idle' || retrievalState === 'complete' || retrievalState === 'error' ? (
  <><Search className="w-4 h-4"/> Extract Visual DNA</>
  ) : (
  <><Loader2 className="w-4 h-4 animate-spin"/> Processing...</>
@@ -121,8 +224,13 @@ export const TheThimble: React.FC<TheThimbleProps> = ({ profile, isOpen }) => {
  </div>
 
  <div className="flex-1 overflow-y-auto p-4 space-y-6 relative z-10">
+ {retrievalState === 'error' && errorMessage && (
+   <div className="border border-red-300 bg-red-50 text-red-800 p-3 text-[10px] uppercase tracking-widest">
+     {errorMessage}
+   </div>
+ )}
  {/* Loading States */}
- {retrievalState !== 'idle' && retrievalState !== 'complete' && (
+ {retrievalState !== 'idle' && retrievalState !== 'complete' && retrievalState !== 'error' && (
  <div className="space-y-4 font-mono text-[10px] uppercase tracking-widest text-nous-subtle mt-4">
  <div className={`flex items-center gap-3 ${retrievalState === 'extracting' ? 'text-nous-text ' : 'opacity-50'}`}>
  {retrievalState === 'extracting' ? <Loader2 className="w-3 h-3 animate-spin"/> : <Check className="w-3 h-3"/>}
@@ -140,7 +248,7 @@ export const TheThimble: React.FC<TheThimbleProps> = ({ profile, isOpen }) => {
  )}
 
  {/* Results */}
- {retrievalState === 'complete' && mockResults && (
+ {retrievalState === 'complete' && results && (
  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
  
  {/* Visual Tokens */}
@@ -152,25 +260,25 @@ export const TheThimble: React.FC<TheThimbleProps> = ({ profile, isOpen }) => {
  <div>
  <div className="text-[9px] uppercase text-nous-subtle mb-1">Structure</div>
  <div className="flex flex-wrap gap-1">
- {mockResults.visualTokens.structure.map(t => <span key={t} className="px-1.5 py-0.5 bg-stone-200 text-[9px]">{t}</span>)}
+ {results.visualTokens.structure.map(t => <span key={t} className="px-1.5 py-0.5 bg-stone-200 text-[9px]">{t}</span>)}
  </div>
  </div>
  <div>
  <div className="text-[9px] uppercase text-nous-subtle mb-1">Base Garment</div>
  <div className="flex flex-wrap gap-1">
- {mockResults.visualTokens.baseGarment.map(t => <span key={t} className="px-1.5 py-0.5 bg-stone-200 text-[9px]">{t}</span>)}
+ {results.visualTokens.baseGarment.map(t => <span key={t} className="px-1.5 py-0.5 bg-stone-200 text-[9px]">{t}</span>)}
  </div>
  </div>
  <div>
  <div className="text-[9px] uppercase text-nous-subtle mb-1">Fit Logic</div>
  <div className="flex flex-wrap gap-1">
- {mockResults.visualTokens.fitLogic.map(t => <span key={t} className="px-1.5 py-0.5 bg-stone-200 text-[9px]">{t}</span>)}
+ {results.visualTokens.fitLogic.map(t => <span key={t} className="px-1.5 py-0.5 bg-stone-200 text-[9px]">{t}</span>)}
  </div>
  </div>
  <div>
  <div className="text-[9px] uppercase text-nous-subtle mb-1">Fabric Signal</div>
  <div className="flex flex-wrap gap-1">
- {mockResults.visualTokens.fabricSignal.map(t => <span key={t} className="px-1.5 py-0.5 bg-stone-200 text-[9px]">{t}</span>)}
+ {results.visualTokens.fabricSignal.map(t => <span key={t} className="px-1.5 py-0.5 bg-stone-200 text-[9px]">{t}</span>)}
  </div>
  </div>
  </div>
@@ -182,7 +290,7 @@ export const TheThimble: React.FC<TheThimbleProps> = ({ profile, isOpen }) => {
  <Network className="w-3 h-3"/> Interpretations
  </div>
  <div className="space-y-2">
- {mockResults.interpretations.map((interp, idx) => (
+ {results.interpretations.map((interp, idx) => (
  <div key={idx} className="bg-white/50 /50 border border-nous-border p-2 flex items-center justify-between group">
  <span className="text-[10px] truncate pr-2">{interp}</span>
  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -205,7 +313,7 @@ export const TheThimble: React.FC<TheThimbleProps> = ({ profile, isOpen }) => {
  <Database className="w-3 h-3"/> Marketplaces
  </div>
  <div className="space-y-1">
- {mockResults.marketplaces.map(m => (
+ {results.marketplaces.map(m => (
  <div key={m.name} className="flex justify-between text-[10px] items-center">
  <span className="text-nous-subtle">{m.name}</span>
  <span className="font-bold bg-stone-200 px-1.5 py-0.5">{m.count}</span>
@@ -218,7 +326,7 @@ export const TheThimble: React.FC<TheThimbleProps> = ({ profile, isOpen }) => {
  Foundations
  </div>
  <div className="space-y-1">
- {mockResults.foundations.designers.map(d => (
+ {results.foundations.designers.map(d => (
  <div key={d} className="text-[10px] font-serif italic text-nous-subtle">
  {d}
  </div>
