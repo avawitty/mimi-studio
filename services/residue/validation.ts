@@ -457,11 +457,13 @@ export type ResidueAssociation = z.infer<typeof residueAssociationSchema>;
 export type ResidueUsedContextEntry = z.infer<typeof residueUsedContextEntrySchema>;
 export type ConfidenceSummary = z.infer<typeof confidenceSummarySchema>;
 export type ResidueRunMetadata = z.infer<typeof residueRunMetadataSchema>;
-export type CulturalResidueInput = z.infer<typeof culturalResidueInputSchema>;
+/** Caller-facing input (defaults applied at parse time). */
+export type CulturalResidueInput = z.input<typeof culturalResidueInputSchema>;
 export type CulturalLineageStage = z.infer<typeof culturalLineageStageSchema>;
 export type CulturalCode = z.infer<typeof culturalCodeSchema>;
 export type CulturalResidueResult = z.infer<typeof culturalResidueResultSchema>;
-export type EmotionalResidueInput = z.infer<typeof emotionalResidueInputSchema>;
+/** Caller-facing input (defaults applied at parse time). */
+export type EmotionalResidueInput = z.input<typeof emotionalResidueInputSchema>;
 export type InterpretiveNeighborhood = z.infer<typeof interpretiveNeighborhoodSchema>;
 export type ReportedResponsePattern = z.infer<typeof reportedResponsePatternSchema>;
 export type EmotionalResidueResult = z.infer<typeof emotionalResidueResultSchema>;
