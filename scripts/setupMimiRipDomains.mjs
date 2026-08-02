@@ -34,24 +34,32 @@ function readDefaultProject() {
   }
 }
 
-function getAccessToken() {
-  // firebase login:ci tokens are CI tokens; for user login, use google application
-  // credentials via `firebase login:list` doesn't expose AT. Prefer gcloud/ADC,
-  // else parse firebase-tools config refresh if present.
-  try {
-    const out = execFileSync(
-      "npx",
-      ["-y", "firebase-tools@latest", "login:list", "--json"],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-    );
-    JSON.parse(out);
-  } catch {
-    /* ignore */
+function readFirebaseToolsAccessToken() {
+  const home = process.env.HOME || "";
+  const candidates = [`${home}/.config/configstore/firebase-tools.json`];
+  for (const path of candidates) {
+    try {
+      if (!existsSync(path)) continue;
+      const cfg = JSON.parse(readFileSync(path, "utf8"));
+      const access = cfg?.tokens?.access_token;
+      const expiresAt = Number(cfg?.tokens?.expires_at || 0);
+      if (typeof access === "string" && access && (!expiresAt || expiresAt > Date.now())) {
+        return access;
+      }
+    } catch {
+      /* ignore */
+    }
   }
+  return null;
+}
 
-  // Use Firebase CLI's internal credential helper via Identity Toolkit curl
-  // with `firebase experiments:enable webframeworks` not needed.
-  // Standard approach: `gcloud auth print-access-token` or Application Default.
+function getAccessToken() {
+  const fromEnv = process.env.GOOGLE_CLOUD_ACCESS_TOKEN || process.env.FIREBASE_TOKEN;
+  if (fromEnv) return fromEnv;
+
+  const fromConfig = readFirebaseToolsAccessToken();
+  if (fromConfig) return fromConfig;
+
   try {
     return execFileSync("gcloud", ["auth", "print-access-token"], {
       encoding: "utf8",
@@ -59,11 +67,6 @@ function getAccessToken() {
   } catch {
     /* fall through */
   }
-
-  // firebase-tools stores refresh tokens; use REST token exchange via CLI:
-  // `firebase --token` CI tokens work against some APIs but not always Identity Toolkit admin.
-  const token = process.env.FIREBASE_TOKEN || process.env.GOOGLE_CLOUD_ACCESS_TOKEN;
-  if (token) return token;
 
   throw new Error(
     "No Google access token. Run `npx firebase login` (or Firebase MCP login), " +
@@ -172,10 +175,12 @@ async function main() {
   console.log(`Project: ${projectId}`);
   await ensureFirebaseAuthDomains(projectId);
   await ensureVercelDomain(vercelProject);
-  console.log("\nNext: deploy functions with CORS allowlist:");
-  console.log(`  cd functions && npm ci && npm run build`);
+  console.log("\nNotes:");
+  console.log("- CORS for https://mimi.rip is already in functions/src/index.ts on this branch.");
+  console.log("- Production API currently runs on Vercel Express (not Cloud Functions).");
+  console.log("- Firebase Functions deploy requires Blaze billing on this project.");
+  console.log(`  If/when billing is enabled: cd functions && npm install && npm run build &&`);
   console.log(`  npx firebase deploy --only functions --project ${projectId}`);
-  console.log("CORS for https://mimi.rip is already in functions/src/index.ts on this branch.");
 }
 
 main().catch((err) => {
