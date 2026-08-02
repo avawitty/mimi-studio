@@ -86,6 +86,18 @@ export const GATEWAY_MODEL_OPTIONS = [
     roles: ["textFast"] as const,
   },
   {
+    id: "moonshotai/kimi-k3-fast",
+    label: "Kimi K3 Fast",
+    provider: "moonshotai",
+    roles: ["textFast"] as const,
+  },
+  {
+    id: "moonshotai/kimi-k3",
+    label: "Kimi K3",
+    provider: "moonshotai",
+    roles: ["textDeep"] as const,
+  },
+  {
     id: "google/gemini-3.1-flash-image",
     label: "Gemini 3.1 Flash Image",
     provider: "google",
