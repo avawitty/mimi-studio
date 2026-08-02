@@ -249,6 +249,9 @@ const ChamberMapView = lazy(() =>
 const AtelierChamber = lazy(() =>
   import("./components/chambers/AtelierChamber").then((m) => ({ default: m.AtelierChamber })),
 );
+const ResidueChamber = lazy(() =>
+  import("./components/chambers/ResidueChamber").then((m) => ({ default: m.ResidueChamber })),
+);
 const TheOracle = lazy(() =>
   import("./components/TheOracle").then((m) => ({ default: m.TheOracle })),
 );
@@ -870,6 +873,7 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "proscenium",
   "qc_engine",
   "quiet-studio",
+  "residue",
   "sanctuary",
   "scribe",
   "scry",
@@ -2245,6 +2249,7 @@ export const App: React.FC = () => {
     architecture: "System Architecture",
     "chamber-map": "Chamber Registry",
     atelier: "Atelier",
+    residue: "Residue",
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
@@ -2260,6 +2265,9 @@ export const App: React.FC = () => {
         "threads",
         "latent-constellation",
         "the-lens",
+        "residue",
+        "intel-hub",
+        "forecast",
       ].includes(mode)
     )
       return "reflect";
@@ -2722,6 +2730,9 @@ export const App: React.FC = () => {
                           <ChamberMapView onNavigate={setViewMode} />
                         )}
                         {viewMode === "atelier" && <AtelierChamber />}
+                        {viewMode === "residue" && (
+                          <ResidueChamber navigate={navigate} />
+                        )}
                         {viewMode === "geo_engine" && (
                           <div className="h-full w-full overflow-y-auto">
                             <TheGEOEngine />
