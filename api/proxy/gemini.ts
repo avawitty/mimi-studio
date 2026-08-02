@@ -1,5 +1,4 @@
 import { cors, providerKey, readJsonBody, requireMethod, sendJson } from "../../lib/apiUtils.js";
-import { chargeMimiFundedGateway, fundedGatewayCreditCost, resolveFundedGatewayApiKey } from "../../lib/mimiFundedGateway.js";
 import {
   embedGeminiContentViaGateway,
   generateGeminiContentViaGateway,
@@ -11,6 +10,62 @@ import {
   isGeminiImageRequest,
 } from "../../lib/aiGatewayCompat.js";
 
+type FundedAccess = {
+  allowed: boolean;
+  billable: boolean;
+  uid?: string;
+  cost: number;
+} | null;
+
+/**
+ * Resolve a gateway key without statically importing firebase-admin.
+ * Credit metering is best-effort; if the funded path fails to load, fall back
+ * to the server AI Gateway key (same resilience as /api/proxy/openai).
+ */
+async function resolveGeminiGatewayKey(
+  req: any,
+  headerGeminiKey: string,
+): Promise<{ apiKey: string; access: FundedAccess }> {
+  if (headerGeminiKey) return { apiKey: "", access: null };
+
+  const serverKey = getServerAiGatewayKey();
+  if (!serverKey) return { apiKey: "", access: null };
+
+  try {
+    const funded = await import("../../lib/mimiFundedGateway.js");
+    const resolved = await funded.resolveFundedGatewayApiKey(req, funded.fundedGatewayCreditCost());
+    if (resolved.apiKey) {
+      return { apiKey: resolved.apiKey, access: resolved.access };
+    }
+    // Real credit exhaustion — do not bypass metering.
+    if (resolved.denialReason === "credits_exhausted") {
+      return { apiKey: "", access: resolved.access };
+    }
+    // Sign-in required or infra denial: prefer server key so zine/generation
+    // stays available (OpenAI/Anthropic proxies already do this).
+    if (process.env.MIMI_REQUIRE_GATEWAY_AUTH === "1") {
+      return { apiKey: "", access: null };
+    }
+    return { apiKey: serverKey, access: null };
+  } catch (err) {
+    console.warn("MIMI // funded gateway unavailable for gemini proxy; using server AI Gateway key:", err);
+    return { apiKey: serverKey, access: null };
+  }
+}
+
+async function maybeCharge(
+  access: FundedAccess,
+  meta: { model?: string; usage?: unknown; feature?: string },
+) {
+  if (!access?.billable) return;
+  try {
+    const funded = await import("../../lib/mimiFundedGateway.js");
+    await funded.chargeMimiFundedGateway(access, meta);
+  } catch (err) {
+    console.warn("MIMI // gemini credit charge skipped:", err);
+  }
+}
+
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
   if (!requireMethod(req, res, "POST")) return;
@@ -18,9 +73,7 @@ export default async function handler(req: any, res: any) {
   try {
     const { action, params } = await readJsonBody(req);
     const headerGeminiKey = String(req.headers["x-api-key"] || "").trim();
-    const { apiKey: gatewayKey, access } = !headerGeminiKey && getServerAiGatewayKey()
-      ? await resolveFundedGatewayApiKey(req, fundedGatewayCreditCost())
-      : { apiKey: "", access: null };
+    const { apiKey: gatewayKey, access } = await resolveGeminiGatewayKey(req, headerGeminiKey);
 
     if (gatewayKey) {
       if (action === "generateContent") {
@@ -29,42 +82,34 @@ export default async function handler(req: any, res: any) {
           : await generateGeminiContentViaGateway(params, gatewayKey, {
               feature: "gemini-compat-content",
             });
-        if (access) {
-          await chargeMimiFundedGateway(access, {
-            model: (result as any)?.modelVersion,
-            usage: (result as any)?.usageMetadata,
-            feature: "gemini-compat-content",
-          });
-        }
+        await maybeCharge(access, {
+          model: (result as any)?.modelVersion,
+          usage: (result as any)?.usageMetadata,
+          feature: "gemini-compat-content",
+        });
         return sendJson(res, 200, result);
       }
       if (action === "embedContent") {
         const result = await embedGeminiContentViaGateway(params, gatewayKey);
-        if (access) {
-          await chargeMimiFundedGateway(access, {
-            model: (result as any)?.modelVersion,
-            usage: (result as any)?.usageMetadata,
-            feature: "gemini-compat-embedding",
-          });
-        }
+        await maybeCharge(access, {
+          model: (result as any)?.modelVersion,
+          usage: (result as any)?.usageMetadata,
+          feature: "gemini-compat-embedding",
+        });
         return sendJson(res, 200, result);
       }
       if (action === "generateImages") {
         const result = await generateGeminiImagesViaGateway(params, gatewayKey);
-        if (access) {
-          await chargeMimiFundedGateway(access, {
-            model: (result as any)?.modelVersion,
-            usage: (result as any)?.usageMetadata,
-            feature: "gemini-compat-image",
-          });
-        }
+        await maybeCharge(access, {
+          model: (result as any)?.modelVersion,
+          usage: (result as any)?.usageMetadata,
+          feature: "gemini-compat-image",
+        });
         return sendJson(res, 200, result);
       }
       if (action === "generateVideos") {
         const result = await generateGeminiVideoViaGateway(params, gatewayKey);
-        if (access) {
-          await chargeMimiFundedGateway(access, { feature: "gemini-compat-video" });
-        }
+        await maybeCharge(access, { feature: "gemini-compat-video" });
         return sendJson(res, 200, result);
       }
       if (action === "getVideosOperation") {

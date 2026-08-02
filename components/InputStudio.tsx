@@ -2811,13 +2811,13 @@ ${finalInput}`;
         {/* COLUMN 3: COVER PROFILER / PREVIEW COLUMN */}
         {(!isMobile || mobileStudioView === "cover") && (
           <div
-            className={`w-full studio-bg-panel border-l studio-border flex flex-col shrink-0 relative min-h-0 ${
-              isMobile ? "pb-28" : ""
-            }`}
+            className="w-full studio-bg-panel border-l studio-border flex flex-col shrink-0 relative min-h-0 overflow-hidden h-full"
             style={isMobile ? undefined : { width: coverPanelWidth }}
           >
-            {/* Content-sized (not flex-1) so the colophon sits tight under the plate */}
-            <div className="overflow-y-auto no-scrollbar flex flex-col p-6 md:pr-10">
+            {/* flex-1 + min-h-0: scroll the plate/controls above a pinned colophon.
+                Without this, overflow:auto lets the scrollpane shrink and the
+                colophon clips through UPLOAD COVER on mobile. */}
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col p-6 pb-8 md:pr-10">
             <div className="space-y-6">
               {renderStudioPager()}
               {/* Zine Title Input Header */}
@@ -2835,9 +2835,9 @@ ${finalInput}`;
                 <p className="font-mono text-[7px] uppercase tracking-[0.25em] studio-text-muted mt-1">{getTreatmentLabel(activeTreatmentId, profile?.savedTreatments)}</p>
               </div>
 
-              {/* Cover card */}
+              {/* Cover card — shorter min-height on mobile so UPLOAD COVER clears the pinned colophon */}
               <div className="w-full flex justify-center">
-                <div className="group/cover-card w-full max-w-[280px] studio-polaroid p-4 flex flex-col justify-between shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] min-h-[480px] border border-stone-200/50 relative transition-all hover:scale-105 duration-500"
+                <div className="group/cover-card w-full max-w-[280px] studio-polaroid p-4 flex flex-col justify-between shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] min-h-0 md:min-h-[480px] border border-stone-200/50 relative transition-all hover:scale-105 duration-500"
                   style={getTreatmentBackgroundStyle(activeTreatmentId, profile?.savedTreatments)}>
                   
                   {/* Hover Metadata Overlay */}
@@ -3491,10 +3491,11 @@ ${finalInput}`;
             </div>
             </div>
 
-            {/* Always-on Used Context colophon under canvas (PRD-05 / Phase C) */}
+            {/* Always-on Used Context colophon under canvas (PRD-05 / Phase C).
+                shrink-0 + solid field keeps it pinned below the scrollport. */}
             <UsedContextColophon
               target="studio"
-              className="shrink-0 border-t studio-border"
+              className="shrink-0 z-10 mt-1 border-t studio-border bg-[var(--mimi-field,#ffffff)]"
               onOpenScribe={() => {
                 window.dispatchEvent(
                   new CustomEvent("mimi:change_view", { detail: "scribe" }),
