@@ -127,8 +127,8 @@ assert.doesNotMatch(
   "Structured PDF path must not call html2canvas",
 );
 
-const editCompile = read("components/TheEditCompile.tsx");
-assert.match(editCompile, /IssueSpreadsPanel/, "The Edit must surface issue spreads worktable");
+const editChamber = read("components/chambers/TheEditChamber.tsx");
+assert.match(editChamber, /IssueSpreadsPanel/, "The Edit must surface issue spreads worktable");
 
 console.log("✓ Structured zine PDF verified");
 console.log(`  - ${pageCount} A4 pages from metadata`);

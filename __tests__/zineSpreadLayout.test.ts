@@ -43,6 +43,9 @@ describe("zineSpreadLayout", () => {
     expect(els.length).toBeGreaterThanOrEqual(2);
     expect(els.find((e) => e.type === "image")?.content).toBe(page.image_url);
     expect(els.every((e) => e.style.fontFamily !== "Inter")).toBe(true);
+    expect(els.map((element) => element.id)).toEqual(
+      buildDefaultSpreadElements(page).map((element) => element.id),
+    );
   });
 
   it("maps pages for the layout editor", () => {

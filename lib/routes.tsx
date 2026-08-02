@@ -1,8 +1,14 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
-import { CANON_MODULES, type CanonModule } from "./productCanon";
 import {
-  type ChamberFamily,
-  chamberFamilyForMode,
+  CANON_MODULES,
+  type CanonModule,
+  type CanonVisibility,
+  type ChamberAtmosphere,
+  type StudioFamily,
+  type StudioPhase,
+  type VisualPacketId,
+} from "./productCanon";
+import {
   isDarkPlateMode,
   isPublicFaceMode,
 } from "./design-system";
@@ -19,7 +25,13 @@ export interface LazyRouteEntry {
   /** Canonical view mode / path segment */
   mode: string;
   label: string;
-  family: ChamberFamily;
+  family: StudioFamily;
+  phase: StudioPhase;
+  visibility: CanonVisibility;
+  atmosphere: ChamberAtmosphere[];
+  primaryAction: CanonModule["primaryAction"];
+  suggestedNext?: CanonModule["suggestedNext"];
+  visualPacket?: VisualPacketId;
   isPublicFace: boolean;
   isDarkPlate: boolean;
   /** Optional lazy loader — when omitted, App.tsx still owns the mount */
@@ -33,9 +45,17 @@ function entryFromCanon(module: CanonModule): LazyRouteEntry {
   return {
     mode,
     label: module.name,
-    family: chamberFamilyForMode(mode),
-    isPublicFace: isPublicFaceMode(mode),
-    isDarkPlate: isDarkPlateMode(mode),
+    family: module.family,
+    phase: module.phase,
+    visibility: module.visibility,
+    atmosphere: module.atmosphere,
+    primaryAction: module.primaryAction,
+    suggestedNext: module.suggestedNext,
+    visualPacket: module.visualPacket,
+    isPublicFace:
+      module.atmosphere.includes("public-face") || isPublicFaceMode(mode),
+    isDarkPlate:
+      module.atmosphere.includes("dark-plate") || isDarkPlateMode(mode),
     canon: module,
   };
 }
@@ -47,6 +67,12 @@ export const CANON_ROUTE_ENTRIES: LazyRouteEntry[] = CANON_MODULES.map(
 
 export const ROUTE_ENTRY_BY_MODE: Record<string, LazyRouteEntry> =
   CANON_ROUTE_ENTRIES.reduce<Record<string, LazyRouteEntry>>((acc, entry) => {
+    if (
+      acc[entry.mode]?.canon?.status === "live" &&
+      entry.canon?.status !== "live"
+    ) {
+      return acc;
+    }
     acc[entry.mode] = entry;
     return acc;
   }, {});
@@ -57,7 +83,7 @@ export const ROUTE_ENTRY_BY_MODE: Record<string, LazyRouteEntry> =
  * for progressive extraction and Suspense boundaries.
  */
 export const LAZY_CHAMBERS = {
-  /** Default-export page — mounts with zero props in debug shells */
+  /** Default-export Hub — Studio Worktable middle ground */
   studio: lazy(() => import("../components/worktable/StudioWorktable")),
   stand: lazy(() =>
     import("../components/TheStand").then((m) => ({ default: m.TheStand })),

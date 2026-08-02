@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { UsedContextEntry, UsedContextTarget } from "../../types";
 import {
   approveAllUsedContext,
@@ -9,6 +9,8 @@ import {
   subscribeUsedContext,
 } from "../../services/usedContextService";
 import { useUser } from "../../contexts/UserContext";
+import { useFeedback } from "../../hooks/useFeedback";
+import { resolveMotionVariant } from "../../lib/motion";
 import { ColumnRule } from "../public-face/ColumnRule";
 import { PressMark } from "../public-face/PressMark";
 import { DossierTab } from "../public-face/DossierTab";
@@ -33,10 +35,17 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
   onOpenScribe,
 }) => {
   const { user, profile } = useUser();
+  const feedback = useFeedback();
+  const reduceMotion = Boolean(useReducedMotion());
+  const provisional = resolveMotionVariant("provisionalReveal", reduceMotion);
+  const commit = resolveMotionVariant("commitAndSettle", reduceMotion);
+  const sheet = resolveMotionVariant("sheetEnter", reduceMotion);
   const ownerUid = user?.uid || profile?.uid;
   const [entries, setEntries] = useState<UsedContextEntry[]>([]);
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [stampKey, setStampKey] = useState(0);
+  const [committingId, setCommittingId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const refresh = () => setEntries(getUsedContext(target, ownerUid));
@@ -56,8 +65,25 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
         : `${approvedCount} approved reference${approvedCount === 1 ? "" : "s"}`;
 
   const handleApprove = (atomId: string, next: boolean) => {
-    setUsedContextApproved(atomId, next, target, ownerUid);
-    if (next) setStampKey((k) => k + 1);
+    setErrorMessage(null);
+    if (!next) {
+      setUsedContextApproved(atomId, false, target, ownerUid);
+      feedback.trigger("proposal.rejected");
+      return;
+    }
+
+    // Immediate visual press/pending — haptic only after persistence confirms.
+    setCommittingId(atomId);
+    try {
+      setUsedContextApproved(atomId, true, target, ownerUid);
+      setStampKey((k) => k + 1);
+      feedback.trigger("proposal.approved", { confirmed: true });
+    } catch {
+      setErrorMessage("Could not approve this reference. It remains pending.");
+      feedback.trigger("action.failed");
+    } finally {
+      setCommittingId(null);
+    }
   };
 
   return (
@@ -121,14 +147,34 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            initial={
+              reduceMotion
+                ? sheet.initial
+                : { height: 0, opacity: 0 }
+            }
+            animate={
+              reduceMotion
+                ? sheet.animate
+                : { height: "auto", opacity: 1 }
+            }
+            exit={
+              reduceMotion
+                ? sheet.exit
+                : { height: 0, opacity: 0 }
+            }
+            transition={sheet.transition}
             className="overflow-hidden"
           >
             <div className="px-4 md:px-6 pb-5 space-y-4">
               <ColumnRule />
+              {errorMessage && (
+                <p
+                  role="alert"
+                  className="font-sans text-xs text-[var(--mimi-ink,#0a0a0a)]"
+                >
+                  {errorMessage}
+                </p>
+              )}
               {entries.length === 0 ? (
                 <div className="space-y-2 py-2">
                   <p className="font-sans text-xs text-[var(--mimi-stone,#78716c)] leading-relaxed">
@@ -150,7 +196,13 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
                     <div className="flex justify-end">
                       <button
                         type="button"
-                        onClick={() => approveAllUsedContext(target, ownerUid)}
+                        onClick={() => {
+                          approveAllUsedContext(target, ownerUid);
+                          setStampKey((k) => k + 1);
+                          feedback.trigger("proposal.approved", {
+                            confirmed: true,
+                          });
+                        }}
                         className="font-sans text-[9px] uppercase tracking-[0.22em] font-semibold border border-[var(--mimi-ink,#0a0a0a)] px-3 py-1.5"
                       >
                         Approve all
@@ -158,46 +210,65 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
                     </div>
                   )}
                   <ul className="space-y-3 max-h-64 overflow-y-auto">
-                    {entries.map((entry) => (
-                      <li
-                        key={`${entry.atomId}-${entry.target}`}
-                        className="flex items-start justify-between gap-4 border-b border-[var(--mimi-hairline,#d4d4d4)] pb-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-serif italic text-base truncate">
-                            {entry.title}
-                          </p>
-                          <p className="font-mono text-[9px] uppercase tracking-widest text-[var(--mimi-stone,#78716c)] mt-1">
-                            {entry.source || "atom"} ·{" "}
-                            {entry.approved ? "approved" : "pending"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleApprove(entry.atomId, !entry.approved)
-                            }
-                            className="font-sans text-[9px] uppercase tracking-[0.18em] font-semibold"
-                          >
-                            {entry.approved ? "Revoke" : "Approve"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              removeFromUsedContext(
-                                entry.atomId,
-                                target,
-                                ownerUid,
-                              )
-                            }
-                            className="font-sans text-[9px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)]"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </li>
-                    ))}
+                    {entries.map((entry) => {
+                      const isCommitting = committingId === entry.atomId;
+                      const variant = entry.approved ? commit : provisional;
+                      return (
+                        <motion.li
+                          key={`${entry.atomId}-${entry.target}`}
+                          layoutId={`used-context-${entry.atomId}-${entry.target}`}
+                          initial={variant.initial}
+                          animate={
+                            isCommitting
+                              ? { opacity: 0.85, scale: 1 }
+                              : variant.animate
+                          }
+                          transition={variant.transition}
+                          className={`flex items-start justify-between gap-4 border-b border-[var(--mimi-hairline,#d4d4d4)] pb-3 ${
+                            entry.approved ? "" : "opacity-95"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <p className="font-serif italic text-base truncate">
+                              {entry.title}
+                            </p>
+                            <p className="font-mono text-[9px] uppercase tracking-widest text-[var(--mimi-stone,#78716c)] mt-1">
+                              {entry.source || "atom"} ·{" "}
+                              {isCommitting
+                                ? "saving"
+                                : entry.approved
+                                  ? "approved"
+                                  : "pending"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <button
+                              type="button"
+                              disabled={isCommitting}
+                              onClick={() =>
+                                handleApprove(entry.atomId, !entry.approved)
+                              }
+                              className="font-sans text-[9px] uppercase tracking-[0.18em] font-semibold"
+                            >
+                              {entry.approved ? "Revoke" : "Approve"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeFromUsedContext(
+                                  entry.atomId,
+                                  target,
+                                  ownerUid,
+                                )
+                              }
+                              className="font-sans text-[9px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)]"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </motion.li>
+                      );
+                    })}
                   </ul>
                 </>
               )}

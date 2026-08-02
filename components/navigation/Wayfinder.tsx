@@ -12,7 +12,7 @@ export interface WayfinderProps {
 }
 
 /**
- * Chamber-aware orientation strip: Collect → Shape → Create → Publish.
+ * Chamber-aware orientation strip: previous → current → likely next.
  * Intended for the nav drawer (and future desktop chrome), not public plates.
  */
 export const Wayfinder: React.FC<WayfinderProps> = ({
@@ -25,6 +25,14 @@ export const Wayfinder: React.FC<WayfinderProps> = ({
   const chamber = useChamber(viewMode);
 
   if (forceHide || chamber.quietChrome) return null;
+
+  const activeIndex = chamber.pathIndex >= 0 ? chamber.pathIndex : 0;
+  const visiblePath = CREATOR_PATH.map((step, index) => ({
+    step,
+    index,
+  })).filter(
+    ({ index }) => index >= activeIndex - 1 && index <= activeIndex + 1,
+  );
 
   return (
     <div
@@ -43,11 +51,11 @@ export const Wayfinder: React.FC<WayfinderProps> = ({
         </span>
       </div>
 
-      <ol className="grid grid-cols-4 gap-1.5">
-        {CREATOR_PATH.map((step, index) => {
-          const active = chamber.pathIndex === index;
+      <ol className="grid grid-cols-3 gap-1.5">
+        {visiblePath.map(({ step, index }) => {
+          const active = activeIndex === index;
           const passed =
-            chamber.pathIndex >= 0 && index < chamber.pathIndex;
+            chamber.pathIndex >= 0 && index < activeIndex;
           return (
             <li key={step.step}>
               <button

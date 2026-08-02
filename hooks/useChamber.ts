@@ -2,10 +2,12 @@ import { useMemo } from "react";
 import {
   CANON_MODULE_BY_ID,
   CANON_MODULE_BY_ROUTE,
+  CANON_MODULES,
+  type ChamberAtmosphere,
   type CanonModule,
+  type StudioFamily,
 } from "../lib/productCanon";
 import {
-  type ChamberFamily,
   type CreatorPathStep,
   CREATOR_PATH,
   chamberFamilyForMode,
@@ -19,10 +21,11 @@ import {
 export interface ChamberContext {
   /** Canonicalized view mode (route segment) */
   viewMode: string;
-  /** Coarse atmosphere family for overlays */
-  family: ChamberFamily;
+  /** User-facing screen family for reusable layout anatomy. */
+  family: StudioFamily;
   /** Matching CanonModule when registered */
   module: CanonModule | null;
+  atmosphere: ChamberAtmosphere[];
   isPublicFace: boolean;
   isDarkPlate: boolean;
   isWorktable: boolean;
@@ -41,6 +44,10 @@ function resolveModule(viewMode: string): CanonModule | null {
     CANON_MODULE_BY_ID[viewMode] ??
     CANON_MODULE_BY_ROUTE[viewMode] ??
     CANON_MODULE_BY_ROUTE[`/${viewMode}`] ??
+    CANON_MODULES.find(
+      (module) =>
+        module.status === "live" && module.implementedMode === viewMode,
+    ) ??
     null
   );
 }
@@ -51,23 +58,30 @@ function resolveModule(viewMode: string): CanonModule | null {
  */
 export function useChamber(viewMode: string): ChamberContext {
   return useMemo(() => {
-    const family = chamberFamilyForMode(viewMode);
-    const isPublicFace = isPublicFaceMode(viewMode);
-    const isDarkPlate = isDarkPlateMode(viewMode);
+    const module = resolveModule(viewMode);
+    const family = module?.family ?? chamberFamilyForMode(viewMode);
+    const atmosphere = module?.atmosphere ?? [];
+    const isPublicFace =
+      atmosphere.includes("public-face") || isPublicFaceMode(viewMode);
+    const isDarkPlate =
+      atmosphere.includes("dark-plate") || isDarkPlateMode(viewMode);
     const pathIndex = creatorPathIndexForMode(viewMode);
     const path = pathIndex >= 0 ? CREATOR_PATH[pathIndex] : null;
 
     return {
       viewMode,
       family,
-      module: resolveModule(viewMode),
+      module,
+      atmosphere,
       isPublicFace,
       isDarkPlate,
-      isWorktable: isWorktableMode(viewMode),
+      isWorktable:
+        atmosphere.includes("worktable") || isWorktableMode(viewMode),
       quietChrome: isPublicFace,
-      signalDense: isSignalDenseMode(viewMode) || family === "reflect",
+      signalDense:
+        atmosphere.includes("signal-dense") || isSignalDenseMode(viewMode),
       pathIndex,
-      pathStep: path?.step ?? null,
+      pathStep: module?.phase ?? path?.step ?? null,
       pathLabel: path?.label ?? null,
     };
   }, [viewMode]);

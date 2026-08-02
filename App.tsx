@@ -82,6 +82,7 @@ import { MENU_STRUCTURE } from "./components/navigationConfig";
 import { canonicalizeMimiRoute } from "./lib/productCanon";
 import { LegalDocumentPage } from "./components/LegalDocumentPage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import { legalTypeFromPath } from "./lib/legalContent";
 import { useTactileAudio } from "./hooks/useTactileAudio";
 import { useChamber } from "./hooks/useChamber";
 
@@ -950,8 +951,7 @@ const getRestorableRoute = (candidate: string): string | null => {
     pathname.startsWith("/u/") ||
     pathname.startsWith("/stacks/") ||
     pathname.startsWith("/auth/") ||
-    pathname === "/privacy" ||
-    pathname === "/terms" ||
+    legalTypeFromPath(pathname) != null ||
     pathname === "/showcase" ||
     pathname === "/success" ||
     pathname === "/canceled"
@@ -1497,7 +1497,7 @@ export const App: React.FC = () => {
   const [threadValue, setThreadValue] = useState<string>("");
   const [threadMedia, setThreadMedia] = useState<MediaFile[]>([]);
   const [threadHighFidelity, setThreadHighFidelity] = useState(false);
-  /** Escape hatch: dense InputStudio console under archival worktable desk */
+  /** Escape hatch: dense InputStudio console under Hub worktable */
   const [studioConsoleOpen, setStudioConsoleOpen] = useState(false);
 
   useEffect(() => {
@@ -2024,6 +2024,11 @@ export const App: React.FC = () => {
           media.find((file: { type: string; url?: string; data?: string }) => file.type === "image")
             ?.data;
 
+        if (coverUrl) {
+          result.content.meta.originalCoverImageUrl =
+            result.content.meta.originalCoverImageUrl || coverUrl;
+        }
+
         if (opts.studioCoverOverlays?.length) {
           result.content.meta = result.content.meta || {};
           result.content.meta.studioCoverOverlays = opts.studioCoverOverlays;
@@ -2254,17 +2259,16 @@ export const App: React.FC = () => {
     return <StackView stackId={stackId} />;
   }
 
-  if (
-    window.location.pathname === "/privacy" ||
-    window.location.pathname === "/terms"
-  ) {
-    const type = window.location.pathname === "/privacy" ? "privacy" : "terms";
-    return (
-      <>
-        <LegalDocumentPage type={type} />
-        <CookieConsentBanner />
-      </>
-    );
+  {
+    const legalType = legalTypeFromPath(window.location.pathname);
+    if (legalType) {
+      return (
+        <>
+          <LegalDocumentPage type={legalType} />
+          <CookieConsentBanner />
+        </>
+      );
+    }
   }
 
   if (isPatronMint) {
@@ -2314,7 +2318,7 @@ export const App: React.FC = () => {
     "taste-identity": "Taste Identity",
     "taste-discovery": "Taste Discovery",
     architecture: "System Architecture",
-    "chamber-map": "Chamber Registry",
+    "chamber-map": "Studio Map",
     atelier: "Atelier",
     house: "The House",
     residue: "Residue",
@@ -2448,11 +2452,15 @@ export const App: React.FC = () => {
 
       <AppShell
         viewMode={viewMode}
-        hideBinder={appState === AppState.REVEALED}
+        hideBinder={
+          appState === AppState.REVEALED || viewMode === "chamber-map"
+        }
         menuOpen={isNavOpen}
         onToggleMenu={() => setIsNavOpen(!isNavOpen)}
         chrome={
-          appState !== AppState.REVEALED && viewMode !== "studio" ? (
+          appState !== AppState.REVEALED &&
+          viewMode !== "studio" &&
+          viewMode !== "chamber-map" ? (
             <StudioChrome
               theme={currentPalette.isDark ? "dark" : "light"}
               onToggleTheme={toggleMode}
@@ -2503,7 +2511,9 @@ export const App: React.FC = () => {
             <motion.div
               key={viewMode}
               className={`flex-1 w-full relative ${
-                viewMode === "studio" ? "h-full min-h-0" : "h-full min-h-0 overflow-y-auto"
+                viewMode === "studio" || viewMode === "chamber-map"
+                  ? "h-full min-h-0"
+                  : "h-full min-h-0 overflow-y-auto"
               }`}
               initial={{ opacity: 0, y: isStandalonePwaShell ? 0 : 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2742,7 +2752,10 @@ export const App: React.FC = () => {
                           <RipChamber navigate={navigate} />
                         )}
                         {viewMode === "chamber-map" && (
-                          <ChamberMapView onNavigate={setViewMode} />
+                          <ChamberMapView
+                            onNavigate={setViewMode}
+                            onOpenFind={() => setCommandDrawerOpen(true)}
+                          />
                         )}
                         {viewMode === "atelier" && <AtelierChamber />}
                         {viewMode === "house" && (

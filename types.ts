@@ -513,6 +513,11 @@ export interface ZineSpec {
     mode: "editorial" | "research" | "seasonal" | "oracle";
     intent: string;
     timestamp: number;
+    /** Forward-compatible artifact metadata; legacy records omit these fields. */
+    theme?: string;
+    artifactSchemaVersion?: number;
+    originalCoverImageUrl?: string;
+    studioCoverOverlays?: ZineCoverOverlayLayer[];
   };
   taste_context: {
     active_archetype: string;
@@ -588,7 +593,283 @@ export interface Roadmap {
   driftForecast: DriftForecast;
 }
 
+export type ZineIssueMode = "editorial" | "research" | "seasonal" | "oracle";
+
+export type ZineLifecycleStatus =
+  | "draft"
+  | "reading"
+  | "direction-proposed"
+  | "direction-approved"
+  | "composing"
+  | "proof"
+  | "approved"
+  | "published"
+  | "archived";
+
+export type ZineEpistemicStatus = "observed" | "inferred" | "proposed" | "unknown";
+
+export type ZinePageGrammar =
+  | "specimen"
+  | "reading"
+  | "evidence-ledger"
+  | "editorial-split"
+  | "dark-plate"
+  | "debris";
+
+export type ZineSectionType =
+  | "cover"
+  | "opening"
+  | "reading"
+  | "signal-index"
+  | "essay"
+  | "visual-plate"
+  | "evidence"
+  | "interlude"
+  | "roadmap"
+  | "debris"
+  | "colophon";
+
+export interface ContextVisibility {
+  working: boolean;
+  export: boolean;
+  public: boolean;
+}
+
+export interface ZineIdentity {
+  id: string;
+  title: string;
+  subtitle?: string;
+  issueNumber?: string;
+  slug?: string;
+  mode: ZineIssueMode;
+  tone?: ToneTag;
+  theme?: string;
+}
+
+export interface ZineAuthorship {
+  ownerUid: string;
+  creatorHandle: string;
+  displayName?: string;
+  profileVersion?: number;
+  generatedBy: {
+    system: "mimi";
+    generationVersion?: string;
+    model?: string;
+  };
+  editorialCompileOwnerUid?: string;
+  editorialCompileOwnerHandle?: string;
+}
+
+export interface ZineSourceAsset {
+  id: string;
+  type: "text" | "image" | "link" | "voice" | "document" | "board";
+  title?: string;
+  uri?: string;
+  excerpt?: string;
+  source?: string;
+  capturedAt?: number;
+  rights?: "owned" | "reference" | "unknown";
+  visibility?: ContextVisibility;
+}
+
+export interface LinkedBoardReference {
+  id: string;
+  title?: string;
+  uri?: string;
+  source?: string;
+}
+
+export interface ZineSourcePacket {
+  originalInput?: string;
+  fragmentIds: string[];
+  usedContextSnapshots: UsedContextSnapshot[];
+  attachedAssets: ZineSourceAsset[];
+  linkedBoards?: LinkedBoardReference[];
+  sourceSummary?: string;
+}
+
+export interface ReadingTension {
+  statement: string;
+  sourceIds?: string[];
+  status?: ZineEpistemicStatus;
+}
+
+export interface ReadingUncertainty {
+  statement: string;
+  reason?: string;
+  sourceIds?: string[];
+}
+
+export interface ZineReading {
+  oracularMirror?: string;
+  centralObservation: string;
+  strategicHypothesis?: string;
+  signals: SemioticSignal[];
+  tensions?: ReadingTension[];
+  exclusions?: string[];
+  uncertainty?: ReadingUncertainty[];
+  approvedAt?: number;
+  approvedBy?: string;
+}
+
+export interface TypographyDirection {
+  displayFamily?: string;
+  bodyFamily?: string;
+  labelFamily?: string;
+  scale?: "restrained" | "editorial" | "monumental";
+  notes?: string[];
+}
+
+export interface EditorialDirection {
+  thesis: string;
+  purpose: string;
+  audience?: string;
+  visualPrinciples: string[];
+  tonalPrinciples: string[];
+  exclusions: string[];
+  palette: string[];
+  typography?: TypographyDirection;
+  materialDirection?: string[];
+  compositionDensity: number;
+  entropyLevel?: number;
+  intensity?: "low" | "medium" | "high";
+  approved: boolean;
+  revision?: number;
+}
+
+export interface ZineSectionSpec {
+  id: string;
+  type: ZineSectionType;
+  title?: string;
+  pageIds: string[];
+  required: boolean;
+}
+
+export interface ZineIssueStructure {
+  sections: ZineSectionSpec[];
+  navigationStyle: "continuous" | "sectioned";
+  totalPages: number;
+}
+
+export type ZineCoverOverlayLayer =
+  | {
+      id: string;
+      kind: "text";
+      text: string;
+      x: number;
+      y: number;
+      fontSize: number;
+      color: string;
+    }
+  | {
+      id: string;
+      kind: "image";
+      url: string;
+      x: number;
+      y: number;
+      width: number;
+      opacity: number;
+      label?: string;
+    };
+
+export interface ZineCoverSpec {
+  imageUrl?: string;
+  originalImageUrl?: string;
+  title: string;
+  subtitle?: string;
+  issueNumber?: string;
+  overlays: EditorElement[];
+  treatment: "specimen" | "editorial" | "dark-plate" | "dossier" | "minimal";
+  bakedImageUrl?: string;
+  overlayBaked: boolean;
+}
+
+export interface ZineColophon {
+  creatorHandle: string;
+  generatedBy: "mimi";
+  generatedAt: number;
+  publicSourceIds: string[];
+  sourceCount: number;
+  notes?: string[];
+  fontSubstitutions?: string[];
+}
+
+export interface ZinePublicationState {
+  visibility: "private" | "unlisted" | "public";
+  publishedAt?: number;
+  canonicalUrl?: string;
+  revision?: number;
+}
+
+export interface ZineExportState {
+  lastValidatedAt?: number;
+  lastExportedAt?: number;
+  formats?: Array<"pdf" | "png" | "zip" | "mimizine">;
+  blockingDiagnosticIds?: string[];
+}
+
+export interface ZineRevision {
+  revision: number;
+  parentRevision?: number;
+  createdAt: number;
+  reason?: string;
+  changedPageIds: string[];
+}
+
+export interface ZineAssetVariants {
+  thumbnailUrl?: string;
+  previewUrl?: string;
+  masterUrl: string;
+  width?: number;
+  height?: number;
+}
+
+export interface PlateDevelopmentState {
+  status: "queued" | "running" | "complete" | "failed" | "cancelled";
+  completedPageIds: string[];
+  failedPageIds: string[];
+  activePageIds: string[];
+}
+
+export interface MimiZineArtifact {
+  schemaVersion: number;
+  identity: ZineIdentity;
+  authorship: ZineAuthorship;
+  status: ZineLifecycleStatus;
+  sourcePacket: ZineSourcePacket;
+  reading: ZineReading;
+  direction: EditorialDirection;
+  issueStructure: ZineIssueStructure;
+  pages: ZinePageSpec[];
+  cover: ZineCoverSpec;
+  colophon: ZineColophon;
+  publication: ZinePublicationState;
+  exportState: ZineExportState;
+  revisions: ZineRevision[];
+  revision: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ZineCustomLayout {
+  elements: EditorElement[];
+  /** Logical accessibility order; independent of absolute canvas coordinates. */
+  readingOrder?: string[];
+  editTrace?: { timestamp: number; note: string }[];
+}
+
+export interface ProposedPagePlan {
+  pageNumber: number;
+  sectionType: ZineSectionType;
+  purpose: string;
+  grammar: ZinePageGrammar;
+  headline?: string;
+  sourceIds: string[];
+  requiresGeneratedMedia: boolean;
+}
+
 export interface ZinePageSpec {
+  id?: string;
   pageNumber: number;
   headline: string;
   bodyCopy: string;
@@ -597,16 +878,22 @@ export interface ZinePageSpec {
   image_url?: string;
   /** Media seed for the freeform spread editor (often mirrors image_url). */
   originalMediaUrl?: string;
+  altText?: string;
+  assetVariants?: ZineAssetVariants;
+  sectionId?: string;
+  sectionType?: ZineSectionType;
+  grammar?: ZinePageGrammar;
+  sourceIds?: string[];
+  revision?: number;
+  assetRevision?: number;
+  layoutRevision?: number;
   pageType?: 'standard' | 'thread_timeline';
   threadData?: {
     artifacts: any[]; // Will be PocketItem[]
     commentary: string;
   };
   /** Owner-composed absolute layout; when present, reveal renders this over the L/R template. */
-  customLayout?: {
-    elements: EditorElement[];
-    editTrace?: { timestamp: number; note: string }[];
-  };
+  customLayout?: ZineCustomLayout;
 }
 
 export interface ZineContent extends ZineSpec {
@@ -686,6 +973,21 @@ export interface ZineMetadata {
   treatmentId?: string;
   folderId?: string; // NEW: For organizing zines into folders
   executionLayer?: ExecutionLayer; // NEW
+  /** Additive canonical-artifact fields. Legacy records are normalized on read. */
+  artifactSchemaVersion?: number;
+  artifactAuthorship?: ZineAuthorship;
+  lifecycleStatus?: ZineLifecycleStatus;
+  sourcePacket?: ZineSourcePacket;
+  reading?: ZineReading;
+  editorialDirection?: EditorialDirection;
+  issueStructure?: ZineIssueStructure;
+  coverSpec?: ZineCoverSpec;
+  colophon?: ZineColophon;
+  publication?: ZinePublicationState;
+  exportState?: ZineExportState;
+  revision?: number;
+  revisions?: ZineRevision[];
+  updatedAt?: number;
 }
 
 export interface SemioticSignal {
@@ -701,6 +1003,10 @@ export interface SemioticSignal {
   price?: string;
   commerce_source?: 'shopify' | 'editorial';
   product_id?: string;
+  epistemicStatus?: ZineEpistemicStatus;
+  confidence?: number;
+  sourceIds?: string[];
+  sourceCount?: number;
 }
 
 /**
@@ -1674,6 +1980,8 @@ export interface UsedContextSnapshot {
   title: string;
   content: string;
   source?: string;
+  capturedAt?: number;
+  visibility?: ContextVisibility;
 }
 
 // ===============================================================
