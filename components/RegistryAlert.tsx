@@ -1,24 +1,34 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
 
 export const RegistryAlert: React.FC = () => {
  const [alerts, setAlerts] = useState<any[]>([]);
+ const recentMessages = useRef<Set<string>>(new Set());
 
  useEffect(() => {
  const handleAlert = (e: any) => {
+ const message = String(e.detail?.message || "").trim();
+ // Dedupe identical toasts — gateway/credit failures were stacking System Dissonance.
+ if (message && recentMessages.current.has(message)) {
+   return;
+ }
+ if (message) {
+   recentMessages.current.add(message);
+   setTimeout(() => {
+     recentMessages.current.delete(message);
+   }, 5000);
+ }
+
  const id = Math.random().toString(36).substr(2, 9);
- const newAlert = { id, ...e.detail };
- setAlerts(prev => [...prev, newAlert]);
- 
- // Trigger sound based on alert type
+ setAlerts((prev) => [...prev, { id, ...e.detail }]);
+
+ // Side effects outside the state updater (React may invoke updaters twice).
  const soundType = e.detail.type === 'error' ? 'error' : 'success';
  window.dispatchEvent(new CustomEvent('mimi:sound', { detail: { type: soundType } }));
- 
- // Auto-remove after 5 seconds
  setTimeout(() => {
- setAlerts(prev => prev.filter(a => a.id !== id));
+   setAlerts((current) => current.filter((a) => a.id !== id));
  }, 5000);
  };
 

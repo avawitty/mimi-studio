@@ -3,15 +3,15 @@ import { getServerAiGatewayKey } from "../../lib/aiGatewayCompat.js";
 
 const DENIAL_MESSAGES: Record<string, string> = {
   sign_in_required:
-    "Sign in to use Mimi plan credits on Vercel AI Gateway.",
+    "Sign in to use Mimi AI Gateway.",
   credits_exhausted:
-    "Mimi plan credits for AI Gateway are exhausted. Credits reload with your billing period — personal provider keys are optional.",
+    "Mimi membership credits for AI Gateway are exhausted. Credits reload with your billing period.",
   server_gateway_unconfigured:
     "AI Gateway is not configured on this server. Add AI_GATEWAY_API_KEY (preferred) or a personal provider key in Settings.",
   missing_personal_or_funded_key:
-    "Vercel AI Gateway requires a signed-in Mimi plan with credits remaining (or a personal Gateway key).",
+    "Vercel AI Gateway requires a signed-in Mimi membership with credits remaining (or a personal Gateway key).",
   access_denied:
-    "AI Gateway access was denied. Sign in with an active plan and credits remaining.",
+    "AI Gateway access was denied. Sign in with an active membership and credits remaining.",
 };
 
 export default async function handler(req: any, res: any) {

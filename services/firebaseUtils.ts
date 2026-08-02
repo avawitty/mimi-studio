@@ -772,10 +772,12 @@ export const addToPocket = async (uid: string, type: PocketItem['type'], content
       return;
     }
     await savePocketItemLocally(item);
+    window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
     return itemId;
   }
 
   await savePocketItemLocally(item);
+  window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
   {
     const { mirrorPocketItemToSovereign } = await import("./sovereignClient");
     void mirrorPocketItemToSovereign(item);
@@ -794,6 +796,7 @@ export const addToPocket = async (uid: string, type: PocketItem['type'], content
 
 export const deleteFromPocket = async (itemId: string): Promise<void> => {
   await deleteLocalPocketItem(itemId);
+  window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
   if (auth.currentUser) {
     const { deleteSovereignPocketItem } = await import("./sovereignClient");
     void deleteSovereignPocketItem(itemId, auth.currentUser.uid);
@@ -818,6 +821,7 @@ export const createMoodboard = async (uid: string, name: string, itemIds: string
     content: { name, itemIds } 
   };
   await savePocketItemLocally(item);
+  window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
   if (uid && auth.currentUser && navigator.onLine) {
     try {
       await setDoc(doc(db, "pocket", boardId), sanitizeFirestoreData(item));
@@ -834,6 +838,7 @@ export const updatePocketItem = async (itemId: string, patch: Partial<PocketItem
   if (index !== -1) {
     const updated = { ...localPocket[index], ...patch };
     await savePocketItemLocally(updated);
+    window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
   }
   if (isFullyAuthenticated() && navigator.onLine) {
     try {
@@ -1059,6 +1064,7 @@ export const subscribeToUserZines = (
   };
 };
 
+/** Cap community scans so free-tier read quota isn't burned by full-collection gets. */
 export const fetchCommunityZines = async (count: number) => {
     const take = Math.max(0, Math.min(count || 0, COMMUNITY_ZINE_READ_CAP));
     if (take === 0) return [];

@@ -37,6 +37,14 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   const [floorSearchApplied, setFloorSearchApplied] = useState<string | null>(null);
   const [commentZineId, setCommentZineId] = useState<string | null>(null);
 
+  // Identity change must resettle Floor — don't keep another account's shelf / empty quota state.
+  useEffect(() => {
+    setFloorLoaded(false);
+    setCommunityZines([]);
+    setCloudZines([]);
+  }, [user?.uid, user?.isAnonymous]);
+
+
   useEffect(() => {
     let unsubUser = () => {};
     const load = async () => {
@@ -88,20 +96,24 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     let unsubLive = () => {};
 
     (async () => {
+      // Lazy-load once; settle floorLoaded even on empty/error so quota failures
+      // cannot re-trigger fetchCommunityZines in a loop (#141).
       if (!floorLoaded) {
         setFloorLoading(true);
         try {
           const community = await fetchCommunityZines(40);
           if (!cancelled) {
             setCommunityZines(community || []);
-            setFloorLoaded(true);
             const status = await fetchSovereignStatus(true);
             if (status) setArchive(status);
           }
         } catch (e) {
           console.warn('Mimi // Stand community feed unavailable', e);
         } finally {
-          if (!cancelled) setFloorLoading(false);
+          if (!cancelled) {
+            setFloorLoaded(true);
+            setFloorLoading(false);
+          }
         }
       }
 
