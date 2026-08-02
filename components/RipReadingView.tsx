@@ -134,39 +134,43 @@ export const RipReadingView: React.FC<RipReadingViewProps> = ({
           </div>
         </section>
 
-        <section className="grid md:grid-cols-3 gap-4">
-          <div className="border border-white/10 p-4 space-y-2">
+        <section className="grid md:grid-cols-3 gap-3 md:gap-4 md:items-start">
+          <div className="border border-white/10 px-4 py-3 space-y-2.5">
             <p className="font-mono text-[8px] uppercase tracking-widest text-stone-500">
               Opposite palette
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               {reading.oppositePalette.map((c) =>
                 c.startsWith("#") ? (
                   <span
                     key={c}
-                    className="w-8 h-8 border border-white/20"
+                    className="w-8 h-8 border border-white/20 shrink-0"
                     style={{ backgroundColor: c }}
                     title={c}
                   />
                 ) : (
-                  <span key={c} className="font-mono text-[10px] text-stone-300">
+                  <span key={c} className="font-serif italic text-sm text-stone-200 leading-snug">
                     {c}
                   </span>
                 ),
               )}
             </div>
           </div>
-          <div className="border border-white/10 p-4 space-y-2">
+          <div className="border border-white/10 px-4 py-3 space-y-2.5">
             <p className="font-mono text-[8px] uppercase tracking-widest text-stone-500">
               Opposite silhouette
             </p>
-            <p className="font-serif italic text-sm text-stone-200">{reading.oppositeSilhouette}</p>
+            <p className="font-serif italic text-sm text-stone-200 leading-snug">
+              {reading.oppositeSilhouette}
+            </p>
           </div>
-          <div className="border border-white/10 p-4 space-y-2">
+          <div className="border border-white/10 px-4 py-3 space-y-2.5">
             <p className="font-mono text-[8px] uppercase tracking-widest text-stone-500">
               Opposite register
             </p>
-            <p className="font-serif italic text-sm text-stone-200">{reading.oppositeRegister}</p>
+            <p className="font-serif italic text-sm text-stone-200 leading-snug">
+              {reading.oppositeRegister}
+            </p>
           </div>
         </section>
 
