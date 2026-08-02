@@ -48,6 +48,6 @@ export function mapClaimStatusToTasteClaimType(
   if (status === "observed" || status === "reported" || status === "historical") {
     return "observed";
   }
-  if (status === "model-proposed" || status === "contested") return "speculative";
+  if (status === "model-proposed") return "speculative";
   return "inferred";
 }
