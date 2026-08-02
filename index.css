@@ -519,6 +519,85 @@
     border-color: var(--archive-border);
   }
 
+  /* Scry — mobile latent field (private archive chamber, not a public face) */
+  .scry-latent-field {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 80% at 12% 0%, rgba(155, 184, 206, 0.18), transparent 55%),
+      radial-gradient(90% 70% at 100% 30%, rgba(90, 90, 64, 0.22), transparent 50%),
+      linear-gradient(165deg, #141414 0%, #0a0a0a 48%, #111210 100%);
+    color: #f3f1ea;
+  }
+
+  .scry-latent-field::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(243, 241, 234, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(243, 241, 234, 0.03) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 88%);
+    pointer-events: none;
+  }
+
+  .scry-latent-scan {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(155, 184, 206, 0.85), transparent);
+    animation: scryLatentScan 4.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes scryLatentScan {
+    0%,
+    100% {
+      top: 12%;
+      opacity: 0;
+    }
+    15% {
+      opacity: 0.9;
+    }
+    50% {
+      top: 78%;
+      opacity: 0.35;
+    }
+    85% {
+      opacity: 0;
+    }
+  }
+
+  .scry-lane-live {
+    box-shadow: inset 3px 0 0 #9bb8ce;
+  }
+
+  .scry-lane-failed {
+    box-shadow: inset 3px 0 0 #a34b4b;
+  }
+
+  .scry-lane-empty {
+    box-shadow: inset 3px 0 0 rgba(243, 241, 234, 0.18);
+  }
+
+  .scry-dim-hash {
+    display: grid;
+    grid-template-columns: repeat(16, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .scry-dim-hash span {
+    display: block;
+    height: 10px;
+    background: rgba(243, 241, 234, 0.12);
+  }
+
+  .scry-dim-hash span.is-on {
+    background: rgba(155, 184, 206, 0.7);
+  }
+
   .archive-text-ink {
     color: var(--archive-ink);
   }

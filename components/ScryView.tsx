@@ -199,14 +199,15 @@ const ResultCard: React.FC<{
   );
 };
 
-const LaneStrip: React.FC<{ run: ScryRun | null; busy: boolean }> = ({
-  run,
-  busy,
-}) => {
+const LaneStrip: React.FC<{
+  run: ScryRun | null;
+  busy: boolean;
+  inverted?: boolean;
+}> = ({ run, busy, inverted = false }) => {
   const lanes = Object.keys(LANE_META) as ScryLaneId[];
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-      {lanes.map((lane) => {
+      {lanes.map((lane, index) => {
         const status = run?.laneStatus[lane] ?? "empty";
         const count =
           lane === "generatedReading"
@@ -214,23 +215,67 @@ const LaneStrip: React.FC<{ run: ScryRun | null; busy: boolean }> = ({
               ? 1
               : 0
             : (run?.sources[lane] as ResearchResult[] | undefined)?.length || 0;
+        const tone =
+          status === "success" || status === "partial"
+            ? "scry-lane-live"
+            : status === "failed"
+              ? "scry-lane-failed"
+              : "scry-lane-empty";
         return (
-          <div
+          <motion.div
             key={lane}
-            className="border archive-border px-3 py-2 min-h-[52px]"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: Math.min(index * 0.05, 0.2), duration: 0.35 }}
+            className={`relative px-3 py-2.5 min-h-[58px] md:min-h-[52px] ${tone} ${
+              inverted
+                ? "border border-white/12 bg-white/[0.04] text-[#f3f1ea]"
+                : "border archive-border bg-white/70"
+            }`}
             data-lane={lane}
             data-status={status}
           >
-            <p className="font-mono text-[7px] uppercase tracking-[0.18em] archive-text-muted">
+            <p
+              className={`font-mono text-[7px] uppercase tracking-[0.18em] flex items-center gap-1.5 ${
+                inverted ? "text-white/55" : "archive-text-muted"
+              }`}
+            >
+              <span className={inverted ? "text-[#9BB8CE]" : ""}>{LANE_META[lane].icon}</span>
               {LANE_META[lane].label}
             </p>
-            <p className="font-mono text-[9px] archive-text-ink mt-1">
-              {busy && status === "empty" ? "…" : STATUS_LABEL[status]}
+            <p
+              className={`font-mono text-[10px] mt-1.5 ${
+                inverted ? "text-[#f3f1ea]" : "archive-text-ink"
+              }`}
+            >
+              {busy && status === "empty" ? (
+                <span className="inline-flex gap-0.5" aria-hidden>
+                  <span className="animate-pulse">·</span>
+                  <span className="animate-pulse [animation-delay:120ms]">·</span>
+                  <span className="animate-pulse [animation-delay:240ms]">·</span>
+                </span>
+              ) : (
+                STATUS_LABEL[status]
+              )}
               {count > 0 ? ` · ${count}` : ""}
             </p>
-          </div>
+          </motion.div>
         );
       })}
+    </div>
+  );
+};
+
+const DimHash: React.FC<{ dims: number | null; active?: boolean }> = ({
+  dims,
+  active = false,
+}) => {
+  const lit = Math.max(2, Math.min(16, dims ? Math.round(dims / 96) : 4));
+  return (
+    <div className="scry-dim-hash" aria-hidden>
+      {Array.from({ length: 16 }, (_, i) => (
+        <span key={i} className={active && i < lit ? "is-on" : undefined} />
+      ))}
     </div>
   );
 };
@@ -643,7 +688,7 @@ export const ScryView: React.FC = () => {
           <div className="flex flex-col h-full min-h-0" data-testid="scry-chamber">
             <nav
               aria-label="Scry modes"
-              className="md:hidden shrink-0 grid grid-cols-2 border-b archive-border"
+              className="md:hidden shrink-0 grid grid-cols-2 bg-[#0a0a0a] border-b border-white/10"
             >
               {TABS.map((mode) => {
                 const active = tab === mode.id;
@@ -652,14 +697,18 @@ export const ScryView: React.FC = () => {
                     key={mode.id}
                     type="button"
                     onClick={() => setTab(mode.id)}
-                    className={`flex items-center justify-center gap-1.5 px-2 py-2.5 font-mono text-[8px] uppercase tracking-[0.15em] border-b-2 min-h-[44px] ${
-                      active
-                        ? "archive-workflow-active border-archive-ink"
-                        : "archive-workflow-idle border-transparent"
+                    className={`relative flex items-center justify-center gap-1.5 px-2 py-3 font-mono text-[9px] uppercase tracking-[0.18em] min-h-[48px] transition-colors ${
+                      active ? "text-[#f3f1ea]" : "text-white/45"
                     }`}
                   >
-                    {mode.icon}
+                    <span className={active ? "text-[#9BB8CE]" : ""}>{mode.icon}</span>
                     {mode.label}
+                    {active ? (
+                      <motion.span
+                        layoutId="scry-mobile-tab"
+                        className="absolute inset-x-4 bottom-0 h-[2px] bg-[#9BB8CE]"
+                      />
+                    ) : null}
                   </button>
                 );
               })}
@@ -667,7 +716,118 @@ export const ScryView: React.FC = () => {
 
             {tab === "specimen" && (
               <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="px-4 md:px-8 pt-6 md:pt-10 pb-4 max-w-3xl">
+                {/* Mobile: one dark latent composition. Desktop keeps cream registry plate. */}
+                <div className="md:hidden scry-latent-field px-4 pt-7 pb-6">
+                  {isScrying ? <div className="scry-latent-scan" aria-hidden /> : null}
+                  <motion.p
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="font-mono text-[9px] uppercase tracking-[0.32em] text-white/50 mb-3 flex items-center gap-2"
+                  >
+                    <span
+                      className={`inline-block w-1.5 h-1.5 ${
+                        isScrying ? "bg-[#9BB8CE] animate-pulse" : "border border-[#9BB8CE]/60"
+                      }`}
+                    />
+                    Latent retrieval
+                  </motion.p>
+                  <motion.h2
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 }}
+                    className="font-serif italic text-[2.65rem] leading-[0.92] text-[#f3f1ea] mb-3"
+                  >
+                    Scry
+                  </motion.h2>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.12 }}
+                    className="font-sans text-sm text-white/60 max-w-[18rem] leading-relaxed mb-7"
+                  >
+                    Ask a mood or a ghost. Four lanes answer — nothing fabricated.
+                  </motion.p>
+
+                  <label className="block mb-2 font-mono text-[9px] uppercase tracking-widest text-white/45">
+                    Query
+                  </label>
+                  <div className="relative mb-5">
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void handleScry();
+                        }
+                      }}
+                      className="w-full bg-transparent border-b border-white/35 py-3 text-[1.35rem] font-serif italic text-[#f3f1ea] placeholder:text-white/25 focus:outline-none focus:border-[#9BB8CE] pr-14"
+                      placeholder="will i be a lover girl again?"
+                      aria-label="Scry query"
+                      data-testid="scry-query"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleScry()}
+                      disabled={isScrying || !query.trim()}
+                      aria-label="Run scry"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-[#f3f1ea] text-[#0a0a0a] disabled:opacity-40"
+                    >
+                      {isScrying ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <ArrowRight size={16} />
+                      )}
+                    </button>
+                  </div>
+
+                  <LaneStrip run={run} busy={isScrying} inverted />
+
+                  {run?.shadowIndexHint?.needsReindex ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-5 border border-white/15 bg-black/35 px-3 py-3"
+                      data-testid="shadow-reindex-hint"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-[#9BB8CE]">
+                          Shadow drift
+                        </p>
+                        <p className="font-mono text-[8px] text-white/40">
+                          {run.shadowIndexHint.referenceDims
+                            ? `${run.shadowIndexHint.referenceDims}-d field`
+                            : "width mismatch"}
+                        </p>
+                      </div>
+                      <DimHash dims={run.shadowIndexHint.referenceDims} active />
+                      <p className="font-sans text-sm text-[#f3f1ea]/90 leading-relaxed mt-3 mb-3">
+                        {run.shadowIndexHint.incompatible + run.shadowIndexHint.missingVector}{" "}
+                        saved signal
+                        {run.shadowIndexHint.incompatible + run.shadowIndexHint.missingVector === 1
+                          ? ""
+                          : "s"}{" "}
+                        sit outside this space. Rewrite them to search again.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleReindexShadow()}
+                        disabled={isReindexingShadow || isScrying}
+                        data-testid="shadow-reindex-button"
+                        className="inline-flex items-center gap-2 min-h-[44px] px-3 py-2 bg-[#9BB8CE] text-[#0a0a0a] font-mono text-[9px] uppercase tracking-[0.16em] disabled:opacity-40"
+                      >
+                        {isReindexingShadow ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Database size={14} />
+                        )}
+                        Re-index shadow
+                      </button>
+                    </motion.div>
+                  ) : null}
+                </div>
+
+                <div className="hidden md:block px-8 pt-10 pb-4 max-w-3xl">
                   <p className="font-mono text-[9px] uppercase tracking-[0.28em] archive-text-muted mb-3 flex items-center gap-2">
                     <span
                       className={`inline-block w-1.5 h-1.5 ${
@@ -676,7 +836,7 @@ export const ScryView: React.FC = () => {
                     />
                     Latent retrieval
                   </p>
-                  <h2 className="font-serif italic text-3xl md:text-5xl leading-none archive-text-ink mb-3">
+                  <h2 className="font-serif italic text-5xl leading-none archive-text-ink mb-3">
                     Ask the registry
                   </h2>
                   <p className="font-sans text-sm archive-text-muted max-w-md leading-relaxed mb-8">
@@ -697,7 +857,7 @@ export const ScryView: React.FC = () => {
                           void handleScry();
                         }
                       }}
-                      className="w-full bg-transparent border-b-2 border-black py-3 md:py-4 text-xl md:text-2xl font-serif italic placeholder:text-stone-300 focus:outline-none pr-14"
+                      className="w-full bg-transparent border-b-2 border-black py-4 text-2xl font-serif italic placeholder:text-stone-300 focus:outline-none pr-14"
                       placeholder="will i be a lover girl again?"
                       aria-label="Scry query"
                       data-testid="scry-query"
@@ -722,7 +882,7 @@ export const ScryView: React.FC = () => {
                   {run?.shadowIndexHint?.needsReindex ? (
                     <div
                       className="mt-4 border archive-border border-l-2 border-l-stone-500 px-3 py-3 bg-white/70"
-                      data-testid="shadow-reindex-hint"
+                      data-testid="shadow-reindex-hint-desktop"
                     >
                       <p className="font-mono text-[8px] uppercase tracking-[0.18em] archive-text-muted mb-1">
                         Shadow index drift
@@ -743,7 +903,7 @@ export const ScryView: React.FC = () => {
                         type="button"
                         onClick={() => void handleReindexShadow()}
                         disabled={isReindexingShadow || isScrying}
-                        data-testid="shadow-reindex-button"
+                        data-testid="shadow-reindex-button-desktop"
                         className="inline-flex items-center gap-2 min-h-[44px] px-3 py-2 bg-black text-white font-mono text-[9px] uppercase tracking-[0.16em] disabled:opacity-40"
                       >
                         {isReindexingShadow ? (
@@ -757,7 +917,7 @@ export const ScryView: React.FC = () => {
                   ) : null}
                 </div>
 
-                <div className="px-4 md:px-8 pb-28 md:pb-16 max-w-3xl space-y-4">
+                <div className="px-4 md:px-8 pb-28 md:pb-16 max-w-3xl space-y-4 md:pt-2 pt-5 bg-[var(--archive-surface)]">
                   <AnimatePresence mode="popLayout">
                     {run?.sources.generatedReading ? (
                       <motion.article
@@ -806,13 +966,27 @@ export const ScryView: React.FC = () => {
             )}
 
             {tab === "trend" && (
-              <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-8 py-6 md:py-10 pb-28 md:pb-16 max-w-3xl space-y-8">
-                <div>
+              <div className="flex-1 min-h-0 overflow-y-auto pb-28 md:pb-16">
+                <div className="md:hidden scry-latent-field px-4 pt-7 pb-6 mb-6">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.32em] text-white/50 mb-3 flex items-center gap-2">
+                    <TrendingUp size={12} className="text-[#9BB8CE]" />
+                    Trend grounding
+                  </p>
+                  <h2 className="font-serif italic text-[2.4rem] leading-[0.95] text-[#f3f1ea] mb-3">
+                    Drift map
+                  </h2>
+                  <p className="font-sans text-sm text-white/60 max-w-[18rem] leading-relaxed">
+                    Live search into a biaxial field. Drafts prefer Gateway; empties stay empty.
+                  </p>
+                </div>
+
+                <div className="px-4 md:px-8 md:pt-10 space-y-8 max-w-3xl">
+                <div className="hidden md:block">
                   <p className="font-mono text-[9px] uppercase tracking-[0.28em] archive-text-muted mb-3 flex items-center gap-2">
                     <TrendingUp size={12} />
                     Trend grounding
                   </p>
-                  <h2 className="font-serif italic text-3xl md:text-5xl archive-text-ink mb-3">
+                  <h2 className="font-serif italic text-5xl archive-text-ink mb-3">
                     Trend Scryer
                   </h2>
                   <p className="font-sans text-sm archive-text-muted max-w-xl leading-relaxed">
@@ -1081,6 +1255,7 @@ export const ScryView: React.FC = () => {
                     ) : null}
                   </div>
                 ) : null}
+                </div>
               </div>
             )}
           </div>
