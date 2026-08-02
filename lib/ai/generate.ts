@@ -2,6 +2,10 @@
  * Thin Vercel AI SDK helpers that always route through AI Gateway.
  * Prefer these for new server-side text/JSON generation instead of
  * calling OpenAI/Anthropic SDKs directly.
+ *
+ * Models resolve via modelFor → lib/models.ts GATEWAY_DEFAULT_MODELS
+ * (newest curated text / image / audio / video IDs). Pass `model` only
+ * to override; do not hardcode outdated provider strings at call sites.
  */
 import { generateText, Output, gateway } from "ai";
 import type { ZodType } from "zod";

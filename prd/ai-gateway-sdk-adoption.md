@@ -83,13 +83,17 @@ Creators and operators need a single, env-overridable catalog of gateway `provid
 | Funded billing | `lib/mimiFundedGateway.ts` | Credit gate for gateway usage |
 | Env template | `.env.example` | Bootstrap keys (names only) |
 
-**Current default gateway IDs** (verified present on AI Gateway catalog at PR time):
+**Current default gateway IDs** (newest curated picks; re-verified against AI Gateway catalog):
 
 - textFast: `google/gemini-3.6-flash`
 - textDeep: `anthropic/claude-sonnet-5`
-- image / imageEdit: `google/gemini-3.1-flash-image-preview`
-- video: `google/veo-3.1-fast-generate-001`
+- image / imageEdit: `google/gemini-3.1-flash-image` (GA; replaces `-preview`)
+- video: `google/veo-3.1-lite-generate-001`
+- tts (audio): `xai/grok-tts`
 - embedding: `openai/text-embedding-3-small`
+
+Operational rule: gateway call sites should use `modelFor(role, "gateway")` or
+`suggestedGatewayModel(role)` so text / image / audio / video traffic tracks these defaults.
 
 ## Edge cases & error states
 
