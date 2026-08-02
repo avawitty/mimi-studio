@@ -3,7 +3,7 @@
  * Offline-first cultural / emotional runs with read-only report / MMM / outputs.
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   FileText,
@@ -18,6 +18,7 @@ import {
   ArchiveChamberShell,
   ArchiveContextPanel,
 } from "./ArchiveChamberShell";
+import { auth } from "../../services/firebase";
 import {
   adaptResidueToIntelligenceReport,
   adaptResidueToMeanMedianMode,
@@ -29,6 +30,7 @@ import {
   type EmotionalResidueResult,
   type IntelligenceReport,
   type MeanMedianModeResult,
+  type SourceReference,
 } from "../../services/residue";
 
 type ResidueMode = "cultural" | "emotional";
@@ -52,8 +54,39 @@ export const ResidueChamber: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResidueResult | null>(null);
   const [usedLlm, setUsedLlm] = useState(false);
+  const [useApify, setUseApify] = useState(false);
+  const [apifyAvailable, setApifyAvailable] = useState(false);
+  const [apifyNotice, setApifyNotice] = useState<string | null>(null);
+  const [apifyActorId, setApifyActorId] = useState<string | null>(null);
 
   const safetyNotice = emotionalSafetyNotice();
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/residue-acquire");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          available?: boolean;
+          notice?: string;
+          actorId?: string;
+        };
+        if (cancelled) return;
+        setApifyAvailable(Boolean(data.available));
+        setApifyNotice(data.notice || null);
+        setApifyActorId(data.actorId || null);
+      } catch {
+        if (!cancelled) {
+          setApifyAvailable(false);
+          setApifyNotice("Could not reach Residue Apify status endpoint.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const report: IntelligenceReport | null = useMemo(
     () => (result ? adaptResidueToIntelligenceReport(result) : null),
@@ -84,6 +117,18 @@ export const ResidueChamber: React.FC = () => {
         .map((s) => s.trim())
         .filter(Boolean);
 
+      let apifySources: SourceReference[] | undefined;
+      if (useApify) {
+        apifySources = await fetchApifySourcesForResidue({
+          mode,
+          inquiry:
+            mode === "cultural"
+              ? query.trim() || "untitled cultural inquiry"
+              : "[redacted-emotional-input]",
+          sourceUrls: urls,
+        });
+      }
+
       if (mode === "cultural") {
         const out = await runCulturalResidue(
           {
@@ -95,24 +140,31 @@ export const ResidueChamber: React.FC = () => {
             retention: "temporary",
             consentToStore: false,
           },
-          { llm: { offline: true } },
+          {
+            llm: { offline: true },
+            sources: apifySources
+              ? [
+                  ...apifySources,
+                  // Keep manual notes as source records when Apify path provided sources.
+                  ...userNotes.map((note, index) => ({
+                    sourceId: `src_note_ui_${index}`,
+                    title: `User note ${index + 1}`,
+                    sourceType: "user-note" as const,
+                    accessedAt: new Date().toISOString(),
+                    excerpt: note.slice(0, 500),
+                    evidenceLayer: "C" as const,
+                    metadata: { fullText: note },
+                  })),
+                ]
+              : undefined,
+          },
         );
         setResult(out.result);
         setUsedLlm(out.usedLlm);
       } else {
-        const out = await runEmotionalResidue(
-          {
-            experience: experience.trim() || "reported experience",
-            userNotes,
-            sourceUrls: urls,
-            includeCommunitySources: true,
-            includeResearchSources: true,
-            retention: "temporary",
-            consentToStore: false,
-          },
-          {
-            llm: { offline: true },
-            sources: [
+        const seeded: SourceReference[] = apifySources?.length
+          ? apifySources
+          : [
               {
                 sourceId: "src_research_ui",
                 title: "Research review (manual)",
@@ -135,7 +187,20 @@ export const ResidueChamber: React.FC = () => {
                   fullText: userNotes.join(" ") || notes,
                 },
               },
-            ],
+            ];
+        const out = await runEmotionalResidue(
+          {
+            experience: experience.trim() || "reported experience",
+            userNotes,
+            sourceUrls: urls,
+            includeCommunitySources: true,
+            includeResearchSources: true,
+            retention: "temporary",
+            consentToStore: false,
+          },
+          {
+            llm: { offline: true },
+            sources: seeded,
           },
         );
         setResult(out.result);
@@ -183,11 +248,23 @@ export const ResidueChamber: React.FC = () => {
         </p>
         <ul className="font-sans text-[10px] archive-text-muted space-y-2 list-none">
           <li>Compose an inquiry and run offline (no gateway required).</li>
+          <li>
+            Optional Apify acquisition is token-gated and requires sign-in
+            {apifyActorId ? ` · ${apifyActorId}` : ""}.
+          </li>
           <li>Read the Intelligence Report and Mean / Median / Mode panels.</li>
           <li>Inspect product outputs as proposals — nothing auto-merges to Memory or Taste Graph.</li>
           <li>Hand structured results to Intel Hub / The Edit when ready.</li>
         </ul>
       </div>
+      {apifyNotice ? (
+        <div className="space-y-1 pt-2 border-t archive-border">
+          <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+            Apify
+          </p>
+          <p className="font-sans text-[10px] archive-text-muted leading-relaxed">{apifyNotice}</p>
+        </div>
+      ) : null}
       {result ? (
         <div className="space-y-2 pt-2 border-t archive-border">
           <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
@@ -324,6 +401,10 @@ export const ResidueChamber: React.FC = () => {
               sourceUrls={sourceUrls}
               setSourceUrls={setSourceUrls}
               running={running}
+              useApify={useApify}
+              setUseApify={setUseApify}
+              apifyAvailable={apifyAvailable}
+              apifyActorId={apifyActorId}
               onRun={() => void run()}
             />
           ) : null}
@@ -354,20 +435,24 @@ function ComposePanel(props: {
   sourceUrls: string;
   setSourceUrls: (v: string) => void;
   running: boolean;
+  useApify: boolean;
+  setUseApify: (v: boolean) => void;
+  apifyAvailable: boolean;
+  apifyActorId: string | null;
   onRun: () => void;
 }) {
   return (
     <div className="max-w-2xl space-y-5">
       <div>
         <p className="font-mono text-[8px] uppercase tracking-[0.3em] archive-text-muted mb-2">
-          Composer · offline-first
+          Composer · offline-first · optional Apify
         </p>
         <h2 className="font-serif italic text-2xl archive-text-ink">
           {props.mode === "cultural" ? "Cultural inquiry" : "Reported experience"}
         </h2>
         <p className="font-sans text-[11px] archive-text-muted mt-2 leading-relaxed">
-          Runs against the Residue engine without AI Gateway. Live enrichment and Apify acquisition
-          stay optional for later phases.
+          Engine synthesis runs offline by default (no AI Gateway required). Optional Apify
+          acquisition is server-side and token-gated.
         </p>
       </div>
 
@@ -419,6 +504,26 @@ function ComposePanel(props: {
         />
       </Field>
 
+      <label className="flex items-start gap-3 border archive-border px-3 py-3 cursor-pointer">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={props.useApify}
+          disabled={!props.apifyAvailable}
+          onChange={(e) => props.setUseApify(e.target.checked)}
+        />
+        <span className="space-y-1">
+          <span className="block font-mono text-[8px] uppercase tracking-[0.25em] archive-text-muted">
+            Acquire via Apify {props.apifyAvailable ? "(live)" : "(unavailable)"}
+          </span>
+          <span className="block font-sans text-[11px] archive-text-muted leading-relaxed">
+            {props.apifyAvailable
+              ? `Signed-in live scrape via ${props.apifyActorId || "configured Actor"}. Emotional mode sends a redacted inquiry only.`
+              : "Set APIFY_TOKEN on the server to enable. Offline notes/URLs still work."}
+          </span>
+        </span>
+      </label>
+
       <button
         type="button"
         onClick={props.onRun}
@@ -426,10 +531,52 @@ function ComposePanel(props: {
         className="inline-flex items-center gap-2 px-5 py-3 border archive-border bg-archive-ink text-white font-mono text-[9px] uppercase tracking-[0.25em] disabled:opacity-50 hover:opacity-90"
       >
         {props.running ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
-        {props.running ? "Running…" : "Run Residue (offline)"}
+        {props.running
+          ? "Running…"
+          : props.useApify
+            ? "Run Residue (+ Apify)"
+            : "Run Residue (offline)"}
       </button>
     </div>
   );
+}
+
+async function fetchApifySourcesForResidue(input: {
+  mode: ResidueMode;
+  inquiry: string;
+  sourceUrls: string[];
+}): Promise<SourceReference[]> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const token = await auth.currentUser?.getIdToken();
+  if (token) headers["x-user-token"] = `Bearer ${token}`;
+
+  const res = await fetch("/api/residue-acquire", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      inquiry: input.inquiry,
+      mode: input.mode,
+      sourceUrls: input.sourceUrls,
+      maxItems: 5,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message =
+      data?.error?.message ||
+      (res.status === 401
+        ? "Sign in required for Apify acquisition."
+        : "Apify acquisition failed.");
+    throw new Error(message);
+  }
+  if (data?.status === "disabled") {
+    throw new Error(data?.warnings?.[0] || "Apify acquisition disabled.");
+  }
+  const refs = Array.isArray(data?.sourceReferences) ? data.sourceReferences : [];
+  if (!refs.length) {
+    throw new Error(data?.warnings?.[0] || "Apify returned no sources.");
+  }
+  return refs as SourceReference[];
 }
 
 function ReportPanel({ report }: { report: IntelligenceReport }) {

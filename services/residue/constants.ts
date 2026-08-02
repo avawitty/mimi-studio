@@ -4,7 +4,7 @@
  */
 
 export const RESIDUE_SCHEMA_VERSION = "1.0.0" as const;
-export const RESIDUE_PROMPT_VERSION = "1.0.0-phase8" as const;
+export const RESIDUE_PROMPT_VERSION = "1.0.0-phase9" as const;
 export const RESIDUE_ENGINE_ID = "mimi-residue-engine" as const;
 
 /** Evidence quality layers (must be disclosed on claims / confidence summaries). */
