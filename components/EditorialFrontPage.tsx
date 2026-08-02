@@ -122,7 +122,7 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80';
 
   return (
-    <PublicField className="w-full h-full min-h-0 overflow-y-auto font-sans transition-colors duration-300 pb-32">
+    <PublicField className="w-full h-full min-h-0 overflow-y-auto font-sans transition-colors duration-300 pb-20 md:pb-28">
       <PressReveal>
         <EditorialPlate
           showWordmark={false}

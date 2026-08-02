@@ -15,7 +15,7 @@ import { PressReveal } from './motion/PressReveal';
 import { getApprovedUsedContext } from '../services/usedContextService';
 
 const SignatureSkeleton = () => (
- <div className="flex-1 overflow-y-auto bg dark:bg text-nous-text font-serif pb-32 custom-scrollbar">
+ <div className="flex-1 overflow-y-auto bg dark:bg text-nous-text font-serif pb-20 md:pb-28 custom-scrollbar">
  <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-16 animate-pulse">
  
  {/* Header Skeleton */}
