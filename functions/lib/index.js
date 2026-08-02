@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dailyPressIssueJob = exports.api = void 0;
+exports.api = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const express_1 = __importDefault(require("express"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
@@ -44,12 +44,17 @@ const app_1 = require("firebase-admin/app");
 const auth_1 = require("firebase-admin/auth");
 const firestore_1 = require("firebase-admin/firestore");
 const stripe_1 = __importDefault(require("stripe"));
+const firestore_2 = require("./firestore");
 (0, app_1.initializeApp)();
 const app = (0, express_1.default)();
 app.use((0, cookie_parser_1.default)());
 const ALLOWED_ORIGIN_PATTERNS = [
-    'https://mimi.you',
     'https://www.mimi.you',
+    'https://mimi.you',
+    'https://www.mimi.rip',
+    'https://mimi.rip',
+    'https://mimi.fish',
+    'https://www.mimi.fish',
     'https://avainlife.com',
     'https://www.avainlife.com',
     /^https:\/\/[\w-]+\.vercel\.app$/,
@@ -69,7 +74,7 @@ app.use((req, res, next) => {
     }
     next();
 });
-const db = (0, firestore_1.getFirestore)();
+const db = (0, firestore_2.getMimiFirestore)();
 const normalizeMimiPlan = (planInput) => {
     const value = String(planInput || 'free').trim().toLowerCase();
     if (value === 'core')
@@ -87,7 +92,9 @@ const toLegacyPlanStatus = (planInput) => {
     const plan = normalizeMimiPlan(planInput);
     if (plan === 'initiation')
         return 'core';
-    if (plan === 'optioning' || plan === 'atelier')
+    if (plan === 'optioning')
+        return 'optioning';
+    if (plan === 'atelier')
         return 'pro';
     if (plan === 'lab' || plan === 'sovereign')
         return 'lab';
@@ -127,7 +134,7 @@ const writeMembershipEntitlements = async ({ uid, plan, interval = 'month', stri
     const isActive = status === 'active';
     const currentPeriodEnd = credits.periodEndsAt;
     const now = Date.now();
-    const userPatch = Object.assign({ plan: legacyPlan === 'free' ? 'free' : legacyPlan, planStatus: legacyPlan, membershipPlan: legacyPlan, subscriptionStatus: isActive ? 'active' : 'inactive', subscriptionInterval: interval, membershipCredits: credits }, (stripeCustomerId ? { stripeCustomerId } : {}));
+    const userPatch = Object.assign({ plan: legacyPlan === 'free' ? 'free' : legacyPlan, planStatus: legacyPlan, membershipPlan: legacyPlan, mimiPlan, subscriptionStatus: isActive ? 'active' : 'inactive', subscriptionInterval: interval, membershipCredits: credits }, (stripeCustomerId ? { stripeCustomerId } : {}));
     await Promise.all([
         db.collection('users').doc(uid).set(userPatch, { merge: true }),
         db.collection('profiles_public').doc(uid).set(userPatch, { merge: true }),
@@ -392,7 +399,7 @@ app.get('/api/og/zine', async (req, res) => {
         const title = String(zine.title || 'Untitled Manifestation');
         const description = String(zine.concept || zine.summary || 'Aesthetic zine created via Mimi Studio.');
         const imageUrl = String(zine.coverImageUrl || ((_a = zine.contentImages) === null || _a === void 0 ? void 0 : _a[0]) || 'https://raw.githubusercontent.com/Aris-A-C/mimi-assets/main/mimi_logo_new.png');
-        const base = String(process.env.MIMI_PUBLIC_BASE_URL || 'https://mimi.you').replace(/\/$/, '');
+        const base = String(process.env.MIMI_PUBLIC_BASE_URL || 'https://www.mimi.you').replace(/\/$/, '');
         const pageUrl = `${base}/zine/${zineId}`;
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
@@ -432,7 +439,9 @@ app.post('/api/triggerPressGeneration', async (req, res) => {
     }
 });
 exports.api = functions.https.onRequest(app);
-exports.dailyPressIssueJob = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-    await (0, pressGenerator_1.generateDailyPressIssue)();
-});
+// Scheduled pubsub jobs require Blaze + Cloud Scheduler on mimistudios.
+// Use POST /api/triggerPressGeneration (above) until billing is enabled, then restore:
+// export const dailyPressIssueJob = functions.pubsub.schedule('every 24 hours').onRun(async () => {
+//   await generateDailyPressIssue();
+// });
 //# sourceMappingURL=index.js.map

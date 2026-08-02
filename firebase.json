@@ -1,5 +1,30 @@
 
 {
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Mimi Studio",
+        "supportEmail": "avaawittkop@gmail.com",
+        "authorizedRedirectUris": [
+          "https://www.mimi.you",
+          "https://www.mimi.you/__/auth/handler",
+          "https://mimi.you",
+          "https://mimi.you/__/auth/handler",
+          "https://www.mimi.rip",
+          "https://www.mimi.rip/__/auth/handler",
+          "https://mimi.rip",
+          "https://mimi.rip/__/auth/handler",
+          "https://www.mimi.fish",
+          "https://www.mimi.fish/__/auth/handler",
+          "https://mimi.fish",
+          "https://mimi.fish/__/auth/handler",
+          "http://localhost"
+        ]
+      }
+    }
+  },
   "firestore": [
     {
       "database": "(default)",

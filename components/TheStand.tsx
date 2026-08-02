@@ -10,7 +10,6 @@ import { ZineCoverCard } from './ZineCoverCard';
 import { ZineComments } from './ZineComments';
 import {
   PublicField,
-  MimiWordmark,
   ColumnRule,
   PublicCTA,
   PressMark,
@@ -105,13 +104,12 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   return (
     <>
       <PublicField className="flex-1 w-full h-full flex flex-col relative overflow-hidden">
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
+        <div className="flex-1 overflow-y-auto no-scrollbar pb-16 md:pb-24">
           <PressReveal>
-            <header className="px-6 md:px-16 pt-10 md:pt-16 pb-8 space-y-8">
+            <header className="px-6 md:px-16 pt-6 md:pt-14 pb-6 md:pb-8 space-y-6 md:space-y-8">
               <div className="flex justify-between items-start gap-6">
-                <div className="space-y-5 max-w-2xl">
-                  <MimiWordmark size="sm" />
-                  <h1 className="font-serif italic text-5xl md:text-7xl tracking-tight text-[var(--mimi-ink)] leading-[0.9]">
+                <div className="space-y-4 md:space-y-5 max-w-2xl">
+                  <h1 className="font-serif italic text-4xl md:text-7xl tracking-tight text-[var(--mimi-ink)] leading-[0.9]">
                     {displayName}
                   </h1>
                   {handle && (
@@ -143,30 +141,43 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
 
               <ColumnRule />
 
-              <div className="flex flex-col md:flex-row justify-between items-end gap-6">
-                <div className="flex gap-8">
-                  <button
-                    type="button"
-                    onClick={() => setMode('mine')}
-                    className={`font-sans text-[10px] uppercase tracking-[0.22em] font-semibold pb-2 transition-colors flex items-center gap-2 border-b ${
-                      mode === 'mine'
-                        ? 'text-[var(--mimi-ink)] border-[var(--mimi-ink)]'
-                        : 'text-[var(--mimi-stone)] border-transparent hover:text-[var(--mimi-ink)]'
-                    }`}
+              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-end gap-4 md:gap-6">
+                {/* Scrollable on narrow viewports so Floor is never clipped */}
+                <div className="-mx-1 overflow-x-auto no-scrollbar">
+                  <div
+                    role="tablist"
+                    aria-label="Stand shelves"
+                    className="flex gap-3 md:gap-8 min-w-min px-1"
                   >
-                    <User size={12} /> My Issues
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode('floor')}
-                    className={`font-sans text-[10px] uppercase tracking-[0.22em] font-semibold pb-2 transition-colors flex items-center gap-2 border-b ${
-                      mode === 'floor'
-                        ? 'text-[var(--mimi-ink)] border-[var(--mimi-ink)]'
-                        : 'text-[var(--mimi-stone)] border-transparent hover:text-[var(--mimi-ink)]'
-                    }`}
-                  >
-                    <Globe size={12} /> Floor
-                  </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mode === 'mine'}
+                      onClick={() => setMode('mine')}
+                      className={`shrink-0 min-h-[44px] font-sans text-[10px] uppercase tracking-[0.14em] md:tracking-[0.2em] font-semibold px-1 pb-1 transition-colors inline-flex items-center gap-2 border-b ${
+                        mode === 'mine'
+                          ? 'text-[var(--mimi-ink)] border-[var(--mimi-ink)]'
+                          : 'text-[var(--mimi-stone)] border-transparent hover:text-[var(--mimi-ink)]'
+                      }`}
+                    >
+                      <User size={12} aria-hidden="true" />
+                      <span className="md:hidden">Mine</span>
+                      <span className="hidden md:inline">My Issues</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mode === 'floor'}
+                      onClick={() => setMode('floor')}
+                      className={`shrink-0 min-h-[44px] font-sans text-[10px] uppercase tracking-[0.14em] md:tracking-[0.2em] font-semibold px-1 pb-1 pr-3 transition-colors inline-flex items-center gap-2 border-b ${
+                        mode === 'floor'
+                          ? 'text-[var(--mimi-ink)] border-[var(--mimi-ink)]'
+                          : 'text-[var(--mimi-stone)] border-transparent hover:text-[var(--mimi-ink)]'
+                      }`}
+                    >
+                      <Globe size={12} aria-hidden="true" /> Floor
+                    </button>
+                  </div>
                 </div>
 
                 <div className="relative w-full md:w-auto">
@@ -195,9 +206,9 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
                 </span>
               </div>
             ) : filteredZines.length === 0 ? (
-              <div className="py-32 flex flex-col items-center justify-center gap-6 text-center px-6">
-                <Ghost size={40} className="text-[var(--mimi-stone)]" />
-                <p className="font-serif italic text-2xl text-[var(--mimi-ink)]">
+              <div className="py-16 md:py-24 flex flex-col items-center justify-center gap-5 text-center px-6">
+                <Ghost size={36} className="text-[var(--mimi-stone)]" />
+                <p className="font-serif italic text-xl md:text-2xl text-[var(--mimi-ink)]">
                   {mode === 'mine' ? 'No issues on your stand yet.' : 'No signal on this frequency.'}
                 </p>
                 {mode === 'mine' && (
@@ -235,7 +246,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
             )}
           </div>
 
-          <footer className="mt-24 border-t border-[var(--mimi-hairline)] py-12 text-center">
+          <footer className="mt-12 md:mt-24 border-t border-[var(--mimi-hairline)] py-8 md:py-12 text-center">
             <p className="font-serif italic text-sm text-[var(--mimi-stone)]">
               Your stand is your open profile in waiting.
             </p>
@@ -249,11 +260,11 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-4"
+            className="fixed inset-0 z-[60] bg-black/40 flex items-end md:items-center justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
             onClick={() => setCommentZineId(null)}
           >
             <div
-              className="bg-[var(--mimi-field)] w-full max-w-lg max-h-[80vh] overflow-y-auto border border-[var(--mimi-ink)]"
+              className="bg-[var(--mimi-field)] w-full max-w-lg max-h-[80vh] overflow-y-auto border border-[var(--mimi-ink)] rounded-t-xl md:rounded-none"
               onClick={(e) => e.stopPropagation()}
             >
               <ZineComments zineId={commentZineId} onClose={() => setCommentZineId(null)} />

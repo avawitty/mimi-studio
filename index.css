@@ -823,13 +823,22 @@
   padding-bottom: 0.75rem;
 }
 
-/* Non-studio page content offset so titles clear chrome / safe-area */
+/*
+ * Content pad under StudioChrome. Chrome already owns safe-area-inset-top —
+ * do NOT re-apply it here or public plates get a double notch gap.
+ */
 .mimi-page-pad {
-  padding-top: max(1.25rem, env(safe-area-inset-top, 0px));
+  padding-top: 0.5rem;
+}
+.mimi-page-pad--public {
+  padding-top: 0;
 }
 @media (min-width: 768px) {
   .mimi-page-pad {
-    padding-top: 1.75rem;
+    padding-top: 0.75rem;
+  }
+  .mimi-page-pad--public {
+    padding-top: 0;
   }
 }
 

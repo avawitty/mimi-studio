@@ -77,7 +77,11 @@ export const CaptiveSentinel: React.FC<{ onClose: () => void }> = ({ onClose }) 
       <button
         onClick={onClose}
         aria-label="Dismiss field report"
-        className="fixed top-5 right-5 z-[20003] w-11 h-11 rounded-full bg-nous-base border border-nous-border flex items-center justify-center text-nous-subtle hover:text-nous-text active:scale-90 transition-all"
+        className="fixed z-[20003] w-11 h-11 rounded-full bg-nous-base border border-nous-border flex items-center justify-center text-nous-subtle hover:text-nous-text active:scale-90 transition-all"
+        style={{
+          top: 'calc(1.25rem + env(safe-area-inset-top, 0px))',
+          right: 'calc(1.25rem + env(safe-area-inset-right, 0px))',
+        }}
       >
         <X size={18} />
       </button>
