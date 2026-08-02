@@ -20,6 +20,7 @@
     "verify:zine-visual-policy": "node scripts/verifyZineVisualPolicy.mjs",
     "verify:zine-spread-compose": "tsx scripts/verifyZineSpreadCompose.ts",
     "verify:structured-zine-pdf": "tsx scripts/verifyStructuredZinePdf.ts",
+    "verify:bake-zine-plates": "tsx scripts/verifyBakeZinePlates.ts",
     "verify:pinterest-preview": "tsx scripts/verifyPinterestBoardPreview.ts",
     "verify:used-context": "tsx scripts/verifyUsedContextFlow.ts",
     "verify:atelier": "tsx scripts/verifyAtelierService.ts",

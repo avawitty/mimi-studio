@@ -13,7 +13,6 @@ import { getClient, withResilience, tryModels, ORACLE_PERSONA as CLIENT_PERSONA 
 import { modelFor } from "./modelConfig";
 import { coerceToString } from "../lib/utils";
 import { isPaidPatronPlan } from "../constants";
-import { modelFor } from "./modelConfig";
 
 export { getClient, withResilience, tryModels };
 
