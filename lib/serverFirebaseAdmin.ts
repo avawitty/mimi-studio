@@ -1,5 +1,4 @@
 import { createRequire } from "module";
-import firebaseConfig from "../firebase-applet-config.json";
 import { extractMimiSessionToken } from "./mimiSessionToken.js";
 
 export { extractMimiSessionToken } from "./mimiSessionToken.js";
@@ -17,11 +16,23 @@ let cached: AdminBundle | undefined;
  * Named DB from client config; `(default)` does not exist on mimistudios.
  * Resolved at call time (not module import) so `server.ts` dotenv / `.env.local`
  * can override before Admin-backed routes touch Firestore.
+ *
+ * Loaded via createRequire — ESM `import …json` crashes Vercel Node isolates
+ * with ERR_IMPORT_ATTRIBUTE_MISSING ("needs an import attribute of type: json").
  */
 function resolveMimiFirestoreDatabaseId(): string {
+  let configId = "";
+  try {
+    const firebaseConfig = require("../firebase-applet-config.json") as {
+      firestoreDatabaseId?: string;
+    };
+    configId = String(firebaseConfig?.firestoreDatabaseId || "").trim();
+  } catch (err) {
+    console.warn("MIMI // firebase-applet-config.json unavailable:", err);
+  }
   return (
     process.env.FIREBASE_FIRESTORE_DATABASE_ID ||
-    (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId ||
+    configId ||
     "ai-studio-mimi-4c383b50-c596-4b43-8a2e-61d0645e590a"
   );
 }

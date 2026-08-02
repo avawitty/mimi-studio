@@ -1,4 +1,3 @@
-import type { Firestore, QueryDocumentSnapshot, QuerySnapshot } from "firebase-admin/firestore";
 import {
   getCreatorFeedUrl,
   getCreatorProfileUrl,
@@ -6,6 +5,23 @@ import {
   getZineCanonicalUrl,
 } from "./publicBaseUrl.js";
 import { buildRssXml, mapZineToRssItem, type RssFeedChannel } from "./rssFeed.js";
+
+/**
+ * Duck-typed Firestore surfaces — never import firebase-admin types here.
+ * Even `import type` from firebase-admin/* has crashed Vercel isolates when
+ * this module is in a serverless entry graph.
+ */
+type FirestoreLike = {
+  collection: (path: string) => any;
+};
+type QueryDocLike = {
+  id: string;
+  data: () => Record<string, any> | undefined;
+};
+type QuerySnapLike = {
+  empty: boolean;
+  docs: QueryDocLike[];
+};
 
 export type PublicFeedProfile = {
   uid: string;
@@ -37,7 +53,7 @@ export const normalizeFeedHandle = (raw: string): string =>
     .replace(/^@/, "");
 
 export async function resolvePublicFeedProfile(
-  db: Firestore,
+  db: FirestoreLike,
   handle: string,
 ): Promise<PublicFeedProfile | null> {
   const normalized = normalizeFeedHandle(handle);
@@ -66,7 +82,7 @@ export async function resolvePublicFeedProfile(
   };
 }
 
-const mapPublicFeedZine = (docSnap: QueryDocumentSnapshot): PublicFeedZine => {
+const mapPublicFeedZine = (docSnap: QueryDocLike): PublicFeedZine => {
   const data = docSnap.data() || {};
   return {
     id: String(data.id || docSnap.id),
@@ -101,7 +117,7 @@ const dedupeNewest = (zines: PublicFeedZine[], take: number): PublicFeedZine[] =
  * creator with >60 public zines can drop recent items from the RSS window.
  */
 export async function fetchPublicFeedZines(
-  db: Firestore,
+  db: FirestoreLike,
   uid: string,
   limit = FEED_ITEM_LIMIT,
 ): Promise<PublicFeedZine[]> {
@@ -120,7 +136,7 @@ export async function fetchPublicFeedZines(
   // silently drop republished drafts (ZineCard historically bumped publishedAt
   // without timestamp) and serve a stale timestamp-only window instead of a
   // visible 500 while composite indexes are missing/building.
-  const [byTimestamp, byPublished]: [QuerySnapshot, QuerySnapshot] = await Promise.all([
+  const [byTimestamp, byPublished]: [QuerySnapLike, QuerySnapLike] = await Promise.all([
     base.orderBy("timestamp", "desc").limit(take).get(),
     base.orderBy("publishedAt", "desc").limit(take).get(),
   ]);
@@ -132,7 +148,7 @@ export async function fetchPublicFeedZines(
 }
 
 export async function buildCreatorRssFeed(
-  db: Firestore,
+  db: FirestoreLike,
   handle: string,
   baseUrl?: string,
 ): Promise<{ xml: string; profile: PublicFeedProfile; itemCount: number } | null> {

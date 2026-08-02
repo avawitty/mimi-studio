@@ -1,14 +1,14 @@
 import { requireMethod, sendError, sendJson } from "../lib/apiUtils.js";
-import {
-  getServerFirebaseAdmin,
-  verifyMimiSession,
-} from "../lib/serverFirebaseAdmin.js";
-import { getStripeClient } from "../lib/stripeMembership.js";
 
 export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
 
   try {
+    const { getServerFirebaseAdmin, verifyMimiSession } = await import(
+      "../lib/serverFirebaseAdmin.js"
+    );
+    const { getStripeClient } = await import("../lib/stripeMembership.js");
+
     const decoded = await verifyMimiSession(req.headers || {});
     if (decoded.firebase?.sign_in_provider === "anonymous") {
       sendError(res, 403, "Link a Google or email account to manage billing.", "ANONYMOUS_USER");

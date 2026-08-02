@@ -2,21 +2,28 @@
  * Residue Apify acquisition API — Phase 9.
  * GET  → availability (no secrets)
  * POST → live acquire (requires signed-in session + APIFY_TOKEN)
+ *
+ * Heavy Residue + apify-client modules are loaded only on POST. Even dynamic
+ * import of that graph has crashed Vercel GET isolates
+ * (FUNCTION_INVOCATION_FAILED) when pulled into the entry bundle evaluation.
  */
 
 import { cors, readJsonBody, sendError, sendJson } from "../lib/apiUtils.js";
-import {
-  extractMimiSessionToken,
-  verifyMimiSession,
-} from "../lib/serverFirebaseAdmin.js";
-import { createApifySourceAcquisitionProvider } from "../services/residue/acquisition/providers/apify/apifySourceAcquisitionProvider.js";
-import { resolveResidueApifyActorId } from "../services/residue/acquisition/providers/apify/actorRegistry.js";
-import { normalizeSources } from "../services/residue/shared/normalizeSources.js";
-import { sourceAcquisitionRequestSchema } from "../services/residue/validation.js";
+import { extractMimiSessionToken } from "../lib/mimiSessionToken.js";
 
 const RESIDUE_APIFY_QUOTA_WINDOW_MS = 60 * 60 * 1000;
 const RESIDUE_APIFY_QUOTA_MAX = 6;
 const residueApifyQuotaByUid = new Map<string, { windowStart: number; count: number }>();
+
+/** Default Actor id — keep in sync with services/residue/.../actorRegistry.ts */
+const DEFAULT_RESIDUE_APIFY_ACTOR_ID = "apify/rag-web-browser";
+
+function resolveActorIdFromEnv(): string {
+  return (
+    String(process.env.RESIDUE_APIFY_ACTOR_ID || process.env.APIFY_ACTOR_ID || "").trim() ||
+    DEFAULT_RESIDUE_APIFY_ACTOR_ID
+  );
+}
 
 function peekQuota(uid: string, now = Date.now()): boolean {
   const existing = residueApifyQuotaByUid.get(uid);
@@ -39,11 +46,11 @@ export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
 
   if (req.method === "GET") {
-    const provider = createApifySourceAcquisitionProvider();
+    const available = Boolean(String(process.env.APIFY_TOKEN || "").trim());
     sendJson(res, 200, {
-      available: provider.isAvailable(),
-      actorId: resolveResidueApifyActorId(),
-      notice: provider.isAvailable()
+      available,
+      actorId: resolveActorIdFromEnv(),
+      notice: available
         ? "Apify token configured. Signed-in POST /api/residue-acquire runs live acquisition."
         : "APIFY_TOKEN not configured. Residue still runs offline on manual notes/URLs.",
     });
@@ -56,6 +63,32 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    let createApifySourceAcquisitionProvider: any;
+    let resolveResidueApifyActorId: any;
+    let normalizeSources: any;
+    let sourceAcquisitionRequestSchema: any;
+    try {
+      [
+        { createApifySourceAcquisitionProvider },
+        { resolveResidueApifyActorId },
+        { normalizeSources },
+        { sourceAcquisitionRequestSchema },
+      ] = await Promise.all([
+        import("../services/residue/acquisition/providers/apify/apifySourceAcquisitionProvider.js"),
+        import("../services/residue/acquisition/providers/apify/actorRegistry.js"),
+        import("../services/residue/shared/normalizeSources.js"),
+        import("../services/residue/validation.js"),
+      ]);
+    } catch (loadError: any) {
+      console.error("MIMI // Residue Apify modules failed to load:", loadError);
+      return sendError(
+        res,
+        503,
+        "Residue Apify acquisition is temporarily unavailable on this host.",
+        "RESIDUE_MODULES_UNAVAILABLE",
+      );
+    }
+
     const body = await readJsonBody(req);
     const parsed = sourceAcquisitionRequestSchema.safeParse({
       inquiry: body?.inquiry || body?.query || body?.experience,
@@ -102,6 +135,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
     try {
+      const { verifyMimiSession } = await import("../lib/serverFirebaseAdmin.js");
       const decoded = await verifyMimiSession(req.headers);
       authenticatedUid = decoded.uid || null;
     } catch (sessionError: any) {
