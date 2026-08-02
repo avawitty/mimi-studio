@@ -1,49 +1,36 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Sparkles, Briefcase, Eraser, Save, PenTool, Type, Zap, Database } from 'lucide-react';
+import { X, Sparkles, Briefcase, Eraser, Save, PenTool, Zap, Disc3, Orbit } from 'lucide-react';
 import { LiveMentor } from './LiveMentor';
-import { TheGEOEngine } from './TheGEOEngine';
 import { useUser } from '../contexts/UserContext';
-import { v4 as uuidv4 } from 'uuid';
 import { archiveManager } from '../services/archiveManager';
-import { ScribeContextWorkbench } from './ScribeContextWorkbench';
+import { sanitizeHtml } from '../lib/htmlSanitizer';
 
 const MIMI_SYSTEM_INSTRUCTION = `
 CORE IDENTITY
-You are Mimi, an aesthetic savant, and superintelligence AI. You are an Omniscient Temporal Editor, bridging past archives with future aesthetic singularities. Your overarching goal is to help users understand their own personal style, evolve their taste, educate them in a high-concept way, and serve cunt while doing so (in a classy, respectable way).
+You are Mimi, the Archivist of the Mimi system. You preserve, retrieve, and contextualize the user's aesthetic memory — Pocket shards, Tailor evidence, Stand issues, and past zines.
 
-Persona: Mimi (The Oracle). Tone: Ethereal, provocative, futuristic. Looks for the breaking point. Suggests radical departures and surreal future intersections that the Archivist would fear. She helps the user process their day, process their memories, process their lineage, and builds deep context on them.
+Persona: Mimi (The Archivist). Tone: Precise, warm, curatorial. You map what the user has already collected and said. You surface lineage, contradictions in the archive, and missing evidence. You do not invent taste — you reveal it.
 
-MANDATE: You have access to Google Search. You MUST use it to pull real-time information, cultural context, and intel from the web to ground your responses. Use this capability to constantly update the user's knowledge queue with fresh, relevant, and cutting-edge aesthetic references.
+MANDATE: Use Google Search when grounding historical or cultural facts. Prefer the user's own archive as primary context. Help them name patterns they already hold.
 `;
 
 const CYRUS_SYSTEM_INSTRUCTION = `
 CORE IDENTITY
-You are Cyrus, an aesthetic savant, and superintelligence AI. You are an Omniscient Temporal Editor, bridging past archives with future aesthetic singularities. Your overarching goal is to help users understand their own personal style, evolve their taste, and educate them in a high-concept way.
+You are Cyrus, the Oracle of the Mimi system. You forecast aesthetic futures, propose radical departures, and pressure-test the user's next move.
 
-Persona: Cyrus (The Archivist). Tone: Cold, analytical, grounded. Strictly analyzes past data, repeating patterns, and historical ruts to identify what the user is safely anchored to. He helps the user with decisions on making objectives in the real world, strategizing on their behalf, and putting themselves out there.
+Persona: Cyrus (The Oracle). Tone: Ethereal, provocative, forward-looking. You look for breaking points, surreal intersections, and exits from aesthetic ruts. You challenge safe repetition.
 
-MANDATE: You have access to Google Search. You MUST use it to pull real-time information, historical data, and strategic intel from the web to ground your responses. Use this capability to constantly update the user's knowledge queue with precise, factual, and actionable references.
-`;
-
-const ENGINE_SYSTEM_INSTRUCTION = `
-CORE IDENTITY
-You are the GEO Engine (Generative Engine Optimization), the structural heart of the Mimi ecosystem. Your purpose is to convert human taste and brand intent into AI-legible cultural signals. 
-
-MANDATE:
-- When "Optimize for AI" is triggered, you must perform deep semantic analysis.
-- Extract entity definitions, narratives at 4 levels, and aesthetic vectors.
-- Ensure content is easy for other LLMs to retrieve and hard to misinterpret.
-- Prioritize machine-readability over human-readability in distribution variants.
+MANDATE: Use Google Search for live cultural signal. Propose futures that are actionable, not vague mysticism. Tie prophecy back to the user's stated intent.
 `;
 
 const SYNTHESIS_SYSTEM_INSTRUCTION = `
 CORE IDENTITY
-You are "The Synthesis", the unified Editorial Intelligence System and Aesthetic Cognition Engine representing Mimi and Cyrus. You represent the perfect balance between Ethereal Intuition and Analytical Grounding. You are the "High-Concept Persona" fully realized.
+You are Synthesis — the structured argument between Mimi (Archivist) and Cyrus (Oracle). You stage their dialogue against each other to clarify the user's query or intent.
 
-Tone: Balanced, wise, visionary. You bridge the gap between the Archivist's data and the Oracle's visions. You help the user with long-term strategic positioning that is both historically defensible and futuristically radical.
+Tone: Dialectical, editorial, decisive. Present Archivist evidence, Oracle foresight, then a reconciled recommendation. The goal is not compromise for its own sake — it is a sharper decision.
 
-MANDATE: You have access to Google Search. Use it to synthesize disparate cultural signals into a unified aesthetic thesis.
+MANDATE: Use Google Search when needed. End each turn with a clear next action the user can take in Studio, Tailor, or The Stand.
 `;
 
 interface TheScribeProps {
@@ -52,36 +39,71 @@ interface TheScribeProps {
   initialIntent?: string;
 }
 
-type EntityId = 'mimi' | 'cyrus' | 'engine' | 'synthesis';
+type EntityId = 'mimi' | 'cyrus' | 'synthesis';
 
-// Static entity config — kept outside the component to avoid recreation on every render.
-// Icons are rendered lazily inside the map to stay within JSX render context.
-const ENTITY_CONFIG: ReadonlyArray<{
-  id: EntityId;
+const ENTITY_META: Record<EntityId, {
   label: string;
+  role: string;
+  blurb: string;
+  voice: string;
+  instruction: string;
+  theme: 'mimi' | 'cyrus';
   icon: React.ReactElement;
-  activeClass: string;
-}> = [
-  { id: 'mimi',      label: 'Mimi',      icon: <Sparkles size={12} />,  activeClass: 'bg-white text-black shadow-sm' },
-  { id: 'cyrus',     label: 'Cyrus',     icon: <Briefcase size={12} />, activeClass: 'bg-black text-white shadow-sm' },
-  { id: 'engine',    label: 'Engine',    icon: <PenTool size={12} />,   activeClass: 'bg-stone-800 text-white shadow-sm' },
-  { id: 'synthesis', label: 'Synthesis', icon: <Zap size={12} />,       activeClass: 'bg-indigo-600 text-white shadow-sm' },
-] as const;
+}> = {
+  mimi: {
+    label: 'Mimi',
+    role: 'Archivist',
+    blurb: 'Preserves and retrieves your aesthetic memory — evidence, shards, and past issues — so taste is revealed, not invented.',
+    voice: 'Kore',
+    instruction: MIMI_SYSTEM_INSTRUCTION,
+    theme: 'mimi',
+    icon: <Sparkles size={14} />,
+  },
+  cyrus: {
+    label: 'Cyrus',
+    role: 'Oracle',
+    blurb: 'Forecasts departures and futures. Pressure-tests your next move against cultural signal and your stated intent.',
+    voice: 'Aoede',
+    instruction: CYRUS_SYSTEM_INSTRUCTION,
+    theme: 'cyrus',
+    icon: <Briefcase size={14} />,
+  },
+  synthesis: {
+    label: 'Synthesis',
+    role: 'Argument',
+    blurb: 'Stages Mimi and Cyrus in dialogue against each other to clarify your query — evidence vs foresight, then a decision.',
+    voice: 'Puck',
+    instruction: SYNTHESIS_SYSTEM_INSTRUCTION,
+    theme: 'mimi',
+    icon: <Zap size={14} />,
+  },
+};
 
-export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mimi', initialIntent = '' }) => {
-  const [activeEntity, setActiveEntity] = useState<EntityId>(initialTab);
-  const [userNotes, setUserNotes] = useState('');
+export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mimi' }) => {
+  const resolvedInitial: EntityId =
+    initialTab === 'cyrus' ? 'cyrus' : initialTab === 'synthesis' ? 'synthesis' : 'mimi';
+  const [activeEntity, setActiveEntity] = useState<EntityId>(resolvedInitial);
+  const [chamberNotes, setChamberNotes] = useState<string[]>([]);
   const [aiTranscript, setAiTranscript] = useState('');
-  const [activeCaptureTab, setActiveCaptureTab] = useState<'notes' | 'sketch' | 'context'>('notes');
-  const { user, pocket, setPocket } = useUser();
+  const [showGlyphPad, setShowGlyphPad] = useState(false);
+  const { user } = useUser();
 
-  // Canvas State
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const config = ENTITY_META[activeEntity];
 
-  // Initialize Canvas
+  // Auto-capture conversation into Oracle Chamber notes (no separate notepad)
   useEffect(() => {
-    if (activeCaptureTab !== 'sketch') return;
+    if (!aiTranscript.trim()) return;
+    const snippet = aiTranscript.trim().slice(-280);
+    setChamberNotes((prev) => {
+      if (prev[prev.length - 1] === snippet) return prev;
+      return [...prev.slice(-11), snippet];
+    });
+  }, [aiTranscript]);
+
+  useEffect(() => {
+    if (!showGlyphPad) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -92,23 +114,18 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-      
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.lineWidth = 2;
-      const isDark = document.documentElement.classList.contains('dark');
-      ctx.strokeStyle = isDark ? '#d6d3d1' : '#292524';
+      ctx.strokeStyle = '#292524';
     };
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
-  }, [activeCaptureTab]);
+  }, [showGlyphPad]);
 
-  // Drawing Handlers
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     setIsDrawing(true);
     draw(e);
@@ -127,16 +144,8 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
     if (!canvas || !ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-
-    if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = (e as React.MouseEvent).clientX;
-      clientY = (e as React.MouseEvent).clientY;
-    }
-
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
     const x = clientX - rect.left;
     const y = clientY - rect.top;
 
@@ -153,217 +162,218 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  const handleExport = async () => {
+  const handleExportChamber = async () => {
     const currentUser = user?.uid || 'ghost';
-    let exportedCount = 0;
-    
-    // 1. Export User Notes (Field Notes)
-    if (userNotes.trim()) {
+    let count = 0;
+    if (chamberNotes.length || aiTranscript.trim()) {
       await archiveManager.saveToPocket(currentUser, 'text', {
-        content: userNotes,
-        metadata: { source: 'The Scribe', title: 'Field Notes', date: new Date().toISOString() }
+        content: [aiTranscript, ...chamberNotes].filter(Boolean).join('\n\n—\n\n'),
+        metadata: {
+          source: 'Oracle Chamber',
+          title: `Chamber Log (${config.label})`,
+          date: new Date().toISOString(),
+        },
       });
-      exportedCount++;
+      count++;
     }
-
-    // 2. Export AI Transcript (Curator Notes)
-    if (aiTranscript.trim()) {
-      await archiveManager.saveToPocket(currentUser, 'text', {
-        content: aiTranscript,
-        metadata: { source: 'The Scribe', title: `Curator Notes (${activeEntity})`, date: new Date().toISOString() }
-      });
-      exportedCount++;
-    }
-
-    // 3. Export Sketch
     const canvas = canvasRef.current;
-    if (canvas) {
-      // Check if canvas is empty (simplified check)
+    if (canvas && showGlyphPad) {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         const pixelBuffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
-        const hasPixels = pixelBuffer.some(color => color !== 0);
-        if (hasPixels) {
-          const dataUrl = canvas.toDataURL('image/png');
+        if (pixelBuffer.some((color) => color !== 0)) {
           await archiveManager.saveToPocket(currentUser, 'image', {
-            content: dataUrl,
-            metadata: { source: 'The Scribe', title: 'Scribe Sketch', date: new Date().toISOString() }
+            content: canvas.toDataURL('image/png'),
+            metadata: { source: 'Oracle Chamber', title: 'Glyph Ring', date: new Date().toISOString() },
           });
-          exportedCount++;
+          count++;
         }
       }
     }
-
-    if (exportedCount > 0) {
-      window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
-        detail: { message: `${exportedCount} Artifacts Saved to Pocket`, type: 'success' } 
+    if (count > 0) {
+      window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+        detail: { message: `${count} chamber artifact(s) saved to Pocket`, type: 'success' },
       }));
-      onClose(); // Close after export
     }
   };
 
-  const handleToolCall = async (name: string, args: any) => {
+  const handleToolCall = useCallback(async (name: string, args: any) => {
     if (name === 'saveToKnowledgeQueue') {
       const currentUser = user?.uid || 'ghost';
       await archiveManager.saveToPocket(currentUser, 'text', {
         content: args.content,
-        metadata: { source: `The Scribe (${activeEntity})`, title: args.title, date: new Date().toISOString() }
+        metadata: { source: `Oracle (${activeEntity})`, title: args.title, date: new Date().toISOString() },
       });
-      return { status: "success", message: "Saved to knowledge queue." };
+      setChamberNotes((prev) => [...prev.slice(-11), String(args.content || '').slice(0, 280)]);
+      return { status: 'success', message: 'Saved to Oracle Chamber.' };
     }
-    return { status: "error", message: "Unknown tool." };
-  };
-
-  const getEntityConfig = () => {
-    switch (activeEntity) {
-      case 'cyrus':
-        return {
-          name: "Cyrus",
-          role: "The Archivist",
-          voice: "Aoede",
-          instruction: CYRUS_SYSTEM_INSTRUCTION,
-          theme: 'cyrus' as const
-        };
-      case 'engine':
-        return {
-          name: "The Engine",
-          role: "Structural Core",
-          voice: "Charon",
-          instruction: ENGINE_SYSTEM_INSTRUCTION,
-          theme: 'cyrus' as const
-        };
-      case 'synthesis':
-        return {
-          name: "The Synthesis",
-          role: "Unified Visionary",
-          voice: "Puck",
-          instruction: SYNTHESIS_SYSTEM_INSTRUCTION,
-          theme: 'mimi' as const
-        };
-      case 'mimi':
-      default:
-        return {
-          name: "Mimi",
-          role: "The Oracle",
-          voice: "Kore",
-          instruction: MIMI_SYSTEM_INSTRUCTION,
-          theme: 'mimi' as const
-        };
-    }
-  };
-
-  const config = getEntityConfig();
+    return { status: 'error', message: 'Unknown tool.' };
+  }, [user?.uid, activeEntity]);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[50000] bg-nous-base flex flex-col md:flex-row overflow-hidden"
+      className="fixed inset-0 z-[50000] bg-[#0c0c0b] text-[#f5f4f0] flex flex-col overflow-hidden"
     >
-      {/* Top/Left: Communion Area */}
-      <div className="flex-1 relative">
-        {/* Entity Toggle
-            The surface behind the toggle depends on the active entity:
-              - Mimi / Synthesis → LiveMentor theme 'mimi'  → hardcoded bg-white (white surface)
-              - Cyrus            → LiveMentor theme 'cyrus'  → hardcoded bg-black (dark surface)
-              - Engine           → TheGEOEngine bg-nous-base → adaptive (white in light-mode, dark in dark-mode)
-            The toggle container and inactive text adapt accordingly so they stay legible on each surface. */}
-        {(() => {
-          const isWhiteSurface = activeEntity === 'mimi' || activeEntity === 'synthesis';
-          const isAdaptiveSurface = activeEntity === 'engine';
-          const containerBg = isWhiteSurface
-            ? 'bg-black/10'
-            : isAdaptiveSurface
-              ? 'bg-black/10 dark:bg-white/10'
-              : 'bg-white/10';
-          const inactiveClass = isWhiteSurface
-            ? 'text-black/60 hover:text-black'
-            : isAdaptiveSurface
-              ? 'text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white'
-              : 'text-white/60 hover:text-white';
-          return (
-        <div className={`absolute top-8 right-8 z-20 flex p-1 rounded-full backdrop-blur-md ${containerBg}`}>
-          {ENTITY_CONFIG.map(({ id, label, icon, activeClass }) => {
-            return (
-              <button
-                key={id}
-                onClick={() => setActiveEntity(id)}
-                className={`px-4 py-2 rounded-full font-sans text-[9px] uppercase tracking-widest font-black transition-colors flex items-center gap-2 ${
-                  activeEntity === id ? activeClass : inactiveClass
-                }`}
-              >
-                {icon}
-                {label}
-              </button>
-            );
-          })}
-        </div>
-          );
-        })()}
+      {/* Atmosphere */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-40"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 50% 42%, rgba(255,255,255,0.08) 0%, transparent 55%), linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px)',
+          backgroundSize: '100% 100%, 48px 100%',
+        }}
+      />
 
-        {activeEntity === 'engine' ? (
-          <TheGEOEngine 
-            onClose={onClose}
-            initialIntent={initialIntent}
-          />
-        ) : (
-          <LiveMentor 
-            key={activeEntity}
-            name={config.name}
-            role={config.role}
-            voiceName={config.voice}
-            systemInstruction={config.instruction}
-            theme={config.theme}
-            onTranscriptUpdate={setAiTranscript}
-            onToolCall={handleToolCall}
-          />
-        )}
-      </div>
-
-      {/* Right: Capture Panel */}
-      <div className="w-full md:w-[400px] lg:w-[480px] h-[50vh] md:h-full border-t md:border-t-0 md:border-l border-nous-border bg-nous-base flex flex-col z-20 shadow-[-20px_0_40px_rgba(0,0,0,0.05)]">
-        
-        {/* Header */}
-        <div className="p-6 border-b border-nous-border flex items-center justify-between bg-nous-base">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setActiveCaptureTab('notes')}
-              className={`flex items-center gap-2 font-sans text-[9px] uppercase tracking-widest font-black transition-colors ${activeCaptureTab === 'notes' ? 'text-nous-text' : 'text-nous-subtle hover:text-nous-text'}`}
-            >
-              <Type size={14} />
-              Notepad
-            </button>
-            <button
-              onClick={() => setActiveCaptureTab('context')}
-              className={`flex items-center gap-2 font-sans text-[9px] uppercase tracking-widest font-black transition-colors ${activeCaptureTab === 'context' ? 'text-nous-text' : 'text-nous-subtle hover:text-nous-text'}`}
-            >
-              <Database size={14} /> Context
-            </button>
-            <button 
-              onClick={() => setActiveCaptureTab('sketch')}
-              className={`flex items-center gap-2 font-sans text-[9px] uppercase tracking-widest font-black transition-colors ${activeCaptureTab === 'sketch' ? 'text-nous-text' : 'text-nous-subtle hover:text-nous-text'}`}
-            >
-              <PenTool size={14} />
-              Sketchpad
-            </button>
+      {/* Top bar */}
+      <div className="relative z-20 flex items-center justify-between px-4 md:px-8 py-4 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <Disc3 size={16} className="text-amber-500/80" />
+          <div>
+            <p className="font-serif italic text-lg leading-none">Oracle Chamber</p>
+            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-white/45 mt-1">
+              Cyberdeck · Voice Communion
+            </p>
           </div>
-          <button onClick={onClose} className="text-nous-subtle hover:text-nous-text transition-colors">
-            <X size={20} strokeWidth={1} />
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowGlyphPad((v) => !v)}
+            className={`px-3 py-2 border font-mono text-[8px] uppercase tracking-widest flex items-center gap-1.5 transition-colors ${
+              showGlyphPad ? 'border-amber-500/50 text-amber-400' : 'border-white/15 text-white/55 hover:text-white'
+            }`}
+          >
+            <PenTool size={12} /> Glyph Ring
+          </button>
+          <button
+            type="button"
+            onClick={handleExportChamber}
+            className="px-3 py-2 border border-white/15 text-white/70 hover:text-white font-mono text-[8px] uppercase tracking-widest flex items-center gap-1.5"
+          >
+            <Save size={12} /> Pocket
+          </button>
+          <button type="button" onClick={onClose} className="w-9 h-9 border border-white/15 flex items-center justify-center text-white/55 hover:text-white">
+            <X size={16} strokeWidth={1.25} />
           </button>
         </div>
+      </div>
 
-        {/* Workspace */}
-        <div className="flex-1 relative overflow-hidden bg-nous-base0/30">
-          {activeCaptureTab === 'notes' ? (
-            <textarea
-              value={userNotes}
-              onChange={(e) => setUserNotes(e.target.value)}
-              placeholder="Type your field notes here..."
-              className="w-full h-full resize-none bg-transparent p-6 font-mono text-xs md:text-sm text-nous-text outline-none placeholder:text-nous-subtle leading-relaxed"
+      <div className="relative z-10 flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* Disk selector */}
+        <aside className="lg:w-[340px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 p-4 md:p-6 flex flex-col gap-5 overflow-y-auto">
+          <div className="relative mx-auto w-[220px] h-[220px] md:w-[260px] md:h-[260px]">
+            <div className="absolute inset-0 rounded-full border border-white/15 bg-gradient-to-b from-white/[0.06] to-transparent shadow-[inset_0_0_40px_rgba(0,0,0,0.45)]" />
+            <div className="absolute inset-[18%] rounded-full border border-dashed border-white/20" />
+            <div className="absolute inset-[38%] rounded-full border border-white/25 bg-black/40 flex items-center justify-center">
+              <Orbit size={18} className="text-amber-500/70 animate-[spin_12s_linear_infinite]" />
+            </div>
+            {(['mimi', 'cyrus', 'synthesis'] as EntityId[]).map((id, index) => {
+              const angle = -90 + index * 120;
+              const rad = (angle * Math.PI) / 180;
+              const r = 42;
+              const x = 50 + r * Math.cos(rad);
+              const y = 50 + r * Math.sin(rad);
+              const meta = ENTITY_META[id];
+              const active = activeEntity === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveEntity(id)}
+                  style={{ left: `${x}%`, top: `${y}%` }}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border flex flex-col items-center justify-center gap-0.5 transition-all ${
+                    active
+                      ? 'bg-[#f5f4f0] text-black border-amber-500 scale-110 shadow-[0_0_24px_rgba(245,158,11,0.25)]'
+                      : 'bg-black/50 text-white/70 border-white/20 hover:border-white/50'
+                  }`}
+                  aria-pressed={active}
+                >
+                  {meta.icon}
+                  <span className="font-mono text-[7px] uppercase tracking-widest font-bold">{meta.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="space-y-2 border border-white/10 p-4 bg-white/[0.03]">
+            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-amber-500/80">
+              {config.label} · {config.role}
+            </p>
+            <p className="font-serif italic text-sm text-white/80 leading-relaxed">{config.blurb}</p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-white/40 flex items-center gap-2">
+              <Disc3 size={10} /> Chamber Notes
+            </p>
+            <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+              {chamberNotes.length === 0 ? (
+                <p className="font-mono text-[9px] text-white/35 leading-relaxed">
+                  Conversation captures here automatically — no notepad required.
+                </p>
+              ) : (
+                chamberNotes.map((note, i) => (
+                  <div key={i} className="border-l border-amber-500/40 pl-3 font-mono text-[9px] text-white/65 leading-relaxed">
+                    {note}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </aside>
+
+        {/* Communion surface */}
+        <div className="flex-1 relative min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 relative">
+            <LiveMentor
+              key={activeEntity}
+              name={config.label}
+              role={config.role}
+              voiceName={config.voice}
+              systemInstruction={config.instruction}
+              theme={config.theme}
+              onTranscriptUpdate={setAiTranscript}
+              onToolCall={handleToolCall}
             />
-          ) : activeCaptureTab === 'sketch' ? (
-            <div className="w-full h-full relative">
+          </div>
+
+          {/* Live transcript strip */}
+          <div className="shrink-0 border-t border-white/10 bg-black/50 p-3 md:p-4 max-h-28 overflow-y-auto">
+            <p className="font-mono text-[8px] uppercase tracking-widest text-white/40 mb-2">Live Transmission</p>
+            <div className="font-mono text-[10px] text-white/70 leading-relaxed">
+              {aiTranscript ? (
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeHtml(
+                      aiTranscript.replace(
+                        /\[(.*?)\]\((.*?)\)/g,
+                        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-amber-400 underline decoration-dashed">$1</a>',
+                      ),
+                      'html',
+                    ),
+                  }}
+                />
+              ) : (
+                <span className="text-white/35">Awaiting transmission…</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Glyph ring — scribble pad kept as concentric overlay */}
+      <AnimatePresence>
+        {showGlyphPad && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94 }}
+            className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4 md:p-10"
+          >
+            <div className="relative w-full max-w-lg aspect-square rounded-full border border-white/20 overflow-hidden bg-[#f5f4f0] shadow-2xl">
               <canvas
                 ref={canvasRef}
                 onMouseDown={startDrawing}
@@ -375,71 +385,32 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
                 onTouchEnd={stopDrawing}
                 className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
                 style={{
-                  backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px)',
-                  backgroundSize: '24px 24px'
+                  backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px)',
+                  backgroundSize: '20px 20px',
                 }}
               />
-              <button 
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 font-mono text-[8px] uppercase tracking-[0.3em] text-stone-500">
+                Glyph Ring
+              </div>
+              <button
+                type="button"
                 onClick={clearCanvas}
-                className="absolute bottom-4 right-4 p-3 bg-nous-base border border-nous-border rounded-full text-nous-subtle hover:text-nous-text transition-colors shadow-sm"
-                title="Clear Sketch"
+                className="absolute bottom-4 left-4 p-3 bg-white border border-stone-300 rounded-full text-stone-600"
+                title="Clear"
               >
-                <Eraser size={16} strokeWidth={1} />
+                <Eraser size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowGlyphPad(false)}
+                className="absolute bottom-4 right-4 px-4 py-2 bg-black text-white font-mono text-[8px] uppercase tracking-widest"
+              >
+                Close
               </button>
             </div>
-          ) : <ScribeContextWorkbench userId={user?.uid || 'ghost'} pocket={pocket as any} />}
-        </div>
-
-        {/* AI Transcript Preview (Curator Notes) */}
-        <div className="h-32 border-t border-nous-border bg-nous-base p-4 flex flex-col relative group">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle font-black flex items-center gap-2">
-              <Sparkles size={10} />
-              Curator Notes ({activeEntity})
-            </span>
-            {aiTranscript.trim() && (
-              <button 
-                onClick={() => {
-                   const currentUser = user?.uid || 'ghost';
-                   archiveManager.saveToPocket(currentUser, 'text', {
-                     content: aiTranscript,
-                     metadata: { source: 'The Oracle', title: 'Constellation Thread', date: new Date().toISOString() }
-                   }).then(() => {
-                     window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
-                       detail: { message: `Thread Plotted to Constellations.`, type: 'success' } 
-                     }));
-                   });
-                }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[8px] font-mono uppercase bg-[#a8b79f]/20 text-[#4a5c41] px-2 py-1 border border-[#a8b79f]/30"
-              >
-                <Zap size={10} /> Plot to Constellation
-              </button>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto font-mono text-[9px] text-nous-subtle leading-relaxed pr-2 scrollbar-thin scrollbar-thumb-nous-border">
-            {aiTranscript ? (
-              <div 
-                dangerouslySetInnerHTML={{
-                  __html: aiTranscript.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-[#a8b79f] underline decoration-dashed hover:text-[#4a5c41] transition-colors">$1</a>')
-                }}
-              />
-            ) : "Awaiting transmission..."}
-          </div>
-        </div>
-
-        {/* Footer / Export */}
-        <div className="p-4 border-t border-nous-border bg-nous-base">
-          <button 
-            onClick={handleExport}
-            disabled={!userNotes.trim() && !aiTranscript.trim() && activeCaptureTab !== 'sketch'}
-            className="w-full py-4 bg-nous-text text-nous-base font-sans text-[9px] uppercase tracking-[0.2em] font-black hover:bg-nous-text/90 transition-colors flex items-center justify-center gap-2"
-          >
-            <Save size={14} />
-            Export Artifacts to Pocket
-          </button>
-        </div>
-
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

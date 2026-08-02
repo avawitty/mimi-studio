@@ -528,6 +528,7 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
     id: targetId, userId: uid, userHandle: handle, userAvatar: avatar || null,
     title: zine.title, tone, coverImageUrl: coverUrl || null, timestamp: Date.now(), likes: 0,
     content: zineWithoutThreadData, isDeepThinking: !!deep, isPublic: !!isPublic, isLite: !!isLite, isHighFidelity: !!isHighFidelity,
+    publishedAt: isPublic ? Date.now() : undefined,
     artifacts: [],
     fragmentsUsed: fragmentsUsed && fragmentsUsed.length > 0 ? fragmentsUsed : [],
     usedContextSnapshots: usedContextSnapshots && usedContextSnapshots.length > 0 ? usedContextSnapshots : undefined,
@@ -907,7 +908,11 @@ export const fetchUserZines = async (uid: string, forceRefresh = false) => {
     }
 };
 
-export const subscribeToUserZines = (uid: string, callback: (data: ZineMetadata[]) => void) => {
+export const subscribeToUserZines = (
+  uid: string,
+  callback: (data: ZineMetadata[]) => void,
+  onError?: (error: unknown) => void,
+) => {
   if (!uid || uid === 'ghost' || !isFullyAuthenticated()) {
     callback([]);
     return () => {};
@@ -926,9 +931,11 @@ export const subscribeToUserZines = (uid: string, callback: (data: ZineMetadata[
   }, (error: any) => {
     if (error.code === 'permission-denied' && auth.currentUser?.uid !== uid) {
       console.warn(`MIMI // Ignored permission-denied for zines/${uid} due to auth state change.`);
+      onError?.(error);
       return;
     }
     logFirestoreError(error, OperationType.LIST, "zines");
+    onError?.(error);
   });
 };
 

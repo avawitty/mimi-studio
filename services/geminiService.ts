@@ -689,13 +689,47 @@ export const generateExecutionLayer = async (analysisContext: string): Promise<E
     return null;
   });
 };
-export const extractTasteGraphNodes = async (artifacts: PocketItem[]): Promise<{ nodes: TasteGraphNode[], edges: TasteGraphEdge[] }> => {
-  // Generate tags for artifacts if they don't have them
+type TasteGraphArtifactInput = PocketItem & {
+  content_preview?: string;
+  embedding_field?: number[];
+  originalId?: string;
+};
+
+const normalizeTasteArtifact = (artifact: TasteGraphArtifactInput) => {
+  const title =
+    String(artifact.title || artifact.content_preview || artifact.type || "Untitled artifact")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80) || "Untitled artifact";
+  const notes = String(
+    artifact.notes ||
+      artifact.content_preview ||
+      (typeof artifact.content === "string" ? artifact.content : "") ||
+      "",
+  )
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 400);
+  const tags = Array.isArray(artifact.tags)
+    ? artifact.tags.map((t) => String(t)).filter(Boolean)
+    : [];
+  return {
+    id: String(artifact.id || artifact.originalId || title),
+    title,
+    notes,
+    tags,
+    hasEmbedding: Array.isArray(artifact.embedding_field) && artifact.embedding_field.length > 0,
+  };
+};
+
+export const extractTasteGraphNodes = async (artifacts: TasteGraphArtifactInput[]): Promise<{ nodes: TasteGraphNode[], edges: TasteGraphEdge[] }> => {
+  // Normalize pocket + shadow-memory shapes, then retrieve/generate tags
+  const normalized = (artifacts || []).map(normalizeTasteArtifact);
   const artifactsWithTags = [];
-  for (const a of artifacts) {
+  for (const a of normalized) {
     let tags = a.tags;
     if (!tags || tags.length === 0) {
-      tags = await generateTagsFromMedia(a.title + ": " + (a.notes || ""), []);
+      tags = await generateTagsFromMedia(`${a.title}: ${a.notes}`, []);
     }
     artifactsWithTags.push({ ...a, tags });
   }
@@ -703,13 +737,13 @@ export const extractTasteGraphNodes = async (artifacts: PocketItem[]): Promise<{
   const prompt = `You are Mimi, an aesthetic intelligence system. Analyze the following artifacts to extract a semantic taste graph.
   
   Artifacts:
-  ${artifactsWithTags.map(a => `- ${a.title}: ${a.notes || ''} Tags: ${a.tags?.join(', ') || 'None'}`).join('\n')}
+  ${artifactsWithTags.map(a => `- ${a.title}: ${a.notes || ''} Tags: ${a.tags?.join(', ') || 'None'}${a.hasEmbedding ? ' [embedding present]' : ''}`).join('\n')}
   
   Return a JSON object with:
-  - nodes: Array of { id, label, type: 'concept' | 'motif' | 'era', weight, explanation }
+  - nodes: Array of { id, label, type: 'concept' | 'motif' | 'era', weight, explanation, tags?: string[] }
   - edges: Array of { source, target, strength, type: 'relates_to' | 'evolves_from' | 'contrasts_with' }
   
-  Ensure the graph is coherent and captures the underlying aesthetic relationships.`;
+  Prefer synthesizing durable pattern labels from the retrieved tags. Ensure the graph is coherent and captures the underlying aesthetic relationships.`;
 
   try {
     const response = await withResilience(async (ai) => {
@@ -727,7 +761,20 @@ export const extractTasteGraphNodes = async (artifacts: PocketItem[]): Promise<{
       if (text.startsWith('```json')) {
         text = text.replace(/```json\n?/, '').replace(/```$/, '');
       }
-      return JSON.parse(text);
+      const parsed = JSON.parse(text);
+      // Attach retrieved tags onto concept nodes when the model omits them
+      if (parsed?.nodes && Array.isArray(parsed.nodes)) {
+        const tagPool = Array.from(
+          new Set(artifactsWithTags.flatMap((a) => a.tags || [])),
+        ).slice(0, 24);
+        parsed.nodes = parsed.nodes.map((node: any, idx: number) => ({
+          ...node,
+          tags: Array.isArray(node.tags) && node.tags.length > 0
+            ? node.tags
+            : tagPool.slice(idx % Math.max(tagPool.length, 1), (idx % Math.max(tagPool.length, 1)) + 3),
+        }));
+      }
+      return parsed;
     }
   } catch (e) {
     console.warn("MIMI // Taste Graph Extraction Error. Constructing local synthetic fallback.", e);
@@ -740,16 +787,17 @@ export const extractTasteGraphNodes = async (artifacts: PocketItem[]): Promise<{
       { label: "Aesthetic Sovereignty", explanation: "Direct control over semantic traces and personal data curation in the age of generative machine learning retrieval." }
     ];
 
-    if (artifacts && artifacts.length > 0) {
-      artifacts.forEach((art, idx) => {
+    if (normalized.length > 0) {
+      normalized.forEach((art, idx) => {
         const id = `fallback-artifact-${idx}`;
         nodes.push({
           id,
           label: art.title.slice(0, 24),
           type: idx % 2 === 0 ? 'motif' : 'concept',
           weight: 0.85 - (idx * 0.05),
-          explanation: art.notes || `Aesthetic anchor point representing: ${art.title}. Ingested from Sovereignty Pocket.`
-        });
+          explanation: art.notes || `Aesthetic anchor point representing: ${art.title}. Ingested from Sovereignty Pocket.`,
+          tags: art.tags,
+        } as TasteGraphNode);
       });
     }
 
@@ -1153,7 +1201,86 @@ export const generateAudio = async (text: string, apiKey?: string): Promise<Uint
     }, apiKey);
 };
 
+const classifyImageGenFailure = (errMsg: string): { userMessage: string; isBillingOrQuota: boolean } => {
+    const lower = errMsg.toLowerCase();
+    if (
+        lower.includes('resource_exhausted') ||
+        lower.includes('quota') ||
+        lower.includes('billing') ||
+        lower.includes('rate limit') ||
+        lower.includes('prepayment') ||
+        lower.includes('credits depleted')
+    ) {
+        return {
+            userMessage: "Image provider quota or billing limit hit. Showing a simulated plate — add AI Gateway credits or a BYOK key to resume live generation.",
+            isBillingOrQuota: true,
+        };
+    }
+    if (lower.includes('missing_image_key') || lower.includes('requires a server') || lower.includes('no api key') || lower.includes('api key')) {
+        return {
+            userMessage: "No image provider key available. Showing a simulated plate — configure AI_GATEWAY_API_KEY or a Gemini/OpenAI key.",
+            isBillingOrQuota: false,
+        };
+    }
+    if (lower.includes('safety') || lower.includes('blocked') || lower.includes('finishreason')) {
+        return {
+            userMessage: "Image request was blocked or returned empty. Showing a simulated plate — try softening the prompt.",
+            isBillingOrQuota: false,
+        };
+    }
+    return {
+        userMessage: `Image generation unavailable (${errMsg.slice(0, 120)}). Showing a simulated plate.`,
+        isBillingOrQuota: false,
+    };
+};
+
+/** Prefer the server AI Gateway route before client SDK; only simulate as last resort. */
+const tryServerMimiImage = async (prompt: string, ar: AspectRatio, apiKey?: string): Promise<string | null> => {
+    if (typeof fetch === 'undefined') return null;
+    try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['x-gemini-api-key'] = apiKey;
+        const res = await fetch('/api/mimi-image', {
+            method: 'POST',
+            headers,
+            credentials: 'include',
+            body: JSON.stringify({
+                prompt,
+                userPrompt: prompt,
+                aspectRatio: ar,
+                // Omit provider so the route prefers AI Gateway when configured
+            }),
+        });
+        const data = await res.json().catch((): null => null);
+        if (!res.ok) {
+            const code = data?.error?.code || '';
+            const message = data?.error?.message || res.statusText;
+            throw new Error(`${code ? code + ': ' : ''}${message}`);
+        }
+        if (data?.provider === 'simulated' || data?.metadata?.noKeyPreview) {
+            throw new Error(data?.warnings?.[0] || 'Server returned simulated image');
+        }
+        const url = data?.imageUrl || data?.url || data?.dataUrl;
+        if (typeof url === 'string' && url.length > 32) return url;
+        if (data?.base64) return `data:image/png;base64,${data.base64}`;
+        return null;
+    } catch (e) {
+        console.warn('MIMI // Server image route unavailable, trying client path:', e);
+        throw e;
+    }
+};
+
 export const generateZineImage = async (prompt: string, ar: AspectRatio, size: ImageSize, profile: any, isLite: boolean, apiKey?: string, artifacts?: MediaFile[], treatmentId?: string, referenceCardBase64?: string): Promise<string> => {
+    let lastError: string = '';
+
+    // 1) Prefer server gateway-backed generation (resolves the Tailor "simulated billing" false path when keys exist server-side)
+    try {
+        const serverImage = await tryServerMimiImage(prompt, ar, apiKey);
+        if (serverImage) return serverImage;
+    } catch (e: any) {
+        lastError = e instanceof Error ? e.message : String(e);
+    }
+
     try {
         return await withResilience(async (ai) => {
             let treatmentDirectives = "";
@@ -1253,12 +1380,14 @@ export const generateZineImage = async (prompt: string, ar: AspectRatio, size: I
         }, apiKey);
     } catch (e: any) {
         const errMsg = e instanceof Error ? e.message : String(e);
-        console.error("MIMI // Image Generation Error (using simulated mode fallback):", errMsg);
+        lastError = lastError || errMsg;
+        console.error("MIMI // Image Generation Error (using simulated mode fallback):", lastError);
+        const classified = classifyImageGenFailure(lastError);
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
                 detail: { 
-                    message: "Automatic Fallback to Simulated Mode active due to billing/limit.", 
-                    type: 'info' 
+                    message: classified.userMessage, 
+                    type: classified.isBillingOrQuota ? 'warning' : 'info' 
                 } 
             }));
         }
@@ -2418,7 +2547,8 @@ Do not use quotes around the output. Just return the raw text.`,
 
 export const shapeBrief = async (
   input: string,
-  apiKey?: string
+  apiKey?: string,
+  presetContext?: string
 ): Promise<{
   preservedLanguage: string;
   proposedDirection: string;
@@ -2430,11 +2560,11 @@ export const shapeBrief = async (
       model: 'gemini-3.5-flash',
       contents: `
         You are Mimi's editorial advisor. Your job is to structure a creator's unfinished fragment into a coherent creative direction.
-        
+        ${presetContext ? `\n        ACTIVE BRIEF PRESET — shape the direction so it serves this use-case:\n        ${presetContext}\n` : ""}
         CRITICAL RULES:
         - Do not overwrite or flatten the user's voice, unique style, or unusual words.
         - In "preservedLanguage", extract 1-3 of the most evocative phrases directly from the user's input.
-        - In "proposedDirection", provide a concise (1-2 sentences) synthesis of the theme or conceptual focus.
+        - In "proposedDirection", provide a concise (1-2 sentences) synthesis of the theme or conceptual focus${presetContext ? ", aligned with the active brief preset above" : ""}.
         - In "inferredAnchors", list 2-3 specific aesthetic, cultural, or physical materials/references that naturally complement their theme. Label them explicitly as [INFERRED]. Do NOT invent personal facts.
         - In "openQuestions", list 2 evocative, open questions to nudge their imagination further.
         
@@ -3049,35 +3179,50 @@ export const generateResonanceMapping = async (shards: string[], draft: any) => 
   });
 };
 export const analyzeTailorDraft = async (draft: any) => {
-  return await withResilience(async (ai) => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.1-pro-preview',
-      contents: `Draft Data: ${JSON.stringify(draft)}`,
-      config: {
-        responseMimeType: "application/json",
-        systemInstruction: ORACLE_PERSONA + `\n\nTASK: Auditing a user's Tailor Profile draft. Generate a poetic and insightful audit report of their aesthetic and strategic identity.
+  try {
+    return await withResilience(async (ai) => {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-pro-preview',
+        contents: `Draft Data: ${JSON.stringify(draft)}`,
+        config: {
+          responseMimeType: "application/json",
+          systemInstruction: ORACLE_PERSONA + `\n\nTASK: Auditing a user's Tailor Profile draft. Generate a poetic and insightful audit report of their aesthetic and strategic identity.
           
 ANALYSIS FRAMEWORK:
 1. Positioning Core: Analyze their 'anchors' and 'aestheticCore' (silhouettes, materiality, eraBias).
 2. Expression Engine: Analyze their 'chromaticRegistry' and 'narrativeVoice'.
-3. Strategic Vectors: Analyze their 'desireVectors' (moreOf, lessOf, experiment).`,
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["profileManifesto", "strategicOpportunity", "aestheticDirectives", "suggestedTouchpoints"],
-          properties: {
-            profileManifesto: { type: Type.STRING, description: "A short, powerful manifesto summarizing their vibe (2-3 sentences)." },
-            strategicOpportunity: { type: Type.STRING, description: "A strategic insight on how they can leverage their aesthetic for authority." },
-            aestheticDirectives: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of 3-5 specific visual or conceptual rules they should follow." },
-            suggestedTouchpoints: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of 3-5 cultural references or motifs that align with their profile but expand it." }
+3. Strategic Vectors: Analyze their 'desireVectors' (moreOf, lessOf, experiment).
+4. Readings & touchpoints: Suggest concrete cultural references, essays, makers, or archives that expand their axis — not generic moodboards.
+5. Prefer decision-level directives over genre labels.`,
+          responseSchema: {
+            type: Type.OBJECT,
+            required: ["profileManifesto", "strategicOpportunity", "aestheticDirectives", "suggestedTouchpoints"],
+            properties: {
+              profileManifesto: { type: Type.STRING, description: "A short, powerful manifesto summarizing their vibe (2-3 sentences)." },
+              strategicOpportunity: { type: Type.STRING, description: "A strategic insight on how they can leverage their aesthetic for authority." },
+              aestheticDirectives: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of 3-5 specific visual or conceptual rules they should follow." },
+              suggestedTouchpoints: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of 3-5 cultural references, readings, or motifs that align with their profile but expand it." }
+            }
           }
         }
-      }
+      });
+      const audit = cleanAndParse(response.text);
+      const { generateAestheticOutput } = await import("./aestheticGenerator");
+      const aesthetic = await generateAestheticOutput(JSON.stringify(draft), audit.suggestedTouchpoints);
+      return { ...audit, aesthetic };
     });
-    const audit = cleanAndParse(response.text);
-    const { generateAestheticOutput } = await import("./aestheticGenerator");
-    const aesthetic = await generateAestheticOutput(JSON.stringify(draft), audit.suggestedTouchpoints);
-    return { ...audit, aesthetic };
-  });
+  } catch (err) {
+    console.warn("MIMI // Scry Directives LLM unavailable; using local manifesto audit.", err);
+    const { synthesizeLocalTailorAudit } = await import("./localDossierSynthesis");
+    const audit = synthesizeLocalTailorAudit(draft);
+    try {
+      const { generateAestheticOutput } = await import("./aestheticGenerator");
+      const aesthetic = await generateAestheticOutput(JSON.stringify(draft), audit.suggestedTouchpoints);
+      return { ...audit, aesthetic };
+    } catch {
+      return audit;
+    }
+  }
 };
 export const generateRawImage = async (prompt: string, ar: string, profile?: any) => {
   try {

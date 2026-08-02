@@ -81,10 +81,10 @@ export const ObsidianLedgerGraph: React.FC = () => {
         
         // Parallel fetching of real data from Firebase/LocalStorage
         const [dollsList, zinesList, localShards, cloudShards] = await Promise.all([
-          listDolls(userId).catch(() => []),
-          fetchCommunityZines(60).catch(() => []),
-          getLocalPocket().catch(() => []),
-          user && !user.isAnonymous ? fetchPocketItems(user.uid).catch(() => []) : Promise.resolve([])
+          listDolls(userId).catch((): any[] => []),
+          fetchCommunityZines(60).catch((): any[] => []),
+          getLocalPocket().catch((): any[] => []),
+          user && !user.isAnonymous ? fetchPocketItems(user.uid).catch((): any[] => []) : Promise.resolve([])
         ]);
 
         const shardsList = [...(localShards || []), ...(cloudShards || [])];

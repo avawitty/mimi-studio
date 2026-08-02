@@ -65,6 +65,8 @@ import {
   MoreHorizontal,
   PenLine,
   LayoutGrid,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import {
   transcribeAudio,
@@ -82,6 +84,7 @@ import {
   getUsedContext,
   subscribeUsedContext,
 } from "../services/usedContextService";
+import { UsedContextTray } from "./UsedContextTray";
 import { TagGenerator } from "./TagGenerator";
 import { StudioPocketDrawer } from "./studio/StudioPocketDrawer";
 import { StudioCoverOverlayCanvas, StudioCoverOverlayPanel } from "./studio/StudioCoverOverlay";
@@ -337,8 +340,25 @@ export const InputStudio: React.FC<{
   const { playClick, startDeepDrone, stopDeepDrone } = useTactileAudio();
   const studioDoll = useStudioDollSelection(currentUser?.uid);
 
+  // Brown-noise / deep drone must be explicitly opted-in — never auto-start on thinking alone.
+  const [ambientDroneOn, setAmbientDroneOn] = useState(() => {
+    try {
+      return localStorage.getItem("mimi_ambient_drone") === "on";
+    } catch {
+      return false;
+    }
+  });
+
   useEffect(() => {
-    if (isThinking) {
+    try {
+      localStorage.setItem("mimi_ambient_drone", ambientDroneOn ? "on" : "off");
+    } catch {
+      /* ignore */
+    }
+  }, [ambientDroneOn]);
+
+  useEffect(() => {
+    if (isThinking && ambientDroneOn) {
       startDeepDrone();
     } else {
       stopDeepDrone();
@@ -346,7 +366,7 @@ export const InputStudio: React.FC<{
     return () => {
       stopDeepDrone();
     };
-  }, [isThinking]);
+  }, [isThinking, ambientDroneOn]);
 
   useEffect(() => {
     const handleButtonClick = (e: MouseEvent) => {
@@ -1072,7 +1092,10 @@ export const InputStudio: React.FC<{
       if (avoidExclude) combinedInput += `AVOID:\n${avoidExclude}\n\n`;
       if (outputWanted) combinedInput += `OUTPUT WANTED:\n${outputWanted}\n\n`;
 
-      const result = await shapeBrief(combinedInput.trim(), apiKeys?.gemini || undefined);
+      const presetContext = activeCognitivePersona
+        ? `${activeCognitivePersona.title}: ${activeCognitivePersona.briefInstruction} (required output: ${activeCognitivePersona.outputContract.join(", ")})`
+        : undefined;
+      const result = await shapeBrief(combinedInput.trim(), apiKeys?.gemini || undefined, presetContext);
       setShapedBriefResult({
         preservedLanguage: coerceToString(result.preservedLanguage),
         proposedDirection: coerceToString(result.proposedDirection),
@@ -1105,6 +1128,17 @@ export const InputStudio: React.FC<{
     let finalInput = input;
     if (activeThread && activeThread.narrative) {
       finalInput = `${input}\n\n[THREAD CONTEXT: ${activeThread.narrative}]`;
+    }
+
+    const briefSegments: string[] = [];
+    if (editorialIntention) briefSegments.push(`EDITORIAL INTENTION: ${editorialIntention}`);
+    if (centralTension) briefSegments.push(`CENTRAL TENSION: ${centralTension}`);
+    if (anchorsReferences) briefSegments.push(`ANCHORS & REFERENCES: ${anchorsReferences}`);
+    if (desiredFeeling) briefSegments.push(`DESIRED FEELING: ${desiredFeeling}`);
+    if (avoidExclude) briefSegments.push(`AVOID: ${avoidExclude}`);
+    if (outputWanted) briefSegments.push(`OUTPUT WANTED: ${outputWanted}`);
+    if (briefSegments.length > 0) {
+      finalInput = `[STRUCTURED BRIEF — directives for this issue]\n${briefSegments.join("\n")}\n\n[SOURCE MATERIAL]\n${finalInput}`;
     }
 
     const linkedZines = recentZines.filter((zine) => linkedZineIds.includes(zine.id));
@@ -1898,6 +1932,13 @@ ${finalInput}`;
     });
   }, [currentUser?.uid]);
 
+  useEffect(() => {
+    const openUsedContext = () => setActivePanel("orchestrator");
+    window.addEventListener("mimi:open_used_context", openUsedContext);
+    return () =>
+      window.removeEventListener("mimi:open_used_context", openUsedContext);
+  }, []);
+
   const togglePanel = (
     mode:
       | "signal"
@@ -1964,7 +2005,7 @@ ${finalInput}`;
       }}
       style={{ height: isMobile ? viewportHeight : "100%" }}
       data-studio-theme={studioTheme}
-      className="studio-worktable w-full h-full min-h-0 flex flex-col overflow-hidden relative"
+      className="studio-worktable binder-portfolio w-full h-full min-h-0 flex flex-col overflow-hidden relative"
     >
       <StudioChrome
         theme={studioTheme}
@@ -2345,6 +2386,23 @@ ${finalInput}`;
 
               {/* Progressive Editorial Brief Form Container */}
               <div className={`w-full max-w-2xl flex flex-col gap-5 relative z-15 ${isMobile ? "min-h-[160px]" : "min-h-[220px]"}`}>
+                {/* Ambient brown-noise toggle — opt-in only; never auto-plays */}
+                <div className="absolute -top-8 right-0 z-20">
+                  <button
+                    type="button"
+                    onClick={() => setAmbientDroneOn((v) => !v)}
+                    aria-pressed={ambientDroneOn}
+                    title={ambientDroneOn ? "Brown noise on during generation" : "Brown noise off (default)"}
+                    className={`flex items-center gap-1.5 px-2 py-1 border font-mono text-[7px] uppercase tracking-widest transition-colors ${
+                      ambientDroneOn
+                        ? "border-amber-600/50 text-amber-700 bg-amber-500/10"
+                        : "border-stone-300 dark:border-stone-700 text-stone-400 hover:text-stone-600"
+                    }`}
+                  >
+                    {ambientDroneOn ? <Volume2 size={10} /> : <VolumeX size={10} />}
+                    {ambientDroneOn ? "Noise On" : "Noise Off"}
+                  </button>
+                </div>
                 {/* Thinking Pulse Overlay */}
                 {isThinking && (
                   <div className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center bg-transparent">
@@ -2707,45 +2765,6 @@ ${finalInput}`;
                         active: !useTailorProfile,
                         onClick: () => { setUseTailorProfile(!useTailorProfile); playClick(); },
                       },
-                      {
-                        key: "optics",
-                        label: "Optics",
-                        icon: <Eye size={14} strokeWidth={1.6} />,
-                        active: activePanel === "telemetry",
-                        onClick: () => { togglePanel("telemetry"); playClick(); },
-                      },
-                      {
-                        key: "treatments",
-                        label: "Treatments",
-                        icon: <Paintbrush size={14} strokeWidth={1.6} />,
-                        active: activePanel === "treatments",
-                        onClick: () => { togglePanel("treatments"); playClick(); },
-                      },
-                      {
-                        key: "colophon",
-                        label: "Colophon",
-                        icon: <FileText size={14} strokeWidth={1.6} />,
-                        active: false,
-                        onClick: () => { setShowColophon(true); playClick(); },
-                      },
-                      {
-                        key: "reset",
-                        label: "Reset",
-                        icon: <RotateCcw size={14} strokeWidth={1.6} />,
-                        active: false,
-                        onClick: () => { setActiveThread(null); setInput(""); playClick(); },
-                      },
-                      {
-                        key: "doll",
-                        label: studioDoll.enabled ? "Doll: On" : "Doll",
-                        icon: studioDoll.loading ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Users size={14} strokeWidth={1.6} />
-                        ),
-                        active: studioDoll.enabled,
-                        onClick: () => { studioDoll.toggleDollInjection(!studioDoll.enabled); playClick(); },
-                      },
                     ] as { key: string; label: string; icon: React.ReactNode; active: boolean; onClick: () => void }[]).map((tool) => (
                       <button
                         key={tool.key}
@@ -2818,14 +2837,17 @@ ${finalInput}`;
                   onEdit={() => setIsEditingReview(true)}
                   onViewReview={() => setIsEditingReview(false)}
                   onApply={(r) => {
-                    if (r.proposedDirection) setInput(r.proposedDirection);
-                    if (r.preservedLanguage) setEditorialIntention(r.preservedLanguage);
+                    if (r.proposedDirection) setEditorialIntention((prev) => prev || r.proposedDirection);
+                    if (r.openQuestions) setCentralTension((prev) => prev || r.openQuestions);
+                    if (r.preservedLanguage) setDesiredFeeling((prev) => prev || r.preservedLanguage);
                     const parsedAnchors = splitInferredAnchors(r.inferredAnchors)
                       .map((a) => a.replace(/^\[INFERRED\]\s*/i, "").trim())
                       .filter(Boolean);
                     if (parsedAnchors.length > 0) {
+                      setAnchorsReferences((prev) => prev || parsedAnchors.join(", "));
                       setActiveTags((prev) => Array.from(new Set([...prev, ...parsedAnchors])));
                     }
+                    setIsBriefExpanded(true);
                     setShowShapeReview(false);
                     setIsEditingReview(false);
                     window.dispatchEvent(new CustomEvent("mimi:sound", { detail: { type: "shimmer" } }));
@@ -2852,6 +2874,68 @@ ${finalInput}`;
         {(!isMobile || mobileStudioView === "cover") && (
           <div className={`w-full studio-bg-panel border-l studio-border flex flex-col p-6 md:pr-10 shrink-0 relative overflow-y-auto no-scrollbar ${isMobile ? "justify-start pb-44" : "justify-between"}`}
             style={isMobile ? undefined : { width: coverPanelWidth }}>
+            {isMobile && (
+              <div className="studio-mobile-actions fixed left-0 right-0 studio-bg-panel border-t studio-border z-[45] flex items-center justify-around gap-0 px-2 py-2">
+                {([
+                  {
+                    key: "optics",
+                    label: "Optics",
+                    icon: <Eye size={14} strokeWidth={1.6} />,
+                    active: activePanel === "telemetry",
+                    onClick: () => { togglePanel("telemetry"); playClick(); },
+                  },
+                  {
+                    key: "treatments",
+                    label: "Treatments",
+                    icon: <Paintbrush size={14} strokeWidth={1.6} />,
+                    active: activePanel === "treatments",
+                    onClick: () => { togglePanel("treatments"); playClick(); },
+                  },
+                  {
+                    key: "colophon",
+                    label: "Colophon",
+                    icon: <FileText size={14} strokeWidth={1.6} />,
+                    active: false,
+                    onClick: () => { setShowColophon(true); playClick(); },
+                  },
+                  {
+                    key: "doll",
+                    label: studioDoll.enabled ? "Doll: On" : "Doll",
+                    icon: studioDoll.loading ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Users size={14} strokeWidth={1.6} />
+                    ),
+                    active: studioDoll.enabled,
+                    onClick: () => { studioDoll.toggleDollInjection(!studioDoll.enabled); playClick(); },
+                  },
+                  {
+                    key: "reset",
+                    label: "Reset",
+                    icon: <RotateCcw size={14} strokeWidth={1.6} />,
+                    active: false,
+                    onClick: () => { setActiveThread(null); setInput(""); playClick(); },
+                  },
+                ] as { key: string; label: string; icon: React.ReactNode; active: boolean; onClick: () => void }[]).map((tool) => (
+                  <button
+                    key={tool.key}
+                    type="button"
+                    onClick={tool.onClick}
+                    aria-label={tool.label}
+                    className={`shrink-0 flex flex-col items-center justify-center gap-0.5 min-h-[44px] w-[56px] py-1.5 rounded-sm active:scale-95 transition-all ${
+                      tool.active
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "studio-text-muted"
+                    }`}
+                  >
+                    {tool.icon}
+                    <span className="font-mono text-[6px] uppercase tracking-[0.1em] font-bold leading-none truncate w-full text-center">
+                      {tool.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="space-y-6">
               {renderStudioPager()}
               {/* Zine Title Input Header */}
@@ -3526,25 +3610,31 @@ ${finalInput}`;
           </div>
         )}
 
-        {/* COLUMN 4: RIGHT PANEL TAB - PROJECT REF */}
-        <div 
+        {/* COLUMN 4: RIGHT PANEL TAB - PROJECT REF (organized insert drawer) */}
+        <div
           onClick={() => togglePanel("procurement")}
-          className="hidden md:flex absolute right-0 top-1/3 z-40 w-6 h-32 studio-ref-tab border-l border-y studio-border rounded-l-md flex-col items-center justify-center cursor-pointer shadow-lg hover:translate-x-[-2px] transition-transform select-none group"
+          className={`hidden md:flex absolute right-0 top-1/3 z-40 w-6 h-32 border-l border-y border-black rounded-l-md flex-col items-center justify-center cursor-pointer shadow-lg hover:translate-x-[-2px] transition-transform select-none group ${
+            activePanel === "procurement" ? "bg-black text-[#f3f1ea]" : "bg-[#f3f1ea] text-black"
+          }`}
         >
-          <span 
-            style={{ writingMode: "vertical-rl" }} 
+          <span
+            style={{ writingMode: "vertical-rl" }}
             className="rotate-180 font-mono text-[7px] tracking-[0.25em] uppercase group-hover:opacity-80 transition-colors font-bold"
           >
             Project Ref
           </span>
           <div className="w-full flex justify-center mt-2">
-            <div className="w-[1px] h-4 border-l border-dashed border-stone-400" />
+            <div
+              className={`w-[1px] h-4 border-l border-dashed ${
+                activePanel === "procurement" ? "border-[#f3f1ea]/50" : "border-stone-400"
+              }`}
+            />
           </div>
         </div>
 
       </div>
 
-      {/* BOTTOM CONTROL/TABS NAVIGATION (5-Column Grid Layout) — desktop only */}
+      {/* BOTTOM CONTROL/TABS NAVIGATION — desktop only */}
       <div className="hidden md:grid md:grid-cols-5 md:overflow-hidden w-full border-t studio-border studio-bg-tab py-2 text-left px-4 absolute bottom-0 left-0 right-0 h-14 z-30 select-none shrink-0">
         
         {/* Tab 1: ANCHORS */}
@@ -3564,37 +3654,48 @@ ${finalInput}`;
           </span>
         </button>
 
-        {/* Tab 2: TREATMENTS */}
+        {/* Tab 2: CONTEXT — approve Scribe atoms before generate */}
         <button
-          onClick={() => togglePanel("treatments")}
+          onClick={() => togglePanel("orchestrator")}
           className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
-            activePanel === "treatments" ? "is-active" : ""
+            activePanel === "orchestrator" ? "is-active" : ""
           }`}
         >
-          <span className={`font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors ${
-            activePanel === "treatments" ? "font-extrabold" : ""
+          <span className={`font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors inline-flex items-center gap-1.5 ${
+            activePanel === "orchestrator" ? "font-extrabold" : ""
           }`}>
-            TREATMENTS
+            CONTEXT
+            {usedContextQueue.length > 0 && (
+              <span
+                className={`min-w-[1.1rem] h-[1.1rem] px-1 inline-flex items-center justify-center font-mono text-[8px] font-bold ${
+                  usedContextQueue.some((e) => !e.approved)
+                    ? "bg-amber-500 text-black"
+                    : "bg-emerald-700 text-white"
+                }`}
+              >
+                {usedContextQueue.filter((e) => !e.approved).length ||
+                  usedContextQueue.length}
+              </span>
+            )}
           </span>
           <span className="font-sans text-[7px] uppercase tracking-wider studio-text-muted block leading-tight truncate w-full">
-            Saved presets · apply
+            Approve Used Context
           </span>
         </button>
 
-        {/* Tab 3: POCKET */}
+        {/* Tab 3: POCKET — messy desk-drawer stash */}
         <button
-          onClick={() => togglePanel("procurement")}
-          className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer ${
-            activePanel === "procurement" ? "is-active" : ""
-          }`}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("mimi:toggle_pocket_stash"));
+            playClick();
+          }}
+          className="studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 border-r studio-divider px-4 group transition-colors cursor-pointer"
         >
-          <span className={`font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors ${
-            activePanel === "procurement" ? "font-extrabold" : ""
-          }`}>
+          <span className="font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors">
             POCKET
           </span>
           <span className="font-sans text-[7px] uppercase tracking-wider studio-text-muted block leading-tight truncate w-full">
-            Saved references & assets
+            Messy stash drawer
           </span>
         </button>
 
@@ -3615,20 +3716,20 @@ ${finalInput}`;
           </span>
         </button>
 
-        {/* Tab 5: TELEMETRY */}
+        {/* Tab 5: TREATMENTS */}
         <button
-          onClick={() => togglePanel("telemetry")}
+          onClick={() => togglePanel("treatments")}
           className={`studio-footer-tab flex flex-col items-start shrink-0 min-w-[8.5rem] md:min-w-0 px-4 group transition-colors cursor-pointer ${
-            activePanel === "telemetry" ? "is-active" : ""
+            activePanel === "treatments" ? "is-active" : ""
           }`}
         >
           <span className={`font-mono text-[9px] font-bold uppercase tracking-widest block mb-0.5 transition-colors ${
-            activePanel === "telemetry" ? "font-extrabold" : ""
+            activePanel === "treatments" ? "font-extrabold" : ""
           }`}>
-            TELEMETRY
+            TREATMENTS
           </span>
           <span className="font-sans text-[7px] uppercase tracking-wider studio-text-muted block leading-tight truncate w-full">
-            Aesthetic readings
+            Saved presets · apply
           </span>
         </button>
 
@@ -3957,22 +4058,25 @@ ${finalInput}`;
                       },
                     },
                     {
+                      key: "context",
+                      label: "Used Context",
+                      note:
+                        usedContextQueue.length > 0
+                          ? `${usedContextQueue.filter((e) => !e.approved).length} awaiting approval`
+                          : "Approve Scribe atoms for this issue",
+                      icon: <BookOpen size={17} strokeWidth={1.6} />,
+                      onClick: () => {
+                        togglePanel("orchestrator");
+                        setMoreSheetOpen(false);
+                      },
+                    },
+                    {
                       key: "continuum",
                       label: "Continuum",
                       note: "Link recent zines",
                       icon: <GitMerge size={17} strokeWidth={1.6} />,
                       onClick: () => {
                         togglePanel("continuum");
-                        setMoreSheetOpen(false);
-                      },
-                    },
-                    {
-                      key: "telemetry",
-                      label: "Telemetry",
-                      note: "Aesthetic readings",
-                      icon: <Radar size={17} strokeWidth={1.6} />,
-                      onClick: () => {
-                        togglePanel("telemetry");
                         setMoreSheetOpen(false);
                       },
                     },
@@ -4592,11 +4696,35 @@ ${finalInput}`;
 
                   {activePanel === "orchestrator" && (
                     <div className="space-y-4">
+                      <UsedContextTray
+                        target="studio"
+                        onOpenScribe={() => {
+                          window.dispatchEvent(
+                            new CustomEvent("mimi:change_view", { detail: "scribe" }),
+                          );
+                          setActivePanel(null);
+                        }}
+                      />
+
                       {/* Tailor Draft Section */}
-                      <div className="space-y-2 border-b border-stone-850 pb-4">
-                        <span className="block font-mono text-[8.5px] uppercase tracking-widest text-stone-400 font-bold">
-                          ACTIVE TAILOR DRAFT
-                        </span>
+                      <div className="space-y-2 border-b border-stone-850 pb-4 pt-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="block font-mono text-[8.5px] uppercase tracking-widest text-stone-400 font-bold">
+                            ACTIVE TAILOR DRAFT
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.dispatchEvent(
+                                new CustomEvent("mimi:change_view", { detail: "tailor/evidence" }),
+                              );
+                              setActivePanel(null);
+                            }}
+                            className="font-mono text-[7.5px] uppercase tracking-widest text-amber-500/90 hover:text-amber-400"
+                          >
+                            Add evidence →
+                          </button>
+                        </div>
                         {profile?.tailorDraft ? (
                           <div className="bg-stone-950/40 border border-stone-850 p-3 font-mono text-[9px] text-stone-300 rounded-sm">
                             <p className="mb-2"><strong className="text-stone-400">Positioning Axis:</strong> {profile.tailorDraft.positioningCore?.positioningAxis || "None"}</p>

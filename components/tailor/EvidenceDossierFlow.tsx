@@ -1,13 +1,15 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Check, Loader2, Sparkles, Upload, X } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
-import { resolveApiKey } from '../../services/apiKeyService';
+import { resolveApiKey, type LLMProvider } from '../../services/apiKeyService';
 import {
   synthesizeCreativeDossier,
   saveLikenessToLocalStorage,
   saveDossierToLocalStorage,
   buildTailorBlueprintDigest,
+  type DossierProviderKey,
 } from '../../services/creativeDossierService';
+import { buildPriorTasteContextFromProfile } from '../../services/localDossierSynthesis';
 import type { EvidenceBasedCreativeDossier, TailorLogicDraft } from '../../types';
 
 interface IntakeSection {
@@ -119,36 +121,43 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
 
   const canCompile = hasBlueprint || images.length >= 3;
 
+  const collectProviderKeys = (): DossierProviderKey[] => {
+    const providers: LLMProvider[] = ['openai', 'anthropic', 'gemini'];
+    const keys: DossierProviderKey[] = [];
+    for (const provider of providers) {
+      const { key } = resolveApiKey(provider, activePersona?.apiKey, profile?.planStatus);
+      if (key) keys.push({ provider, key });
+    }
+    return keys;
+  };
+
   const handleScry = async () => {
     if (!canCompile) {
       setError('Fill in your Tailor blueprint or upload at least 3 reference images.');
       return;
     }
 
-    const { key: apiKey } = resolveApiKey(
-      'gemini',
-      activePersona?.apiKey,
-      profile?.planStatus,
-    );
+    const providerKeys = collectProviderKeys();
+    const canUseFundedPath =
+      isSignedIn && (canGenerate || profile?.planStatus === 'trial' || profile?.planStatus === 'ghost');
 
-    const canUseFundedPath = isSignedIn && (canGenerate || profile?.planStatus === 'trial' || profile?.planStatus === 'ghost');
-    if (!apiKey && !canUseFundedPath) {
-      setError('Sign in to use daily trial credits, add a Gemini key in Settings, or upgrade to a paid plan.');
-      return;
-    }
-
+    // Local pattern synthesis always works; LLM keys / trial credits only upgrade the read.
     setStep('scrying');
     setError(null);
     setAccepted(false);
     trackTailorScryStarted(images.length);
 
     try {
+      const priorContext = buildPriorTasteContextFromProfile(profile);
       const result = await synthesizeCreativeDossier({
         images: images.map((img) => ({ dataUrl: img.dataUrl })),
         userBlurb: blurb || undefined,
-        apiKey: apiKey ?? undefined,
+        providerKeys,
+        apiKey: providerKeys.find((k) => k.provider === 'gemini')?.key,
         blueprintDigest: blueprintDigest || undefined,
-        preferFundedGateway: !apiKey,
+        priorContext,
+        preferFundedGateway: !providerKeys.length && canUseFundedPath,
+        allowLocalFallback: true,
       });
       setDossier(result);
       saveDossierToLocalStorage(result);
@@ -157,9 +166,13 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Synthesis failed. Try again.';
       if (message.toLowerCase().includes('credit')) {
-        setError('You are out of trial credits for today. Add your own Gemini key in Settings or upgrade to continue.');
+        setError(
+          'Trial credits exhausted — compiling from your blueprint + local visual patterns instead requires a retry, or add an OpenAI / Anthropic / Gemini key in Settings.',
+        );
       } else if (message.toLowerCase().includes('sign in')) {
-        setError('Sign in to scry with Mimi trial credits, or add your own Gemini key in Settings.');
+        setError(
+          'Sign in for trial credits, or add an OpenAI / Anthropic / Gemini key in Settings. Local evidence reads still work from your blueprint.',
+        );
       } else {
         setError(message);
       }
@@ -277,7 +290,8 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
 
         {!isSignedIn && (
           <div className="mb-6 px-4 py-3 border border-amber-500/30 bg-amber-500/5 text-sm text-nous-subtle">
-            Sign in to use trial credits for the read, or add your own Gemini key in Settings.{' '}
+            Optional: sign in for trial LLM credits, or add an OpenAI / Anthropic / Gemini key in Settings.
+            Without keys, Mimi still compiles a local evidence read from your blueprint + image patterns.{' '}
             <button type="button" onClick={() => void login()} className="underline text-nous-text">
               Sign in
             </button>

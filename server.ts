@@ -30,6 +30,9 @@ import { fetchLetterboxdFeed } from "./lib/letterboxdFeed";
 import { getShopifyConnectionStatus, publishShopifyDraft } from "./lib/shopifyAdmin";
 import { searchShopifyGlobalCatalog } from "./lib/shopifyCatalog";
 import { verifyMimiSession } from "./lib/serverFirebaseAdmin";
+import { handleCreatorFeedRequest } from "./api/feed";
+import youSearchHandler from "./api/you-search";
+import liveTokenHandler from "./api/live/token";
 
 loadEnv({ path: ".env.local", override: false, quiet: true });
 loadEnv({ path: ".env.firebase.local", override: false, quiet: true });
@@ -1355,237 +1358,18 @@ async function startServer() {
     }
   });
 
-  // YOU.COM SEARCH INTEGRATION HELPER FUNCTIONS
-  function extractLooseKeywords(text: string): string[] {
-    return Array.from(
-      new Set(
-        text
-          .toLowerCase()
-          .replace(/[^\w\s-]/g, "")
-          .split(/\s+/)
-          .filter((word) => word.length > 4)
-          .slice(0, 18)
-      )
-    );
-  }
-
-  function extractCulturalReferences(text: string): string[] {
-    const matches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) ?? [];
-    return Array.from(new Set(matches)).slice(0, 12);
-  }
-
-  function inferTone(text: string): string {
-    const lower = text.toLowerCase();
-    if (lower.match(/luxury|atelier|editorial|heritage|craft/)) {
-      return "elevated / editorial";
-    }
-    if (lower.match(/playful|cute|colorful|whimsical|youth/)) {
-      return "playful / expressive";
-    }
-    if (lower.match(/minimal|clean|modern|system|utility/)) {
-      return "minimal / structured";
-    }
-    if (lower.match(/dark|moody|subversive|underground|noir/)) {
-      return "moody / subcultural";
-    }
-    return "general / contextual";
-  }
-
-  function generateSimulatedYouResults(query: string): any[] {
-    const cleanQuery = query || "brutalist design";
-    const domains = ["vogue.com", "thecut.com", "i-d.co", "anothermag.com", "dezeen.com", "archdaily.com"];
-    
-    const mockArticles = [
-      {
-        title: `${cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1)}: Aesthetic Coordinates of the Present Mode`,
-        description: `An in-depth critique of ${cleanQuery} exploring the intersection of modern material studies with dynamic youth subcultures. Examining structural weight and visual negative space.`,
-        domain: domains[0],
-        url: `https://${domains[0]}/article/${encodeURIComponent(cleanQuery.replace(/\s+/g, '-'))}-structural-signals`
-      },
-      {
-        title: `The Seeding Ground of ${cleanQuery.toUpperCase()}`,
-        description: `How contemporary curators are archives of ${cleanQuery} to redefine brand narrative and semiotic signals. Tracing lines from historical analogue warm dial memories to digital monoliths.`,
-        domain: domains[1],
-        url: `https://${domains[1]}/editorial/seeding-ground-of-${encodeURIComponent(cleanQuery.replace(/\s+/g, '-'))}`
-      },
-      {
-        title: `Materiality & Resonance in ${cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1)}`,
-        description: `Exploring raw canvas, structured negative space, and concrete brutalism. A complete guide to sovereign taste, tactile textiles, and the limits of findability in mechanical search databases.`,
-        domain: domains[2],
-        url: `https://${domains[2]}/fashion/materiality-resonance-${encodeURIComponent(cleanQuery.replace(/\s+/g, '-'))}`
-      },
-      {
-        title: `A Sovereign Study: Under the Hood of ${cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1)}`,
-        description: `An archival investigation into ${cleanQuery} across creative communities. Standard digital noise is filtered out in favor of clean high-contrast monochrome design language and microtonal harmonics.`,
-        domain: domains[3],
-        url: `https://${domains[3]}/design/sovereign-study-on-${encodeURIComponent(cleanQuery.replace(/\s+/g, '-'))}`
-      }
-    ];
-
-    return mockArticles.map(art => {
-      const text = `${art.title} ${art.description}`;
-      return {
-        sourceUrl: art.url,
-        title: art.title,
-        summary: art.description,
-        domain: art.domain,
-        graphType: "web_reference" as const,
-        confidence: 0.88,
-        simulated: true,
-        aestheticSignals: {
-          keywords: extractLooseKeywords(text),
-          references: extractCulturalReferences(text),
-          tone: inferTone(text),
-        }
-      };
-    });
-  }
-
-  async function fetchYouSearchForMimiGraph(params: {
-    apiKey: string;
-    query: string;
-    includeDomains?: string[];
-    count?: number;
-  }) {
-    const { apiKey, query, includeDomains = [], count = 10 } = params;
-    const url = new URL("https://api.you.com/v1/search");
-    url.searchParams.set("query", query);
-    url.searchParams.set("count", String(count));
-    if (includeDomains.length > 0) {
-      url.searchParams.set("include_domains", includeDomains.join(","));
-    }
-    const res = await fetch(url.toString(), {
-      method: "GET",
-      headers: {
-        "X-API-Key": apiKey,
-        "Accept": "application/json",
-      },
-    });
-    if (!res.ok) {
-      throw new Error(`You.com Search API error: ${res.status} ${res.statusText}`);
-    }
-    const data = await res.json();
-    const webResults = data.web ?? [];
-    return webResults.map((result: any) => {
-      const sourceUrl = result.url;
-      let domain = "";
-      try {
-        domain = new URL(sourceUrl).hostname.replace(/^www\./, "");
-      } catch (e) {
-        domain = "unknown";
-      }
-      const text = [
-        result.title,
-        result.description,
-        ...(result.snippets ?? []),
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      return {
-        sourceUrl,
-        title: result.title ?? "Untitled reference",
-        summary: result.description ?? result.snippets?.[0] ?? "",
-        domain,
-        graphType: "web_reference" as const,
-        confidence: 0.72,
-        aestheticSignals: {
-          keywords: extractLooseKeywords(text),
-          references: extractCulturalReferences(text),
-          tone: inferTone(text),
-        },
-      };
-    });
-  }
-
   app.post("/api/you-search", async (req, res) => {
+    await youSearchHandler(req, res);
+  });
+
+  app.post("/api/live/token", async (req, res) => {
     try {
-      const { query, includeDomains, count } = req.body;
-      const apiKey = (req.headers["x-api-key"] as string || "").trim() || process.env.YOU_API_KEY;
-      const gatewayKey = getServerAiGatewayKey();
-
-      if (!query || typeof query !== "string" || !query.trim()) {
-        return res.status(400).json({ error: { message: "Query string is required." } });
-      }
-
-      if (!apiKey) {
-        if (gatewayKey) {
-          try {
-            const gatewayResult = await openAiMessagesViaGateway(
-              [{
-                role: "user",
-                content: `Build 6 concise research leads for this creative-intelligence query: ${query.trim()}.
-Requested domains, if useful: ${Array.isArray(includeDomains) ? includeDomains.join(", ") : "none"}.
-Return only JSON in this shape:
-{"results":[{"title":"...","summary":"...","confidence":0.0,"keywords":["..."],"references":["..."],"tone":"..."}]}
-Do not claim that you browsed the live web and do not invent URLs.`,
-              }],
-              "You are Mimi's provider-neutral Web Intelligence synthesizer. Produce useful, clearly inferential research hypotheses from model knowledge. Never present synthesis as current live search or fabricate citations.",
-              0.35,
-              gatewayKey,
-              "openai",
-            );
-            const raw = String(gatewayResult?.choices?.[0]?.message?.content || "")
-              .replace(/^```(?:json)?\s*/i, "")
-              .replace(/\s*```$/i, "")
-              .trim();
-            const parsed = JSON.parse(raw);
-            const leads = Array.isArray(parsed?.results) ? parsed.results.slice(0, 10) : [];
-            const results = leads.map((lead: any, index: number) => ({
-              sourceUrl: "",
-              title: lead.title || `Gateway research lead ${index + 1}`,
-              summary: lead.summary || "",
-              domain: "ai-gateway-synthesis",
-              graphType: "web_reference" as const,
-              confidence: Math.max(0.35, Math.min(0.85, Number(lead.confidence) || 0.62)),
-              aestheticSignals: {
-                keywords: Array.isArray(lead.keywords) ? lead.keywords : [],
-                references: Array.isArray(lead.references) ? lead.references : [],
-                tone: lead.tone || "interpretive",
-              },
-            }));
-            return res.json({
-              results,
-              simulated: true,
-              sourceMode: "gateway-synthesis",
-              notice: "AI Gateway synthesis is active. These are model-generated research leads, not live web results. Connect a search provider for current sources and citations.",
-            });
-          } catch (gatewayError: any) {
-            console.warn("MIMI // AI Gateway research synthesis failed. Falling back to local demo data:", gatewayError);
-          }
-        }
-
-        console.warn("MIMI // Live search is not configured. Serving labeled local demo coordinates.");
-        const results = generateSimulatedYouResults(query);
-        return res.json({ 
-          results, 
-          simulated: true, 
-          sourceMode: "local-demo",
-          notice: "Local demo data is active. Configure a live search provider for current sources, or AI Gateway for model-generated research synthesis." 
-        });
-      }
-
-      try {
-        const results = await fetchYouSearchForMimiGraph({
-          apiKey,
-          query: query.trim(),
-          includeDomains: Array.isArray(includeDomains) ? includeDomains : [],
-          count: typeof count === "number" ? count : 10
-        });
-        res.json({ results });
-      } catch (searchError: any) {
-        console.warn("MIMI // Real You.com search failed. Falling back to high-fidelity simulated taste coordinates:", searchError);
-        const results = generateSimulatedYouResults(query);
-        res.json({ 
-          results, 
-          simulated: true, 
-          sourceMode: "local-demo",
-          notice: `Live search failed; labeled local demo data is active (${searchError.message}).` 
-        });
-      }
+      await liveTokenHandler(req, res);
     } catch (error: any) {
-      console.error("MIMI // You.com API Proxy Error:", error);
-      res.status(500).json({ error: { message: error.message || "Failed to fetch and map search results." } });
+      console.error("MIMI // Route error in /api/live/token:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
     }
   });
 
@@ -1765,7 +1549,7 @@ Do not claim that you browsed the live web and do not invent URLs.`,
     try {
       const url = req.query.url as string;
       if (!url) {
-        return res.status(400).json({ error: "Letterboxd URL required" });
+        return res.status(400).json({ error: "Letterboxd username or URL required" });
       }
       res.json(await fetchLetterboxdFeed(url));
     } catch (error: any) {
@@ -1777,6 +1561,17 @@ Do not claim that you browsed the live web and do not invent URLs.`,
       console.error("MIMI // Letterboxd feed error:", message);
       res.status(clientError ? 400 : 502).json({ error: message });
     }
+  });
+
+  // Keep Tabs — creator public-issue RSS (also served at /u/:handle/feed.xml)
+  app.get("/api/feed", async (req, res) => {
+    await handleCreatorFeedRequest(req, res);
+  });
+  app.get("/api/feed/:handle", async (req, res) => {
+    await handleCreatorFeedRequest(req, res);
+  });
+  app.get("/u/:handle/feed.xml", async (req, res) => {
+    await handleCreatorFeedRequest(req, res);
   });
 
   app.get("/api/proxy-image", async (req, res) => {

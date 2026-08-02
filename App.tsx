@@ -49,6 +49,12 @@ import { ApiKeyShield } from "./components/ApiKeyShield";
 import { ZineGenerationOptions } from "./types";
 import { InputStudio } from "./components/InputStudio";
 import { StudioChrome } from "./components/studio/StudioChrome";
+import {
+  MessyPocketStash,
+  POCKET_STASH_CLOSE_EVENT,
+  POCKET_STASH_OPEN_EVENT,
+  POCKET_STASH_TOGGLE_EVENT,
+} from "./components/pocket/MessyPocketStash";
 import { injectJSONLD } from "./utils/seoHelper";
 
 import { archiveManager } from "./services/archiveManager";
@@ -66,10 +72,12 @@ import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { useTactileAudio } from "./hooks/useTactileAudio";
 
 // Lazy load views to reduce initial request count and prevent 429 errors
-import { MobileNavigation } from "./components/MobileNavigation";
 import { MobileProfileModal } from "./components/MobileProfileModal";
 const ArchiveCloudNebula = lazy(
   () => import("./components/ArchiveCloudNebula"),
+);
+const TheStand = lazy(() =>
+  import("./components/TheStand").then((m) => ({ default: m.TheStand })),
 );
 const ArchivalView = lazy(() =>
   import("./components/ArchivalView").then((m) => ({
@@ -148,6 +156,7 @@ const PatronMintView = lazy(() =>
 );
 import { ApiSwitcher } from "./components/ApiSwitcher";
 import { MimiGateway } from "./components/MimiGateway";
+import { CoreLoopOnboarding } from "./components/CoreLoopOnboarding";
 import { ClinicalAuditDrawer } from "./components/ClinicalAuditDrawer";
 import { ProfileHoverCard } from "./components/ProfileHoverCard";
 import { AuthAction } from "./components/AuthAction";
@@ -223,6 +232,9 @@ const ThePressChamber = lazy(() =>
 );
 const ChamberMapView = lazy(() =>
   import("./components/chambers/ChamberMapView").then((m) => ({ default: m.ChamberMapView })),
+);
+const AtelierChamber = lazy(() =>
+  import("./components/chambers/AtelierChamber").then((m) => ({ default: m.AtelierChamber })),
 );
 const TheOracle = lazy(() =>
   import("./components/TheOracle").then((m) => ({ default: m.TheOracle })),
@@ -816,6 +828,7 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "action-board",
   "archival",
   "architecture",
+  "atelier",
   "aesthetic-tokens",
   "brand-intake",
   "brand-voice",
@@ -837,6 +850,7 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "mimi-drop",
   "moodboard",
   "nebula",
+  "stand",
   "notifications",
   "obsidian-mirror",
   "oracle",
@@ -1272,24 +1286,31 @@ export const App: React.FC = () => {
         ? "diagnostics"
         : pathParts[1] === "dossier"
           ? "dossier"
-          : pathParts[1] === "evidence"
+          : pathParts[1] === "evidence" || pathParts[1] === "intake"
             ? "intake"
             : pathParts[1] === "style-lab"
               ? "style-lab"
               : pathParts[1] === "diagnostics"
                 ? "diagnostics"
-                : "blueprint";
+                : pathParts[1] === "blueprint"
+                  ? "blueprint"
+                  : "intake"; // Evidence Intake is Tailor step 0
 
   useEffect(() => {
     if (isLegacyStyleLabRoute) {
       navigate("/tailor/style-lab", { replace: true });
     } else if (isLegacyDiagnosticsRoute) {
       navigate("/tailor/diagnostics", { replace: true });
+    } else if (viewMode === "tailor" && !pathParts[1]) {
+      // Evidence Intake is the default Tailor entry (step 0).
+      navigate("/tailor/evidence", { replace: true });
     }
   }, [
     isLegacyDiagnosticsRoute,
     isLegacyStyleLabRoute,
     navigate,
+    pathParts[1],
+    viewMode,
   ]);
 
   const setViewMode = useCallback(
@@ -1300,6 +1321,11 @@ export const App: React.FC = () => {
       }
       if (["aesthetic-intelligence", "style-diagnostics"].includes(mode)) {
         navigate("/tailor/diagnostics");
+        return;
+      }
+      // Nested chamber paths (e.g. tailor/evidence) skip alias flattening.
+      if (mode.includes("/")) {
+        navigate(`/${mode.replace(/^\//, "")}`);
         return;
       }
       const normalizedMode = canonicalizeMimiRoute(mode);
@@ -1315,6 +1341,75 @@ export const App: React.FC = () => {
     },
     [navigate, profile?.handle, user?.uid],
   );
+  const [pocketStashOpen, setPocketStashOpen] = useState(false);
+  const isStandalonePwaShell = React.useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const inStandaloneDisplayMode = window.matchMedia?.("(display-mode: standalone)")?.matches;
+    const isLegacyIosStandalone = (window.navigator as any)?.standalone === true;
+    return Boolean(inStandaloneDisplayMode || isLegacyIosStandalone);
+  }, []);
+  const pocketDragDepth = useRef(0);
+
+  useEffect(() => {
+    const onToggle = () => setPocketStashOpen((v) => !v);
+    const onOpen = () => setPocketStashOpen(true);
+    const onClose = () => setPocketStashOpen(false);
+    window.addEventListener(POCKET_STASH_TOGGLE_EVENT, onToggle);
+    window.addEventListener(POCKET_STASH_OPEN_EVENT, onOpen);
+    window.addEventListener(POCKET_STASH_CLOSE_EVENT, onClose);
+    return () => {
+      window.removeEventListener(POCKET_STASH_TOGGLE_EVENT, onToggle);
+      window.removeEventListener(POCKET_STASH_OPEN_EVENT, onOpen);
+      window.removeEventListener(POCKET_STASH_CLOSE_EVENT, onClose);
+    };
+  }, []);
+
+  const isExternalPocketDrag = (e: DragEvent) => {
+    const types = e.dataTransfer?.types;
+    if (!types) return false;
+    const list = Array.from(types);
+    // Internal HTML5 drags (page reorder, pocket insert, etc.) often set text/plain
+    // and/or application/mimi-* — never treat those as "open the stash" signals.
+    if (list.some((t) => t.startsWith("application/mimi-"))) return false;
+    // File drops and external URL drags are the intended open triggers.
+    // Bare text/plain alone is too common for in-app reorder/edit drags.
+    return list.includes("Files") || list.includes("text/uri-list");
+  };
+
+  useEffect(() => {
+    const onDragEnter = (e: DragEvent) => {
+      if (!isExternalPocketDrag(e)) return;
+      e.preventDefault();
+      pocketDragDepth.current += 1;
+      setPocketStashOpen(true);
+      window.dispatchEvent(new CustomEvent(POCKET_STASH_OPEN_EVENT));
+    };
+    const onDragOver = (e: DragEvent) => {
+      if (!isExternalPocketDrag(e)) return;
+      e.preventDefault();
+    };
+    const onDragLeave = (e: DragEvent) => {
+      if (!isExternalPocketDrag(e)) return;
+      pocketDragDepth.current = Math.max(0, pocketDragDepth.current - 1);
+    };
+    const onDrop = (e: DragEvent) => {
+      // Always reset depth; only intercept browser navigation for external drops.
+      pocketDragDepth.current = 0;
+      if (!isExternalPocketDrag(e)) return;
+      e.preventDefault();
+    };
+    window.addEventListener("dragenter", onDragEnter);
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("dragleave", onDragLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragenter", onDragEnter);
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("dragleave", onDragLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, []);
+
   const [showQuotaShield, setShowQuotaShield] = useState(false);
   const [zineMetadata, setZineMetadata] = useState<ZineMetadata | null>(null);
   const [zineOptions, setZineOptions] = useState<ZineGenerationOptions>({
@@ -1341,12 +1436,6 @@ export const App: React.FC = () => {
   const [showProfileHover, setShowProfileHover] = useState(false);
 
   const [isHeaderDragActive, setIsHeaderDragActive] = useState(false);
-  const isStandalonePwaShell = React.useMemo(() => {
-    if (typeof window === "undefined") return false;
-    const inStandaloneDisplayMode = window.matchMedia?.("(display-mode: standalone)")?.matches;
-    const isLegacyIosStandalone = (window.navigator as any)?.standalone === true;
-    return Boolean(inStandaloneDisplayMode || isLegacyIosStandalone);
-  }, []);
 
   const handleHeaderDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -1838,7 +1927,7 @@ export const App: React.FC = () => {
   );
 
   const handleRefine = useCallback(
-    async (text, media, tone, opts) => {
+    async (text: string, media: any, tone: any, opts: any) => {
       if (!canGenerate) {
         if (profile?.planStatus === "ghost") {
           setShowGateway(true);
@@ -1999,10 +2088,15 @@ export const App: React.FC = () => {
         setAppState(AppState.REVEALED);
       } catch (e) {
         console.error("MIMI // Zine Creation Failed:", e);
+        const message = e instanceof Error ? e.message : String(e);
+        const alreadyRefracted =
+          /Semantic Mirror|Aesthetic Refraction|Gateway|credits/i.test(message);
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
             detail: {
-              message: "Oracle Disconnected. Please try again.",
+              message: alreadyRefracted
+                ? "Oracle could not finish saving this refraction. Your draft may still be recoverable — try again or check connection."
+                : "Oracle Disconnected. Please try again.",
               type: "error",
             },
           }),
@@ -2029,7 +2123,6 @@ export const App: React.FC = () => {
   }, [handleRefine]);
 
   if (isDatabaseMissing && !isSimulatedMode) return <DatabaseVoid />;
-
   if (window.location.pathname.startsWith("/auth/action")) {
     return <AuthAction />;
   }
@@ -2055,7 +2148,20 @@ export const App: React.FC = () => {
     return <PublicDnaBadge handle={handle} />;
   }
 
-  if (window.location.pathname.startsWith("/u/") && !window.location.pathname.endsWith("/dna")) {
+  // Keep Tabs RSS — if the SPA ever receives feed.xml, bounce to the API handler.
+  if (/^\/u\/[^/]+\/feed\.xml$/i.test(window.location.pathname)) {
+    const feedHandle = window.location.pathname.split("/u/")[1]?.split("/")[0];
+    if (feedHandle) {
+      window.location.replace(`/api/feed?handle=${encodeURIComponent(feedHandle)}`);
+      return null;
+    }
+  }
+
+  if (
+    window.location.pathname.startsWith("/u/") &&
+    !window.location.pathname.endsWith("/dna") &&
+    !/^\/u\/[^/]+\/feed\.xml$/i.test(window.location.pathname)
+  ) {
     const handle = window.location.pathname.split("/u/")[1]?.split("/")[0];
     if (handle) {
       return <MimiYouPublicRoute handle={handle} navigate={navigate} />;
@@ -2108,6 +2214,7 @@ export const App: React.FC = () => {
     "intel-hub": "Aesthetic Intelligence Hub",
     threads: "Threads",
     nebula: "Floor",
+    stand: "The Stand",
     codex: "System",
     scry: "Scry",
     proscenium: "Proscenium",
@@ -2126,6 +2233,7 @@ export const App: React.FC = () => {
     "taste-discovery": "Taste Discovery",
     architecture: "System Architecture",
     "chamber-map": "Chamber Registry",
+    atelier: "Atelier",
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
@@ -2146,7 +2254,11 @@ export const App: React.FC = () => {
       return "reflect";
     if (["tailor", "loom", "action-board", "the-edit", "the-press", "wardrobe", "mimi-drop"].includes(mode))
       return "refine";
-    if (["signature", "ward", "profile", "taste-graph", "pocket", "scribe", "mimi-dolls"].includes(mode))
+    if (
+      ["signature", "ward", "profile", "taste-graph", "pocket", "scribe", "mimi-dolls", "atelier"].includes(
+        mode,
+      )
+    )
       return "signature";
     if (["nebula", "proscenium"].includes(mode)) return "observe";
     return "system";
@@ -2227,9 +2339,15 @@ export const App: React.FC = () => {
       </AnimatePresence>
 
       <MimiGateway isOpen={showGateway} onClose={() => setShowGateway(false)} />
+      <CoreLoopOnboarding ready={!authLoading && !isElevatorLoading && !showGateway} />
       <ApiKeyShield isOpen={!memoizedHasApiKey} onClose={() => {}} />
 
       <RegistryAlert />
+      {isSimulatedMode && (
+        <div className="px-4 py-2 border-b border-amber-400/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-center">
+          Automatic Fallback to Simulated Mode active due to billing/limit. Limiting functions in the Tailor.
+        </div>
+      )}
       {viewMode !== "studio" && import.meta.env.DEV && <ClinicalAuditDrawer />}
       {isSimulatedMode && (
         <div className="px-4 py-2 border-b border-amber-400/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-center">
@@ -2271,11 +2389,21 @@ export const App: React.FC = () => {
           viewMode={viewMode}
           isGenerating={appState === AppState.THINKING}
           isHighLatency={(systemStatus?.latency ?? 0) > 250 || systemStatus?.oracle === 'saturated'}
+          pocketStashOpen={pocketStashOpen}
         />
       )}
 
+      <MessyPocketStash
+        open={pocketStashOpen}
+        onClose={() => {
+          setPocketStashOpen(false);
+          window.dispatchEvent(new CustomEvent(POCKET_STASH_CLOSE_EVENT));
+        }}
+        onOpenRegistry={() => setViewMode("pocket")}
+      />
+
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Dark Spine Sidebar */}
+        {/* Binder spine sidebar */}
         {appState !== AppState.REVEALED && (
           <button
             type="button"
@@ -2283,45 +2411,35 @@ export const App: React.FC = () => {
             aria-expanded={isNavOpen}
             aria-label="Toggle Mimi Canon Menu"
             title="Toggle Mimi Canon Menu"
-            className="w-16 bg-nous-text flex flex-col items-center py-6 border-r border-nous-border relative z-20 hidden md:flex cursor-pointer hover:bg-nous-base transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/80 text-left"
+            className="w-16 bg-black flex flex-col items-center py-6 border-r border-stone-900 relative z-20 hidden md:flex cursor-pointer hover:bg-stone-950 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/80 text-left"
           >
-            {/* Elegant Vertical Sidebar Content */}
             <div className="flex flex-col items-center justify-between h-full select-none w-full relative z-10 text-stone-300 pointer-events-none">
-              {/* Top Menu Icon Button */}
               <div className="flex flex-col items-center gap-1.5 mt-2">
-                <div className="w-8 h-8 rounded-full border border-stone-850 flex items-center justify-center bg-[#1c1c1a]/50 text-amber-500 animate-pulse">
+                <div className="w-8 h-8 rounded-full border border-stone-700 flex items-center justify-center bg-[#1c1c1a]/50 text-[#f3f1ea]">
                   <LayoutGrid size={14} strokeWidth={1.5} />
                 </div>
                 <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-black">MENU</span>
               </div>
 
-              {/* Center vertical typography (Spaced label) */}
-              <div className="flex-1 flex items-center justify-center py-8">
-                <p 
-                  style={{ writingMode: "vertical-rl" }} 
-                  className="font-mono text-[8px] uppercase tracking-[0.55em] font-extrabold text-stone-500 hover:text-stone-300 transition-colors rotate-180 select-none whitespace-nowrap"
-                >
-                  ✥ MIMI CANON SYSTEM
-                </p>
-              </div>
-
-              {/* Bottom status indicator / coordinates */}
-              <div className="flex flex-col items-center gap-1 font-mono text-[7px] text-stone-500 mb-2">
-                <span>E: 0.88</span>
-                <span className="text-[9px] text-amber-500">✥</span>
-              </div>
-            </div>
-
-            {/* Tactile Punch Circles directly on the side component */}
-            <div className="absolute right-2 top-0 bottom-0 flex flex-col justify-around py-12 pointer-events-none z-20">
-              {[...Array(12)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-2.5 h-2.5 rounded-full bg-stone-950 dark:bg-black border border-stone-800 dark:border-stone-900 shadow-inner flex items-center justify-center"
-                >
-                  <div className="w-1 h-1 rounded-full bg-stone-900 dark:bg-stone-950" />
+              <div className="flex-1 flex items-center justify-center py-8 relative w-full">
+                <div className="binder-spine-rod absolute left-1/2 -translate-x-1/2" aria-hidden>
+                  <span className="binder-spine-stud" style={{ top: "18%" }} />
+                  <span className="binder-spine-stud" style={{ bottom: "18%" }} />
                 </div>
-              ))}
+                <div
+                  className="absolute left-2 top-[18%] bottom-[18%] w-0.5 opacity-50"
+                  style={{
+                    background:
+                      "repeating-linear-gradient(to bottom, #fff 0 2px, transparent 2px 12px)",
+                  }}
+                  aria-hidden
+                />
+              </div>
+
+              <div className="flex flex-col items-center gap-1 font-mono text-[7px] text-stone-500 mb-2">
+                <span>FOLIO</span>
+                <span className="text-[9px] text-[#f3f1ea]">◎</span>
+              </div>
             </div>
           </button>
         )}
@@ -2331,7 +2449,7 @@ export const App: React.FC = () => {
           className={`flex-1 flex flex-col relative ${
             ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio"].includes(viewMode)
               ? "overflow-hidden min-h-0 pb-0 h-full"
-              : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0"
+              : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0 mimi-page-pad"
           }`}
         >
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (
@@ -2434,9 +2552,18 @@ export const App: React.FC = () => {
                             onGenerateThreadZine={handleGenerateThreadZine}
                           />
                         )}
+                        {viewMode === "stand" && (
+                          <TheStand
+                            onSelectZine={(z) => {
+                              navigate("/zine/" + z.id);
+                              setZineMetadata(z);
+                              setAppState(AppState.REVEALED);
+                            }}
+                          />
+                        )}
                         {viewMode === "archival" && (
                           <ArchivalView
-                            onSelectZine={(z) => {
+                            onSelectZine={(z: any) => {
                               navigate("/zine/" + z.id);
                               setZineMetadata(z);
                               setAppState(AppState.REVEALED);
@@ -2544,6 +2671,7 @@ export const App: React.FC = () => {
                         {viewMode === "chamber-map" && (
                           <ChamberMapView onNavigate={setViewMode} />
                         )}
+                        {viewMode === "atelier" && <AtelierChamber />}
                         {viewMode === "geo_engine" && (
                           <div className="h-full w-full overflow-y-auto">
                             <TheGEOEngine />
@@ -2566,14 +2694,6 @@ export const App: React.FC = () => {
               </Suspense>
             </motion.div>
           </AnimatePresence>
-          {viewMode !== "studio" && (
-            <MobileNavigation
-              currentView={viewMode}
-              setViewMode={setViewMode}
-              profile={profile}
-              isGenerating={appState === AppState.THINKING}
-            />
-          )}
           <SelectionMemoryCapture />
           <CookieConsentBanner />
         </main>

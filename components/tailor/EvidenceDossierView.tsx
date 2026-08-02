@@ -166,7 +166,7 @@ export const EvidenceDossierView: React.FC<EvidenceDossierViewProps> = ({
           </div>
         </EditorialCard>
 
-        <EditorialCard label="Inversions" title="Next experiments">
+        <EditorialCard label="Inversions & Readings" title="Next experiments">
           <div className="space-y-4 mb-6">
             {dossier.inversions.map((inv) => (
               <div key={inv.becauseYouTendTo} className="text-sm">
@@ -181,6 +181,9 @@ export const EvidenceDossierView: React.FC<EvidenceDossierViewProps> = ({
           </div>
           {dossier.nextExperiments.length > 0 && (
             <div className="border-t border-nous-border/20 pt-4 space-y-3">
+              <p className="text-[10px] uppercase tracking-widest text-nous-subtle mb-2">
+                Experiments · readings · references
+              </p>
               {dossier.nextExperiments.map((exp) => (
                 <div key={exp.title}>
                   <p className="font-serif text-nous-text">{exp.title}</p>

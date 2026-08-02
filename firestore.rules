@@ -333,6 +333,29 @@ service cloud.firestore {
       match /tasteGraphs/{document=**} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
+
+      // Residue Engine (private owner-scoped research runs + artifacts)
+      match /residueRuns/{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /residueSources/{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /residueEvidence/{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /residueClaims/{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /residueAssociations/{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /residueArtifacts/{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      match /residueMemoryProposals/{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
       
       match /{document=**} {
         allow read, write: if isOwner(userId);

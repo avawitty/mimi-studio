@@ -180,17 +180,39 @@ export const chargeMimiFundedGateway = async (
 export const resolveFundedGatewayApiKey = async (
   req: { headers?: Record<string, unknown> },
   cost?: number,
-): Promise<{ apiKey: string; access: FundedGatewayAccess | null }> => {
-  const personalKey = String(req.headers?.authorization || "")
-    .trim()
-    .replace(/^Bearer\s+/i, "");
-  let apiKey = personalKey && personalKey !== "undefined" ? personalKey : "";
+): Promise<{
+  apiKey: string;
+  access: FundedGatewayAccess | null;
+  denialReason?:
+    | "missing_personal_or_funded_key"
+    | "sign_in_required"
+    | "credits_exhausted"
+    | "server_gateway_unconfigured"
+    | "access_denied";
+}> => {
+  // Personal AI Gateway BYOK — only accept keys that look like gateway tokens,
+  // never treat a Firebase session JWT (ey...) as a provider key.
+  const authHeader = String(req.headers?.authorization || "").trim();
+  const bearer = authHeader.replace(/^Bearer\s+/i, "");
+  const looksLikeFirebaseJwt = bearer.startsWith("ey");
+  const personalKey =
+    bearer && bearer !== "undefined" && !looksLikeFirebaseJwt ? bearer : "";
+  let apiKey = personalKey;
   let access: FundedGatewayAccess | null = null;
 
   if (!apiKey) {
     const fundedKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
-    access = fundedKey ? await resolveMimiFundedGatewayAccess(req, cost) : null;
-    apiKey = fundedKey && access?.allowed ? fundedKey : "";
+    if (!fundedKey) {
+      return { apiKey: "", access: null, denialReason: "server_gateway_unconfigured" };
+    }
+    access = await resolveMimiFundedGatewayAccess(req, cost);
+    if (access?.allowed) {
+      return { apiKey: fundedKey, access };
+    }
+    if (!extractMimiSessionToken(req.headers || {})) {
+      return { apiKey: "", access, denialReason: "sign_in_required" };
+    }
+    return { apiKey: "", access, denialReason: "credits_exhausted" };
   }
 
   return { apiKey, access };

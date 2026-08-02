@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { LiveServerMessage, FunctionDeclaration, Modality, Type } from '@google/genai';
-import { getClient } from '../services/geminiService';
+import { LiveServerMessage, Modality, Type } from '@google/genai';
+import { resolveLiveAiCredentials, type LiveAiCredentials } from '../services/liveAuth';
 
 // Audio helpers
 function floatTo16BitPCM(input: Float32Array) {
@@ -22,7 +22,16 @@ function base64ToUint8Array(base64: string) {
   return bytes;
 }
 
-export const useLiveSession = (systemInstruction: string, voiceName: string = 'Kore', onToolCall?: (name: string, args: any) => Promise<any>) => {
+function closeAudioContext(ctx: AudioContext | null) {
+  if (!ctx) return;
+  try { ctx.close(); } catch {}
+}
+
+export const useLiveSession = (
+  systemInstruction: string,
+  voiceName: string = 'Kore',
+  onToolCall?: (name: string, args: any) => Promise<any>,
+) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -30,7 +39,7 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string>('');
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
-  
+
   // Refs for cleanup
   const sessionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -39,7 +48,19 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  
+
+  // Stable attempt token — avoids stale closures from storing state on `connect` itself
+  const currentAttemptRef = useRef(0);
+  const attemptCounterRef = useRef(0);
+
+  // Keep latest props in refs so `connect` identity stays stable across re-renders
+  const systemInstructionRef = useRef(systemInstruction);
+  const voiceNameRef = useRef(voiceName);
+  const onToolCallRef = useRef(onToolCall);
+  systemInstructionRef.current = systemInstruction;
+  voiceNameRef.current = voiceName;
+  onToolCallRef.current = onToolCall;
+
   // Audio Playback Queue
   const nextStartTimeRef = useRef<number>(0);
   const audioQueueRef = useRef<AudioBufferSourceNode[]>([]);
@@ -52,29 +73,36 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
         });
         streamRef.current = null;
       }
-      if (processorRef.current && inputContextRef.current) {
+      if (processorRef.current) {
         try { processorRef.current.disconnect(); } catch(e) {}
-        if (sourceRef.current) {
-            try { sourceRef.current.disconnect(); } catch(e) {}
-        }
       }
+      if (sourceRef.current) {
+        try { sourceRef.current.disconnect(); } catch(e) {}
+      }
+      processorRef.current = null;
+      sourceRef.current = null;
       if (audioContextRef.current) {
-        try { audioContextRef.current.close(); } catch(e) {}
+        closeAudioContext(audioContextRef.current);
         audioContextRef.current = null;
       }
       if (inputContextRef.current) {
-        try { inputContextRef.current.close(); } catch(e) {}
+        closeAudioContext(inputContextRef.current);
         inputContextRef.current = null;
       }
       if (analyserRef.current) {
         try { analyserRef.current.disconnect(); } catch(e) {}
         analyserRef.current = null;
       }
-      
+
       if (sessionRef.current && typeof sessionRef.current.close === 'function') {
         try { sessionRef.current.close(); } catch(e) {}
       }
       sessionRef.current = null;
+      audioQueueRef.current.forEach(s => {
+        try { s.stop(); } catch(e) {}
+      });
+      audioQueueRef.current = [];
+      nextStartTimeRef.current = 0;
       setIsConnected(false);
       setIsConnecting(false);
       setIsSpeaking(false);
@@ -85,42 +113,110 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
   }, []);
 
   const disconnect = useCallback(() => {
-    (connect as any).currentAttempt = null;
+    currentAttemptRef.current = 0;
     cleanup();
   }, [cleanup]);
 
-    const connect = useCallback(async (retries = 3) => {
+  const connect = useCallback(async (retries = 3) => {
     setError(null);
     setIsConnecting(true);
-    
-    // Create a flag to track if this connection attempt is still valid
-    const currentAttempt = Date.now();
-    (connect as any).currentAttempt = currentAttempt;
-    
+
+    // Tear down any prior session/contexts before opening a new one
+    if (sessionRef.current || audioContextRef.current || inputContextRef.current || streamRef.current) {
+      cleanup();
+      setIsConnecting(true);
+    }
+
+    const currentAttempt = ++attemptCounterRef.current;
+    currentAttemptRef.current = currentAttempt;
+
+    // Unlock audio synchronously inside the tap gesture BEFORE any network await.
+    // Safari drops user-activation across awaits; creating/resuming here keeps playback alive.
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    let outputCtx: AudioContext | null = new AudioContextClass({ sampleRate: 24000 });
+    let inputCtx: AudioContext | null = new AudioContextClass({ sampleRate: 16000 });
+    const resumeOutput = outputCtx.resume().catch((): undefined => undefined);
+    const resumeInput = inputCtx.resume().catch((): undefined => undefined);
+    // Start mic permission from the same gesture (iOS); wire after session opens.
+    const micPromise = navigator.mediaDevices.getUserMedia({ audio: true }).catch((e: any) => {
+      throw e;
+    });
+
+    // Mint credentials ONCE per user tap — retries must not re-bill funded gateway credits.
+    let credentials: LiveAiCredentials;
+    try {
+      credentials = await resolveLiveAiCredentials();
+      await Promise.all([resumeOutput, resumeInput]);
+    } catch (e: any) {
+      if (currentAttemptRef.current === currentAttempt) {
+        closeAudioContext(outputCtx);
+        closeAudioContext(inputCtx);
+        outputCtx = null;
+        inputCtx = null;
+        micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+        setError(e?.message || "Failed to establish link.");
+        setIsConnecting(false);
+      } else {
+        closeAudioContext(outputCtx);
+        closeAudioContext(inputCtx);
+        micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+      }
+      return;
+    }
+
+    if (currentAttemptRef.current !== currentAttempt) {
+      // Superseded: dispose only our local contexts — do NOT call shared cleanup().
+      closeAudioContext(outputCtx);
+      closeAudioContext(inputCtx);
+      micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+      return;
+    }
+
+    // Publish contexts to shared refs only while we still own the attempt.
+    audioContextRef.current = outputCtx;
+    inputContextRef.current = inputCtx;
+
+    const abandonLocalIfStale = () => {
+      if (currentAttemptRef.current === currentAttempt) return false;
+      // Newer attempt may already own the shared refs — only close locals we still hold.
+      if (audioContextRef.current === outputCtx) audioContextRef.current = null;
+      if (inputContextRef.current === inputCtx) inputContextRef.current = null;
+      closeAudioContext(outputCtx);
+      closeAudioContext(inputCtx);
+      outputCtx = null;
+      inputCtx = null;
+      micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+      return true;
+    };
+
     for (let i = 0; i < retries; i++) {
+      if (abandonLocalIfStale()) return;
       try {
-        const { ai } = getClient();
-        
-        // 1. Setup Audio Output Context (24kHz for Gemini output)
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
-        
-        // 2. Setup Audio Input Context (16kHz for Gemini input)
-        inputContextRef.current = new AudioContextClass({ sampleRate: 16000 });
-        
-        // 3. Setup Analyser for Visualizer
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        analyserRef.current.fftSize = 256;
-        analyserRef.current.connect(audioContextRef.current.destination);
-        
-        // 4. Connect Live Session
+        if (!outputCtx || !inputCtx) {
+          throw new Error("Audio contexts unavailable.");
+        }
+
+        // Re-resume in case Safari suspended during the credential await
+        await Promise.all([
+          outputCtx.resume().catch((): undefined => undefined),
+          inputCtx.resume().catch((): undefined => undefined),
+        ]);
+        if (abandonLocalIfStale()) return;
+
+        // Analyser for visualizer (expose via state only after onopen)
+        const localAnalyser = outputCtx.createAnalyser();
+        localAnalyser.fftSize = 256;
+        localAnalyser.connect(outputCtx.destination);
+        analyserRef.current = localAnalyser;
+
+        const { ai, model } = credentials;
         const sessionPromise = ai.live.connect({
-          model: 'gemini-3.1-flash-live-preview',
+          model,
           config: {
             responseModalities: [Modality.AUDIO],
-            systemInstruction: systemInstruction,
+            systemInstruction: systemInstructionRef.current,
             speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceName } }
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceNameRef.current } }
             },
             inputAudioTranscription: {},
             outputAudioTranscription: {},
@@ -152,59 +248,62 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
           },
           callbacks: {
             onopen: async () => {
-              if ((connect as any).currentAttempt !== currentAttempt) return;
+              if (currentAttemptRef.current !== currentAttempt) return;
               setIsConnected(true);
               setIsConnecting(false);
               setAnalyser(analyserRef.current);
-              
-              // Start Mic Stream
+
               try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                if ((connect as any).currentAttempt !== currentAttempt) {
+                const stream = await micPromise;
+                if (currentAttemptRef.current !== currentAttempt) {
                   stream.getTracks().forEach(t => t.stop());
                   return;
                 }
                 streamRef.current = stream;
-                
+
                 if (!inputContextRef.current) return;
-                
+
+                if (inputContextRef.current.state === 'suspended') {
+                  await inputContextRef.current.resume().catch((): undefined => undefined);
+                }
+
                 const source = inputContextRef.current.createMediaStreamSource(stream);
                 sourceRef.current = source;
-                
+
                 const processor = inputContextRef.current.createScriptProcessor(4096, 1, 1);
                 processorRef.current = processor;
-                
+
                 processor.onaudioprocess = (e) => {
-                  if ((connect as any).currentAttempt !== currentAttempt) return;
+                  if (currentAttemptRef.current !== currentAttempt) return;
                   const inputData = e.inputBuffer.getChannelData(0);
                   const pcmData = floatTo16BitPCM(inputData);
                   const uint8Buffer = new Uint8Array(pcmData.buffer);
-                  
-                  // Convert to base64 manually to avoid dependency issues
+
                   let binary = '';
                   const len = uint8Buffer.byteLength;
                   for (let j = 0; j < len; j++) {
                     binary += String.fromCharCode(uint8Buffer[j]);
                   }
                   const base64 = btoa(binary);
-  
-                  sessionPromise.then(session => {
-                    if ((connect as any).currentAttempt !== currentAttempt) return;
+
+                  sessionPromise.then((session: any) => {
+                    if (currentAttemptRef.current !== currentAttempt) return;
                     return session.sendRealtimeInput({
                       audio: {
                         mimeType: 'audio/pcm;rate=16000',
                         data: base64
                       }
                     });
-                  }).catch(e => {
+                  }).catch((e: any) => {
                     console.error("MIMI // Failed to send realtime input", e);
                   });
                 };
-                
+
                 source.connect(processor);
                 processor.connect(inputContextRef.current.destination);
               } catch (e: any) {
                 console.warn("Mic Access Failed", e);
+                if (currentAttemptRef.current !== currentAttempt) return;
                 if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
                   setError("Microphone permission denied. Enable in browser.");
                 } else if (e.name === 'NotFoundError' || (e.message && e.message.includes('Requested device not found'))) {
@@ -212,14 +311,12 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                 } else {
                   setError("Audio input system failure.");
                 }
-                // Clean up if mic fails but connection succeeded
                 disconnect();
               }
             },
             onmessage: async (msg: LiveServerMessage) => {
-              if ((connect as any).currentAttempt !== currentAttempt) return;
+              if (currentAttemptRef.current !== currentAttempt) return;
               try {
-                // Handle Transcriptions
                 if (msg.serverContent?.modelTurn?.parts) {
                   msg.serverContent.modelTurn.parts.forEach(part => {
                     if (part.text) {
@@ -227,17 +324,23 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                     }
                   });
                 }
+                if (msg.serverContent?.outputTranscription?.text) {
+                  setTranscript(prev => prev + msg.serverContent!.outputTranscription!.text);
+                }
+                if (msg.serverContent?.inputTranscription?.text) {
+                  setTranscript(prev => prev + msg.serverContent!.inputTranscription!.text);
+                }
 
-                // Handle Tool Calls
                 if (msg.toolCall) {
                   const functionCalls = msg.toolCall.functionCalls;
                   if (functionCalls) {
                     for (const call of functionCalls) {
-                      if (onToolCall) {
+                      const toolHandler = onToolCallRef.current;
+                      if (toolHandler) {
                         try {
-                          const response = await onToolCall(call.name, call.args);
-                          sessionPromise.then(session => {
-                            if ((connect as any).currentAttempt !== currentAttempt) return;
+                          const response = await toolHandler(call.name, call.args);
+                          sessionPromise.then((session: any) => {
+                            if (currentAttemptRef.current !== currentAttempt) return;
                             session.sendToolResponse({
                               functionResponses: [{
                                 id: call.id,
@@ -248,8 +351,8 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                           });
                         } catch (e) {
                           console.error("MIMI // Tool call failed:", e);
-                          sessionPromise.then(session => {
-                            if ((connect as any).currentAttempt !== currentAttempt) return;
+                          sessionPromise.then((session: any) => {
+                            if (currentAttemptRef.current !== currentAttempt) return;
                             session.sendToolResponse({
                               functionResponses: [{
                                 id: call.id,
@@ -264,44 +367,43 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
                   }
                 }
 
-                // Handle Audio Output
                 const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                 if (audioData && audioContextRef.current) {
                   setIsSpeaking(true);
+                  if (audioContextRef.current.state === 'suspended') {
+                    await audioContextRef.current.resume().catch((): undefined => undefined);
+                  }
                   const bytes = base64ToUint8Array(audioData);
-                  
-                  // Manual PCM decoding (16-bit little-endian to float)
+
                   const dataInt16 = new Int16Array(bytes.buffer);
                   const audioBuffer = audioContextRef.current.createBuffer(1, dataInt16.length, 24000);
                   const channelData = audioBuffer.getChannelData(0);
                   for (let j = 0; j < dataInt16.length; j++) {
                     channelData[j] = dataInt16[j] / 32768.0;
                   }
-    
+
                   const source = audioContextRef.current.createBufferSource();
                   source.buffer = audioBuffer;
-                  
-                  // Connect to analyser instead of direct destination
+
                   if (analyserRef.current) {
                     source.connect(analyserRef.current);
                   } else {
                     source.connect(audioContextRef.current.destination);
                   }
-                  
+
                   const currentTime = audioContextRef.current.currentTime;
                   const startTime = Math.max(currentTime, nextStartTimeRef.current);
                   nextStartTimeRef.current = startTime + audioBuffer.duration;
-                  
+
                   source.start(startTime);
                   source.onended = () => {
-                     // Simple heuristic: if queue implies silence, toggle state
                      if (audioContextRef.current && audioContextRef.current.currentTime >= nextStartTimeRef.current) {
                          setIsSpeaking(false);
                      }
                   };
                   audioQueueRef.current.push(source);
                 }
-    
+
                 if (msg.serverContent?.interrupted) {
                    audioQueueRef.current.forEach(s => {
                        try { s.stop(); } catch(e) {}
@@ -315,12 +417,12 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
               }
             },
             onclose: () => {
-              if ((connect as any).currentAttempt !== currentAttempt) return;
+              if (currentAttemptRef.current !== currentAttempt) return;
               setIsConnected(false);
               cleanup();
             },
             onerror: (e: any) => {
-              if ((connect as any).currentAttempt !== currentAttempt) return;
+              if (currentAttemptRef.current !== currentAttempt) return;
               const errMsg = e?.message || String(e);
               if (errMsg.includes('Deadline expired')) {
                 console.warn("MIMI // Live Session ended (timeout).");
@@ -335,30 +437,51 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
             }
           }
         });
-        
+
         const session = await sessionPromise;
-        if ((connect as any).currentAttempt !== currentAttempt) {
+        if (currentAttemptRef.current !== currentAttempt) {
           if (typeof session.close === 'function') {
             try { session.close(); } catch(e) {}
           }
+          // Do not shared-cleanup — a newer attempt owns the refs.
           return;
         }
         sessionRef.current = session;
         return; // Success
       } catch (e: any) {
-        if ((connect as any).currentAttempt !== currentAttempt) return;
+        if (currentAttemptRef.current !== currentAttempt) {
+          // Stale — leave the newer attempt alone.
+          return;
+        }
         console.error(`Connection Attempt ${i + 1} Failed`, e);
-        cleanup(); // Ensure clean state before retry
-        
+
+        // Soft-reset session/analyser for retry, but keep unlocked audio contexts + credentials.
+        if (sessionRef.current && typeof sessionRef.current.close === 'function') {
+          try { sessionRef.current.close(); } catch {}
+        }
+        sessionRef.current = null;
+        if (analyserRef.current) {
+          try { analyserRef.current.disconnect(); } catch {}
+          analyserRef.current = null;
+        }
+        setAnalyser(null);
+        setIsConnected(false);
+        setIsConnecting(true);
+
         if (i === retries - 1) {
           setError(e.message || "Failed to establish link.");
-          setIsConnected(false);
+          setIsConnecting(false);
+          // Full cleanup only on final failure of the active attempt.
+          // If onopen never fired, the eagerly-granted mic stream was never
+          // assigned to streamRef, so cleanup() can't stop it — stop it here.
+          micPromise.then(s => s.getTracks().forEach(t => t.stop())).catch((): undefined => undefined);
+          cleanup();
         } else {
           await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
         }
       }
     }
-  }, [systemInstruction, cleanup, disconnect, voiceName, onToolCall]);
+  }, [cleanup, disconnect]);
 
   const sendVideoFrame = useCallback((base64Image: string) => {
     if (sessionRef.current) {
@@ -380,10 +503,10 @@ export const useLiveSession = (systemInstruction: string, voiceName: string = 'K
 
   useEffect(() => {
     return () => {
-      (connect as any).currentAttempt = null;
+      currentAttemptRef.current = 0;
       cleanup();
     };
-  }, [cleanup, connect]);
+  }, [cleanup]);
 
   return { connect, disconnect, isConnected, isConnecting, isSpeaking, volume, error, sendVideoFrame, analyser, transcript };
 };

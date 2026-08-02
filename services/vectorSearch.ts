@@ -102,7 +102,7 @@ export const syncToShadowMemory = async (item: any) => {
         tone: item.tone || null
       }, { merge: true });
     }
-  } catch (e) {
+  } catch (e: any) {
     console.warn("MIMI // Shadow Sync Failed:", e.message);
   }
 };
@@ -111,7 +111,7 @@ export const deleteFromShadowMemory = async (itemId: string) => {
   try {
     const uid = await ensureAnonymousAuth();
     await deleteDoc(doc(db, `users/${uid}/memory`, itemId));
-  } catch (e) {
+  } catch (e: any) {
     console.warn("MIMI // Shadow De-anchor Failed:", e.message);
   }
 };
@@ -122,7 +122,7 @@ export const getAllShadowMemory = async () => {
     const memoryCollection = collection(db, `users/${uid}/memory`);
     const snapshot = await getDocs(memoryCollection);
     return snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-  } catch (e) {
+  } catch (e: any) {
     console.warn("MIMI // Shadow Fetch Failed:", e.message);
     return [];
   }

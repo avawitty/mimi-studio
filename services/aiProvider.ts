@@ -1,4 +1,5 @@
 import { auth } from './firebaseInit';
+import { modelFor } from './modelConfig';
 
 export interface AIProvider {
   generateContent: (params: any) => Promise<any>;
@@ -110,7 +111,7 @@ class OpenAIProvider implements AIProvider {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: modelFor('textDeep', 'openai'),
         messages,
         temperature: params.config?.temperature ?? 0.7,
         response_format: params.config?.responseMimeType === 'application/json' ? { type: "json_object" } : undefined
@@ -198,7 +199,7 @@ class AnthropicProvider implements AIProvider {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model: modelFor('textDeep', 'anthropic'),
         system: systemText,
         messages: [{ role: 'user', content: userContent }],
         max_tokens: 4000,
@@ -271,7 +272,7 @@ class GatewayProvider implements AIProvider {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash',
+        model: modelFor('textFast', 'gateway'),
         messages,
         temperature: params.config?.temperature ?? 0.7,
         ...(params.config?.responseMimeType === 'application/json' && { response_format: { type: 'json_object' } }),

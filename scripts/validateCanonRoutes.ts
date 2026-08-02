@@ -20,6 +20,7 @@ const IMPLEMENTED_MODES = new Set([
   "the-edit",
   "the-press",
   "pocket",
+  "stand",
   "moodboard",
   "intel-hub",
   "geo_engine",
@@ -31,6 +32,7 @@ const IMPLEMENTED_MODES = new Set([
   "private-studio",
   "mimi-dolls",
   "chamber-map",
+  "atelier",
 ]);
 
 /** Primary chamber component paths (Milestone 1 registry) */
@@ -41,10 +43,12 @@ const CHAMBER_COMPONENT_FILES: Record<string, string> = {
   PrivateStudioChamber: "components/chambers/PrivateStudioChamber.tsx",
   TheEditChamber: "components/chambers/TheEditChamber.tsx",
   ThePressChamber: "components/chambers/ThePressChamber.tsx",
+  AtelierChamber: "components/chambers/AtelierChamber.tsx",
   SignatureView: "components/SignatureView.tsx",
   TailorHub: "components/tailor/TailorHub.tsx",
   TasteGraph: "components/TasteGraph.tsx",
   Pocket: "components/Pocket.tsx",
+  TheStand: "components/TheStand.tsx",
   IntelHub: "components/IntelHub.tsx",
   TheGEOEngine: "components/TheGEOEngine.tsx",
   DarkroomView: "components/DarkroomView.tsx",

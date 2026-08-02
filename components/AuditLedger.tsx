@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShieldAlert, Terminal, History, Activity, ZapOff, Sparkles, Layers } from 'lucide-react';
 import { getAuditLedger } from '../services/auditService';
+import { sanitizeHtml } from '../lib/htmlSanitizer';
 
 export const AuditLedger: React.FC<{ onClose: () => void }> = ({ onClose }) => {
  const [filter, setFilter] = useState<'manifest' | 'archive'>('manifest');
@@ -64,7 +65,10 @@ export const AuditLedger: React.FC<{ onClose: () => void }> = ({ onClose }) => {
  <p className="font-serif italic text-sm text-nous-subtle">Reason: {entry.reason}</p>
  <div className="p-3 bg-nous-base/50 rounded-none border border-nous-border/50">
  <span className="font-sans text-[7px] uppercase tracking-widest font-black text-nous-subtle block mb-1">Impact Analysis</span>
- <p className="font-serif italic text-xs text-nous-subtle"dangerouslySetInnerHTML={{ __html: entry.impact }} />
+ <p
+   className="font-serif italic text-xs text-nous-subtle"
+   dangerouslySetInnerHTML={{ __html: sanitizeHtml(entry.impact, "html") }}
+ />
  </div>
  </div>
  </div>

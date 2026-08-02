@@ -1,5 +1,7 @@
 import { modelFor } from "../services/modelConfig.js";
 
+// Resolve text / image / video models via modelFor(..., "gateway") so calls
+// use the newest curated IDs from lib/models.ts (env-overridable).
 const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 const DATA_URL_RE = /^data:([^;]+);base64,(.+)$/;
 
@@ -221,7 +223,7 @@ export const generateGeminiContentViaGateway = async (
         },
         finishReason: String(choice.finish_reason || "stop").toUpperCase(),
         groundingMetadata: {
-          groundingChunks: [],
+          groundingChunks: [] as any[],
         },
       },
     ],

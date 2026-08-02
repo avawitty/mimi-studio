@@ -41,7 +41,7 @@ export function buildExportManifest(
       atomId: id,
       title: "Fragment",
       content: "",
-      source: undefined,
+      source: undefined as any,
     })),
   );
 

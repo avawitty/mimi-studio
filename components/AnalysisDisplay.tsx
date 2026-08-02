@@ -2,10 +2,10 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { ZineMetadata, PocketItem, LineageEntry, NarrativeThread, MemoryAtom } from '../types';
+import { ZineMetadata, PocketItem, LineageEntry, NarrativeThread, MemoryAtom, AtelierObject, SemioticSignal } from '../types';
 import { generateAudio, animateShardWithVeo, transcribeAudio } from '../services/geminiService';
 import { subscribeToPocketItems, fetchLineageEntry, saveNarrativeThread, saveTask } from '../services/firebaseUtils';
-import { Loader2, X, Volume2, Orbit, Eye, Target, Layers, Moon, Sparkles, Terminal, Quote, ArrowDown, Grid3X3, Bookmark, Check, Play, Pause, ExternalLink, Download, Share2, Star, FileText, Map, Compass, Zap, RefreshCw, PenTool, Save, Mic, Square, AlertCircle, StickyNote, History, MessageSquareQuote, Radar, Maximize2, Activity, Archive, FolderPlus, Compass as RoadmapIcon, Stars as CelestialIcon, ArrowRight, CornerDownRight, Image as ImageIcon, Film, MousePointer2, Briefcase, BookOpen, ChevronDown, Hash, Search, Menu, Plus, Radio, Heart, MessageSquare, Scissors } from 'lucide-react';
+import { Loader2, X, Volume2, Orbit, Eye, Target, Layers, Moon, Sparkles, Terminal, Quote, ArrowDown, Grid3X3, Bookmark, Check, Play, Pause, ExternalLink, Download, Share2, Star, FileText, Map, Compass, Zap, RefreshCw, PenTool, Save, Mic, Square, AlertCircle, StickyNote, History, MessageSquareQuote, Radar, Maximize2, Activity, Archive, FolderPlus, Compass as RoadmapIcon, Stars as CelestialIcon, ArrowRight, CornerDownRight, Image as ImageIcon, Film, MousePointer2, Briefcase, BookOpen, ChevronDown, Hash, Search, Menu, Plus, Radio, Heart, MessageSquare, Scissors, Pin } from 'lucide-react';
 import { ExecutionBlock } from './ExecutionBlock';
 import { VisualLanguageReflection } from './VisualLanguageReflection';
 import { Visualizer } from './Visualizer';
@@ -22,6 +22,14 @@ import { coerceToString } from '../lib/utils';
 import { useRecorder } from '../hooks/useRecorder';
 import { ZineFlipbookShell, type ZineReadingMode } from './ZineFlipbookShell';
 import { useZineSEO } from '../utils/seoHelper';
+import {
+  isAtelierObjectPinned,
+  listAtelierObjects,
+  pinAtelierObject,
+  subscribeAtelierObjects,
+  unpinSignal,
+} from '../services/atelierService';
+import { logProductTasteEvent } from '../services/tasteLogger';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -208,6 +216,62 @@ export const AnalysisDisplay: React.FC<{
  const [audioProgress, setAudioProgress] = useState(0);
  const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
  const [flippedSignalIndex, setFlippedSignalIndex] = useState<number | null>(null);
+ const atelierOwnerUid = user?.uid;
+ const [atelierObjects, setAtelierObjects] = useState<AtelierObject[]>(() =>
+   listAtelierObjects(atelierOwnerUid),
+ );
+
+ useEffect(() => {
+   return subscribeAtelierObjects(setAtelierObjects, atelierOwnerUid);
+ }, [atelierOwnerUid]);
+
+ const issueSignals = useMemo(
+   () => atelierObjects.filter((obj) => obj.zineId && obj.zineId === metadata.id),
+   [atelierObjects, metadata.id],
+ );
+
+ const signalIsPinned = (signal: SemioticSignal, index: number) =>
+   isAtelierObjectPinned(signal, {
+     ownerUid: atelierOwnerUid,
+     zineId: metadata.id,
+     signalIndex: index,
+   });
+
+ const handleToggleTasteSignal = (signal: SemioticSignal, index: number) => {
+   if (!signal.motif) return;
+   if (signalIsPinned(signal, index)) {
+     unpinSignal(signal, {
+       ownerUid: atelierOwnerUid,
+       zineId: metadata.id,
+       signalIndex: index,
+     });
+     return;
+   }
+   const pinned = pinAtelierObject({
+     signal,
+     ownerUid: atelierOwnerUid,
+     zineId: metadata.id,
+     zineTitle: metadata.title || metadata.content?.headlines?.[0] || 'Untitled',
+     signalIndex: index,
+   });
+   if (!pinned) {
+     window.dispatchEvent(
+       new CustomEvent('mimi:sound', { detail: { type: 'error' } }),
+     );
+     return;
+   }
+   // Taste aggregation: pin registers desire / buyer orientation, not a cart save.
+   if (pinned.ownerUid && !pinned.ownerUid.startsWith('local_')) {
+     void logProductTasteEvent({
+       userId: pinned.ownerUid,
+       itemId: pinned.product_id || pinned.id,
+       dwellTime: 0,
+       interactionType: 'save',
+       tags: pinned.tags,
+       timestamp: pinned.savedAt,
+     });
+   }
+ };
  const [readingMode, setReadingMode] = useState<ZineReadingMode>('flipbook');
  const [scribeFragments, setScribeFragments] = useState<MemoryAtom[]>([]);
  const [isReadingAloud, setIsReadingAloud] = useState(false);
@@ -1441,7 +1505,7 @@ export const AnalysisDisplay: React.FC<{
  </div>
  </motion.section>
 
- {/* 6. SEMIOTIC SIGNALS - REDESIGNED GRID */}
+ {/* 6. SEMIOTIC SIGNALS — flip plates + taste-signal pins */}
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg-nous-base print:min-h-0 print:py-12">
  <div className="w-full space-y-16 px-6 md:px-24">
  <SectionHeader label="Semiotics & Visual Directives"icon={Radar} style={{ color: accentColor }} />
@@ -1450,14 +1514,24 @@ export const AnalysisDisplay: React.FC<{
  const Icon = t.type === 'acquisition' ? Briefcase : t.type === 'lexical' ? BookOpen : Sparkles;
  const isCommerce = t.type === 'acquisition';
  const isFlipped = flippedSignalIndex === i;
+ const isPinned = signalIsPinned(t, i);
  const label = isCommerce
    ? (t.commerce_source === 'shopify' ? 'Shopify touchpoint' : 'Commerce reference')
    : t.type === 'lexical'
      ? 'Add to Lexicon'
      : 'Imagine this';
+
+ const toggleFlip = () => {
+   if (!isCommerce) return;
+   setFlippedSignalIndex(isFlipped ? null : i);
+ };
  
  return (
- <div key={i} className="group relative min-h-[390px] overflow-hidden bg-white border border-nous-border rounded-none transition-all hover:border-[var(--hover-accent)]" style={{ '--hover-accent': accentColor, perspective: '1200px' } as React.CSSProperties}>
+ <div
+   key={i}
+   className="group relative min-h-[420px] overflow-hidden bg-white border border-nous-border rounded-none transition-all hover:border-[var(--hover-accent)]"
+   style={{ '--hover-accent': accentColor, perspective: '1200px' } as React.CSSProperties}
+ >
  <AnimatePresence mode="wait" initial={false}>
  {isFlipped && isCommerce ? (
  <motion.div
@@ -1466,32 +1540,54 @@ export const AnalysisDisplay: React.FC<{
  animate={{ rotateY: 0, opacity: 1 }}
  exit={{ rotateY: 90, opacity: 0 }}
  transition={{ duration: 0.28, ease: 'easeOut' }}
- className="absolute inset-0 p-7 flex flex-col justify-between bg-[#F7F4EC]"
+ className="absolute inset-0 flex flex-col bg-[#F7F4EC]"
+ >
+ <button
+   type="button"
+   onClick={toggleFlip}
+   className="flex-1 p-7 text-left flex flex-col justify-between"
+   aria-label={`Flip back to object for ${t.motif}`}
  >
  <div>
  <div className="flex items-center justify-between gap-3 pb-4 border-b border-nous-border">
- <span className="font-sans text-[8px] uppercase tracking-[0.22em] font-black text-nous-subtle">Semiotic commentary</span>
+ <span className="font-sans text-[8px] uppercase tracking-[0.22em] font-black text-nous-subtle">Why it belongs</span>
  <span className="font-mono text-[8px] text-nous-subtle">SIG_0{i+1}</span>
  </div>
+ {t.image_url && (
+ <div className="mt-5 aspect-[16/9] overflow-hidden border border-nous-border bg-stone-100">
+ <img src={t.image_url} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover opacity-90" />
+ </div>
+ )}
  {t.semantic_trigger && (
- <div className="mt-6">
+ <div className="mt-5">
  <span className="font-mono text-[8px] uppercase tracking-wider text-nous-subtle block mb-2">Evidence trigger</span>
  <span className="inline-block font-mono text-[9px] text-[var(--hover-accent)] bg-[var(--hover-accent)]/10 px-2 py-1">{t.semantic_trigger}</span>
  </div>
  )}
- <p className="font-serif text-xl italic leading-relaxed text-nous-text mt-6">
+ <p className="font-serif text-xl italic leading-relaxed text-nous-text mt-5">
  {t.targeting_rationale || t.context}
  </p>
  <p className="font-sans text-[10px] leading-relaxed text-nous-subtle mt-5">
- This object is included as editorial evidence. It is optional context—not a purchase instruction.
+ Editorial evidence of taste — optional context, not a purchase instruction.
  </p>
  </div>
- <div className="flex items-center justify-between gap-4 pt-6 border-t border-nous-border">
- <button onClick={() => setFlippedSignalIndex(null)} className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle hover:text-nous-text">
+ <span className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle mt-6">
  View object
+ </span>
+ </button>
+ <div className="flex items-center justify-between gap-3 px-7 pb-7 pt-0 border-t border-nous-border/0">
+ <button
+   type="button"
+   onClick={(e) => { e.stopPropagation(); handleToggleTasteSignal(t, i); }}
+   className={`flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black border-b pb-0.5 ${
+     isPinned ? 'text-[var(--hover-accent)] border-current' : 'text-nous-text border-current'
+   }`}
+ >
+   {isPinned ? <Check size={10} /> : <Pin size={10} />}
+   {isPinned ? 'Signal kept' : 'Keep as signal'}
  </button>
  {t.link && (
- <a href={t.link} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text">
+ <a href={t.link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text">
  Open source <ExternalLink size={12} />
  </a>
  )}
@@ -1504,28 +1600,31 @@ export const AnalysisDisplay: React.FC<{
  animate={{ rotateY: 0, opacity: 1 }}
  exit={{ rotateY: -90, opacity: 0 }}
  transition={{ duration: 0.28, ease: 'easeOut' }}
- className="absolute inset-0 p-7 flex flex-col justify-between bg-white"
+ className="absolute inset-0 flex flex-col bg-white"
  >
- <div>
- <div className="flex items-center justify-between gap-3 mb-5">
- <div className="flex items-center gap-2">
- <Icon size={12} className="text-nous-subtle group-hover:text-[var(--hover-accent)] transition-colors"/>
- <span className="font-sans text-[8px] uppercase tracking-[0.2em] font-black text-nous-subtle">{label}</span>
- </div>
- <span className="font-mono text-[8px] text-nous-subtle opacity-50">SIG_0{i+1}</span>
- </div>
- {isCommerce && (
- <div className="aspect-[16/10] mb-5 overflow-hidden border border-nous-border bg-stone-100 flex items-center justify-center">
+ {isCommerce ? (
+ <>
+ <button
+   type="button"
+   onClick={toggleFlip}
+   className="flex-1 p-0 text-left flex flex-col min-h-0"
+   aria-label={`Flip to why ${t.motif} belongs`}
+ >
+ <div className="relative aspect-[5/4] overflow-hidden bg-stone-100 border-b border-nous-border">
  {t.image_url ? (
- <img src={t.image_url} alt={`${t.motif} product reference`} loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+ <img src={t.image_url} alt={`${t.motif} product reference`} loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
  ) : (
- <div className="text-center px-6 text-nous-subtle">
- <Briefcase size={24} strokeWidth={1} className="mx-auto mb-3" />
- <span className="font-mono text-[8px] uppercase tracking-widest">Thumbnail appears with verified Shopify data</span>
+ <div className="w-full h-full flex flex-col items-center justify-center text-nous-subtle px-6 text-center">
+ <Briefcase size={22} strokeWidth={1} className="mb-3" />
+ <span className="font-mono text-[8px] uppercase tracking-widest leading-relaxed">Awaiting verified Shopify object</span>
  </div>
  )}
+ <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+ <span className="font-sans text-[8px] uppercase tracking-[0.2em] font-black bg-white/90 px-2 py-1 text-nous-subtle backdrop-blur-sm">{label}</span>
+ <span className="font-mono text-[8px] bg-white/90 px-2 py-1 text-nous-subtle backdrop-blur-sm">SIG_0{i+1}</span>
  </div>
- )}
+ </div>
+ <div className="p-6 flex flex-col flex-1">
  <h4 className="font-serif text-2xl md:text-3xl italic tracking-tighter text-nous-text group-hover:text-[var(--hover-accent)] transition-colors">
  {t.motif}
  </h4>
@@ -1534,10 +1633,51 @@ export const AnalysisDisplay: React.FC<{
  {[t.vendor, t.price].filter(Boolean).join(' · ')}
  </p>
  )}
+ <p className="font-serif italic text-sm text-nous-subtle leading-relaxed border-l-2 border-nous-border pl-4 mt-4 line-clamp-3">
+ {t.context}
+ </p>
+ <span className="mt-auto pt-5 font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle flex items-center gap-2">
+ <Target size={10} /> Click to read why
+ </span>
+ </div>
+ </button>
+ <div className="px-6 pb-6 flex justify-between items-center gap-4">
+ <button
+   type="button"
+   onClick={(e) => { e.stopPropagation(); handleToggleTasteSignal(t, i); }}
+   className={`flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black border-b pb-0.5 ${
+     isPinned ? 'text-[var(--hover-accent)] border-current' : 'text-nous-text border-current'
+   }`}
+ >
+   {isPinned ? <Check size={10} /> : <Pin size={10} />}
+   {isPinned ? 'Signal kept' : 'Keep as signal'}
+ </button>
+ {t.link ? (
+ <a href={t.link} target="_blank" rel="noreferrer" className="text-nous-subtle hover:text-[var(--hover-accent)] transition-colors" aria-label={`Open source for ${t.motif}`}>
+ <ExternalLink size={14} />
+ </a>
+ ) : (
+ <span />
+ )}
+ </div>
+ </>
+ ) : (
+ <div className="absolute inset-0 p-7 flex flex-col justify-between">
+ <div>
+ <div className="flex items-center justify-between gap-3 mb-5">
+ <div className="flex items-center gap-2">
+ <Icon size={12} className="text-nous-subtle group-hover:text-[var(--hover-accent)] transition-colors"/>
+ <span className="font-sans text-[8px] uppercase tracking-[0.2em] font-black text-nous-subtle">{label}</span>
+ </div>
+ <span className="font-mono text-[8px] text-nous-subtle opacity-50">SIG_0{i+1}</span>
+ </div>
+ <h4 className="font-serif text-2xl md:text-3xl italic tracking-tighter text-nous-text group-hover:text-[var(--hover-accent)] transition-colors">
+ {t.motif}
+ </h4>
  <p className="font-serif italic text-sm text-nous-subtle leading-relaxed border-l-2 border-nous-border pl-4 mt-4">
  {t.context}
  </p>
- {!isCommerce && t.visual_directive && (
+ {t.visual_directive && (
  <div className="mt-4 pt-4 border-t border-nous-border">
  <span className="font-sans text-[7px] uppercase tracking-widest font-black text-nous-subtle block mb-2">Directive</span>
  <p className="font-mono text-[9px] text-nous-subtle">{t.visual_directive}</p>
@@ -1545,25 +1685,15 @@ export const AnalysisDisplay: React.FC<{
  )}
  </div>
  <div className="pt-6 flex justify-between items-center gap-4">
- {isCommerce ? (
- <button onClick={() => setFlippedSignalIndex(i)} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-text border-b border-current pb-0.5">
- <Target size={10} /> Read why
- </button>
- ) : (
  <button onClick={() => handleScrySignal(t.motif + (t.visual_directive ? ` ${t.visual_directive}` : ''))} className="flex items-center gap-2 font-sans text-[8px] uppercase tracking-widest font-black text-nous-subtle hover:text-[var(--hover-accent)] transition-colors border-b border-transparent hover:border-current pb-0.5">
  <Search size={10} /> Scry signal
  </button>
- )}
- {t.link ? (
- <a href={t.link} target="_blank" rel="noreferrer" className="text-nous-subtle hover:text-[var(--hover-accent)] transition-colors" aria-label={`Open source for ${t.motif}`}>
- <ExternalLink size={14} />
- </a>
- ) : (
  <a href={`https://www.google.com/search?q=${encodeURIComponent(`${t.motif} aesthetic meaning`)}`} target="_blank" rel="noreferrer" className="text-nous-subtle hover:text-[var(--hover-accent)] transition-colors" aria-label={`Research ${t.motif}`}>
  <ExternalLink size={14} />
  </a>
- )}
  </div>
+ </div>
+ )}
  </motion.div>
  )}
  </AnimatePresence>
@@ -1571,6 +1701,46 @@ export const AnalysisDisplay: React.FC<{
  );
  })}
  </div>
+
+ {issueSignals.length > 0 && (
+ <div className="border border-nous-border bg-white px-6 py-8 md:px-10 space-y-6">
+ <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+ <div>
+ <p className="font-sans text-[8px] uppercase tracking-[0.3em] font-black text-nous-subtle">Signals from this issue</p>
+ <p className="font-serif italic text-xl text-nous-text mt-2">Kept as taste evidence</p>
+ </div>
+ <a
+   href="/atelier"
+   onClick={(e) => {
+     e.preventDefault();
+     window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'atelier' }));
+   }}
+   className="font-sans text-[8px] uppercase tracking-widest font-black text-nous-text border-b border-current pb-0.5 self-start"
+ >
+ Open Atelier
+ </a>
+ </div>
+ <div className="flex gap-4 overflow-x-auto pb-1">
+ {issueSignals.map((obj) => (
+ <div key={obj.id} className="shrink-0 w-44 border border-nous-border bg-nous-base">
+ <div className="aspect-square bg-stone-100 overflow-hidden border-b border-nous-border">
+ {obj.image_url ? (
+ <img src={obj.image_url} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+ ) : (
+ <div className="w-full h-full flex items-center justify-center text-nous-subtle"><Pin size={16} /></div>
+ )}
+ </div>
+ <div className="p-3 space-y-1">
+ <p className="font-serif italic text-sm text-nous-text line-clamp-2">{obj.motif}</p>
+ <p className="font-mono text-[7px] uppercase tracking-wider text-nous-subtle">
+ {[obj.vendor, obj.price].filter(Boolean).join(' · ') || 'Taste signal'}
+ </p>
+ </div>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
  </div>
  </motion.section>
 
@@ -1667,6 +1837,7 @@ export const AnalysisDisplay: React.FC<{
  <div className="p-2 border border-stone-300 bg-white"><RoadmapIcon size={16} style={{ color: accentColor }} /></div>
  <div>
  <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-stone-500">Keep what belongs to you</p>
+  <p className="font-serif italic text-[14px] md:text-[16px] text-stone-600 mt-2">From thesis to repeatable action</p>
  <h2 className="font-serif text-3xl md:text-5xl italic">Signature Takeaways</h2>
  </div>
  </div>
@@ -1794,40 +1965,49 @@ export const AnalysisDisplay: React.FC<{
  </motion.section>
  )}
 
- {/* 9b. USED CONTEXT (Scribe atoms applied to this issue) */}
+ {/* 9b. USED CONTEXT — colophon: what approved knowledge shaped this issue */}
  {(scribeFragments.length > 0 || (metadata.fragmentsUsed?.length ?? 0) > 0) && (
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center px-6 md:px-24 snap-start bg-nous-base text-nous-text print:min-h-0 print:py-12">
- <div className="max-w-4xl w-full space-y-16">
- <SectionHeader label="Used Context" icon={BookOpen} style={{ color: accentColor }} />
- <div className="space-y-8">
- <p className="font-serif italic text-2xl text-nous-subtle leading-relaxed">
- Scribe atoms the reader approved before this issue was accessioned.
+ <div className="max-w-3xl w-full space-y-12">
+ <div className="space-y-4 border-b border-nous-border pb-8">
+ <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle" style={{ color: accentColor }}>
+ Colophon
  </p>
- <div className="grid gap-6">
- {scribeFragments.length > 0 ? scribeFragments.map((atom) => (
- <div key={atom.id} className="flex items-start gap-4 p-4 border border-nous-border rounded-none bg-nous-base/50">
- <div className="w-8 h-8 rounded-none bg-stone-200 flex items-center justify-center shrink-0">
- <BookOpen size={14} className="text-nous-subtle"/>
+ <SectionHeader label="Used Context" icon={BookOpen} style={{ color: accentColor }} />
+ <p className="font-serif italic text-xl md:text-2xl text-nous-subtle leading-relaxed max-w-xl">
+ Memory the creator approved before this issue was composed — not chat history, not silent inference.
+ </p>
+ <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-nous-subtle">
+ {(scribeFragments.length || metadata.fragmentsUsed?.length || 0)} approved atom{(scribeFragments.length || metadata.fragmentsUsed?.length || 0) === 1 ? '' : 's'}
+ </p>
  </div>
- <div className="space-y-1">
- <div className="flex items-center gap-2">
- <span className="font-serif italic text-sm text-nous-text">{atom.title || 'Untitled Fragment'}</span>
+ <ol className="space-y-0 divide-y divide-nous-border border-t border-b border-nous-border">
+ {scribeFragments.length > 0 ? scribeFragments.map((atom, index) => (
+ <li key={atom.id} className="py-6 flex gap-5 items-start">
+ <span className="font-mono text-[10px] text-nous-subtle tabular-nums w-8 shrink-0 pt-1">
+ {String(index + 1).padStart(2, '0')}
+ </span>
+ <div className="space-y-2 min-w-0 flex-1">
+ <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+ <span className="font-serif italic text-base text-nous-text">{atom.title || 'Untitled Fragment'}</span>
  {atom.source && (
- <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle border border-nous-border px-1">{atom.source}</span>
+ <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
+ {atom.source}
+ </span>
  )}
  </div>
  <p className="font-sans text-sm text-nous-subtle leading-relaxed whitespace-pre-wrap">
  {atom.content}
  </p>
  </div>
- </div>
- )) : metadata.fragmentsUsed?.map((id) => (
- <div key={id} className="p-4 border border-nous-border font-mono text-[10px] text-nous-subtle">
- Fragment {id.split('_').pop()}
- </div>
+ </li>
+ )) : metadata.fragmentsUsed?.map((id, index) => (
+ <li key={id} className="py-4 flex gap-5 font-mono text-[10px] text-nous-subtle">
+ <span className="tabular-nums w-8 shrink-0">{String(index + 1).padStart(2, '0')}</span>
+ <span>Fragment {id.split('_').pop()}</span>
+ </li>
  ))}
- </div>
- </div>
+ </ol>
  </div>
  </motion.section>
  )}

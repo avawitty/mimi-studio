@@ -137,6 +137,12 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "Front Page",
         note: "editorial homepage",
         keywords: ["publisher", "note", "editorial", "home", "essays", "briefings", "front page"],
+      },
+      {
+        mode: "stand",
+        label: "The Stand",
+        note: "your published zines showcase",
+        keywords: ["stand", "showcase", "issues", "covers", "profile", "shelf", "archive", "published"],
       }
     ]
   },
@@ -226,6 +232,22 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         label: "Thimble",
         note: "sourcing/procurement",
         keywords: ["shopping", "sourcing", "buy", "items", "clothes", "thimble", "procure"],
+      },
+      {
+        mode: "atelier",
+        label: "Atelier",
+        note: "taste-signal objects from zines",
+        keywords: [
+          "atelier",
+          "objects",
+          "taste objects",
+          "saved products",
+          "semiotic",
+          "touchpoints",
+          "shopify",
+          "desire",
+          "pin",
+        ],
       },
       {
         mode: "threads",

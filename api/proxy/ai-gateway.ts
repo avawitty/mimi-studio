@@ -5,17 +5,33 @@ import {
   resolveFundedGatewayApiKey,
 } from "../../lib/mimiFundedGateway.js";
 
+const DENIAL_MESSAGES: Record<string, string> = {
+  sign_in_required:
+    "Sign in to use Mimi trial credits on Vercel AI Gateway, or add a personal Gateway / provider key in Settings.",
+  credits_exhausted:
+    "Mimi trial/plan credits for AI Gateway are exhausted. Add a personal OpenAI, Anthropic, Gemini, or Gateway key in Settings, or upgrade.",
+  server_gateway_unconfigured:
+    "AI Gateway is not configured on this server. Add AI_GATEWAY_API_KEY or a personal provider key in Settings.",
+  missing_personal_or_funded_key:
+    "Vercel AI Gateway requires a personal Gateway key or a paid Mimi plan with credits remaining.",
+  access_denied:
+    "AI Gateway access was denied. Sign in with credits remaining, upgrade, or add a personal provider key in Settings.",
+};
+
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
   if (!requireMethod(req, res, "POST")) return;
 
   try {
     const cost = fundedGatewayCreditCost();
-    const { apiKey, access } = await resolveFundedGatewayApiKey(req, cost);
+    const { apiKey, access, denialReason } = await resolveFundedGatewayApiKey(req, cost);
 
     if (!apiKey) {
       return sendJson(res, 403, {
-        error: { message: "Vercel AI Gateway requires a personal Gateway key or a paid Mimi plan with credits remaining." },
+        error: {
+          message: DENIAL_MESSAGES[denialReason || "missing_personal_or_funded_key"],
+          code: denialReason || "missing_personal_or_funded_key",
+        },
       });
     }
 

@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Copy, Check, ShoppingBag, ExternalLink, Upload, X, Link as LinkIcon, Scale, FolderPlus, Plus, Trash2, LayoutGrid, MoreVertical, Filter, SortAsc, Image as ImageIcon, Scissors } from 'lucide-react';
-import { procureWithArtifacts, compareItemsFiscalAudit, auditThimbleBoard, generateZineImage, analyzePinterestBoard } from '../services/geminiService';
+import { motion } from 'motion/react';
+import { Search, Loader2, Copy, Check, ShoppingBag, ExternalLink, Upload, X, Link as LinkIcon, Scale, FolderPlus, Plus, Trash2, LayoutGrid, Filter, SortAsc, Scissors } from 'lucide-react';
+import { procureWithArtifacts, compareItemsFiscalAudit, auditThimbleBoard, analyzePinterestBoard } from '../services/geminiService';
 import { TryOnTool } from './TryOnTool';
-import { SessionInsightsWidget } from './SessionInsightsWidget';
 import { useUser } from '../contexts/UserContext';
 import { MediaFile, ThimbleBoard, ThimbleItem } from '../types';
 import { handleFirestoreError, logFirestoreError, OperationType, saveTask } from '../services/firebaseUtils';
@@ -469,14 +468,99 @@ export const ThimbleDashboard = () => {
  }
  };
 
+ const tabs = [
+   { id: 'sourcing' as const, label: 'Sourcing', icon: Search },
+   { id: 'boards' as const, label: 'Boards', icon: LayoutGrid },
+   { id: 'audit' as const, label: 'Fiscal Audit', icon: Scale },
+   { id: 'try-on' as const, label: 'Try On', icon: ShoppingBag },
+ ];
+
+ const tabTitle = (() => {
+   switch (activeTab) {
+     case 'sourcing':
+       return { headline: 'Procurement & Sourcing', sub: 'Convert taste signals into marketplace search language.' };
+     case 'boards':
+       return {
+         headline: selectedBoard ? selectedBoard.title : 'Boards',
+         sub: selectedBoard ? 'Archival worksheet for acquisitions.' : 'Select or create a board to collect artifacts.',
+       };
+     case 'audit':
+       return { headline: 'Fiscal Audit', sub: 'Compare two artifacts against budget and taste.' };
+     case 'try-on':
+       return { headline: 'AI Try-On', sub: 'Preview sourcing candidates on a figure.' };
+     default: {
+       const _exhaustive: never = activeTab;
+       return _exhaustive;
+     }
+   }
+ })();
+
+ const renderBoardsPicker = () => (
+   <div className="space-y-3">
+     <div className="text-[9px] uppercase tracking-widest opacity-40">Your Boards</div>
+     <div className="space-y-1 max-h-40 md:max-h-48 overflow-y-auto custom-scrollbar">
+       {boards.length === 0 ? (
+         <p className="text-[10px] opacity-50 px-1 py-2">No boards yet — create one below.</p>
+       ) : (
+         boards.map((b) => (
+           <div key={b.id} className="flex items-center justify-between group">
+             <button
+               type="button"
+               onClick={() => setSelectedBoard(b)}
+               className={`flex-grow text-left px-3 py-2 text-[10px] uppercase tracking-widest truncate transition-colors ${
+                 selectedBoard?.id === b.id
+                   ? 'bg-white border border-nous-border font-bold'
+                   : 'hover:bg-white/50 opacity-70 hover:opacity-100'
+               }`}
+             >
+               {b.title}
+             </button>
+             {b.userId === user?.uid && (
+               <button
+                 type="button"
+                 onClick={() => handleDeleteBoard(b.id)}
+                 className="p-2 opacity-60 md:opacity-0 group-hover:opacity-100 text-nous-subtle hover:text-red-800 transition-opacity"
+                 aria-label={`Delete board ${b.title}`}
+               >
+                 <Trash2 size={12} />
+               </button>
+             )}
+           </div>
+         ))
+       )}
+     </div>
+     <div className="flex gap-2">
+       <input
+         type="text"
+         value={newBoardTitle}
+         onChange={(e) => setNewBoardTitle(e.target.value)}
+         onKeyDown={(e) => e.key === 'Enter' && handleCreateBoard()}
+         placeholder="NEW BOARD..."
+         className="flex-grow min-w-0 bg-white/50 border border-nous-border px-3 py-2 text-[10px] uppercase tracking-widest focus:ring-0 focus:border-nous-border outline-none"
+       />
+       <button
+         type="button"
+         onClick={handleCreateBoard}
+         className="shrink-0 bg-nous-base text-nous-text px-3 py-2 hover:opacity-90 transition-colors"
+         aria-label="Create board"
+       >
+         <Plus size={14} />
+       </button>
+     </div>
+   </div>
+ );
+
  return (
- <div className="min-h-full flex flex-col md:flex-row bg-nous-base text-nous-text font-sans"style={{ backgroundImage: 'radial-gradient(#D1CFCA 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }}>
+ <div
+   className="min-h-full flex flex-col md:flex-row bg-nous-base text-nous-text font-sans"
+   style={{ backgroundImage: 'radial-gradient(#D1CFCA 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }}
+ >
  
- {/* Sidebar Navigation */}
- <aside className="w-full md:w-64 border-r border-nous-border flex flex-col h-full sticky top-0 bg-nous-base/80 /80 backdrop-blur-sm z-10">
- <div className="p-8 border-b border-nous-border flex flex-col gap-4">
+ {/* Desktop Sidebar */}
+ <aside className="hidden md:flex w-64 shrink-0 border-r border-nous-border flex-col sticky top-0 self-start max-h-[100dvh] overflow-y-auto bg-nous-base/90 backdrop-blur-sm z-10">
+ <div className="p-6 lg:p-8 border-b border-nous-border flex flex-col gap-3">
  <div className="flex items-center gap-3">
- <div className="relative w-8 h-8 flex items-center justify-center bg-transparent border border-nous-border group-hover:bg-nous-base transition-colors">
+ <div className="relative w-8 h-8 flex items-center justify-center border border-nous-border">
  <ShoppingBag className="w-4 h-4 text-nous-text opacity-80" strokeWidth={1.5} />
  <div className="absolute -bottom-1 -right-1 bg-white border border-nous-border p-0.5">
  <Scissors className="w-3 h-3 text-nous-text" strokeWidth={2} />
@@ -484,105 +568,94 @@ export const ThimbleDashboard = () => {
  </div>
  <h1 className="font-serif italic text-xl">The Thimble</h1>
  </div>
- <div className="text-[9px] uppercase tracking-[0.2em] font-medium opacity-60">System Active: {new Date().toLocaleDateString()}</div>
+ <p className="text-[9px] uppercase tracking-[0.2em] font-medium opacity-60 leading-relaxed">
+ Procurement &amp; sourcing engine
+ </p>
  </div>
  
- <nav className="flex-grow p-4 space-y-2">
- <button 
- onClick={() => setActiveTab('sourcing')}
- className={`w-full flex items-center gap-3 px-4 py-3 border text-[10px] uppercase tracking-widest font-semibold transition-all ${activeTab === 'sourcing' ? 'bg-white border-nous-border opacity-100' : 'bg-transparent border-transparent hover:border-nous-border opacity-60 hover:opacity-100 hover:bg-white/50 /50'}`}
- >
- <Search size={16} /> Sourcing
- </button>
- <button 
- onClick={() => setActiveTab('boards')}
- className={`w-full flex items-center gap-3 px-4 py-3 border text-[10px] uppercase tracking-widest font-semibold transition-all ${activeTab === 'boards' ? 'bg-white border-nous-border opacity-100' : 'bg-transparent border-transparent hover:border-nous-border opacity-60 hover:opacity-100 hover:bg-white/50 /50'}`}
- >
- <LayoutGrid size={16} /> Boards
- </button>
- <button 
- onClick={() => setActiveTab('audit')}
- className={`w-full flex items-center gap-3 px-4 py-3 border text-[10px] uppercase tracking-widest font-semibold transition-all ${activeTab === 'audit' ? 'bg-white border-nous-border opacity-100' : 'bg-transparent border-transparent hover:border-nous-border opacity-60 hover:opacity-100 hover:bg-white/50 /50'}`}
- >
- <Scale size={16} /> Fiscal Audit
- </button>
- <button 
- onClick={() => setActiveTab('try-on')}
- className={`w-full flex items-center gap-3 px-4 py-3 border text-[10px] uppercase tracking-widest font-semibold transition-all ${activeTab === 'try-on' ? 'bg-white border-nous-border opacity-100' : 'bg-transparent border-transparent hover:border-nous-border opacity-60 hover:opacity-100 hover:bg-white/50 /50'}`}
- >
- <ShoppingBag size={16} /> Try On
- </button>
+ <nav className="flex-grow p-4 space-y-2" aria-label="Thimble sections">
+ {tabs.map(({ id, label, icon: Icon }) => (
+   <button
+     key={id}
+     type="button"
+     onClick={() => setActiveTab(id)}
+     className={`w-full flex items-center gap-3 px-4 py-3 border text-[10px] uppercase tracking-widest font-semibold transition-all ${
+       activeTab === id
+         ? 'bg-white border-nous-border opacity-100'
+         : 'bg-transparent border-transparent hover:border-nous-border opacity-60 hover:opacity-100 hover:bg-white/50'
+     }`}
+   >
+     <Icon size={16} /> {label}
+   </button>
+ ))}
  </nav>
 
  {activeTab === 'boards' && (
  <div className="p-4 border-t border-nous-border">
- <div className="text-[9px] uppercase tracking-widest opacity-40 mb-3">Your Boards</div>
- <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
- {boards.map(b => (
- <div key={b.id} className="flex items-center justify-between group">
- <button 
- onClick={() => setSelectedBoard(b)}
- className={`flex-grow text-left px-3 py-2 text-[10px] uppercase tracking-widest truncate transition-colors ${selectedBoard?.id === b.id ? 'bg-white border border-nous-border font-bold' : 'hover:bg-white/50 /50 opacity-70 hover:opacity-100'}`}
- >
- {b.title}
- </button>
- {b.userId === user?.uid && (
- <button onClick={() => handleDeleteBoard(b.id)} className="p-2 opacity-0 group-hover:opacity-100 text-nous-subtle hover:text-red-800 transition-opacity">
- <Trash2 size={12} />
- </button>
- )}
- </div>
- ))}
- </div>
- <div className="mt-4 flex gap-2">
- <input 
- type="text"
- value={newBoardTitle} 
- onChange={e => setNewBoardTitle(e.target.value)}
- placeholder="NEW BOARD..."
- className="flex-grow bg-white/50 /50 border border-nous-border px-3 py-2 text-[10px] uppercase tracking-widest focus:ring-0 focus:border-nous-border outline-none"
- />
- <button onClick={handleCreateBoard} className="bg-nous-base text-nous-text px-3 py-2 hover:bg-nous-base dark:hover:bg-white transition-colors">
- <Plus size={14} />
- </button>
- </div>
+   {renderBoardsPicker()}
  </div>
  )}
 
- <div className="p-8 border-t border-nous-border">
+ <div className="p-6 border-t border-nous-border mt-auto">
  <div className="text-[9px] uppercase tracking-widest opacity-40">
- Procurement & Sourcing Engine <br/>
- v.4.0.1
+ Marketplace query mapping · v.4.0.1
  </div>
  </div>
  </aside>
 
- {/* Main Content Area */}
- <main className="flex-grow p-6 md:p-12 overflow-x-hidden relative">
- <header className="mb-12 flex justify-between items-end border-b border-nous-border pb-8">
- <div>
- <h2 className="font-serif italic text-4xl md:text-5xl leading-tight">
- {activeTab === 'sourcing' && <>Procurement & Sourcing <br/>Executive Control Panel</>}
- {activeTab === 'boards' && <>Archival Worksheet <br/>{selectedBoard ? selectedBoard.title : 'Board Overview'}</>}
- {activeTab === 'audit' && <>Fiscal Audit <br/>Comparative Analysis</>}
-{activeTab === 'try-on' && <>AI Try-On <br/>Strategic Conceptualization</>}
- </h2>
+ {/* Mobile section tabs — replaces sticky sidebar that collided with content */}
+ <div className="md:hidden sticky top-0 z-20 border-b border-nous-border bg-nous-base/95 backdrop-blur-sm">
+   <nav
+     className="flex gap-1 overflow-x-auto no-scrollbar px-3 pt-3 pb-2"
+     aria-label="Thimble sections"
+   >
+     {tabs.map(({ id, label, icon: Icon }) => (
+       <button
+         key={id}
+         type="button"
+         onClick={() => setActiveTab(id)}
+         className={`shrink-0 flex items-center gap-2 px-3 py-2 border text-[9px] uppercase tracking-widest font-semibold transition-all ${
+           activeTab === id
+             ? 'bg-white border-nous-border text-nous-text'
+             : 'bg-transparent border-transparent opacity-60'
+         }`}
+       >
+         <Icon size={14} /> {label}
+       </button>
+     ))}
+   </nav>
+   {activeTab === 'boards' && (
+     <div className="px-3 pb-3 border-t border-nous-border/60 pt-3">
+       {renderBoardsPicker()}
+     </div>
+   )}
  </div>
- <div className="text-right hidden md:block">
+
+ {/* Main Content Area */}
+ <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-10 lg:p-12 overflow-x-hidden relative">
+ <header className="mb-8 md:mb-12 flex justify-between items-end gap-4 border-b border-nous-border pb-6 md:pb-8">
+ <div className="min-w-0">
+ <h2 className="font-serif italic text-3xl sm:text-4xl md:text-5xl leading-tight break-words">
+   {tabTitle.headline}
+ </h2>
+ <p className="mt-2 text-[11px] sm:text-xs font-sans opacity-60 max-w-xl leading-relaxed">
+   {tabTitle.sub}
+ </p>
+ </div>
+ <div className="text-right hidden lg:block shrink-0">
  <div className="text-[10px] tracking-widest uppercase font-semibold">Operational Status</div>
  <div className="text-[10px] tracking-widest uppercase text-green-700">Nominal // Ready</div>
  </div>
  </header>
 
  {activeTab === 'sourcing' && (
- <div className="space-y-12">
- <SessionInsightsWidget />
- <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
- <section className="lg:col-span-5 space-y-10">
+ <div className="space-y-10 md:space-y-12">
+ <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+ <section className="lg:col-span-5 space-y-8 md:space-y-10">
  <div className="space-y-6">
- <div className="flex justify-between items-center">
- <h3 className="font-serif italic text-2xl">Visual Context</h3>
- <span className="text-[9px] uppercase tracking-tighter opacity-50 font-sans">Required Input</span>
+ <div className="flex justify-between items-center gap-3">
+ <h3 className="font-serif italic text-xl sm:text-2xl">Visual Context</h3>
+ <span className="text-[9px] uppercase tracking-tighter opacity-50 font-sans shrink-0">Required Input</span>
  </div>
  
  <div className="space-y-2">
@@ -717,15 +790,15 @@ export const ThimbleDashboard = () => {
  </section>
 
  <section className="lg:col-span-7 space-y-6">
- <div className="flex justify-between items-center">
- <h3 className="font-serif italic text-2xl">Procurement Targets</h3>
- <div className="flex items-center gap-4">
+ <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+ <h3 className="font-serif italic text-xl sm:text-2xl">Procurement Targets</h3>
+ <div className="flex items-center gap-3 sm:gap-4">
  <span className="text-[9px] uppercase tracking-widest font-sans px-2 py-1 border border-nous-border bg-white">
  {targets.length > 0 ? `${targets.length} TARGETS` : 'AWAITING INPUT'}
  </span>
  <div className="flex gap-2">
- <button className="p-1 hover:bg-white transition-colors border border-transparent hover:border-nous-border"><Filter size={16} /></button>
- <button className="p-1 hover:bg-white transition-colors border border-transparent hover:border-nous-border"><SortAsc size={16} /></button>
+ <button type="button" className="p-1 hover:bg-white transition-colors border border-transparent hover:border-nous-border" aria-label="Filter targets"><Filter size={16} /></button>
+ <button type="button" className="p-1 hover:bg-white transition-colors border border-transparent hover:border-nous-border" aria-label="Sort targets"><SortAsc size={16} /></button>
  </div>
  </div>
  </div>
@@ -932,7 +1005,7 @@ export const ThimbleDashboard = () => {
  <span className="text-[10px] uppercase tracking-widest opacity-60">Fig. 01 // Input Terminal</span>
  </div>
  <div className="flex-grow border border-nous-border p-6 bg-white/20 flex flex-col gap-4">
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <input 
  type="text"
  id="rawItemTitle"
@@ -950,21 +1023,21 @@ export const ThimbleDashboard = () => {
  className="bg-white/50 border border-nous-border px-4 py-2 text-xs focus:ring-0 focus:border-nous-border outline-none font-sans"
  />
  </div>
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <input 
  type="text"
  id="rawItemMaterial"
  placeholder="Material & Cut Explanation..."
  className="bg-white/50 border border-nous-border px-4 py-2 text-xs focus:ring-0 focus:border-nous-border outline-none font-sans"
  />
- <div className="flex gap-2">
+ <div className="flex gap-2 min-w-0">
  <input 
  type="url"
  id="rawItemUrl"
  defaultValue={newItemUrl} 
  onChange={e => setNewItemUrl(e.target.value)}
  placeholder="Link Drop (URL)"
- className="flex-grow bg-white/50 border border-nous-border px-4 py-2 text-xs focus:ring-0 focus:border-nous-border outline-none font-sans"
+ className="flex-grow min-w-0 bg-white/50 border border-nous-border px-4 py-2 text-xs focus:ring-0 focus:border-nous-border outline-none font-sans"
  />
  <button 
  onClick={(e) => {
@@ -1136,17 +1209,17 @@ export const ThimbleDashboard = () => {
  }}
  className="transition-colors hover:bg-white/10 p-2 -mx-2 rounded"
  >
- <div className="flex justify-between items-end border-b border-nous-border pb-4 mb-4">
- <h2 className="font-serif italic text-3xl">Pending Acquisitions</h2>
- <div className="flex gap-4 items-center">
+ <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2 border-b border-nous-border pb-4 mb-4">
+ <h2 className="font-serif italic text-2xl sm:text-3xl">Pending Acquisitions</h2>
+ <div className="flex gap-3 items-center">
  <span className="text-[10px] uppercase tracking-widest opacity-60">Drop Links/Images Here</span>
- <div className="flex gap-1 justify-center items-center w-6 h-6 border border-nous-border border-dashed">
+ <div className="flex gap-1 justify-center items-center w-6 h-6 border border-nous-border border-dashed shrink-0">
    <Upload size={10} className="opacity-50" />
  </div>
  </div>
  </div>
 
- <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
  {boardItems.map((item, idx) => (
  <article key={item.id} className="space-y-4 group">
  <div className="aspect-[3/4] border border-nous-border overflow-hidden bg-white relative flex flex-col">
@@ -1193,13 +1266,13 @@ export const ThimbleDashboard = () => {
  </section>
  </div>
  ) : (
- <div className="h-full flex flex-col items-center justify-center text-nous-text space-y-6 max-w-md mx-auto text-center py-24">
- <div className="w-24 h-24 rounded-none border border-nous-border flex items-center justify-center bg-white/30 /30">
- <FolderPlus className="w-10 h-10 opacity-50"/>
+ <div className="h-full flex flex-col items-center justify-center text-nous-text space-y-6 max-w-md mx-auto text-center py-12 sm:py-24 px-2">
+ <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-none border border-nous-border flex items-center justify-center bg-white/30">
+ <FolderPlus className="w-8 h-8 sm:w-10 sm:h-10 opacity-50"/>
  </div>
  <div className="space-y-2">
  <h3 className="font-serif italic text-2xl">Select a Board</h3>
- <p className="text-sm leading-relaxed opacity-60">Choose a sourcing board from the sidebar to view its artifacts and run a comprehensive fiscal audit.</p>
+ <p className="text-sm leading-relaxed opacity-60">Choose a sourcing board above to view its artifacts and run a board audit — or create a new board to start collecting.</p>
  </div>
  </div>
  )

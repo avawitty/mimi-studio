@@ -275,15 +275,24 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
     const handlePublishToggle = async (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!user || user.uid !== zine.userId) return;
+      const nextPublic = !zine.isPublic;
       try {
         await updateDoc(doc(db, "zines", zine.id), {
-          isPublic: !zine.isPublic,
+          isPublic: nextPublic,
+          // Bump both fields so Keep Tabs RSS windows (orderBy timestamp and
+          // orderBy publishedAt) include republished older drafts.
+          ...(nextPublic
+            ? { publishedAt: Date.now(), timestamp: Date.now() }
+            : {}),
         });
+        const handle = zine.userHandle || profile?.handle;
         window.dispatchEvent(
           new CustomEvent("mimi:registry_alert", {
             detail: {
-              message: !zine.isPublic
-                ? "Zine Published to Press."
+              message: nextPublic
+                ? handle
+                  ? `Published · Keep Tabs at /u/${handle}/feed.xml`
+                  : "Zine Published to Press."
                 : "Zine Unpublished.",
               icon: <Radio size={14} />,
             },
@@ -536,7 +545,7 @@ export const ZineCard: React.FC<ZineCardProps> = React.memo(
               <button
                 onClick={handlePublishToggle}
                 className={`p-2 rounded-none transition-all backdrop-blur-md ${zine.isPublic ? "bg-nous-text text-nous-base " : "bg-black/5 text-nous-text hover:bg-black/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"}`}
-                title={zine.isPublic ? "Unpublish" : "Publish"}
+                title={zine.isPublic ? "Unpublish from public feed" : "Publish · Keep Tabs"}
               >
                 {zine.isPublic ? <Radio size={12} /> : <EyeOff size={12} />}
               </button>

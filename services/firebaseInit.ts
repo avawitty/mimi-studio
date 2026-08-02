@@ -123,6 +123,7 @@ async function testConnection() {
 }
 testConnection();
 
+
 export const storage: FirebaseStorage = getStorage(app);
 
 // Sovereign Analytics — opt-in only via cookie consent

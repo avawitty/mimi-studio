@@ -3,6 +3,11 @@
   "framework": "vite",
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist",
+  "functions": {
+    "api/you-search.ts": {
+      "maxDuration": 60
+    }
+  },
   "redirects": [
     {
       "source": "/creative-loop",
@@ -56,6 +61,10 @@
     {
       "source": "/.well-known/openai-apps-challenge",
       "destination": "/api/openai-apps-challenge"
+    },
+    {
+      "source": "/u/:handle/feed.xml",
+      "destination": "/api/feed?handle=:handle"
     },
     {
       "source": "/zine/:id",

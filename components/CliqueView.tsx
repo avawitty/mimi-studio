@@ -2,11 +2,31 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUser } from '../contexts/UserContext';
-import { Users, UserPlus, Trash2, Plus, X, Loader2, ChevronRight, Lock, Check, UserMinus, Layers } from 'lucide-react';
+import { Users, UserPlus, Trash2, Plus, X, Loader2, ChevronRight, Lock, Check, UserMinus, Layers, Radio, CircleDot, Briefcase } from 'lucide-react';
 import { Clique, createClique, deleteClique, subscribeToCliques, addMemberToClique, removeMemberFromClique } from '../services/cliques';
-import { fetchFriends, Friendship } from '../services/connections';
+import { fetchFriends, fetchFollowing, Friendship, Connection } from '../services/connections';
 import { getUserProfile } from '../services/firebaseUtils';
 import { UserProfile } from '../types';
+
+type CliqueRing = 'follow' | 'clique' | 'collab';
+
+const RING_COPY: Record<CliqueRing, { title: string; purpose: string; trust: string }> = {
+  follow: {
+    title: 'Follow',
+    purpose: 'Soft signal — see their Stand on Floor',
+    trust: 'Public',
+  },
+  clique: {
+    title: 'Clique',
+    purpose: 'Small private circle (3–12) for shared boards & critique',
+    trust: 'Invite',
+  },
+  collab: {
+    title: 'Collab seat',
+    purpose: 'Explicit project membership (Tailor / Studio brief)',
+    trust: 'Contractual',
+  },
+};
 
 // ─── Member Item ────────────────────────────────────────────────────────────
 
@@ -210,6 +230,7 @@ export const CliqueView: React.FC = () => {
   const { user } = useUser();
   const [cliques, setCliques] = useState<Clique[]>([]);
   const [friends, setFriends] = useState<(Friendship & { friendId: string })[]>([]);
+  const [following, setFollowing] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [selectedClique, setSelectedClique] = useState<Clique | null>(null);
@@ -217,6 +238,7 @@ export const CliqueView: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
+  const [activeRing, setActiveRing] = useState<CliqueRing>('clique');
 
   // Subscribe to cliques in real-time
   useEffect(() => {
@@ -237,10 +259,11 @@ export const CliqueView: React.FC = () => {
     return () => unsub();
   }, [user?.uid, user?.isAnonymous]);
 
-  // Load friends for "add member" flow
+  // Load friends for "add member" flow + follow ring
   useEffect(() => {
     if (!user?.uid || user.isAnonymous) return;
     fetchFriends(user.uid).then(setFriends).catch(() => {});
+    fetchFollowing(user.uid).then(setFollowing).catch(() => {});
   }, [user?.uid, user?.isAnonymous]);
 
   // Keep selectedClique in sync with live data
@@ -261,6 +284,7 @@ export const CliqueView: React.FC = () => {
         setCreating(false);
         setNewName('');
         setNewDesc('');
+        setActiveRing('clique');
       }
     } catch (e) {
       console.error("MIMI // createClique failed", e);
@@ -318,8 +342,8 @@ export const CliqueView: React.FC = () => {
           <div className="flex items-end justify-between gap-6">
             <div className="space-y-2">
               <h2 className="font-serif text-5xl md:text-7xl italic tracking-tighter text-nous-text leading-none">Cliques.</h2>
-              <p className="font-serif italic text-base text-nous-subtle max-w-xs">
-                Curate your inner circles. Group your connections by frequency, resonance, or ritual.
+              <p className="font-serif italic text-base text-nous-subtle max-w-md">
+                Three concentric rings — Follow, Clique, Collab seat — not a feed.
               </p>
             </div>
             <button
@@ -332,7 +356,132 @@ export const CliqueView: React.FC = () => {
           </div>
         </div>
 
+        {/* Concentric rings */}
+        {(() => {
+          const ringCounts: Record<CliqueRing, number> = {
+            follow: following.length,
+            clique: cliques.length,
+            collab: cliques.reduce((n, c) => n + Math.max(0, (c.memberIds?.length || 1) - 1), 0),
+          };
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {(['follow', 'clique', 'collab'] as CliqueRing[]).map((ring, index) => {
+                const copy = RING_COPY[ring];
+                const active = activeRing === ring;
+                const Icon = ring === 'follow' ? Radio : ring === 'clique' ? CircleDot : Briefcase;
+                return (
+                  <button
+                    key={ring}
+                    type="button"
+                    onClick={() => setActiveRing(ring)}
+                    className={`text-left border p-4 transition-colors ${
+                      active
+                        ? 'border-nous-text bg-nous-text text-nous-base'
+                        : 'border-nous-border bg-nous-base text-nous-text hover:border-nous-text'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-mono text-[8px] uppercase tracking-[0.35em] opacity-70">
+                        Ring 0{index + 1}
+                      </span>
+                      <Icon size={14} />
+                    </div>
+                    <p className="font-serif italic text-2xl leading-none mb-2">{copy.title}</p>
+                    <p className={`font-sans text-[11px] leading-relaxed mb-3 ${active ? 'opacity-80' : 'text-nous-subtle'}`}>
+                      {copy.purpose}
+                    </p>
+                    <div className="flex items-center justify-between font-mono text-[8px] uppercase tracking-widest">
+                      <span>{copy.trust}</span>
+                      <span>{ringCounts[ring]}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {activeRing === 'follow' && (
+          <div className="border border-nous-border p-6 space-y-4">
+            <p className="font-sans text-[10px] uppercase tracking-[0.3em] text-nous-subtle font-black">
+              Correspondents you follow
+            </p>
+            <p className="font-serif italic text-nous-subtle text-sm">
+              Follow is a soft signal — their Stand appears on Floor. Manage follows in Connections.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'connections' }))
+                }
+                className="px-4 py-2 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest"
+              >
+                Open Connections
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'stand' }))
+                }
+                className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
+              >
+                View Floor / Stand
+              </button>
+            </div>
+            {following.length > 0 && (
+              <ul className="divide-y divide-nous-border border border-nous-border">
+                {following.slice(0, 12).map((c) => (
+                  <li key={c.id || c.followingId} className="px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-nous-subtle">
+                    {c.followingId?.slice(0, 12)}…
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {activeRing === 'collab' && (
+          <div className="border border-nous-border p-6 space-y-4">
+            <p className="font-sans text-[10px] uppercase tracking-[0.3em] text-nous-subtle font-black">
+              Collab seats
+            </p>
+            <p className="font-serif italic text-nous-subtle text-sm">
+              A collab seat is project membership — Tailor evidence and Studio briefs stay contractual,
+              not public Follow noise. Invite collaborators from a dossier or clique shelf.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'moodboard' }))
+                }
+                className="px-4 py-2 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest"
+              >
+                Shared moodboard
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'tailor/evidence' }))
+                }
+                className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
+              >
+                Tailor project
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveRing('clique')}
+                className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest text-nous-subtle hover:text-nous-text"
+              >
+                Invite via Clique →
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Create form */}
+        {activeRing === 'clique' && (
         <AnimatePresence>
           {creating && (
             <motion.div
@@ -372,8 +521,10 @@ export const CliqueView: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+        )}
 
         {/* Clique list or detail */}
+        {activeRing === 'clique' && (
         <AnimatePresence mode="wait">
           {selectedClique ? (
             <CliqueDetail
@@ -413,6 +564,7 @@ export const CliqueView: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+        )}
       </div>
     </div>
   );

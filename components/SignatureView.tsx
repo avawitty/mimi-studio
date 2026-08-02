@@ -113,20 +113,90 @@ export const SignatureView: React.FC = () => {
  init();
  }, [user, profile, updateProfile, activePersona]);
 
- const handleExport = async () => {
+ const handleExport = async (format: 'plate' | 'story' = 'plate') => {
  if (!dnaCardRef.current) return;
  try {
- const dataUrl = await htmlToImage.toPng(dnaCardRef.current, { 
- quality: 1, 
+ const dataUrl = await htmlToImage.toPng(dnaCardRef.current, {
+ quality: 1,
  pixelRatio: 2,
  fontEmbedCSS: '',
  });
+
+ if (format === 'plate') {
  const link = document.createElement('a');
- link.download = 'mimi-aesthetic-dna.png';
+ link.download = 'mimi-signature-plate.png';
  link.href = dataUrl;
  link.click();
+ return;
+ }
+
+ // Story crop — center the DNA plate into a 9:16 canvas.
+ const img = new Image();
+ img.crossOrigin = 'anonymous';
+ await new Promise<void>((resolve, reject) => {
+ img.onload = () => resolve();
+ img.onerror = () => reject(new Error('Failed to load signature plate'));
+ img.src = dataUrl;
+ });
+ const W = 1080;
+ const H = 1920;
+ const canvas = document.createElement('canvas');
+ canvas.width = W;
+ canvas.height = H;
+ const ctx = canvas.getContext('2d');
+ if (!ctx) return;
+ ctx.fillStyle = '#FDFBF7';
+ ctx.fillRect(0, 0, W, H);
+ // Column rules for share-card language
+ ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+ ctx.lineWidth = 1;
+ for (let i = 1; i < 8; i++) {
+ const x = (W / 8) * i;
+ ctx.beginPath();
+ ctx.moveTo(x, 0);
+ ctx.lineTo(x, H);
+ ctx.stroke();
+ }
+ const maxW = W * 0.86;
+ const maxH = H * 0.55;
+ const scale = Math.min(maxW / img.width, maxH / img.height);
+ const dw = img.width * scale;
+ const dh = img.height * scale;
+ const dx = (W - dw) / 2;
+ const dy = H * 0.22;
+ ctx.drawImage(img, dx, dy, dw, dh);
+ ctx.fillStyle = '#1A1A1A';
+ ctx.font = 'italic 42px Georgia, serif';
+ ctx.textAlign = 'center';
+ ctx.fillText('Signature', W / 2, dy - 48);
+ ctx.font = '11px monospace';
+ ctx.fillStyle = '#78716c';
+ const handleLabel = profile?.handle ? `@${profile.handle}` : 'mimi.you';
+ ctx.fillText(handleLabel.toUpperCase(), W / 2, dy + dh + 56);
+ const storyUrl = canvas.toDataURL('image/png');
+ const link = document.createElement('a');
+ link.download = 'mimi-signature-story.png';
+ link.href = storyUrl;
+ link.click();
  } catch (err) {
- console.error('Failed to export DNA card', err);
+ console.error('Failed to export signature', err);
+ }
+ };
+
+ const handleCopyShareLink = async () => {
+ const handle = profile?.handle;
+ const url = handle
+ ? `${window.location.origin}/u/${handle}`
+ : `${window.location.origin}/signature`;
+ try {
+ await navigator.clipboard.writeText(url);
+ window.dispatchEvent(
+ new CustomEvent('mimi:toast', {
+ detail: { message: 'Share link copied', type: 'success' },
+ }),
+ );
+ } catch {
+ window.prompt('Copy share link', url);
  }
  };
 
@@ -188,7 +258,7 @@ export const SignatureView: React.FC = () => {
  </p>
  )}
  </div>
- <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3 flex-wrap">
  <button 
  onClick={async () => {
  if (!user) return;
@@ -220,12 +290,25 @@ export const SignatureView: React.FC = () => {
  >
  [ EXECUTE RE-SYNC ]
  </button>
- <button 
- onClick={handleExport}
+ <button
+ onClick={() => handleExport('plate')}
  className="flex items-center gap-2 px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest font-bold hover:bg-stone-200 transition-colors"
  >
  <Download size={14} />
- [ EXPORT DNA ]
+ Plate PNG
+ </button>
+ <button
+ onClick={() => handleExport('story')}
+ className="flex items-center gap-2 px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest font-bold hover:bg-stone-200 transition-colors"
+ >
+ <Share2 size={14} />
+ Story 9:16
+ </button>
+ <button
+ onClick={() => void handleCopyShareLink()}
+ className="flex items-center gap-2 px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest font-bold hover:bg-stone-200 transition-colors"
+ >
+ Link
  </button>
  </div>
  </div>

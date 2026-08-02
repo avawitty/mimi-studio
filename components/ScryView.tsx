@@ -332,14 +332,14 @@ export const ScryView: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#f4f4f0] text-[#1a1a1a] min-h-full relative overflow-x-hidden font-sans selection:bg-black selection:text-white pb-32">
-      <div className="absolute inset-0 pointer-events-none opacity-40 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] z-0 mix-blend-multiply"></div>
+    <div className="bg-white text-[#1a1a1a] min-h-full h-full relative overflow-x-hidden font-sans selection:bg-black selection:text-white pb-32">
+      <div className="absolute inset-0 pointer-events-none opacity-[0.18] bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] z-0"></div>
       <div
         className="absolute inset-0 w-full h-full mx-auto z-0 pointer-events-none"
         style={{
           backgroundImage:
-            "linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px)",
-          backgroundSize: "calc(100% / 12) 100%",
+            "linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px)",
+          backgroundSize: "calc(100% / 12) 100%, 100% 28px",
         }}
       ></div>
 

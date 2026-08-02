@@ -30,11 +30,18 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
     }
   }, [transcript, onTranscriptUpdate]);
 
-  // Visualizer loop
+  // Visualizer loop — canvas only mounts while connected; depend on both.
   useEffect(() => {
-    if (!analyser || !canvasRef.current) return;
-    
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = 0;
+    }
+
+    if (!analyser || !isConnected) return;
+
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -82,24 +89,22 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = 0;
       }
     };
   }, [analyser, isConnected, isMimi, strokeColor]);
 
-  // Auto-connect and disconnect on unmount
+  // Disconnect on unmount only — do not auto-connect.
+  // iOS Safari requires a user gesture for mic + AudioContext; the UI copy
+  // ("Tap to initiate vocal sync") is the intentional entry point for all entities.
   useEffect(() => {
-    let mounted = true;
-    connect().catch(e => {
-      if (mounted) console.error("MIMI // Auto-connect failed:", e);
-    });
     return () => {
-      mounted = false;
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [disconnect]);
 
   const toggleConnection = () => {
-    if (isConnected) {
+    if (isConnected || isConnecting) {
       disconnect();
     } else {
       connect().catch(e => console.error("MIMI // Connection failed:", e));
@@ -166,15 +171,16 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
           )}
         </div>
 
-        {/* Interaction Button */}
+        {/* Interaction Button — stays clickable while connecting so users can cancel */}
         <button 
+          type="button"
           onClick={toggleConnection}
-          disabled={isConnecting}
+          aria-label={isConnecting ? 'Cancel vocal sync' : isConnected ? 'End vocal sync' : 'Initiate vocal sync'}
           className={`absolute z-20 w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 ${
             isConnected 
               ? isMimi ? 'bg-black/5 text-black' : 'bg-white/10 text-white shadow-[0_0_30px_rgba(255,255,255,0.2)]'
               : isConnecting
-              ? isMimi ? 'text-black/30 cursor-not-allowed' : 'text-white/30 cursor-not-allowed'
+              ? isMimi ? 'text-black/50 hover:text-black hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/10'
               : isMimi ? 'text-black/50 hover:text-black hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/10'
           }`}
         >
@@ -188,7 +194,7 @@ export const LiveMentor: React.FC<LiveMentorProps> = ({ name, role, voiceName, s
           <p className="font-mono text-[9px] text-red-500 uppercase tracking-[0.2em]">{error}</p>
         ) : isConnecting ? (
           <p className={`font-mono text-[9px] uppercase tracking-[0.3em] animate-pulse ${isMimi ? 'text-black/40' : 'text-white/40'}`}>
-            Establishing Link...
+            Establishing Link... Tap to cancel.
           </p>
         ) : isConnected ? (
           <p className={`font-mono text-[9px] uppercase tracking-[0.3em] ${isMimi ? 'text-black/60' : 'text-white/60'}`}>

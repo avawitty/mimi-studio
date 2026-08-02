@@ -11,12 +11,32 @@ interface MimiShowcaseDirectoryProps {
 export const MimiShowcaseDirectory: React.FC<MimiShowcaseDirectoryProps> = ({ navigate }) => {
   const [zines, setZines] = useState<ZineMetadata[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    void fetchFeaturedPublicZines(30).then((items) => {
-      setZines(items);
-      setLoading(false);
-    });
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    void fetchFeaturedPublicZines(30)
+      .then((items) => {
+        if (!cancelled) {
+          setZines(items);
+          setLoadError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        console.warn("MIMI // Showcase directory load failed:", err);
+        if (!cancelled) {
+          setZines([]);
+          setLoadError("Could not load the public showcase. Try again shortly.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const creators = useMemo(() => {
@@ -52,7 +72,11 @@ export const MimiShowcaseDirectory: React.FC<MimiShowcaseDirectoryProps> = ({ na
         <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-nous-subtle mb-6">
           Creators
         </h2>
-        {creators.length === 0 && !loading ? (
+        {loadError ? (
+          <p className="font-serif italic text-nous-subtle" role="alert">
+            {loadError}
+          </p>
+        ) : creators.length === 0 && !loading ? (
           <p className="font-serif italic text-nous-subtle">No public creators indexed yet.</p>
         ) : (
           <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -84,6 +108,10 @@ export const MimiShowcaseDirectory: React.FC<MimiShowcaseDirectoryProps> = ({ na
         </h2>
         {loading ? (
           <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle">Loading…</p>
+        ) : loadError ? (
+          <p className="font-serif italic text-nous-subtle" role="alert">
+            {loadError}
+          </p>
         ) : zines.length === 0 ? (
           <p className="font-serif italic text-nous-subtle">No public zines yet. Be the first in Studio.</p>
         ) : (

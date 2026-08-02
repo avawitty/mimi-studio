@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useUser } from '../../contexts/UserContext';
 import type {
@@ -11,7 +11,6 @@ import type {
   UserWeight,
   CreativeDossier,
   Doll,
-  EvidenceSourceType,
 } from '../../types';
 import {
   createTailorProject,
@@ -34,7 +33,7 @@ import {
 import { generateArtHistoryMatchesForProject } from '../../services/artHistoryService';
 import { saveArtworkMatches } from '../../services/tailorService';
 import { TailorStartScreen } from './TailorStartScreen';
-import { EvidenceUploadScreen, type EvidenceUploadItem } from './EvidenceUploadScreen';
+import { EvidenceUploadScreen, type EvidenceUploadItem, type EvidenceIntakeHandoffPayload } from './EvidenceUploadScreen';
 import { AnalysisProgressScreen } from './AnalysisProgressScreen';
 import { PatternGraphScreen } from './PatternGraphScreen';
 import { CreativeLawsScreen } from './CreativeLawsScreen';
@@ -42,6 +41,8 @@ import { CreativeDossierScreen } from './CreativeDossierScreen';
 import { OutputSelectionScreen, type TailorOutputChoice } from './OutputSelectionScreen';
 import { DollProfileScreen } from './DollProfileScreen';
 import { ArtHistoryMirrorScreen } from './ArtHistoryMirrorScreen';
+import type { CuriosityPromptId } from '../../services/tailorEvidenceIntake';
+import { buildDirectStatementEvidence, CURIOSITY_PROMPTS } from '../../services/tailorEvidenceIntake';
 
 type FlowStep =
   | 'start'
@@ -85,6 +86,10 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [artQueries, setArtQueries] = useState<string[]>([]);
+  const [curiosityIds, setCuriosityIds] = useState<CuriosityPromptId[]>([]);
+  const [customCuriosity, setCustomCuriosity] = useState('');
+  const [intakeHandoff, setIntakeHandoff] = useState<EvidenceIntakeHandoffPayload | null>(null);
+  const bootstrappedRef = useRef(Boolean(initialProject));
 
   const refreshProjectData = useCallback(async (projectId: string) => {
     if (!uid) return;
@@ -99,6 +104,16 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
     setClusters(cl);
     setLaws(lw);
   }, [uid]);
+
+  // Evidence Intake is step 0: land on upload immediately with a default project.
+  useEffect(() => {
+    if (!uid || bootstrappedRef.current || initialProject) return;
+    bootstrappedRef.current = true;
+    void createTailorProject(uid, 'creative_practice').then((p) => {
+      setProject(p);
+      setStep('upload');
+    });
+  }, [uid, initialProject]);
 
   const handleIntentSelect = async (intent: TailoringIntent) => {
     if (!uid) return;
@@ -125,6 +140,23 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
       await refreshProjectData(project.id);
       const updated = await listEvidenceNodes(uid, project.id);
       setEvidence(updated);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: {
+            message: `${files.length} evidence item${files.length === 1 ? "" : "s"} staged for reading.`,
+            type: "success",
+          },
+        }),
+      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Could not stage evidence. Try again or upload a screenshot.";
+      console.error("MIMI // Tailor evidence upload failed", err);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message, type: "error" },
+        }),
+      );
     } finally {
       setUploading(false);
     }
@@ -135,11 +167,66 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
     setStep('analyzing');
     setLoading(true);
     try {
-      await updateTailorProject(uid, project.id, { blurb });
-      const result = await runTailorAnalysis(uid, project.id, blurb);
+      // Always use live chip / custom curiosity at analyze time. A prior
+      // intakeHandoff snapshot can be stale if the user changed chips after commit.
+      const curiosityLines = [
+        ...CURIOSITY_PROMPTS.filter((p) => curiosityIds.includes(p.id)).map((p) => p.label),
+        ...(customCuriosity.trim() ? [customCuriosity.trim()] : []),
+      ];
+      const enrichedBlurb = [
+        blurb.trim(),
+        curiosityLines.length
+          ? `\n\n[Curiosity — this reading]\n${curiosityLines.map((l) => `• ${l}`).join('\n')}`
+          : '',
+      ]
+        .join('')
+        .trim();
+
+      // Direct statements outrank inference — store as a note evidence node
+      // when the user wrote open context / free-text curiosity, or selected
+      // enough curiosity prompts to unlock a read without uploaded references.
+      const statementText =
+        blurb.trim() ||
+        customCuriosity.trim() ||
+        (curiosityLines.length >= 3 ? curiosityLines.map((l) => `• ${l}`).join('\n') : '');
+      if (statementText && !evidence.some((e) => e.extractedMetadata?.kind === 'direct_statement')) {
+        const fromCustom = Boolean(customCuriosity.trim() && !blurb.trim());
+        const fromPrompts = Boolean(!blurb.trim() && !customCuriosity.trim() && curiosityLines.length >= 3);
+        const statement = buildDirectStatementEvidence(statementText, 'session');
+        if (statement) {
+          await addEvidenceNode(uid, project.id, {
+            sourceType: statement.evidenceSourceType,
+            title: fromCustom ? 'Curiosity' : fromPrompts ? 'Curiosity prompts' : statement.title,
+            description: statement.description,
+            extractedMetadata: {
+              ...statement.rawMetadata,
+              intakeScope: statement.scope,
+              intakeId: statement.id,
+              intendedHelp: curiosityLines,
+              ...(fromCustom ? { fromCustomCuriosity: true } : {}),
+              ...(fromPrompts ? { fromCuriosityPrompts: true } : {}),
+            },
+          });
+        }
+      }
+
+      await updateTailorProject(uid, project.id, { blurb: enrichedBlurb || blurb });
+      const result = await runTailorAnalysis(uid, project.id, enrichedBlurb || blurb);
       setArtQueries(result.artHistorySearchQueries);
       await refreshProjectData(project.id);
       setStep('patterns');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Reading failed. Check your evidence sources and try again.";
+      console.error("MIMI // Tailor analyze failed", err);
+      window.dispatchEvent(
+        new CustomEvent("mimi:registry_alert", {
+          detail: { message, type: "error" },
+        }),
+      );
+      setStep("upload");
     } finally {
       setLoading(false);
     }
@@ -280,7 +367,14 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
         )}
       </div>
 
-      {step === 'start' && <TailorStartScreen onSelect={handleIntentSelect} onBack={onExit} />}
+      {step === 'start' && (
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-nous-subtle">
+            Opening Evidence Intake…
+          </p>
+          <TailorStartScreen onSelect={handleIntentSelect} onBack={onExit} />
+        </div>
+      )}
       {step === 'upload' && project && (
         <EvidenceUploadScreen
           evidence={evidence}
@@ -289,6 +383,12 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
           blurb={blurb}
           onBlurbChange={setBlurb}
           uploading={uploading}
+          analysisAvailable={observations.length > 0 || clusters.length > 0}
+          curiosityIds={curiosityIds}
+          onCuriosityChange={setCuriosityIds}
+          customCuriosity={customCuriosity}
+          onCustomCuriosityChange={setCustomCuriosity}
+          onHandoffReady={setIntakeHandoff}
         />
       )}
       {step === 'analyzing' && (

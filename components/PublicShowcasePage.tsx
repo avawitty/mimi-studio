@@ -3,6 +3,7 @@ import { ArrowUpRight, BookOpen, Sparkles } from "lucide-react";
 import type { PublicProfileShowcase } from "../services/publicShowcaseService";
 import { loadPublicProfileShowcase } from "../services/publicShowcaseService";
 import { CookieConsentBanner } from "./CookieConsentBanner";
+import { KeepTabsButton } from "./KeepTabsButton";
 
 interface PublicShowcasePageProps {
   handle: string;
@@ -57,6 +58,7 @@ export const PublicShowcasePage: React.FC<PublicShowcasePageProps> = ({
 
   const { profile, showcase, zines } = data;
   const accent = showcase?.accentHex || "#8a8a7a";
+  const publicHandle = profile.handle || handle;
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-[#0A0A0A] text-nous-text">
@@ -69,7 +71,7 @@ export const PublicShowcasePage: React.FC<PublicShowcasePageProps> = ({
             <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle mb-3">
               mimi.you · public showcase
             </p>
-            <h1 className="font-serif text-4xl md:text-5xl mb-2">@{profile.handle || handle}</h1>
+            <h1 className="font-serif text-4xl md:text-5xl mb-2">@{publicHandle}</h1>
             {showcase ? (
               <>
                 <p className="font-serif italic text-lg text-nous-subtle max-w-xl">{showcase.philosophy}</p>
@@ -82,6 +84,9 @@ export const PublicShowcasePage: React.FC<PublicShowcasePageProps> = ({
                 Editorial issues from this creator. Accept a likeness in Tailor to publish your doll token here.
               </p>
             )}
+            <div className="mt-6">
+              <KeepTabsButton handle={publicHandle} variant="stamp" />
+            </div>
           </div>
           {showcase ? (
             <div
@@ -183,6 +188,15 @@ export const PublicShowcasePage: React.FC<PublicShowcasePageProps> = ({
             ))}
           </div>
         )}
+      </section>
+
+      <section className="max-w-5xl mx-auto px-6 pb-12">
+        <KeepTabsButton handle={publicHandle} variant="panel" />
+        {isOwner ? (
+          <p className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle mt-4">
+            Publish an issue · it files here automatically
+          </p>
+        ) : null}
       </section>
 
       <footer className="border-t border-nous-border/15 px-6 py-8 text-center">

@@ -30,10 +30,10 @@ export const ProfileHoverCard: React.FC<ProfileHoverCardProps> = ({ isOpen, onCl
  useEffect(() => {
    if (!user?.uid) return;
    Promise.all([
-     listDolls(user.uid).catch(() => []),
-     fetchCommunityZines(60).catch(() => []),
-     getLocalPocket().catch(() => []),
-     user && !user.isAnonymous ? fetchPocketItems(user.uid).catch(() => []) : Promise.resolve([])
+     listDolls(user.uid).catch((): any[] => []),
+     fetchCommunityZines(60).catch((): any[] => []),
+     getLocalPocket().catch((): any[] => []),
+     user && !user.isAnonymous ? fetchPocketItems(user.uid).catch((): any[] => []) : Promise.resolve([])
    ]).then(([dolls, zines, localShards, cloudShards]) => {
      setDollsCount(dolls.length);
      const userZines = zines.filter((z: any) => z.userId === user.uid || user.uid === 'ghost');

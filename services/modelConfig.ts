@@ -10,6 +10,11 @@
 // Anthropic key, "gemini-3.1-pro-preview" is meaningless to them. Asking for
 // MODELS[provider].text lets the same call route to whatever that provider's
 // current model is.
+//
+// Gateway defaults live in lib/models.ts (newest verified IDs for text / image /
+// audio / video). Prefer modelFor(role, 'gateway') over hardcoded provider strings.
+
+import { GATEWAY_DEFAULT_MODELS } from '../lib/models';
 
 export type LLMProviderId = 'gemini' | 'openai' | 'anthropic' | 'replicate' | 'openrouter' | 'gateway';
 
@@ -64,12 +69,13 @@ export const MODELS: Record<LLMProviderId, RoleMap> = {
     textDeep: env('OPENROUTER_MODEL', 'openai/gpt-4o-mini'),
   },
   gateway: {
-    textFast:  env('AI_GATEWAY_TEXT_FAST_MODEL',  'openai/gpt-5.6-luna'),
-    textDeep:  env('AI_GATEWAY_MODEL',            'openai/gpt-5.6-luna'),
-    image:     env('AI_GATEWAY_IMAGE_MODEL',      'openai/gpt-image-1.5'),
-    imageEdit: env('AI_GATEWAY_IMAGE_EDIT_MODEL', 'openai/gpt-image-1.5'),
-    video:     env('AI_GATEWAY_VIDEO_MODEL',      'google/veo-3.1-fast-generate-001'),
-    embedding: env('AI_GATEWAY_EMBEDDING_MODEL',  'openai/text-embedding-3-small'),
+    textFast:  env('AI_GATEWAY_TEXT_FAST_MODEL',  GATEWAY_DEFAULT_MODELS.textFast),
+    textDeep:  env('AI_GATEWAY_MODEL',            GATEWAY_DEFAULT_MODELS.textDeep),
+    image:     env('AI_GATEWAY_IMAGE_MODEL',      GATEWAY_DEFAULT_MODELS.image),
+    imageEdit: env('AI_GATEWAY_IMAGE_EDIT_MODEL', GATEWAY_DEFAULT_MODELS.imageEdit),
+    video:     env('AI_GATEWAY_VIDEO_MODEL',      GATEWAY_DEFAULT_MODELS.video),
+    tts:       env('AI_GATEWAY_TTS_MODEL',        GATEWAY_DEFAULT_MODELS.tts),
+    embedding: env('AI_GATEWAY_EMBEDDING_MODEL',  GATEWAY_DEFAULT_MODELS.embedding),
   },
 };
 

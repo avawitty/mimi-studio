@@ -32,7 +32,7 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   "export-chamber": "the-press",
   pocket: "pocket",
   registry: "pocket",
-  stand: "pocket",
+  stand: "stand",
   moodboard: "moodboard",
   "mood-board": "moodboard",
   canvas: "moodboard",
@@ -57,6 +57,9 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   "style-scryer": "tailor",
   "aesthetic-intelligence": "tailor",
   "style-diagnostics": "tailor",
+  atelier: "atelier",
+  objects: "atelier",
+  "taste-objects": "atelier",
 };
 
 export const canonicalizeMimiRoute = (segment: string): string => {
@@ -192,9 +195,9 @@ export const CANON_MODULES: CanonModule[] = [
     aliases: ["Export Chamber", "Publisher Console"],
     inputs: ["approved artifacts", "manifest JSON", "media", "provenance notes"],
     generations: ["manifest resolution", "export diagnostics", "commerce/web formatting"],
-    outputs: ["PDF/DOCX", "share links", "product pages", "Shopify CSV/JSON-LD packs", "portfolio-ready exports"],
-    userFlow: "Package approved work into a shareable or portfolio-ready artifact.",
-    notes: "Artifact-specific export exists inside AnalysisDisplay via ExportChamber; the canonical top-level route currently opens PublisherDashboard.",
+    outputs: ["PDF/DOCX", "share links", "product pages", "Shopify CSV/JSON-LD packs", "portfolio-ready exports", "Keep Tabs RSS (/u/:handle/feed.xml)"],
+    userFlow: "Package approved work into a shareable or portfolio-ready artifact. Making a zine public files it in the creator Keep Tabs feed for subscribe-once readers.",
+    notes: "Artifact-specific export exists inside AnalysisDisplay via ExportChamber; the canonical top-level route currently opens PublisherDashboard. Public issues also project to RSS via /api/feed?handle=.",
   },
   {
     id: "pocket",
@@ -211,6 +214,22 @@ export const CANON_MODULES: CanonModule[] = [
     generations: ["local/cloud persistence", "folder mapping", "provenance preservation"],
     outputs: ["persistent archive", "source packs", "reusable context packs"],
     userFlow: "Save and retrieve references without losing source priority or provenance.",
+  },
+  {
+    id: "stand",
+    name: "The Stand",
+    layer: "chamber",
+    engine: "Showcase Engine",
+    priority: 7,
+    status: "live",
+    canonicalRoute: "/stand",
+    implementedMode: "stand",
+    component: "TheStand",
+    aliases: ["Showcase", "Published Works"],
+    inputs: ["published zines", "local archive", "community floor"],
+    generations: ["cover grid", "issue filtering", "comment threads"],
+    outputs: ["personal showcase", "floor feed", "profile seed"],
+    userFlow: "Browse your published issues and the community Floor without leaving the Stand.",
   },
   {
     id: "mood-board",
@@ -392,6 +411,23 @@ export const CANON_MODULES: CanonModule[] = [
     outputs: ["Art Style Signature Card", "custom model prompts", "palette configurations"],
     userFlow: "Open Tailor Style Lab, upload references, inspect extracted patterns, and approve reusable style evidence for the active profile.",
     notes: "Compatibility route opens /tailor/style-lab. Style evidence remains linked instead of being embedded into every profile payload."
+  },
+  {
+    id: "atelier",
+    name: "Atelier",
+    layer: "chamber",
+    engine: "Taste Object Archive",
+    priority: 19,
+    status: "live",
+    canonicalRoute: "/atelier",
+    implementedMode: "atelier",
+    component: "AtelierChamber",
+    aliases: ["Objects", "Taste Objects"],
+    inputs: ["zine commerce touchpoints", "Shopify-verified product metadata", "semiotic rationale"],
+    generations: ["taste-signal persistence", "cross-issue object clustering"],
+    outputs: ["pinned taste objects", "desire / buyer-orientation evidence"],
+    userFlow: "Pin semiotic commerce objects from a zine as taste signals, then revisit them here across issues. Not a wishlist or cart.",
+    notes: "Distinct from the Atelier membership plan. Local-first archive under mimi_atelier_objects::{uid}.",
   }
 ];
 

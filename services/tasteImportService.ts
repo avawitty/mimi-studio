@@ -50,15 +50,6 @@ export interface TasteImportResult {
   warning?: string;
 }
 
-export function detectProvider(rawUrl: string): TasteProvider {
-  const value = (rawUrl || '').trim().toLowerCase();
-  if (!value) return 'generic_url';
-  if (/letterboxd\.com/.test(value)) return 'letterboxd';
-  if (/pinterest\.[a-z.]+|pin\.it/.test(value)) return 'pinterest';
-  if (/instagram\.com/.test(value)) return 'instagram';
-  return 'generic_url';
-}
-
 async function readJson(res: Response): Promise<any> {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -158,17 +149,86 @@ async function importGeneric(url: string): Promise<TasteImportResult> {
   return { provider: 'generic_url', sourceLabel: label, items: [item] };
 }
 
-export async function importFromLink(rawUrl: string): Promise<TasteImportResult> {
+/** Normalize a Letterboxd username or URL into a fetchable profile/RSS URL. */
+export function normalizeLetterboxdInput(raw: string): string {
+  const value = (raw || '').trim();
+  if (!value) throw new Error('Enter a Letterboxd username first.');
+  if (/^[a-z0-9][a-z0-9_-]{0,29}$/i.test(value) && !value.includes('.') && !value.includes('/')) {
+    return `https://letterboxd.com/${value.toLowerCase()}/`;
+  }
+  return value;
+}
+
+export function detectProvider(rawUrl: string): TasteProvider {
+  const value = (rawUrl || '').trim().toLowerCase();
+  if (!value) return 'generic_url';
+  // Bare Letterboxd username (no dots/slashes) — treated as Letterboxd when caller opts in
+  if (/letterboxd\.com/.test(value)) return 'letterboxd';
+  if (/pinterest\.[a-z.]+|pin\.it/.test(value)) return 'pinterest';
+  if (/instagram\.com/.test(value)) return 'instagram';
+  return 'generic_url';
+}
+
+export async function importLetterboxdUsernameOrUrl(raw: string): Promise<TasteImportResult> {
+  const url = normalizeLetterboxdInput(raw);
+  const result = await importLetterboxd(url);
+  if (!result.warning) {
+    result.warning =
+      'Public Letterboxd RSS only — ratings and diary entries visible on the public feed. Private lists are not accessible.';
+  }
+  return result;
+}
+
+export async function importFromLink(
+  rawUrl: string,
+  opts?: { preferProvider?: TasteProvider },
+): Promise<TasteImportResult> {
   const url = (rawUrl || '').trim();
   if (!url) throw new Error('Paste a link first.');
+
+  // Bare Letterboxd usernames are only accepted when the Letterboxd module
+  // explicitly opts in. Otherwise a Pinterest board name / partial input
+  // without a URL would incorrectly hit Letterboxd RSS.
+  const bareToken =
+    /^[a-z0-9][a-z0-9_-]{0,29}$/i.test(url) && !url.includes('.') && !url.includes('/');
+  if (bareToken && opts?.preferProvider === 'letterboxd') {
+    return importLetterboxdUsernameOrUrl(url);
+  }
+  if (bareToken && opts?.preferProvider === 'pinterest') {
+    throw new Error(
+      'Paste a full Pinterest board URL (pinterest.com/…/board-name). Board names alone cannot be resolved.',
+    );
+  }
+  if (bareToken) {
+    throw new Error(
+      'Paste a full link (or use the Letterboxd field with a username).',
+    );
+  }
+
   const provider = detectProvider(url);
   if (provider === 'instagram') {
     throw new Error(
-      'Instagram links can\u2019t be read directly. Upload an algorithm screenshot instead — Mimi reads only what is visible.',
+      'Instagram links can\u2019t be read directly. Upload a feed, Explore, or Saved screenshot instead — Mimi reads only what is visible.',
     );
   }
-  if (provider === 'letterboxd') return importLetterboxd(url);
-  if (provider === 'pinterest') return importPinterest(url);
+  if (provider === 'letterboxd') return importLetterboxdUsernameOrUrl(url);
+  if (provider === 'pinterest') {
+    const result = await importPinterest(url);
+    const collectionId = `pinterest_${Date.now().toString(36)}`;
+    result.items = result.items.map((item) => ({
+      ...item,
+      extractedMetadata: {
+        ...item.extractedMetadata,
+        sourceCollectionId: collectionId,
+        boardTitle: result.sourceLabel,
+      },
+    }));
+    if (!result.warning) {
+      result.warning =
+        'Public board preview only. Private boards and login-gated pins cannot be imported.';
+    }
+    return result;
+  }
   return importGeneric(url);
 }
 

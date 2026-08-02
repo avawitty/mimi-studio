@@ -6,6 +6,11 @@ import {
   buildCreativeDossierUserPrompt,
 } from '../lib/creativeDossierPrompts';
 import type { EvidenceBasedCreativeDossier, PaperWarmth, TailorLogicDraft } from '../types';
+import {
+  extractVisualSignalsFromDataUrl,
+  synthesizeLocalCreativeDossier,
+  type PriorTasteContext,
+} from './localDossierSynthesis';
 
 const MIN_IMAGES = 3;
 const MAX_IMAGES = 8;
@@ -15,14 +20,26 @@ export type DossierImageInput =
   | { base64: string; mimeType: string }
   | { dataUrl: string };
 
+export type DossierProviderKey = {
+  provider: 'gemini' | 'openai' | 'anthropic';
+  key: string;
+};
+
 export interface SynthesizeCreativeDossierInput {
   images: DossierImageInput[];
   userBlurb?: string;
+  /** @deprecated Prefer `providerKeys` — Gemini-only BYOK. */
   apiKey?: string;
+  /** Any available BYOK keys (OpenAI / Anthropic / Gemini). First usable wins after funded path. */
+  providerKeys?: DossierProviderKey[];
   /** Serialized Tailor blueprint (self-declared creator inputs) folded into the read. */
   blueprintDigest?: string;
+  /** Prior Style Lab / Scry Directives memory to build upon. */
+  priorContext?: PriorTasteContext;
   /** When true, prefer Mimi-funded AI Gateway (Firebase session + trial/paid credits). */
   preferFundedGateway?: boolean;
+  /** When true (default), fall back to local visual+blueprint synthesis if no LLM is available. */
+  allowLocalFallback?: boolean;
 }
 
 function parseJsonResponse(text: string | undefined): unknown {
@@ -535,10 +552,46 @@ async function getFirebaseSessionToken(): Promise<string | undefined> {
   }
 }
 
+function buildPriorMemoryDigest(prior?: PriorTasteContext): string | undefined {
+  if (!prior) return undefined;
+  const lines: string[] = [];
+  const sig = prior.aestheticSignature;
+  if (sig) {
+    lines.push('— PRIOR STYLE LAB SIGNATURE —');
+    lines.push(`Primary axis: ${sig.primaryAxis}`);
+    lines.push(`Secondary axis: ${sig.secondaryAxis}`);
+    if (sig.coreTrait) lines.push(`Core trait: ${sig.coreTrait}`);
+    if (sig.motifs?.length) lines.push(`Motifs: ${sig.motifs.join(', ')}`);
+    if (sig.paletteExtraction?.length) lines.push(`Palette: ${sig.paletteExtraction.join(', ')}`);
+    if (sig.tactileBias) {
+      lines.push(`Tactile: ${sig.tactileBias.dominant} / ${sig.tactileBias.secondary}`);
+    }
+    if (sig.moodCluster) lines.push(`Mood cluster: ${sig.moodCluster}`);
+  }
+  const audit = prior.lastAuditReport;
+  if (audit) {
+    lines.push('— PRIOR SCRY DIRECTIVES / MANIFESTO —');
+    if (audit.profileManifesto) lines.push(`Manifesto: ${audit.profileManifesto}`);
+    if (audit.strategicOpportunity) lines.push(`Strategic opportunity: ${audit.strategicOpportunity}`);
+    if (audit.aestheticDirectives?.length) {
+      lines.push(`Directives: ${audit.aestheticDirectives.join('; ')}`);
+    }
+    if (audit.suggestedTouchpoints?.length) {
+      lines.push(`Touchpoints / readings: ${audit.suggestedTouchpoints.join('; ')}`);
+    }
+  }
+  if (prior.styleEvidenceSummary?.length) {
+    lines.push('— SAVED STYLE EVIDENCE —');
+    lines.push(...prior.styleEvidenceSummary.slice(0, 8));
+  }
+  return lines.length ? lines.join('\n') : undefined;
+}
+
 async function synthesizeViaFundedGateway(
   normalized: Array<{ base64: string; mimeType: string }>,
   userBlurb?: string,
   blueprintDigest?: string,
+  priorMemoryDigest?: string,
 ): Promise<EvidenceBasedCreativeDossier> {
   const token = await getFirebaseSessionToken();
   if (!token) {
@@ -556,6 +609,7 @@ async function synthesizeViaFundedGateway(
       images: normalized.map((img) => ({ base64: img.base64, mimeType: img.mimeType })),
       userBlurb,
       blueprintDigest,
+      priorMemoryDigest,
     }),
   });
 
@@ -575,62 +629,242 @@ async function synthesizeViaFundedGateway(
   return sanitizeDossier(payload.dossier as Record<string, unknown>);
 }
 
+async function synthesizeViaOpenAiCompatible(
+  normalized: Array<{ base64: string; mimeType: string }>,
+  userPrompt: string,
+  provider: 'openai' | 'anthropic',
+  apiKey: string,
+): Promise<EvidenceBasedCreativeDossier> {
+  const endpoint = provider === 'openai' ? '/api/proxy/openai' : '/api/proxy/anthropic';
+
+  let body: Record<string, unknown>;
+
+  if (provider === 'openai') {
+    const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+      { type: 'text', text: userPrompt },
+    ];
+    for (let i = 0; i < normalized.length; i += 1) {
+      const img = normalized[i];
+      const refId = `ref_${String(i + 1).padStart(2, '0')}`;
+      content.push({ type: 'text', text: `[${refId}]` });
+      content.push({
+        type: 'image_url',
+        image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+      });
+    }
+    body = {
+      model: 'gpt-4o',
+      temperature: 0.4,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: `${CREATIVE_DOSSIER_SYSTEM_PROMPT}\nRespond strictly in valid JSON.`,
+        },
+        { role: 'user', content },
+      ],
+    };
+  } else {
+    const content: Array<Record<string, unknown>> = [{ type: 'text', text: userPrompt }];
+    for (let i = 0; i < normalized.length; i += 1) {
+      const img = normalized[i];
+      const refId = `ref_${String(i + 1).padStart(2, '0')}`;
+      content.push({ type: 'text', text: `[${refId}]` });
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: img.mimeType,
+          data: img.base64,
+        },
+      });
+    }
+    body = {
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8192,
+      temperature: 0.4,
+      system: `${CREATIVE_DOSSIER_SYSTEM_PROMPT}\nRespond strictly in valid JSON.`,
+      messages: [{ role: 'user', content }],
+    };
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const text = await response.text();
+  if (!response.ok) {
+    let message = text;
+    try {
+      const parsed = JSON.parse(text);
+      message = parsed?.error?.message || parsed?.error || message;
+    } catch {
+      // keep raw
+    }
+    throw new Error(typeof message === 'string' ? message : `${provider} dossier request failed`);
+  }
+
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid ${provider} proxy response`);
+  }
+
+  const rawContent =
+    parsed?.choices?.[0]?.message?.content ??
+    parsed?.content?.[0]?.text ??
+    (typeof parsed?.content === 'string' ? parsed.content : null);
+
+  const dossierRaw = parseJsonResponse(
+    typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent),
+  );
+  if (!dossierRaw || typeof dossierRaw !== 'object') {
+    throw new Error(`Failed to synthesize creative dossier via ${provider}.`);
+  }
+  return sanitizeDossier(dossierRaw as Record<string, unknown>);
+}
+
+async function synthesizeLocalFallback(
+  normalized: Array<{ base64: string; mimeType: string }>,
+  userBlurb: string | undefined,
+  digest: string | undefined,
+  prior?: PriorTasteContext,
+): Promise<EvidenceBasedCreativeDossier> {
+  const visualSignals = await Promise.all(
+    normalized.map(async (img, index) => {
+      const dataUrl = `data:${img.mimeType};base64,${img.base64}`;
+      return extractVisualSignalsFromDataUrl(dataUrl, index);
+    }),
+  );
+
+  return synthesizeLocalCreativeDossier({
+    imageCount: normalized.length,
+    userBlurb,
+    blueprintDigest: digest,
+    visualSignals,
+    prior,
+  });
+}
+
 export async function synthesizeCreativeDossier({
   images,
   userBlurb,
   apiKey,
+  providerKeys,
   blueprintDigest,
+  priorContext,
   preferFundedGateway = true,
+  allowLocalFallback = true,
 }: SynthesizeCreativeDossierInput): Promise<EvidenceBasedCreativeDossier> {
   const digest = blueprintDigest?.trim() || undefined;
   validateDossierInputs(images.length, Boolean(digest));
 
   const normalized = await Promise.all(images.map(normalizeImage));
+  const priorMemoryDigest = buildPriorMemoryDigest(priorContext);
 
-  if (preferFundedGateway && !apiKey) {
+  const keys: DossierProviderKey[] = [...(providerKeys ?? [])];
+  if (apiKey && !keys.some((k) => k.provider === 'gemini' && k.key === apiKey)) {
+    keys.unshift({ provider: 'gemini', key: apiKey });
+  }
+
+  const hasAnyByok = keys.length > 0;
+
+  if (preferFundedGateway && !hasAnyByok) {
     try {
-      return await synthesizeViaFundedGateway(normalized, userBlurb, digest);
+      return await synthesizeViaFundedGateway(
+        normalized,
+        userBlurb,
+        digest,
+        priorMemoryDigest,
+      );
     } catch (fundedError) {
       const message = fundedError instanceof Error ? fundedError.message : String(fundedError);
+      // Credits / auth blockers: still try local pattern synthesis so the report is useful offline.
+      if (allowLocalFallback && (message.includes('Sign in') || message.includes('credits') || message.includes('Gemini key'))) {
+        console.warn('MIMI // Funded dossier unavailable; compiling local evidence read.', message);
+        return synthesizeLocalFallback(normalized, userBlurb, digest, priorContext);
+      }
       if (!message.includes('Sign in') && !message.includes('credits')) {
-        console.warn('MIMI // Funded dossier path failed, falling back to BYOK if available:', message);
-      } else {
+        console.warn('MIMI // Funded dossier path failed, falling back to BYOK / local:', message);
+      } else if (!allowLocalFallback) {
         throw fundedError;
       }
     }
   }
 
-  const userPrompt = buildCreativeDossierUserPrompt(normalized.length, userBlurb, digest);
+  const userPrompt = buildCreativeDossierUserPrompt(
+    normalized.length,
+    userBlurb,
+    digest,
+    priorMemoryDigest,
+  );
 
-  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-    { text: userPrompt },
-    ...normalized.map((img, i) => {
-      const refId = `ref_${String(i + 1).padStart(2, '0')}`;
-      return [
-        { text: `[${refId}]` },
-        { inlineData: { mimeType: img.mimeType, data: img.base64 } },
-      ];
-    }).flat(),
-  ];
+  const errors: string[] = [];
 
-  const raw = await withResilience(async (ai) => {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: [{ role: 'user', parts }],
-      config: {
-        systemInstruction: CREATIVE_DOSSIER_SYSTEM_PROMPT,
-        responseMimeType: 'application/json',
-        responseSchema: dossierResponseSchema,
-      },
-    });
-    return parseJsonResponse(response.text);
-  }, apiKey);
+  for (const entry of keys) {
+    try {
+      if (entry.provider === 'gemini') {
+        const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+          { text: userPrompt },
+          ...normalized
+            .map((img, i) => {
+              const refId = `ref_${String(i + 1).padStart(2, '0')}`;
+              return [
+                { text: `[${refId}]` },
+                { inlineData: { mimeType: img.mimeType, data: img.base64 } },
+              ];
+            })
+            .flat(),
+        ];
 
-  if (!raw || typeof raw !== 'object') {
-    throw new Error('Failed to synthesize creative dossier — invalid model response.');
+        const raw = await withResilience(async (ai) => {
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.5-flash',
+            contents: [{ role: 'user', parts }],
+            config: {
+              systemInstruction: CREATIVE_DOSSIER_SYSTEM_PROMPT,
+              responseMimeType: 'application/json',
+              responseSchema: dossierResponseSchema,
+            },
+          });
+          return parseJsonResponse(response.text);
+        }, entry.key);
+
+        if (!raw || typeof raw !== 'object') {
+          throw new Error('Invalid Gemini dossier payload');
+        }
+        return sanitizeDossier(raw as Record<string, unknown>);
+      }
+
+      return await synthesizeViaOpenAiCompatible(
+        normalized,
+        userPrompt,
+        entry.provider,
+        entry.key,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`${entry.provider}: ${message}`);
+      console.warn(`MIMI // Dossier via ${entry.provider} failed:`, message);
+    }
   }
 
-  return sanitizeDossier(raw as Record<string, unknown>);
+  // Last resort: local visual embedding (canvas palette/contrast) + blueprint pattern rules.
+  if (allowLocalFallback) {
+    console.warn('MIMI // Compiling local evidence dossier (no LLM required).', errors.join(' | '));
+    return synthesizeLocalFallback(normalized, userBlurb, digest, priorContext);
+  }
+
+  throw new Error(
+    errors[0] ||
+      'Failed to synthesize creative dossier — add an OpenAI, Anthropic, or Gemini key, or sign in for trial credits.',
+  );
 }
 
 export const LIKENESS_STORAGE_KEY = 'mimi_likeness_manifest';

@@ -1,7 +1,8 @@
 import React from "react";
-import { GripVertical, Menu, Moon, Sparkles, Sun, User } from "lucide-react";
+import { GripVertical, Menu, Moon, Sparkles, Sun, User, Layers } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
+import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
 
 export const StudioChrome: React.FC<{
   theme: StudioTheme;
@@ -15,6 +16,7 @@ export const StudioChrome: React.FC<{
   isHighLatency?: boolean;
   statusMessage?: string;
   isLoading?: boolean;
+  pocketStashOpen?: boolean;
 }> = ({
   theme,
   onToggleTheme,
@@ -27,9 +29,30 @@ export const StudioChrome: React.FC<{
   isHighLatency = false,
   statusMessage,
   isLoading = false,
+  pocketStashOpen = false,
 }) => {
   const { user, profile } = useUser();
   const isDark = theme === "dark";
+  const [stashOpen, setStashOpen] = React.useState(pocketStashOpen);
+
+  React.useEffect(() => {
+    setStashOpen(pocketStashOpen);
+  }, [pocketStashOpen]);
+
+  React.useEffect(() => {
+    const onToggle = () => setStashOpen((v) => !v);
+    const onOpen = () => setStashOpen(true);
+    const onClose = () => setStashOpen(false);
+    window.addEventListener(POCKET_STASH_TOGGLE_EVENT, onToggle);
+    window.addEventListener("mimi:open_pocket_stash", onOpen);
+    window.addEventListener("mimi:close_pocket_stash", onClose);
+    return () => {
+      window.removeEventListener(POCKET_STASH_TOGGLE_EVENT, onToggle);
+      window.removeEventListener("mimi:open_pocket_stash", onOpen);
+      window.removeEventListener("mimi:close_pocket_stash", onClose);
+    };
+  }, []);
+
   const creatorPath = [
     { label: "Collect", modes: ["scribe", "darkroom"] },
     { label: "Shape", modes: ["pocket", "wardrobe", "the-edit", "tailor"] },
@@ -66,6 +89,8 @@ export const StudioChrome: React.FC<{
         return "The Oracle";
       case "nebula":
         return "Nebula";
+      case "stand":
+        return "The Stand";
       case "archival":
         return "Archival";
       case "profile":
@@ -111,9 +136,7 @@ export const StudioChrome: React.FC<{
 
   return (
     <header
-      className={`studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 pb-3.5 flex items-center justify-between gap-3 z-20 overflow-hidden${
-        isMobile ? " studio-chrome--mobile-safe" : ""
-      }`}
+      className="studio-chrome relative shrink-0 border-b studio-border px-4 md:px-8 pb-3.5 flex items-center justify-between gap-3 z-20 studio-chrome--mobile-safe"
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.875rem)" }}
     >
       {/* Top Shimmer Progress Line during generation / high latency */}
@@ -124,7 +147,7 @@ export const StudioChrome: React.FC<{
       )}
 
       {/* Brand & View Title with Skeleton Fallback */}
-      <div className="flex flex-col leading-none select-none">
+      <div className="flex flex-col leading-none select-none min-w-0">
         {isLoading ? (
           <div className="space-y-1.5 py-1">
             <div className="h-6 w-20 bg-stone-200 dark:bg-stone-800 animate-pulse rounded-none" />
@@ -144,7 +167,7 @@ export const StudioChrome: React.FC<{
                 }
               }}
             >
-              <span className="block font-serif text-[27px] leading-none tracking-[0.01em] studio-text-ink">
+              <span className="block font-serif italic text-[27px] leading-none tracking-[0.01em] studio-text-ink">
                 Mimi
               </span>
             </button>
@@ -219,6 +242,27 @@ export const StudioChrome: React.FC<{
             {timeString}
           </span>
         )}
+
+        {/* Messy Pocket stash — desk drawer overlay */}
+        <button
+          type="button"
+          aria-label={stashOpen ? "Close pocket stash" : "Open pocket stash"}
+          title="Pocket stash"
+          aria-pressed={stashOpen}
+          disabled={isGenerating}
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent(POCKET_STASH_TOGGLE_EVENT))
+          }
+          className={`w-9 h-9 border studio-border flex items-center justify-center transition-all duration-300 ${
+            stashOpen
+              ? "bg-black text-[#f3f1ea] border-black dark:bg-[#f3f1ea] dark:text-black dark:border-[#f3f1ea]"
+              : isGenerating
+                ? "opacity-60 cursor-not-allowed studio-text-muted"
+                : "studio-text-muted hover:studio-text-ink hover:bg-black/5 dark:hover:bg-white/5 active:scale-90 hover:scale-105"
+          }`}
+        >
+          <Layers size={14} strokeWidth={1.5} />
+        </button>
 
         {/* Oracle quick-access: opens Mimi vocal session from anywhere */}
         <button
