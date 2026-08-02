@@ -72,10 +72,6 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   correspondents: "proscenium",
   cliques: "proscenium",
   clique: "proscenium",
-  residue: "residue",
-  "residue-engine": "residue",
-  "cultural-residue": "residue",
-  "emotional-residue": "residue",
 };
 
 export const canonicalizeMimiRoute = (segment: string): string => {
