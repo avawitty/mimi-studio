@@ -16,6 +16,8 @@ import {
   Archive,
   AlertCircle,
   CheckCircle,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import {
   ArchiveChamberShell,
@@ -28,6 +30,7 @@ import {
   runSpecimenScry,
   runTrendScry,
 } from "../services/scryService";
+import { reindexShadowMemoryEmbeddings } from "../services/vectorSearch";
 import {
   describeScryOutcome,
   type ResearchResult,
@@ -198,11 +201,66 @@ const ResultCard: React.FC<{
   );
 };
 
-const LaneStrip: React.FC<{ run: ScryRun | null; busy: boolean }> = ({
-  run,
-  busy,
-}) => {
+const LaneStrip: React.FC<{
+  run: ScryRun | null;
+  busy: boolean;
+  inverted?: boolean;
+}> = ({ run, busy, inverted = false }) => {
   const lanes = Object.keys(LANE_META) as ScryLaneId[];
+
+  if (inverted) {
+    // Idle: stay quiet — no four "Empty" cells before the first ask.
+    if (!busy && !run) return null;
+
+    return (
+      <div
+        className="grid grid-cols-4 gap-x-2 gap-y-1"
+        aria-label="Lane status"
+        data-testid="scry-lane-strip-mobile"
+      >
+        {lanes.map((lane) => {
+          const status = run?.laneStatus[lane] ?? "empty";
+          const count =
+            lane === "generatedReading"
+              ? run?.sources.generatedReading
+                ? 1
+                : 0
+              : (run?.sources[lane] as ResearchResult[] | undefined)?.length || 0;
+          const tone =
+            status === "success" || status === "partial"
+              ? "scry-lane-live"
+              : status === "failed"
+                ? "scry-lane-failed"
+                : "scry-lane-empty";
+          const short =
+            lane === "personalMemory"
+              ? "Archive"
+              : lane === "web"
+                ? "Web"
+                : lane === "generatedReading"
+                  ? "Reading"
+                  : "Shadow";
+          return (
+            <div
+              key={lane}
+              className={`min-h-[40px] py-1 ${tone}`}
+              data-lane={lane}
+              data-status={status}
+            >
+              <p className="font-mono text-[7px] uppercase tracking-[0.14em] text-white/35">
+                {short}
+              </p>
+              <p className="font-mono text-[9px] mt-0.5">
+                {busy && status === "empty" ? "…" : STATUS_LABEL[status]}
+                {count > 0 ? ` · ${count}` : ""}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
       {lanes.map((lane) => {
@@ -216,7 +274,7 @@ const LaneStrip: React.FC<{ run: ScryRun | null; busy: boolean }> = ({
         return (
           <div
             key={lane}
-            className="border archive-border px-3 py-2 min-h-[52px]"
+            className="border archive-border bg-white/70 px-3 py-2 min-h-[52px]"
             data-lane={lane}
             data-status={status}
           >
@@ -243,7 +301,10 @@ export const ScryView: React.FC = () => {
   const [query, setQuery] = useState("");
   const [run, setRun] = useState<ScryRun | null>(null);
   const [isScrying, setIsScrying] = useState(false);
+  const [isReindexingShadow, setIsReindexingShadow] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  /** Monotonic id so a late reindex/scry cannot overwrite a newer run. */
+  const scryRequestIdRef = useRef(0);
 
   const [trendQuery, setTrendQuery] = useState("Saturation Chic");
   const [isTrendScrying, setIsTrendScrying] = useState(false);
@@ -271,11 +332,12 @@ export const ScryView: React.FC = () => {
   const handleScry = useCallback(
     async (q?: string) => {
       const queryToUse = (q ?? query).trim();
-      if (!queryToUse || isScrying) return;
+      if (!queryToUse || isScrying || isReindexingShadow) return;
 
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+      const requestId = ++scryRequestIdRef.current;
 
       setIsScrying(true);
       setRun(null);
@@ -288,7 +350,7 @@ export const ScryView: React.FC = () => {
           geminiKey: apiKeys?.gemini,
           signal: controller.signal,
         });
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
           setRun(next);
           showNotification(describeScryOutcome(next));
         }
@@ -296,11 +358,128 @@ export const ScryView: React.FC = () => {
         console.error("MIMI // Scrying failed", err);
         showNotification("Scry failed — see lane statuses.");
       } finally {
-        if (!controller.signal.aborted) setIsScrying(false);
+        if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
+          setIsScrying(false);
+        }
       }
     },
-    [apiKeys?.gemini, isScrying, profile, query, showNotification],
+    [apiKeys?.gemini, isReindexingShadow, isScrying, profile, query, showNotification],
   );
+
+  const handleReindexShadow = useCallback(async () => {
+    if (isReindexingShadow || isScrying) return;
+    setIsReindexingShadow(true);
+    try {
+      const result = await reindexShadowMemoryEmbeddings({
+        referenceDims: run?.shadowIndexHint?.referenceDims ?? null,
+        referenceModel: run?.shadowIndexHint?.referenceModel ?? null,
+        limit: 80,
+      });
+
+      if (result.aborted) {
+        showNotification(
+          result.abortReason === "auth_required"
+            ? "Sign in required to re-index shadow memory."
+            : "AI unavailable — can't re-index yet.",
+        );
+        // Leave shadowIndexHint intact (aborted audits must not clear the CTA).
+        return;
+      }
+
+      // Prefer the live input, then the last run's query (input may be cleared).
+      const scryQuery = query.trim() || String(run?.query || "").trim();
+      const willRerunScry = result.updated > 0 && Boolean(scryQuery);
+
+      showNotification(
+        result.updated > 0
+          ? willRerunScry
+            ? `Re-indexed ${result.updated} shadow vector${result.updated === 1 ? "" : "s"}${result.dims ? ` → ${result.dims}d` : ""}. Running Scry…`
+            : `Re-indexed ${result.updated} shadow vector${result.updated === 1 ? "" : "s"}${result.dims ? ` → ${result.dims}d` : ""}. Run Scry to refresh results.`
+          : result.attempted === 0
+            ? "No shadow vectors needed re-index."
+            : `Re-index finished with ${result.failed} failure${result.failed === 1 ? "" : "s"}.`,
+      );
+
+      // Drop stale "needs re-index" Guide failures from the prior empty-hit run.
+      // When we cannot re-scry, clear prior shadow hits so the UI doesn't keep
+      // empty/stale incompatible results after a successful rewrite.
+      setRun((prev) => {
+        if (!prev) return prev;
+        const failures = (prev.failures || []).filter(
+          (f) => !(f.lane === "shadowMemory" && /re-index/i.test(f.message)),
+        );
+        const base =
+          result.updated > 0 && !willRerunScry
+            ? {
+                ...prev,
+                sources: { ...prev.sources, shadowMemory: [] },
+                laneStatus: { ...prev.laneStatus, shadowMemory: "empty" as const },
+              }
+            : prev;
+        if (!result.auditAfter.needsReindex) {
+          return { ...base, failures, shadowIndexHint: undefined };
+        }
+        return {
+          ...base,
+          failures,
+          shadowIndexHint: {
+            needsReindex: true,
+            incompatible: result.auditAfter.incompatible,
+            missingVector: result.auditAfter.missingVector,
+            reindexable: result.auditAfter.reindexable,
+            searchable: result.auditAfter.searchable,
+            shadowDocs: result.auditAfter.shadowDocs,
+            referenceDims: result.auditAfter.referenceDims,
+            referenceModel: result.auditAfter.referenceModel,
+          },
+        };
+      });
+
+      if (willRerunScry) {
+        // Guarded post-reindex scry (same abort + request-id path as Run).
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+        const requestId = ++scryRequestIdRef.current;
+        setIsScrying(true);
+        if (!query.trim() && scryQuery) setQuery(scryQuery);
+        try {
+          const next = await runSpecimenScry({
+            query: scryQuery,
+            profile,
+            geminiKey: apiKeys?.gemini,
+            signal: controller.signal,
+          });
+          if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
+            setRun(next);
+            showNotification(describeScryOutcome(next));
+          }
+        } catch (scryErr) {
+          console.error("MIMI // Post-reindex Scry failed", scryErr);
+          showNotification("Re-index done — Run Scry again.");
+        } finally {
+          if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
+            setIsScrying(false);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("MIMI // Shadow reindex failed", err);
+      showNotification("Shadow re-index failed.");
+    } finally {
+      setIsReindexingShadow(false);
+    }
+  }, [
+    apiKeys?.gemini,
+    isReindexingShadow,
+    isScrying,
+    profile,
+    query,
+    run?.query,
+    run?.shadowIndexHint?.referenceDims,
+    run?.shadowIndexHint?.referenceModel,
+    showNotification,
+  ]);
 
   useEffect(() => {
     const onSearch = (e: Event) => {
@@ -482,9 +661,37 @@ export const ScryView: React.FC = () => {
             </ul>
           </div>
         ) : null}
+        {run?.shadowIndexHint?.needsReindex ? (
+          <div className="space-y-2 pt-2 border-t archive-border">
+            <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+              Shadow re-index
+            </p>
+            <p className="font-sans text-[10px] archive-text-muted leading-relaxed">
+              Legacy vectors won&apos;t match Gateway embeddings until rewritten.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleReindexShadow()}
+              disabled={isReindexingShadow || isScrying}
+              className="font-mono text-[9px] uppercase tracking-[0.14em] underline underline-offset-4 archive-text-ink disabled:opacity-40"
+            >
+              {isReindexingShadow ? "Re-indexing…" : "Re-index now"}
+            </button>
+          </div>
+        ) : null}
       </ArchiveContextPanel>
     ),
-    [activeTab.label, activeTab.note, apiKeys?.gemini, apiKeys?.you_com, run, tab],
+    [
+      activeTab.label,
+      activeTab.note,
+      apiKeys?.gemini,
+      apiKeys?.you_com,
+      handleReindexShadow,
+      isReindexingShadow,
+      isScrying,
+      run,
+      tab,
+    ],
   );
 
   const specimenHits = useMemo(() => {
@@ -515,6 +722,7 @@ export const ScryView: React.FC = () => {
 
       <ArchiveChamberShell
         moduleId="scry"
+        surfaceClassName="scry-mobile-ink"
         activeWorkflowStep={activeTab.workflow}
         workflowSteps={["collect", "read", "approve", "save"]}
         contextDrawer={contextDrawer}
@@ -561,7 +769,7 @@ export const ScryView: React.FC = () => {
           <div className="flex flex-col h-full min-h-0" data-testid="scry-chamber">
             <nav
               aria-label="Scry modes"
-              className="md:hidden shrink-0 grid grid-cols-2 border-b archive-border"
+              className="md:hidden shrink-0 flex items-center gap-5 px-4 border-b border-white/10"
             >
               {TABS.map((mode) => {
                 const active = tab === mode.id;
@@ -570,22 +778,178 @@ export const ScryView: React.FC = () => {
                     key={mode.id}
                     type="button"
                     onClick={() => setTab(mode.id)}
-                    className={`flex items-center justify-center gap-1.5 px-2 py-2.5 font-mono text-[8px] uppercase tracking-[0.15em] border-b-2 min-h-[44px] ${
-                      active
-                        ? "archive-workflow-active border-archive-ink"
-                        : "archive-workflow-idle border-transparent"
+                    className={`relative py-3 font-mono text-[9px] uppercase tracking-[0.18em] min-h-[44px] ${
+                      active ? "text-[#f3f1ea]" : "text-white/35"
                     }`}
                   >
-                    {mode.icon}
                     {mode.label}
+                    {active ? (
+                      <motion.span
+                        layoutId="scry-mobile-tab"
+                        className="absolute inset-x-0 bottom-0 h-px bg-[#9BB8CE]"
+                      />
+                    ) : null}
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => setContextOpen((o) => !o)}
+                title={contextOpen ? "Hide guide" : "Show guide"}
+                aria-label={contextOpen ? "Hide guide" : "Show guide"}
+                aria-expanded={contextOpen}
+                className="ml-auto w-9 h-9 min-w-[36px] min-h-[44px] flex items-center justify-center text-white/45 border border-white/15"
+              >
+                {contextOpen ? (
+                  <PanelRightClose size={15} strokeWidth={1.25} />
+                ) : (
+                  <PanelRightOpen size={15} strokeWidth={1.25} />
+                )}
+              </button>
             </nav>
 
             {tab === "specimen" && (
               <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="px-4 md:px-8 pt-6 md:pt-10 pb-4 max-w-3xl">
+                {/* Mobile: query is the only hero; app chrome already names Scry. */}
+                <div className="md:hidden scry-latent-field px-4 pt-7 pb-4 flex flex-col min-h-[calc(100dvh-8.5rem)]">
+                  {isScrying ? <div className="scry-latent-scan" aria-hidden /> : null}
+
+                  <div className="relative mb-3">
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void handleScry();
+                        }
+                      }}
+                      className="w-full bg-transparent border-0 border-b border-white/20 py-3 text-[1.65rem] leading-snug font-serif italic text-[#f3f1ea] placeholder:text-white/25 focus:outline-none focus:border-[#9BB8CE] pr-12"
+                      placeholder="will i be a lover girl again?"
+                      aria-label="Scry query"
+                      data-testid="scry-query"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleScry()}
+                      disabled={isScrying || isReindexingShadow || !query.trim()}
+                      aria-label="Run scry"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#f3f1ea] disabled:opacity-35"
+                    >
+                      {isScrying ? (
+                        <Loader2 size={18} className="animate-spin text-[#9BB8CE]" />
+                      ) : (
+                        <ArrowRight size={18} />
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="font-sans text-[13px] text-white/45 leading-relaxed mb-5 max-w-[18rem]">
+                    Ask a mood or a ghost. Four lanes answer — nothing fabricated.
+                  </p>
+
+                  <LaneStrip run={run} busy={isScrying} inverted />
+
+                  {run?.shadowIndexHint?.needsReindex ? (
+                    <div
+                      className="mt-5 pt-4 border-t border-white/10"
+                      data-testid="shadow-reindex-hint"
+                    >
+                      <p className="font-sans text-sm text-white/65 leading-relaxed mb-2">
+                        {run.shadowIndexHint.reindexable}{" "}
+                        shadow signal
+                        {run.shadowIndexHint.reindexable === 1 ? "" : "s"}{" "}
+                        need rewriting for this embedding space
+                        {run.shadowIndexHint.referenceDims
+                          ? ` (${run.shadowIndexHint.referenceDims}-d)`
+                          : ""}
+                        .
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleReindexShadow()}
+                        disabled={isReindexingShadow || isScrying}
+                        data-testid="shadow-reindex-button"
+                        className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#9BB8CE] underline underline-offset-4 disabled:opacity-40 min-h-[44px]"
+                      >
+                        {isReindexingShadow ? "Re-indexing…" : "Re-index shadow memory"}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-2 space-y-5 pb-10">
+                    <AnimatePresence mode="popLayout">
+                      {run?.sources.generatedReading ? (
+                        <motion.article
+                          key="reading-mobile"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="pt-1"
+                          data-lane="generatedReading"
+                        >
+                          <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-white/35 mb-2">
+                            Reading
+                            {run.sources.generatedReading.via === "gateway" ? " · Gateway" : ""}
+                          </p>
+                          <p className="font-serif italic text-lg text-[#f3f1ea] leading-relaxed">
+                            “{run.sources.generatedReading.text}”
+                          </p>
+                        </motion.article>
+                      ) : null}
+
+                      {specimenHits.map((item, i) => {
+                        const href = safeHref(item.url);
+                        return (
+                          <motion.article
+                            key={`m-${item.sourceLane}-${item.id || i}`}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: Math.min(i * 0.04, 0.2) }}
+                            className="border-t border-white/10 pt-4"
+                          >
+                            <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-white/35 mb-1">
+                              {LANE_META[item.sourceLane].label}
+                              {typeof item.similarity === "number"
+                                ? ` · ${(item.similarity * 100).toFixed(0)}%`
+                                : ""}
+                            </p>
+                            <h3 className="font-serif italic text-lg text-[#f3f1ea] leading-snug">
+                              {href ? (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline underline-offset-4 decoration-white/25"
+                                >
+                                  {item.title}
+                                </a>
+                              ) : (
+                                item.title
+                              )}
+                            </h3>
+                            {(item.snippet || item.content_preview) && (
+                              <p className="font-sans text-sm text-white/50 leading-relaxed mt-1 line-clamp-3">
+                                {item.snippet || item.content_preview}
+                              </p>
+                            )}
+                          </motion.article>
+                        );
+                      })}
+                    </AnimatePresence>
+
+                    {!isScrying && run && specimenHits.length === 0 && !run.sources.generatedReading ? (
+                      <p
+                        className="font-mono text-[9px] uppercase tracking-widest text-white/35 pt-2"
+                        data-testid="scry-empty"
+                      >
+                        No evidence returned
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="hidden md:block px-8 pt-10 pb-4 max-w-3xl">
                   <p className="font-mono text-[9px] uppercase tracking-[0.28em] archive-text-muted mb-3 flex items-center gap-2">
                     <span
                       className={`inline-block w-1.5 h-1.5 ${
@@ -594,7 +958,7 @@ export const ScryView: React.FC = () => {
                     />
                     Latent retrieval
                   </p>
-                  <h2 className="font-serif italic text-3xl md:text-5xl leading-none archive-text-ink mb-3">
+                  <h2 className="font-serif italic text-5xl leading-none archive-text-ink mb-3">
                     Ask the registry
                   </h2>
                   <p className="font-sans text-sm archive-text-muted max-w-md leading-relaxed mb-8">
@@ -615,7 +979,7 @@ export const ScryView: React.FC = () => {
                           void handleScry();
                         }
                       }}
-                      className="w-full bg-transparent border-b-2 border-black py-3 md:py-4 text-xl md:text-2xl font-serif italic placeholder:text-stone-300 focus:outline-none pr-14"
+                      className="w-full bg-transparent border-b-2 border-black py-4 text-2xl font-serif italic placeholder:text-stone-300 focus:outline-none pr-14"
                       placeholder="will i be a lover girl again?"
                       aria-label="Scry query"
                       data-testid="scry-query"
@@ -623,7 +987,7 @@ export const ScryView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => void handleScry()}
-                      disabled={isScrying || !query.trim()}
+                      disabled={isScrying || isReindexingShadow || !query.trim()}
                       aria-label="Run scry"
                       className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-black text-white disabled:opacity-40"
                     >
@@ -636,9 +1000,44 @@ export const ScryView: React.FC = () => {
                   </div>
 
                   <LaneStrip run={run} busy={isScrying} />
+
+                  {run?.shadowIndexHint?.needsReindex ? (
+                    <div
+                      className="mt-4 border archive-border border-l-2 border-l-stone-500 px-3 py-3 bg-white/70"
+                      data-testid="shadow-reindex-hint-desktop"
+                    >
+                      <p className="font-mono text-[8px] uppercase tracking-[0.18em] archive-text-muted mb-1">
+                        Shadow index drift
+                      </p>
+                      <p className="font-sans text-sm archive-text-ink leading-relaxed mb-3">
+                        {run.shadowIndexHint.reindexable}{" "}
+                        saved vector
+                        {run.shadowIndexHint.reindexable === 1 ? "" : "s"}{" "}
+                        sit outside the current embedding space
+                        {run.shadowIndexHint.referenceDims
+                          ? ` (${run.shadowIndexHint.referenceDims}-d)`
+                          : ""}
+                        . Re-index to make Shadow Memory searchable again.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleReindexShadow()}
+                        disabled={isReindexingShadow || isScrying}
+                        data-testid="shadow-reindex-button-desktop"
+                        className="inline-flex items-center gap-2 min-h-[44px] px-3 py-2 bg-black text-white font-mono text-[9px] uppercase tracking-[0.16em] disabled:opacity-40"
+                      >
+                        {isReindexingShadow ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Database size={14} />
+                        )}
+                        Re-index shadow memory
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className="px-4 md:px-8 pb-28 md:pb-16 max-w-3xl space-y-4">
+                <div className="hidden md:block px-8 pb-16 max-w-3xl space-y-4 pt-2">
                   <AnimatePresence mode="popLayout">
                     {run?.sources.generatedReading ? (
                       <motion.article
@@ -646,7 +1045,7 @@ export const ScryView: React.FC = () => {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="border archive-border border-l-2 border-l-[#9BB8CE] p-4 md:p-5 bg-white/80"
+                        className="border archive-border border-l-2 border-l-[#9BB8CE] p-5 bg-white/80"
                         data-lane="generatedReading"
                       >
                         <div className="flex justify-between items-start mb-3">
@@ -658,7 +1057,7 @@ export const ScryView: React.FC = () => {
                             ) : null}
                           </p>
                         </div>
-                        <p className="font-serif italic text-lg md:text-xl archive-text-ink leading-relaxed">
+                        <p className="font-serif italic text-xl archive-text-ink leading-relaxed">
                           “{run.sources.generatedReading.text}”
                         </p>
                       </motion.article>
@@ -672,7 +1071,7 @@ export const ScryView: React.FC = () => {
                   {!isScrying && run && specimenHits.length === 0 && !run.sources.generatedReading ? (
                     <div
                       className="border border-dashed archive-border p-8 text-center"
-                      data-testid="scry-empty"
+                      data-testid="scry-empty-desktop"
                     >
                       <p className="font-mono text-[9px] uppercase tracking-widest archive-text-muted mb-2">
                         No evidence yet
@@ -687,13 +1086,61 @@ export const ScryView: React.FC = () => {
             )}
 
             {tab === "trend" && (
-              <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-8 py-6 md:py-10 pb-28 md:pb-16 max-w-3xl space-y-8">
-                <div>
+              <div className="flex-1 min-h-0 overflow-y-auto pb-28 md:pb-16">
+                <div className="md:hidden scry-latent-field px-4 pt-7 pb-2">
+                  <div className="relative mb-3">
+                    <input
+                      value={trendQuery}
+                      onChange={(e) => setTrendQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void conductTrendScry();
+                      }}
+                      className="w-full bg-transparent border-0 border-b border-white/20 py-3 pr-28 font-serif italic text-[1.45rem] leading-snug text-[#f3f1ea] placeholder:text-white/25 focus:outline-none focus:border-[#9BB8CE]"
+                      placeholder="Saturation Chic…"
+                      aria-label="Trend drift signal"
+                      data-testid="trend-query"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void conductTrendScry()}
+                      disabled={isTrendScrying || !trendQuery.trim()}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 px-3 py-2 min-h-[40px] font-mono text-[9px] uppercase tracking-[0.16em] text-[#9BB8CE] disabled:opacity-40 flex items-center gap-1.5"
+                    >
+                      {isTrendScrying ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        "Deep-Scry"
+                      )}
+                    </button>
+                  </div>
+                  <p className="font-sans text-[13px] text-white/45 leading-relaxed max-w-[18rem] mb-5">
+                    Live search into a biaxial field. Drafts prefer Gateway; empties stay empty.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {PRESETS.map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => void conductTrendScry(p.q)}
+                        className={`px-2.5 py-2 min-h-[40px] border font-mono text-[8px] uppercase tracking-[0.14em] ${
+                          trendQuery === p.q
+                            ? "bg-[#f3f1ea] text-[#050506] border-[#f3f1ea]"
+                            : "border-white/15 text-white/55"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="px-4 md:px-8 md:pt-10 space-y-6 md:space-y-8 max-w-3xl">
+                <div className="hidden md:block">
                   <p className="font-mono text-[9px] uppercase tracking-[0.28em] archive-text-muted mb-3 flex items-center gap-2">
                     <TrendingUp size={12} />
                     Trend grounding
                   </p>
-                  <h2 className="font-serif italic text-3xl md:text-5xl archive-text-ink mb-3">
+                  <h2 className="font-serif italic text-5xl archive-text-ink mb-3">
                     Trend Scryer
                   </h2>
                   <p className="font-sans text-sm archive-text-muted max-w-xl leading-relaxed">
@@ -702,7 +1149,7 @@ export const ScryView: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="border archive-border px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-widest">
+                <div className="hidden md:flex border archive-border px-4 py-3 flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-widest">
                   <span className="archive-text-muted">
                     Grounding:{" "}
                     <span className="archive-text-ink">
@@ -724,14 +1171,14 @@ export const ScryView: React.FC = () => {
                   ) : null}
                 </div>
 
-                <div className="space-y-2">
+                <div className="hidden md:block space-y-2">
                   <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
                     Presets
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {PRESETS.map((p) => (
                       <button
-                        key={p.label}
+                        key={`desk-${p.label}`}
                         type="button"
                         onClick={() => void conductTrendScry(p.q)}
                         className={`px-3 py-2 min-h-[40px] border font-mono text-[9px] uppercase tracking-widest ${
@@ -746,7 +1193,7 @@ export const ScryView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="hidden md:block space-y-2">
                   <label className="font-mono text-[9px] uppercase tracking-widest archive-text-muted">
                     Drift signal
                   </label>
@@ -805,9 +1252,9 @@ export const ScryView: React.FC = () => {
                       <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
                         Biaxial map — tap a node
                       </p>
-                      <div className="relative w-full h-[220px] md:h-[260px] border archive-border bg-[#FAFAFA]">
-                        <div className="absolute inset-0 border-t border-dashed border-stone-300 top-1/2 pointer-events-none" />
-                        <div className="absolute inset-0 border-l border-dashed border-stone-300 left-1/2 pointer-events-none" />
+                      <div className="scry-trend-map relative w-full h-[220px] md:h-[260px] border archive-border bg-[#FAFAFA]">
+                        <div className="scry-trend-axis absolute inset-0 border-t border-dashed border-stone-300 top-1/2 pointer-events-none" />
+                        <div className="scry-trend-axis absolute inset-0 border-l border-dashed border-stone-300 left-1/2 pointer-events-none" />
                         <span className="absolute top-2 left-1/2 -translate-x-1/2 font-mono text-[7px] archive-text-muted uppercase tracking-widest">
                           Hidden
                         </span>
@@ -834,8 +1281,8 @@ export const ScryView: React.FC = () => {
                               onClick={() => setHoveredCluster(tc)}
                               className={`absolute w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 border-2 transition-transform ${
                                 active
-                                  ? "bg-[#5A5A40] border-black scale-125"
-                                  : "bg-[#9BB8CE] border-black hover:scale-125"
+                                  ? "bg-[#5A5A40] border-[#f3f1ea] md:border-black scale-125"
+                                  : "bg-[#9BB8CE] border-[#f3f1ea] md:border-black hover:scale-125"
                               }`}
                               style={{ left, top }}
                             />
@@ -962,6 +1409,7 @@ export const ScryView: React.FC = () => {
                     ) : null}
                   </div>
                 ) : null}
+                </div>
               </div>
             )}
           </div>
