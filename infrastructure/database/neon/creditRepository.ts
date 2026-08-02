@@ -566,6 +566,10 @@ export class NeonCreditLedgerRepository implements CreditLedgerRepository {
         updatedAt: new Date(),
       })
       .where(eq(creditReservations.id, reservation.id));
+    await this.expireEligibleGrantsAfterLock(
+      reservation.accountId,
+      new Date(),
+    );
   }
 
   async getReservation(reservationId: string): Promise<CreditReservation | null> {

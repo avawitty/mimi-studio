@@ -56,6 +56,13 @@ function stripeMock(
     },
     subscriptions: {
       retrieve: vi.fn(async () => currentSubscription),
+      list: vi.fn(async () => ({
+        data:
+          currentSubscription.status === "canceled"
+            ? []
+            : [currentSubscription],
+        has_more: false,
+      })),
     },
     checkout: {
       sessions: {
@@ -125,6 +132,33 @@ describe("Stripe membership normalization", () => {
     expect(normalized?.currentPeriodStart?.getTime()).toBe(1_785_600_000_000);
   });
 
+  it("treats environment-overridden prices as authoritative", async () => {
+    const previous = process.env.STRIPE_PRICE_LAB;
+    process.env.STRIPE_PRICE_LAB = "price_custom_lab";
+    try {
+      const upgraded = subscription({
+        metadata: { firebaseUid: "firebase-user", plan: "initiation" },
+        items: {
+          data: [
+            {
+              price: { id: "price_custom_lab" },
+              current_period_start: 1_785_600_000,
+              current_period_end: 1_788_192_000,
+            },
+          ],
+        },
+      });
+      const normalized = await normalizeStripeMembershipEvent(
+        stripeMock(upgraded),
+        event("customer.subscription.updated", upgraded),
+      );
+      expect(normalized?.plan).toBe("studio");
+    } finally {
+      if (previous === undefined) delete process.env.STRIPE_PRICE_LAB;
+      else process.env.STRIPE_PRICE_LAB = previous;
+    }
+  });
+
   it("issues the exact legacy tier allowance from the paid invoice period", async () => {
     const normalized = await normalizeStripeMembershipEvent(
       stripeMock(),
@@ -160,6 +194,25 @@ describe("Stripe membership normalization", () => {
       status: "active",
     });
     expect(normalized?.grant).toBeUndefined();
+  });
+
+  it("does not downgrade when another customer subscription remains active", async () => {
+    const replacement = subscription({
+      id: "sub_replacement",
+      status: "active",
+    });
+    const normalized = await normalizeStripeMembershipEvent(
+      stripeMock(replacement),
+      event(
+        "customer.subscription.deleted",
+        subscription({ id: "sub_deleted", status: "canceled" }),
+      ),
+    );
+    expect(normalized).toMatchObject({
+      plan: "creator",
+      status: "active",
+      providerSubscriptionId: "sub_replacement",
+    });
   });
 
   it("multiplies exact tier allowances for annual invoice periods", async () => {

@@ -1,5 +1,4 @@
 import type Stripe from "stripe";
-import { STRIPE_PRICES, STRIPE_PRICES_ANNUAL } from "../../constants.js";
 import {
   canonicalPlanFromLegacy,
   PLAN_GRANTS,
@@ -11,17 +10,7 @@ import {
   normalizeMimiPlan,
   type MimiBillingInterval,
 } from "../../lib/mimiEntitlements.js";
-
-const CONFIGURED_PRICE_PLAN_MAP: Record<string, string> = {
-  [STRIPE_PRICES.core]: "initiation",
-  [STRIPE_PRICES.optioning]: "optioning",
-  [STRIPE_PRICES.pro]: "atelier",
-  [STRIPE_PRICES.lab]: "lab",
-  [STRIPE_PRICES_ANNUAL.core]: "initiation",
-  [STRIPE_PRICES_ANNUAL.optioning]: "optioning",
-  [STRIPE_PRICES_ANNUAL.pro]: "atelier",
-  [STRIPE_PRICES_ANNUAL.lab]: "lab",
-};
+import { getConfiguredStripePricePolicyMap } from "../../lib/stripePlans.js";
 
 function asId(
   value: string | { id: string } | null | undefined,
@@ -45,15 +34,20 @@ async function resolvePricePolicy(
   interval: MimiBillingInterval;
   grantAmount: bigint;
 }> {
-  let interval: MimiBillingInterval = "month";
-  let rawPlan = priceId
-    ? CONFIGURED_PRICE_PLAN_MAP[priceId] || MIMI_PRICE_ID_PLAN_MAP[priceId]
-    : null;
+  const configuredPolicy = priceId
+    ? getConfiguredStripePricePolicyMap()[priceId]
+    : undefined;
+  let interval: MimiBillingInterval = configuredPolicy?.interval ?? "month";
+  let rawPlan = configuredPolicy?.plan || (
+    priceId ? MIMI_PRICE_ID_PLAN_MAP[priceId] : null
+  );
   if (priceId) {
     const price = await stripe.prices.retrieve(priceId);
-    interval = price.recurring?.interval === "year" ? "year" : "month";
+    interval =
+      configuredPolicy?.interval ??
+      (price.recurring?.interval === "year" ? "year" : "month");
     rawPlan =
-      CONFIGURED_PRICE_PLAN_MAP[price.id] ||
+      getConfiguredStripePricePolicyMap()[price.id]?.plan ||
       MIMI_PRICE_ID_PLAN_MAP[price.id] ||
       price.metadata?.canonicalPlan ||
       price.metadata?.plan ||
@@ -135,6 +129,35 @@ function subscriptionStatus(
       return exhaustive;
     }
   }
+}
+
+async function findNonTerminalSubscription(
+  stripe: Stripe,
+  customerId: string,
+): Promise<Stripe.Subscription | null> {
+  const statuses = new Set([
+    "active",
+    "trialing",
+    "past_due",
+    "unpaid",
+    "paused",
+    "incomplete",
+  ]);
+  let startingAfter: string | undefined;
+  do {
+    const page = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "all",
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    const current = page.data.find((subscription) =>
+      statuses.has(subscription.status),
+    );
+    if (current) return current;
+    startingAfter = page.has_more ? page.data.at(-1)?.id : undefined;
+  } while (startingAfter);
+  return null;
 }
 
 export async function normalizeStripeMembershipEvent(
@@ -222,10 +245,15 @@ export async function normalizeStripeMembershipEvent(
     event.type === "customer.subscription.deleted"
   ) {
     const eventSubscription = event.data.object as Stripe.Subscription;
+    const customerId = asId(eventSubscription.customer);
+    const replacement =
+      event.type === "customer.subscription.deleted" && customerId
+        ? await findNonTerminalSubscription(stripe, customerId)
+        : null;
     const subscription =
       event.type === "customer.subscription.updated"
         ? await stripe.subscriptions.retrieve(eventSubscription.id)
-        : eventSubscription;
+        : replacement || eventSubscription;
     const item = subscription.items.data[0];
     const policy = await resolvePricePolicy(
       stripe,
@@ -234,7 +262,7 @@ export async function normalizeStripeMembershipEvent(
     );
     const period = subscriptionPeriod(subscription);
     const ended =
-      event.type === "customer.subscription.deleted" ||
+      (event.type === "customer.subscription.deleted" && !replacement) ||
       subscription.status === "canceled" ||
       subscription.status === "incomplete_expired";
     return {
@@ -246,7 +274,7 @@ export async function normalizeStripeMembershipEvent(
         null,
       plan: ended ? "free" : policy.plan,
       status: ended ? "active" : subscriptionStatus(subscription.status),
-      providerCustomerId: asId(subscription.customer),
+      providerCustomerId: asId(subscription.customer) || customerId,
       providerSubscriptionId: subscription.id,
       providerEventCreatedAt: eventCreatedAt(event),
       currentPeriodStart: period.start,

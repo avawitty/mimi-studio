@@ -117,7 +117,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const expiredSessionIds = await expireOpenSubscriptionSessions(
+    const checkoutPreparation = await expireOpenSubscriptionSessions(
       stripe,
       customerId,
     );
@@ -133,7 +133,7 @@ export default async function handler(req: any, res: any) {
 
     const checkoutKey = createHash("sha256")
       .update(
-        `${customerId}:${expiredSessionIds.sort().join(",") || "initial"}`,
+        `${customerId}:${checkoutPreparation.generationSeed}`,
       )
       .digest("hex");
     const session = await stripe.checkout.sessions.create({

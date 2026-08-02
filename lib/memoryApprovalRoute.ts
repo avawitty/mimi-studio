@@ -86,8 +86,10 @@ export async function handleMemoryApprovalRoute(req: any, res: any) {
         ? error.message
         : "Memory proposals could not be approved.";
     console.error("MIMI // Memory approval failed:", { code, message });
-    const responseStatus =
+    const candidateStatus =
       Number.isFinite(status) && status >= 400 && status < 600 ? status : 500;
+    const responseStatus =
+      code === "MEMORY_APPROVAL_FAILED" ? 500 : candidateStatus;
     sendOperationalError(
       res,
       responseStatus,

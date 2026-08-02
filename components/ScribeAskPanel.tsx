@@ -49,6 +49,52 @@ const SUGGESTED_PROMPTS: { label: string; hint: string; query: string; icon: Rea
 ];
 
 type AnswerSection = "evidence" | "inferences" | "maneuvers" | "sources";
+const PENDING_OPERATION_KEYS = "mimi_scribe_pending_operations_v1";
+
+function loadPendingOperationKeys(): Map<string, string> {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(PENDING_OPERATION_KEYS) || "[]");
+    if (!Array.isArray(parsed)) return new Map();
+    return new Map(
+      parsed.filter(
+        (entry): entry is [string, string] =>
+          Array.isArray(entry) &&
+          typeof entry[0] === "string" &&
+          typeof entry[1] === "string",
+      ),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+function persistPendingOperationKeys(keys: Map<string, string>): void {
+  try {
+    sessionStorage.setItem(
+      PENDING_OPERATION_KEYS,
+      JSON.stringify([...keys.entries()].slice(-5)),
+    );
+  } catch {
+    // Session storage is a retry aid, never an authorization dependency.
+  }
+}
+
+function rememberOperationKey(
+  keys: Map<string, string>,
+  fingerprint: string,
+  idempotencyKey: string,
+): void {
+  keys.set(fingerprint, idempotencyKey);
+  persistPendingOperationKeys(keys);
+}
+
+function forgetOperationKey(
+  keys: Map<string, string>,
+  fingerprint: string,
+): void {
+  keys.delete(fingerprint);
+  persistPendingOperationKeys(keys);
+}
 
 function shouldRetainIdempotencyKey(error: unknown): boolean {
   const code =
@@ -81,7 +127,11 @@ export const ScribeAskPanel: React.FC = () => {
   const [approvedInferenceIds, setApprovedInferenceIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const operationKeysRef = useRef(new Map<string, string>());
+  const operationKeysRef = useRef<Map<string, string> | null>(null);
+  if (!operationKeysRef.current) {
+    operationKeysRef.current = loadPendingOperationKeys();
+  }
+  const operationKeys = operationKeysRef.current;
   const approvalKeysRef = useRef(new Map<string, string>());
   const [notification, setNotification] = useState<{
     message: string;
@@ -142,13 +192,17 @@ export const ScribeAskPanel: React.FC = () => {
       setIsAsking(true);
       setIsRetrieving(false);
       fingerprint = JSON.stringify({
-        query: query.trim(),
-        projectId: selectedProjectId || null,
-        context: context.map((item) => [item.id, item.excerpt]),
+        workspaceId: null,
+        input: {
+          question: query.trim(),
+          projectId: selectedProjectId || undefined,
+          contextItems: context,
+        },
+        sourceIds: context.map((item) => item.id),
       });
       const idempotencyKey =
-        operationKeysRef.current.get(fingerprint) || crypto.randomUUID();
-      operationKeysRef.current.set(fingerprint, idempotencyKey);
+        operationKeys.get(fingerprint) || crypto.randomUUID();
+      rememberOperationKey(operationKeys, fingerprint, idempotencyKey);
       const res = await askScribeExplainable(
         user.uid,
         query.trim(),
@@ -156,11 +210,11 @@ export const ScribeAskPanel: React.FC = () => {
         selectedProjectId || undefined,
         idempotencyKey,
       );
-      operationKeysRef.current.delete(fingerprint);
+      forgetOperationKey(operationKeys, fingerprint);
       setAnswer(res);
     } catch (err) {
       if (fingerprint && !shouldRetainIdempotencyKey(err)) {
-        operationKeysRef.current.delete(fingerprint);
+        forgetOperationKey(operationKeys, fingerprint);
       }
       console.error("MIMI // Scribe Explainable Ask failed:", err);
       triggerNotification(
@@ -182,13 +236,17 @@ export const ScribeAskPanel: React.FC = () => {
     let fingerprint: string | null = null;
     try {
       fingerprint = JSON.stringify({
-        query: query.trim(),
-        projectId: selectedProjectId || null,
-        context: remaining.map((item) => [item.id, item.excerpt]),
+        workspaceId: null,
+        input: {
+          question: query.trim(),
+          projectId: selectedProjectId || undefined,
+          contextItems: remaining,
+        },
+        sourceIds: remaining.map((item) => item.id),
       });
       const idempotencyKey =
-        operationKeysRef.current.get(fingerprint) || crypto.randomUUID();
-      operationKeysRef.current.set(fingerprint, idempotencyKey);
+        operationKeys.get(fingerprint) || crypto.randomUUID();
+      rememberOperationKey(operationKeys, fingerprint, idempotencyKey);
       const res = await askScribeExplainable(
         user.uid,
         query.trim(),
@@ -196,12 +254,12 @@ export const ScribeAskPanel: React.FC = () => {
         selectedProjectId || undefined,
         idempotencyKey,
       );
-      operationKeysRef.current.delete(fingerprint);
+      forgetOperationKey(operationKeys, fingerprint);
       setAnswer(res);
       triggerNotification("Answer recalculated using remaining context.");
     } catch (err) {
       if (fingerprint && !shouldRetainIdempotencyKey(err)) {
-        operationKeysRef.current.delete(fingerprint);
+        forgetOperationKey(operationKeys, fingerprint);
       }
       console.error("MIMI // Scribe Recalculation failed:", err);
       triggerNotification(

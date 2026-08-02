@@ -224,13 +224,16 @@ export async function handleAiOperationRoute(req: any, res: any) {
       : "INTERNAL_ERROR";
     const message =
       error instanceof Error ? error.message : "The operation could not be completed.";
+    const candidateStatus =
+      Number.isFinite(status) && status >= 400 && status < 600 ? status : 500;
+    const responseStatus = code === "INTERNAL_ERROR" ? 500 : candidateStatus;
     console.error("MIMI // Operational AI route failed:", { code, message });
     sendOperationalError(
       res,
-      Number.isFinite(status) && status >= 400 && status < 600 ? status : 500,
+      responseStatus,
       code,
       publicOperationalMessage(
-        Number.isFinite(status) ? status : 500,
+        responseStatus,
         "Mimi's operational service is temporarily unavailable.",
         message,
       ),

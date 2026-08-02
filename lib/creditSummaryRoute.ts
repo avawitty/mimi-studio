@@ -67,8 +67,10 @@ export async function handleCreditSummaryRoute(req: any, res: any) {
     const message =
       error instanceof Error ? error.message : "Credit summary is unavailable.";
     console.error("MIMI // Credit summary failed:", { code, message });
-    const responseStatus =
+    const candidateStatus =
       Number.isFinite(status) && status >= 400 && status < 600 ? status : 500;
+    const responseStatus =
+      code === "CREDIT_SUMMARY_FAILED" ? 500 : candidateStatus;
     sendOperationalError(
       res,
       responseStatus,

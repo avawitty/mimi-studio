@@ -49,8 +49,19 @@ export async function handleMemoryAtomsRoute(req: any, res: any) {
     });
   } catch (error) {
     const status = Number((error as { status?: unknown })?.status);
-    const responseStatus =
-      Number.isFinite(status) && status >= 400 && status < 600 ? status : 500;
+    const internalCode = String(
+      (error as { code?: unknown })?.code || "MEMORY_READ_FAILED",
+    );
+    const knownAuthError = new Set([
+      "MISSING_MIMI_SESSION",
+      "INVALID_MIMI_SESSION",
+      "FIREBASE_ADMIN_UNAVAILABLE",
+    ]).has(internalCode);
+    const responseStatus = knownAuthError
+      ? Number.isFinite(status) && status >= 400 && status < 600
+        ? status
+        : 401
+      : 500;
     const internalMessage =
       error instanceof Error ? error.message : "Memory is unavailable.";
     console.error("MIMI // Memory atom read failed:", {
@@ -60,7 +71,7 @@ export async function handleMemoryAtomsRoute(req: any, res: any) {
     sendOperationalError(
       res,
       responseStatus,
-      responseStatus < 500 ? "MEMORY_READ_DENIED" : "MEMORY_READ_FAILED",
+      knownAuthError ? internalCode : "MEMORY_READ_FAILED",
       publicOperationalMessage(
         responseStatus,
         "Memory is temporarily unavailable.",
