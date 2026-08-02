@@ -10,6 +10,7 @@ import {
   type DossierProviderKey,
 } from '../../services/creativeDossierService';
 import { buildPriorTasteContextFromProfile } from '../../services/localDossierSynthesis';
+import { summarizeAtelierForPriorContext } from '../../services/atelierService';
 import type { EvidenceBasedCreativeDossier, TailorLogicDraft } from '../../types';
 
 interface IntakeSection {
@@ -148,7 +149,12 @@ export const EvidenceDossierFlow: React.FC<EvidenceDossierFlowProps> = ({
     trackTailorScryStarted(images.length);
 
     try {
-      const priorContext = buildPriorTasteContextFromProfile(profile);
+      const atelierSignals = summarizeAtelierForPriorContext(profile?.uid || user?.uid);
+      const priorContext = {
+        ...buildPriorTasteContextFromProfile(profile),
+        atelierDesireSignals: atelierSignals.desire,
+        atelierReferenceSignals: atelierSignals.reference,
+      };
       const result = await synthesizeCreativeDossier({
         images: images.map((img) => ({ dataUrl: img.dataUrl })),
         userBlurb: blurb || undefined,

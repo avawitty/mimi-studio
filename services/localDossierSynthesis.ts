@@ -10,6 +10,10 @@ export interface PriorTasteContext {
   aestheticSignature?: AestheticSignature | null;
   lastAuditReport?: TailorAuditReport | null;
   styleEvidenceSummary?: string[];
+  /** Atelier pins weighted as desire / buyer orientation */
+  atelierDesireSignals?: string[];
+  /** Atelier pins marked reference-only (lower weight) */
+  atelierReferenceSignals?: string[];
 }
 
 export interface LocalVisualSignal {
@@ -188,15 +192,28 @@ export function synthesizeLocalCreativeDossier(input: {
   const signals = input.visualSignals ?? [];
   const priorSig = input.prior?.aestheticSignature;
   const priorAudit = input.prior?.lastAuditReport;
-  const evidenceNotes = input.prior?.styleEvidenceSummary ?? [];
+  const evidenceNotes = unique([
+    ...(input.prior?.styleEvidenceSummary ?? []),
+    ...(input.prior?.atelierDesireSignals ?? []).map((s) => `atelier desire: ${s}`),
+    ...(input.prior?.atelierReferenceSignals ?? []).map((s) => `atelier reference: ${s}`),
+  ]);
+
+  const atelierMotifs = (input.prior?.atelierDesireSignals ?? [])
+    .map((s) => s.split(" · ")[0]?.trim())
+    .filter(Boolean);
 
   const materiality = unique([
     ...(fields["materiality"] ?? []),
     ...(fields["aesthetic core"] ?? []),
     priorSig?.tactileBias?.dominant ?? "",
     priorSig?.tactileBias?.secondary ?? "",
+    ...atelierMotifs.slice(0, 3),
   ]);
-  const silhouettes = unique([...(fields["silhouettes"] ?? []), ...(priorSig?.motifs ?? [])]);
+  const silhouettes = unique([
+    ...(fields["silhouettes"] ?? []),
+    ...(priorSig?.motifs ?? []),
+    ...atelierMotifs.slice(0, 3),
+  ]);
   const palette = unique([
     ...(fields["primary color"] ?? []),
     ...(fields["accent color"] ?? []),
@@ -598,6 +615,8 @@ export function synthesizeLocalTailorAudit(
     ...(pc?.anchors?.culturalReferences ?? []),
     ...(prior?.lastAuditReport?.suggestedTouchpoints ?? []),
     ...(prior?.styleEvidenceSummary ?? []),
+    ...(prior?.atelierDesireSignals ?? []),
+    ...(prior?.atelierReferenceSignals ?? []),
   ]);
 
   const axis = sig?.primaryAxis || silhouettes[0] || materials[0] || "Unnamed Axis";
