@@ -50,12 +50,14 @@ After any UI/chrome/public-face change — and at least once per agent session t
 touches the product surface — run a short mobile review before calling work done:
 
 1. `npm run review:mobile` (needs `npm run dev` on :3000, or pass a preview URL).
-2. Manually spot-check iPhone-width: Front Page, Stand (Mine/Floor), Signature, Studio
-   (Tools + Treatments sheets).
+2. Manually spot-check iPhone-width: Front Page, Stand (Mine/Floor), Signature, Rip
+   (`/rip`), Studio (Tools + Treatments sheets).
 3. Checklist:
-   - Public faces: quiet chrome (Menu + identity; no pocket/oracle); one `Mimi` wordmark
+   - Public faces (incl. `mimi-rip`): quiet chrome (Menu + identity; no pocket/oracle);
+     one `Mimi` wordmark; dark plates get dark chrome (no light-over-dark seam)
+   - Never render readable `MIMI` via CSS `uppercase` on brand strings
+   - Chamber shells: no duplicate mastheads over self-branded plates; padded motifs
    - Stand Floor fully tappable; no clipped tabs
    - Studio: Tools opens; sheets above nav; dismissible; safe-area padding
    - No app-owned circular right-edge FAB (preview chrome FABs are external)
-   - Spell the wordmark `Mimi` (never `MIMI`) when readable
 4. Fix P0/P1 findings in the same PR when cheap; defer the rest with a note.

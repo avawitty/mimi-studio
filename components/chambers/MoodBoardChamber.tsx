@@ -16,7 +16,6 @@ import {
 import { addToUsedContext } from '../../services/usedContextService';
 import type { MemoryAtom } from '../../types';
 import { WorktableShell } from '../worktable/WorktableShell';
-import { MimiWordmark } from '../public-face/MimiWordmark';
 
 interface MoodBoardItem {
   id: string;
@@ -563,7 +562,7 @@ export const MoodBoardChamber: React.FC = () => {
         chrome={
           <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-3">
             <div className="space-y-0.5">
-              <MimiWordmark size="sm" />
+              {/* StudioChrome already owns the Mimi wordmark — avoid a second brand lockup */}
               <p className="font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone)]">
                 Moodboard · {activePage?.name || 'Page'}
               </p>

@@ -504,7 +504,7 @@ export const AestheticIntelligenceChamber: React.FC = () => {
                     </div>
                     <h4 className="font-mono text-[9px] uppercase tracking-[0.2em] text-amber-400 font-black flex items-center gap-2">
                       <Award size={12} />
-                      MIMI DIRECTIVE
+                      Mimi directive
                     </h4>
                     <p className="font-serif italic text-base leading-relaxed">
                       &ldquo;Your alignment leans heavily towards <span className="text-amber-400 capitalize">{dominantTone}</span> aesthetics, characterized by a refined balance of dense copy blocks and high chromatic discipline.&rdquo;

@@ -139,22 +139,28 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
     window.open(`${canonicalRipOrigin()}/u/${handle}`, "_blank", "noopener,noreferrer");
   };
 
+  const voidBtn =
+    "px-3 py-1.5 border border-white/15 text-stone-300 font-mono text-[8px] tracking-widest hover:bg-white/5";
+
   return (
     <ChamberShell
       moduleId="mimi-rip"
+      hideHeader
+      hideHandoff
+      tone="void"
       actions={
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate("/mimi-dolls")}
-            className="px-3 py-1.5 border border-nous-border font-mono text-[8px] uppercase tracking-widest hover:bg-nous-base0/30"
+            className={voidBtn}
           >
-            Mimi Dolls
+            Dolls
           </button>
           <button
             type="button"
             onClick={() => navigate("/tailor")}
-            className="px-3 py-1.5 border border-nous-border font-mono text-[8px] uppercase tracking-widest hover:bg-nous-base0/30"
+            className={`${voidBtn} uppercase`}
           >
             Tailor
           </button>
@@ -162,7 +168,7 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
             <button
               type="button"
               onClick={openPublicRip}
-              className="px-3 py-1.5 border border-rose-500/40 text-rose-300 font-mono text-[8px] uppercase tracking-widest flex items-center gap-1"
+              className="px-3 py-1.5 border border-rose-400/40 text-rose-200 font-mono text-[8px] uppercase tracking-widest flex items-center gap-1"
             >
               Public rip <ExternalLink size={10} />
             </button>
@@ -171,32 +177,32 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
       }
     >
       {!user?.uid ? (
-        <div className="flex flex-col items-center justify-center p-12 text-center gap-4 h-full">
-          <Sparkles className="text-nous-subtle" size={24} />
-          <p className="font-serif italic text-xl text-nous-text">
+        <div className="flex flex-col items-center justify-center p-12 text-center gap-4 h-full bg-[#050506]">
+          <Sparkles className="text-stone-500" size={24} />
+          <p className="font-serif italic text-xl text-stone-100">
             Sign in to derive your inverse taste reading.
           </p>
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent("mimi:open_gateway"))}
-            className="font-mono text-[9px] uppercase tracking-widest px-6 py-3 bg-nous-text text-nous-base"
+            className="font-mono text-[9px] tracking-widest px-6 py-3 bg-stone-100 text-[#050506]"
           >
             Enter Mimi
           </button>
         </div>
       ) : loading && !reading ? (
-        <div className="flex items-center justify-center h-full">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle">
+        <div className="flex items-center justify-center h-full bg-[#050506]">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-stone-500">
             Deriving rip from Taste Graph…
           </p>
         </div>
       ) : error && !reading ? (
-        <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
+        <div className="flex flex-col items-center justify-center h-full gap-4 p-8 bg-[#050506]">
           <p className="font-mono text-[10px] text-rose-400">{error}</p>
           <button
             type="button"
             onClick={() => void derive()}
-            className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest"
+            className={`${voidBtn} uppercase`}
           >
             Retry
           </button>
@@ -207,6 +213,7 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
             reading={reading}
             handle={handle}
             isOwner
+            embedded
             regenerating={loading}
             publishing={publishing}
             onRegenerate={() => void derive()}
@@ -214,14 +221,14 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
           />
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
-          <p className="font-serif italic text-lg text-nous-text max-w-md">
+        <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center bg-[#050506]">
+          <p className="font-serif italic text-lg text-stone-200 max-w-md">
             Accept a Tailor likeness or generate a Doll first — rip reads your refusals and blind spots.
           </p>
           <button
             type="button"
             onClick={() => void derive()}
-            className="px-4 py-2 border border-nous-border font-mono text-[9px] uppercase tracking-widest"
+            className={`${voidBtn} uppercase`}
           >
             Derive anyway
           </button>
