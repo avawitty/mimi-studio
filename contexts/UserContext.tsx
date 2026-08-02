@@ -437,10 +437,31 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const initStarted = useRef(false);
   const reconciliationInProgress = useRef<string | null>(null);
+  const pocketSyncGeneration = useRef(0);
 
   const refreshHasApiKey = useCallback(async () => {
     // Sovereign Gating Disabled as per user request
     setHasApiKey(true);
+  }, []);
+
+  const attachLocalPocketSync = useCallback(() => {
+    if (unsubscribePocket.current) unsubscribePocket.current();
+    const gen = ++pocketSyncGeneration.current;
+
+    const hydrateLocalPocket = async () => {
+      const items = await getLocalPocket();
+      if (pocketSyncGeneration.current !== gen) return;
+      setPocket(items || []);
+    };
+
+    void hydrateLocalPocket();
+    const onLocalPocketUpdate = () => {
+      void hydrateLocalPocket();
+    };
+    window.addEventListener("mimi:pocket_updated", onLocalPocketUpdate);
+    unsubscribePocket.current = () => {
+      window.removeEventListener("mimi:pocket_updated", onLocalPocketUpdate);
+    };
   }, []);
 
   const setOracleStatus = (status: SystemStatus['oracle']) => {
@@ -684,22 +705,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Pocket live sync is for registered sessions; ghosts stay on local pocket.
       // Re-check live auth in case identity upgraded during cloud fetch.
       if (!liveIsAnonymous()) {
+        pocketSyncGeneration.current += 1;
         unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
           setPocket(items);
         });
       } else {
-        const hydrateLocalPocket = async () => {
-          const items = await getLocalPocket();
-          setPocket(items || []);
-        };
-        void hydrateLocalPocket();
-        const onLocalPocketUpdate = () => {
-          void hydrateLocalPocket();
-        };
-        window.addEventListener('mimi:pocket_updated', onLocalPocketUpdate);
-        unsubscribePocket.current = () => {
-          window.removeEventListener('mimi:pocket_updated', onLocalPocketUpdate);
-        };
+        attachLocalPocketSync();
       }
       
       // Construct initial state from one-time fetch to unblock UI immediately
@@ -865,10 +876,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await saveProfileLocally(safeSpeedProfile);
     setProfile(safeSpeedProfile);
     setUser({ uid: ghostUid, isAnonymous: true });
+    attachLocalPocketSync();
     setLoading(false);
     setSystemStatus(prev => ({ ...prev, auth: 'offline' }));
     document.body.classList.add('hydrated');
-  }, []);
+  }, [attachLocalPocketSync]);
 
   const ghostLogin = useCallback(async () => {
     setElevatorLoading(true);

@@ -791,7 +791,19 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const handleShardAdded = (e: any) => {
  setItems(prev => [e.detail, ...prev]);
  };
- const handlePocketUpdate = () => loadPocket(true, { localOnly: true });
+ const handlePocketUpdate = async () => {
+   const localData = (await getLocalPocket()) || [];
+   setItems((prev) => {
+     const registry = new Map<string, PocketItem>();
+     prev.forEach((item) => {
+       if (item?.id) registry.set(item.id, item);
+     });
+     localData.forEach((item) => {
+       if (item?.id) registry.set(item.id, item);
+     });
+     return Array.from(registry.values()).sort((a, b) => b.savedAt - a.savedAt);
+   });
+ };
  window.addEventListener('mimi:shard_added', handleShardAdded);
  window.addEventListener('mimi:pocket_updated', handlePocketUpdate);
  return () => {

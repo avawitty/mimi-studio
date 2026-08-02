@@ -1065,8 +1065,6 @@ export const subscribeToUserZines = (
 };
 
 /** Cap community scans so free-tier read quota isn't burned by full-collection gets. */
-const COMMUNITY_ZINE_READ_CAP = 60;
-
 export const fetchCommunityZines = async (count: number) => {
     const take = Math.max(0, Math.min(count || 0, COMMUNITY_ZINE_READ_CAP));
     if (take === 0) return [];
