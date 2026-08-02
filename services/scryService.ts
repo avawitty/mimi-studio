@@ -6,7 +6,7 @@
 
 import { auth } from "./firebaseInit";
 import { searchGrounding } from "./searchService";
-import { scryShadowMemory } from "./vectorSearch";
+import { scryShadowMemoryLane } from "./vectorSearch";
 import {
   scryWebSignals,
   generateScribeReading,
@@ -198,7 +198,7 @@ export async function runSpecimenScry(options: {
       settleLane("personalMemory", () => searchGrounding(query)),
       settleLane("web", () => scryWebSignals(query)),
       settleLane("generatedReading", () => laneReading(profile, query, geminiKey)),
-      settleLane("shadowMemory", () => scryShadowMemory(query)),
+      settleLane("shadowMemory", () => scryShadowMemoryLane(query)),
     ]);
 
   if (archiveSettled.ok === true) {
@@ -277,9 +277,28 @@ export async function runSpecimenScry(options: {
   }
 
   if (shadowSettled.ok === true) {
-    const hits = mapShadowHits(shadowSettled.value);
+    const lane = shadowSettled.value as Awaited<ReturnType<typeof scryShadowMemoryLane>>;
+    const hits = mapShadowHits(lane.hits);
     run.sources.shadowMemory = hits;
     run.laneStatus.shadowMemory = hits.length > 0 ? "success" : "empty";
+    if (lane.audit.needsReindex) {
+      run.shadowIndexHint = {
+        needsReindex: true,
+        incompatible: lane.audit.incompatible,
+        missingVector: lane.audit.missingVector,
+        searchable: lane.audit.searchable,
+        shadowDocs: lane.audit.shadowDocs,
+        referenceDims: lane.audit.referenceDims,
+      };
+      if (hits.length === 0 && (lane.audit.incompatible > 0 || lane.audit.missingVector > 0)) {
+        run.failures.push({
+          provider: "scryShadowMemory",
+          lane: "shadowMemory",
+          message: `${lane.audit.incompatible + lane.audit.missingVector} shadow vectors need re-index for the current embedding space (${lane.audit.referenceDims ?? "?"} dims).`,
+          at: Date.now(),
+        });
+      }
+    }
   } else {
     run.laneStatus.shadowMemory = "failed";
     run.failures.push({

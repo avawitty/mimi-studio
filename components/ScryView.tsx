@@ -28,6 +28,7 @@ import {
   runSpecimenScry,
   runTrendScry,
 } from "../services/scryService";
+import { reindexShadowMemoryEmbeddings } from "../services/vectorSearch";
 import {
   describeScryOutcome,
   type ResearchResult,
@@ -243,6 +244,7 @@ export const ScryView: React.FC = () => {
   const [query, setQuery] = useState("");
   const [run, setRun] = useState<ScryRun | null>(null);
   const [isScrying, setIsScrying] = useState(false);
+  const [isReindexingShadow, setIsReindexingShadow] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const [trendQuery, setTrendQuery] = useState("Saturation Chic");
@@ -267,6 +269,58 @@ export const ScryView: React.FC = () => {
     setNotification(msg);
     window.setTimeout(() => setNotification(null), 2800);
   }, []);
+
+  const handleReindexShadow = useCallback(async () => {
+    if (isReindexingShadow || isScrying) return;
+    setIsReindexingShadow(true);
+    try {
+      const result = await reindexShadowMemoryEmbeddings({
+        referenceDims: run?.shadowIndexHint?.referenceDims ?? null,
+        limit: 80,
+      });
+      showNotification(
+        result.updated > 0
+          ? `Re-indexed ${result.updated} shadow vector${result.updated === 1 ? "" : "s"}${result.dims ? ` → ${result.dims}d` : ""}. Run Scry again.`
+          : result.attempted === 0
+            ? "No shadow vectors needed re-index."
+            : `Re-index finished with ${result.failed} failure${result.failed === 1 ? "" : "s"}.`,
+      );
+      if (result.updated > 0 && query.trim()) {
+        const next = await runSpecimenScry({
+          query: query.trim(),
+          profile,
+          geminiKey: apiKeys?.gemini,
+        });
+        setRun(next);
+      } else if (run?.shadowIndexHint) {
+        setRun({
+          ...run,
+          shadowIndexHint: {
+            ...run.shadowIndexHint,
+            needsReindex: result.auditAfter.needsReindex,
+            incompatible: result.auditAfter.incompatible,
+            missingVector: result.auditAfter.missingVector,
+            searchable: result.auditAfter.searchable,
+            shadowDocs: result.auditAfter.shadowDocs,
+            referenceDims: result.auditAfter.referenceDims,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("MIMI // Shadow reindex failed", err);
+      showNotification("Shadow re-index failed.");
+    } finally {
+      setIsReindexingShadow(false);
+    }
+  }, [
+    apiKeys?.gemini,
+    isReindexingShadow,
+    isScrying,
+    profile,
+    query,
+    run,
+    showNotification,
+  ]);
 
   const handleScry = useCallback(
     async (q?: string) => {
@@ -482,9 +536,37 @@ export const ScryView: React.FC = () => {
             </ul>
           </div>
         ) : null}
+        {run?.shadowIndexHint?.needsReindex ? (
+          <div className="space-y-2 pt-2 border-t archive-border">
+            <p className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">
+              Shadow re-index
+            </p>
+            <p className="font-sans text-[10px] archive-text-muted leading-relaxed">
+              Legacy vectors won&apos;t match Gateway embeddings until rewritten.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleReindexShadow()}
+              disabled={isReindexingShadow || isScrying}
+              className="font-mono text-[9px] uppercase tracking-[0.14em] underline underline-offset-4 archive-text-ink disabled:opacity-40"
+            >
+              {isReindexingShadow ? "Re-indexing…" : "Re-index now"}
+            </button>
+          </div>
+        ) : null}
       </ArchiveContextPanel>
     ),
-    [activeTab.label, activeTab.note, apiKeys?.gemini, apiKeys?.you_com, run, tab],
+    [
+      activeTab.label,
+      activeTab.note,
+      apiKeys?.gemini,
+      apiKeys?.you_com,
+      handleReindexShadow,
+      isReindexingShadow,
+      isScrying,
+      run,
+      tab,
+    ],
   );
 
   const specimenHits = useMemo(() => {
@@ -636,6 +718,43 @@ export const ScryView: React.FC = () => {
                   </div>
 
                   <LaneStrip run={run} busy={isScrying} />
+
+                  {run?.shadowIndexHint?.needsReindex ? (
+                    <div
+                      className="mt-4 border archive-border border-l-2 border-l-stone-500 px-3 py-3 bg-white/70"
+                      data-testid="shadow-reindex-hint"
+                    >
+                      <p className="font-mono text-[8px] uppercase tracking-[0.18em] archive-text-muted mb-1">
+                        Shadow index drift
+                      </p>
+                      <p className="font-sans text-sm archive-text-ink leading-relaxed mb-3">
+                        {run.shadowIndexHint.incompatible + run.shadowIndexHint.missingVector}{" "}
+                        saved vector
+                        {run.shadowIndexHint.incompatible + run.shadowIndexHint.missingVector === 1
+                          ? ""
+                          : "s"}{" "}
+                        sit outside the current embedding space
+                        {run.shadowIndexHint.referenceDims
+                          ? ` (${run.shadowIndexHint.referenceDims}-d)`
+                          : ""}
+                        . Re-index to make Shadow Memory searchable again.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleReindexShadow()}
+                        disabled={isReindexingShadow || isScrying}
+                        data-testid="shadow-reindex-button"
+                        className="inline-flex items-center gap-2 min-h-[44px] px-3 py-2 bg-black text-white font-mono text-[9px] uppercase tracking-[0.16em] disabled:opacity-40"
+                      >
+                        {isReindexingShadow ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Database size={14} />
+                        )}
+                        Re-index shadow memory
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="px-4 md:px-8 pb-28 md:pb-16 max-w-3xl space-y-4">

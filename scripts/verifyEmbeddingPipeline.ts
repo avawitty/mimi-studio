@@ -11,6 +11,7 @@
  */
 import assert from "node:assert/strict";
 import { cosineSimilarity, embeddingsCompatible, meanEmbedding } from "../lib/embeddingMath.js";
+import { auditShadowEmbeddings, selectDocsForReindex } from "../lib/shadowMemoryIndex.js";
 import { MODELS, modelFor } from "../services/modelConfig.js";
 import { GATEWAY_DEFAULT_MODELS } from "../lib/models.js";
 
@@ -46,6 +47,28 @@ function assertOffline() {
   assert.equal(shadowShape.kind, "embedding_shadow");
   assert.equal(shadowShape.embedding_dims, shadowShape.embedding_field.length);
 
+  const mixed = [
+    {
+      id: "legacy",
+      kind: "embedding_shadow" as const,
+      embedding_field: Array(768).fill(0.01),
+      content_preview: "legacy gemini",
+    },
+    {
+      id: "fresh",
+      kind: "embedding_shadow" as const,
+      embedding_field: Array(1536).fill(0.01),
+      embed_text: "gateway vector",
+    },
+  ];
+  const audit = auditShadowEmbeddings(mixed, 1536);
+  assert.equal(audit.needsReindex, true);
+  assert.equal(audit.incompatible, 1);
+  assert.deepEqual(
+    selectDocsForReindex(mixed, 1536).map((d) => d.id),
+    ["legacy"],
+  );
+
   console.log(
     JSON.stringify(
       {
@@ -54,6 +77,10 @@ function assertOffline() {
         geminiEmbeddingModel: geminiModel,
         gatewayEmbeddingModel: gatewayModel,
         openaiEmbeddingModel: openaiModel,
+        shadowReindex: {
+          needsReindex: audit.needsReindex,
+          incompatible: audit.incompatible,
+        },
       },
       null,
       2,

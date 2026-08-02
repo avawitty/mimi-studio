@@ -8,6 +8,7 @@ import {
 import {
   asUnknownArray,
   mapArchiveHits,
+  mapShadowHits,
   mapWebHits,
 } from "../services/scryService";
 
@@ -124,5 +125,14 @@ describe("scry lane payload coercion", () => {
     expect(mapArchiveHits({ not: "an array" })).toEqual([]);
     expect(mapWebHits({ title: "x" }, { web: {} })).toEqual([]);
     expect(mapArchiveHits([{ id: "1", title: "Ok" }])).toHaveLength(1);
+  });
+
+  it("maps shadow hits with similarity onto the shadowMemory lane", () => {
+    const hits = mapShadowHits([
+      { id: "s1", content_preview: "mineral light", similarity: 0.81, type: "shard" },
+    ]);
+    expect(hits).toHaveLength(1);
+    expect(hits[0].sourceLane).toBe("shadowMemory");
+    expect(hits[0].similarity).toBe(0.81);
   });
 });
