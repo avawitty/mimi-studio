@@ -13,6 +13,12 @@ import {
 } from "../../lib/chamberIntents";
 import type { StudioPhase } from "../../lib/productCanon";
 
+/**
+ * Active Studio desk context (phase + loose materials).
+ * Distinct from Worktable `DossierTabs` folders and Tailor evidence dossiers —
+ * do not treat those as interchangeable sources of truth until a bridge exists.
+ */
+
 export type StudioMaterialType =
   | "text"
   | "image"
