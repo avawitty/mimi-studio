@@ -28,13 +28,14 @@ import {
   runSpecimenScry,
   runTrendScry,
 } from "../services/scryService";
-import type {
-  ResearchResult,
-  ResultStatus,
-  ScryLaneId,
-  ScryRun,
-  TrendCurationMap,
-  TrendCluster,
+import {
+  describeScryOutcome,
+  type ResearchResult,
+  type ResultStatus,
+  type ScryLaneId,
+  type ScryRun,
+  type TrendCurationMap,
+  type TrendCluster,
 } from "../schemas/scryContracts";
 
 type ScryTab = "specimen" | "trend";
@@ -289,8 +290,7 @@ export const ScryView: React.FC = () => {
         });
         if (!controller.signal.aborted) {
           setRun(next);
-          const live = next.confidence?.label || "Scry complete";
-          showNotification(live);
+          showNotification(describeScryOutcome(next));
         }
       } catch (err) {
         console.error("MIMI // Scrying failed", err);
