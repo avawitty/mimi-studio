@@ -77,11 +77,14 @@ export function deriveProceduralAesthetic(doll: Doll): ProceduralDollAesthetic {
     updatedAt: Date.now(),
   };
 
-  // Merge non-locked saved overrides (e.g. colors tweaked once)
+  // For non-locked saved aesthetics, re-derive from the current Doll fields.
+  // The freshly-`derived` values must win over stale `saved` ones (`saved` is a
+  // complete aesthetic, so spreading it last would clobber every derived field
+  // and make `userLocked` meaningless). Locked aesthetics are returned early above.
   if (saved && !saved.userLocked) {
     return {
-      ...derived,
       ...saved,
+      ...derived,
       userLocked: false,
       updatedAt: Date.now(),
     };

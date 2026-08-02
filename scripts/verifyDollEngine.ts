@@ -102,6 +102,27 @@ check("userLocked aesthetic is preserved", () => {
   assert(locked.primaryColor === "#ff0000", "locked color");
 });
 
+check("unlocked saved aesthetic re-derives from Doll fields", () => {
+  const fresh = deriveProceduralAesthetic(fixtureDoll);
+  const unlocked = deriveProceduralAesthetic({
+    ...fixtureDoll,
+    proceduralAesthetic: {
+      pattern: "marble",
+      primaryColor: "#ff0000",
+      secondaryColor: "#00ff00",
+      complexity: 9,
+      warpSpeed: 2,
+      warpIntensity: 0.2,
+      glossiness: 0.1,
+      accessoryMode: "none",
+      userLocked: false,
+    },
+  });
+  assert(unlocked.pattern === fresh.pattern, "unlocked pattern re-derived");
+  assert(unlocked.primaryColor === fresh.primaryColor, "unlocked color re-derived");
+  assert(unlocked.userLocked === false, "stays unlocked");
+});
+
 check("identity pack merge + completeness", () => {
   let pack = mergeIdentityReference(undefined, "portrait", "https://example.com/p.jpg");
   pack = mergeIdentityReference(pack, "full_body", "https://example.com/f.jpg");
