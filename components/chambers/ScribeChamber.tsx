@@ -27,6 +27,7 @@ import type { ScribeSignalType } from "../../types";
 
 type ScribeTab = "ask" | "capture" | "atoms" | "retrieve" | "threads";
 type ScribeMobileMode = "ask" | "library" | "capture";
+type ScribeLibraryView = Extract<ScribeTab, "atoms" | "retrieve" | "threads">;
 
 const SCRIBE_TABS: { id: ScribeTab; label: string; icon: React.ReactNode; note: string }[] = [
   { id: "retrieve", label: "Retrieve", icon: <BookOpen size={14} />, note: "Search and reuse context" },
@@ -66,6 +67,9 @@ const tabToMobileMode = (tab: ScribeTab): ScribeMobileMode => {
   return "library";
 };
 
+const tabToLibraryView = (tab: ScribeTab): ScribeLibraryView =>
+  tab === "atoms" || tab === "threads" ? tab : "retrieve";
+
 const parseInitialTab = (): ScribeTab => {
   if (typeof window === "undefined") return "ask";
   const param = new URLSearchParams(window.location.search).get("tab");
@@ -84,7 +88,9 @@ const parseInitialTab = (): ScribeTab => {
 export const ScribeChamber: React.FC<{ initialTab?: ScribeTab }> = ({ initialTab }) => {
   const { user } = useUser();
   const [tab, setTab] = useState<ScribeTab>(initialTab ?? parseInitialTab());
-  const [libraryView, setLibraryView] = useState<"retrieve" | "atoms" | "threads">("retrieve");
+  const [libraryView, setLibraryView] = useState<ScribeLibraryView>(() =>
+    tabToLibraryView(initialTab ?? parseInitialTab()),
+  );
   const [pasteContent, setPasteContent] = useState("");
   const [pasteSource, setPasteSource] = useState("Dialogue Paste");
   const [isSaving, setIsSaving] = useState(false);
@@ -116,7 +122,7 @@ export const ScribeChamber: React.FC<{ initialTab?: ScribeTab }> = ({ initialTab
     else setTab(libraryView);
   };
 
-  const setLibrary = (view: "retrieve" | "atoms" | "threads") => {
+  const setLibrary = (view: ScribeLibraryView) => {
     setLibraryView(view);
     setTab(view);
   };
