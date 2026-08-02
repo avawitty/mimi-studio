@@ -38,6 +38,7 @@ const IMPLEMENTED_MODES = new Set([
   "residue",
   "observatory",
   "mean-median-mode",
+  "forecast",
   "celestial-calibration",
   "scry",
 ]);
@@ -54,6 +55,7 @@ const CHAMBER_COMPONENT_FILES: Record<string, string> = {
   AtelierChamber: "components/chambers/AtelierChamber.tsx",
   ResidueChamber: "components/chambers/ResidueChamber.tsx",
   ObservatoryChamber: "components/chambers/ObservatoryChamber.tsx",
+  TheForecast: "components/TheForecast.tsx",
   CelestialCalibrationChamber: "components/chambers/CelestialCalibrationChamber.tsx",
   ScryView: "components/ScryView.tsx",
   SignatureView: "components/SignatureView.tsx",

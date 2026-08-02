@@ -117,13 +117,14 @@ const GUIDE_DATA: GuideItem[] = [
   },
   {
     id: "chambers-house",
-    title: "House tools: Atelier · Residue · Observatory · Celestial · Intel · GEO · System",
+    title: "House tools: Atelier · Residue · Observatory · Forecast · Celestial · Intel · GEO · System",
     category: "chambers",
-    description: "Strategy, commerce signals, residue maps, collective readout, personal timing, and system docs — listed once under All Chambers.",
+    description: "Strategy, commerce signals, residue maps, collective readout, personal meteorology, timing, and system docs — listed once under All Chambers.",
     details: [
       "Atelier: Taste-signal objects pinned from zines (not Memberships / plan tiers).",
       "Residue: Cultural / emotional residue maps with per-run M/M/M and proposed product handoffs (not diagnosis).",
       "The Observatory · Mean Median Mode: Consent-gated collective central tendency (not Residue’s per-run tab).",
+      "Forecast: Aesthetic meteorology from your calibrated profile — Observatory’s “what next,” not a second collective readout. Content vectors are labeled demonstration until live research lands.",
       "Celestial Calibration: Tropical Sun + seasonal timing from birth data for Tailor/generation (not The Observatory).",
       "Intel Hub · Intelligence Report · GEO Engine: Strategy and AI-readable signal packaging.",
       "System (Codex) · Chamber Map · The Voice: Architecture manual, registry inspector, brand-voice dossier."
@@ -136,6 +137,9 @@ const GUIDE_DATA: GuideItem[] = [
       "mmm",
       "observatory",
       "mean median mode",
+      "forecast",
+      "meteorology",
+      "drift",
       "collective",
       "celestial",
       "celestial calibration",
