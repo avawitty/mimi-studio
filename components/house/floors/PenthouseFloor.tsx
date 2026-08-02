@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Link2 } from "lucide-react";
 import { EDITOR_VOICE } from "../editor";
 import PlateVisual from "../PlateVisual";
+import { copyHouseShareLink } from "../share";
 import { getState, setState, uid, useMimi } from "../store";
 import type { Issue } from "../types";
 import { FloorHeader, MimiVoice, SysLabel } from "../shared";
@@ -14,6 +15,7 @@ export default function PenthouseFloor({
   const { plates, issues, reading } = useMimi();
   const [title, setTitle] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   function toggle(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -145,13 +147,27 @@ export default function PenthouseFloor({
                   {issue.manifesto}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => onOpenIssue?.(issue.id)}
                   className="border border-[var(--house-line)] font-mono text-[10px] uppercase tracking-[0.18em] px-4 py-2 hover:bg-[var(--house-ink)] hover:text-[var(--house-field)] transition-colors"
                 >
                   View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void copyHouseShareLink("issue", issue.id).then((ok) => {
+                      if (ok) {
+                        setCopiedId(issue.id);
+                        window.setTimeout(() => setCopiedId(null), 1600);
+                      }
+                    });
+                  }}
+                  className="border border-[var(--house-line)] font-mono text-[10px] uppercase tracking-[0.18em] px-4 py-2 flex items-center gap-2 hover:border-[var(--house-ink)]"
+                >
+                  <Link2 size={12} /> {copiedId === issue.id ? "Copied" : "Copy link"}
                 </button>
                 <button
                   type="button"
