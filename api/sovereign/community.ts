@@ -31,11 +31,16 @@ export default async function handler(req: any, res: any) {
 
     res.setHeader("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
     res.setHeader("X-Mimi-Archive", "sovereign");
+    if (page.searchMode) {
+      res.setHeader("X-Mimi-Search", page.searchMode);
+    }
     return sendJson(res, 200, {
       zines: page.zines,
       count: page.zines.length,
       nextCursor: page.nextCursor,
       query: q || null,
+      searchMode: page.searchMode || "recency",
+      embeddingModel: page.embeddingModel || null,
       archive: status,
     });
   } catch (error: any) {

@@ -2,6 +2,12 @@ import type { PocketItem, UserProfile, ZineMetadata } from "../../types";
 import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache";
 import { getSovereignDb, isSovereignEnabled, resolveSovereignDbPath } from "./db";
 import { SOVEREIGN_SCHEMA_VERSION } from "./driver";
+import {
+  countIndexedEmbeddings,
+  isSovereignGatewayEmbedEnabled,
+  scheduleZineEmbedding,
+  searchPublicZinesSemantic,
+} from "./embeddings";
 import { emitSovereignEvent } from "./events";
 
 const COMMUNITY_CAP = 60;
@@ -16,6 +22,8 @@ const asPocket = (raw: string): PocketItem => JSON.parse(raw) as PocketItem;
 export type PublicZinePage = {
   zines: ZineMetadata[];
   nextCursor: number | null;
+  searchMode?: "recency" | "keyword" | "hybrid" | "semantic";
+  embeddingModel?: string | null;
 };
 
 /** Slim payload safe for Floor cards (no full pages / artifacts blobs). */
@@ -45,6 +53,7 @@ export const slimZineForFloor = (zine: ZineMetadata): ZineMetadata => {
 };
 
 export const sovereignStatus = async () => {
+  const gatewayEmbed = isSovereignGatewayEmbedEnabled();
   const db = await getSovereignDb();
   if (!db) {
     return {
@@ -58,6 +67,8 @@ export const sovereignStatus = async () => {
       pocketCount: 0,
       schemaVersion: null as number | null,
       latencyMs: null as number | null,
+      gatewayEmbed,
+      embeddedCount: 0,
     };
   }
 
@@ -83,6 +94,7 @@ export const sovereignStatus = async () => {
   const schema = await db
     .prepare("SELECT value FROM schema_meta WHERE key = ?")
     .get<{ value: string }>("schema_version");
+  const embeddedCount = await countIndexedEmbeddings();
 
   return {
     enabled: true,
@@ -95,6 +107,8 @@ export const sovereignStatus = async () => {
     pocketCount: Number(pocket?.n || 0),
     schemaVersion: Number(schema?.value || SOVEREIGN_SCHEMA_VERSION),
     latencyMs,
+    gatewayEmbed,
+    embeddedCount,
   };
 };
 
@@ -104,13 +118,89 @@ export const listPublicZinesPage = async (
   cursor?: number | null,
 ): Promise<PublicZinePage> => {
   const db = await getSovereignDb();
-  if (!db) return { zines: [], nextCursor: null };
+  if (!db) return { zines: [], nextCursor: null, searchMode: "recency" };
   const take = Math.max(0, Math.min(count || 0, COMMUNITY_CAP));
-  if (take === 0) return { zines: [], nextCursor: null };
+  if (take === 0) return { zines: [], nextCursor: null, searchMode: "recency" };
 
-  const q = queryText.trim().toLowerCase();
+  const qRaw = queryText.trim();
+  const q = qRaw.toLowerCase();
   const cursorTs =
     typeof cursor === "number" && Number.isFinite(cursor) && cursor > 0 ? cursor : null;
+
+  // Hybrid semantic search (AI Gateway) — first page only; pagination stays keyword/recency.
+  if (q && !cursorTs && isSovereignGatewayEmbedEnabled()) {
+    const cacheKey = `floor:${db.backend}:hybrid:${take}:${q}`;
+    const cached = cacheGet<PublicZinePage>(cacheKey);
+    if (cached) return cached;
+
+    const keywordRows = await db
+      .prepare(
+        `SELECT id, data, timestamp FROM zines
+         WHERE is_public = 1
+           AND (
+             lower(title) LIKE ? OR
+             lower(user_handle) LIKE ? OR
+             lower(coalesce(tone, '')) LIKE ?
+           )
+         ORDER BY timestamp DESC
+         LIMIT ?`,
+      )
+      .all<{ id: string; data: string; timestamp: number | string }>(
+        `%${q}%`,
+        `%${q}%`,
+        `%${q}%`,
+        take * 2,
+      );
+
+    const { hits, model, usedGateway } = await searchPublicZinesSemantic(qRaw, take * 2);
+    const byId = new Map<
+      string,
+      { data: string; timestamp: number; keyword: boolean; semantic: number }
+    >();
+
+    for (const row of keywordRows) {
+      byId.set(row.id, {
+        data: row.data,
+        timestamp: Number(row.timestamp || 0),
+        keyword: true,
+        semantic: 0,
+      });
+    }
+    for (const hit of hits) {
+      const prev = byId.get(hit.id);
+      if (prev) {
+        prev.semantic = hit.score;
+      } else {
+        byId.set(hit.id, {
+          data: hit.data,
+          timestamp: hit.timestamp,
+          keyword: false,
+          semantic: hit.score,
+        });
+      }
+    }
+
+    const ranked = [...byId.values()]
+      .map((entry) => ({
+        ...entry,
+        rank: (entry.keyword ? 0.4 : 0) + entry.semantic * 0.6 + entry.timestamp / 1e15,
+      }))
+      .sort((a, b) => b.rank - a.rank)
+      .slice(0, take);
+
+    const page: PublicZinePage = {
+      zines: ranked.map((row) => slimZineForFloor(asZine(row.data))),
+      nextCursor:
+        ranked.length === take
+          ? Number(ranked[ranked.length - 1]?.timestamp || 0) || null
+          : null,
+      searchMode: usedGateway && hits.length > 0 ? "hybrid" : "keyword",
+      embeddingModel: model,
+    };
+    cacheSet(cacheKey, page, FLOOR_CACHE_TTL_MS);
+    return page;
+  }
+
   const cacheKey = `floor:${db.backend}:${take}:${q}:c=${cursorTs ?? "head"}`;
   const cached = cacheGet<PublicZinePage>(cacheKey);
   if (cached) return cached;
@@ -179,7 +269,11 @@ export const listPublicZinesPage = async (
   const zines = rows.map((row) => slimZineForFloor(asZine(row.data)));
   const nextCursor =
     rows.length === take ? Number(rows[rows.length - 1]?.timestamp || 0) || null : null;
-  const page = { zines, nextCursor };
+  const page: PublicZinePage = {
+    zines,
+    nextCursor,
+    searchMode: q ? "keyword" : "recency",
+  };
   cacheSet(cacheKey, page, FLOOR_CACHE_TTL_MS);
   return page;
 };
@@ -238,7 +332,10 @@ export const listUserZines = async (
   return rows.map((row) => asZine(row.data));
 };
 
-export const upsertZine = async (zine: ZineMetadata): Promise<void> => {
+export const upsertZine = async (
+  zine: ZineMetadata,
+  opts?: { skipEmbed?: boolean },
+): Promise<void> => {
   const db = await getSovereignDb();
   if (!db) {
     throw new Error("Sovereign archive unavailable");
@@ -293,6 +390,10 @@ export const upsertZine = async (zine: ZineMetadata): Promise<void> => {
     userId: zine.userId,
     isPublic: Boolean(isPublic),
   });
+  // AI Gateway embedding index (async; skipped when no gateway credential).
+  if (!opts?.skipEmbed) {
+    scheduleZineEmbedding(zine);
+  }
 };
 
 export const deleteZine = async (id: string, userId?: string): Promise<boolean> => {
@@ -435,7 +536,8 @@ export const importZines = async (
         continue;
       }
       try {
-        await upsertZine(zine);
+        // Defer Gateway embeds to /api/sovereign/reindex so imports stay fast.
+        await upsertZine(zine, { skipEmbed: true });
         imported += 1;
       } catch {
         skipped += 1;

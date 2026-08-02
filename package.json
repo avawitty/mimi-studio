@@ -46,6 +46,7 @@
     "sovereign:seed": "tsx scripts/seedSovereignDemo.ts",
     "sovereign:import": "tsx scripts/seedSovereignDemo.ts --import",
     "sovereign:export-firestore": "tsx scripts/exportFirestoreToSovereign.ts",
+    "sovereign:reindex": "tsx scripts/reindexSovereignEmbeddings.ts",
     "setup:mimi-rip-domains": "node scripts/setupMimiRipDomains.mjs",
     "setup:mimi-fish-domains": "node scripts/setupMimiFishDomains.mjs"
   },

@@ -19,6 +19,9 @@
     "api/sovereign/import.ts": {
       "maxDuration": 60
     },
+    "api/sovereign/reindex.ts": {
+      "maxDuration": 60
+    },
     "api/sovereign/events.ts": {
       "maxDuration": 60
     }

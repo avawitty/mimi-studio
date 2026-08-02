@@ -103,8 +103,9 @@ The **sovereign archive** is Mimi’s owned data plane for Stand Floor, Keep Tab
 - **Postgres / Neon:** set `MIMI_SOVEREIGN_DATABASE_URL`, or a `neon.tech` `DATABASE_URL` (auto). TLS cert verification is enforced.
 - **Vercel:** off unless a durable Postgres URL or explicit DB path is configured (serverless disk is ephemeral).
 - **Auth:** Firebase ID token + `__session` cookie (for SSE); ingest key for imports. Soft `x-user-id` is local-only.
+- **AI Gateway:** Floor `q=` search is hybrid keyword + Gateway embeddings (`openai/text-embedding-3-small` via `modelFor`). Reindex with `npm run sovereign:reindex`.
 - **Live updates:** `GET /api/sovereign/events` (SSE) on the long-lived Express host; clients fall back to polling on serverless.
-- **Seed / import:** `npm run sovereign:seed`, `npm run sovereign:import -- ./export.json`, `npm run sovereign:export-firestore`.
+- **Seed / import:** `npm run sovereign:seed`, `npm run sovereign:import -- ./export.json`, `npm run sovereign:export-firestore`, `npm run sovereign:reindex`.
 
 See [`docs/sovereign-archive.md`](docs/sovereign-archive.md) for auth options, scale posture, and ops. Health reports archive status at `GET /api/health` → `sovereign`.
 

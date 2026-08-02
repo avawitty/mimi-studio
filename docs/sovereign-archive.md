@@ -11,17 +11,28 @@ Owned Stand data plane behind Express. Prefer this over Firestore free-tier read
 | Postgres / Neon | `MIMI_SOVEREIGN_DATABASE_URL` | Or `DATABASE_URL` when it is a `neon.tech` URI (auto). Force any Postgres URL with `MIMI_SOVEREIGN_USE_DATABASE_URL=1`. |
 | Vercel | Off unless Neon/Postgres URL | Attach Neon project **mimineon** (`sweet-dust-78322246`) and set `DATABASE_URL` or `MIMI_SOVEREIGN_DATABASE_URL`. TLS cert verification is required (`rejectUnauthorized: true`). |
 
-Schema version is tracked in `schema_meta` (current: **2** — scale indexes + migrations runner).
+Schema version is tracked in `schema_meta` (current: **3** — AI Gateway embedding columns).
 
 ## HTTP surface
 
-- `GET /api/sovereign/status` — ready, backend, counts, `schemaVersion`, `latencyMs`
-- `GET /api/sovereign/community?limit=&q=&cursor=` — keyset pagination via `timestamp` cursor
+- `GET /api/sovereign/status` — ready, backend, counts, `schemaVersion`, `latencyMs`, `gatewayEmbed`, `embeddedCount`
+- `GET /api/sovereign/community?limit=&q=&cursor=` — keyset pagination; `q` uses hybrid keyword + AI Gateway semantic rank
 - `GET/POST/DELETE /api/sovereign/zines`
 - `GET/POST /api/sovereign/profile`
 - `GET/POST/DELETE /api/sovereign/pocket`
-- `POST /api/sovereign/import` — transactional batch (cap 500)
+- `POST /api/sovereign/import` — transactional batch (cap 500; embeds deferred)
+- `POST /api/sovereign/reindex` — backfill Gateway embeddings (`{ limit, force }`, ingest key)
 - `GET /api/sovereign/events?scope=public|user&userId=` (SSE; Express only)
+
+## AI Gateway embeddings
+
+Floor search (`q=`) is hybrid when Gateway credentials exist (`AI_GATEWAY_API_KEY` or Vercel OIDC):
+
+1. Keyword match on title / handle / tone
+2. Query embedding via `embedGatewayText` → `modelFor("embedding", "gateway")` (default `openai/text-embedding-3-small`)
+3. Cosine rank against stored `zines.embedding` (same model space)
+
+Disable with `MIMI_SOVEREIGN_EMBED=0`. Upserts index asynchronously; imports skip embed and expect `POST /api/sovereign/reindex`.
 
 Feed (`/api/feed`) and OG (`/api/og/zine`) read sovereign first when ready.
 
@@ -62,7 +73,7 @@ Writers accept (in order): ingest key → Firebase ID token → `__session` cook
 | Pagination | Keyset `cursor` on `timestamp` | Composite `(timestamp, id)` if collisions appear |
 | Live sync | In-process SSE bus | Redis pub/sub or Neon Logical Replication → worker |
 | Imports | Transactional batches, 500 cap | Chunked job queue |
-| Query safety | `statement_timeout=15s`, slim Floor payloads | Full-text (`tsvector`) / embeddings index |
+| Query safety | `statement_timeout=15s`, slim Floor payloads, Gateway cosine over JSON vectors | Neon `pgvector` for large catalogs |
 | Auth fan-out | Firebase Admin verify | Short-lived cached uid claims (careful with revoke) |
 
 ## Ops
@@ -71,6 +82,7 @@ Writers accept (in order): ingest key → Firebase ID token → `__session` cook
 npm run sovereign:seed
 npm run sovereign:import -- ./path/to/export.json
 npm run sovereign:export-firestore -- --limit=200
+npm run sovereign:reindex
 ```
 
 Export requires Firebase Admin credentials and enough Firestore quota to read once.

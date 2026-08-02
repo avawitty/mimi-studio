@@ -43,6 +43,7 @@ import sovereignStatusHandler from "./api/sovereign/status";
 import sovereignProfileHandler from "./api/sovereign/profile";
 import sovereignPocketHandler from "./api/sovereign/pocket";
 import sovereignImportHandler from "./api/sovereign/import";
+import sovereignReindexHandler from "./api/sovereign/reindex";
 import sovereignEventsHandler from "./api/sovereign/events";
 import { sovereignStatus } from "./lib/sovereign/store";
 import { isPaidPatronPlan } from "./constants";
@@ -1032,6 +1033,9 @@ async function startServer() {
   });
   app.post("/api/sovereign/import", async (req, res) => {
     await sovereignImportHandler(req, res);
+  });
+  app.post("/api/sovereign/reindex", async (req, res) => {
+    await sovereignReindexHandler(req, res);
   });
   app.get("/api/sovereign/events", async (req, res) => {
     await sovereignEventsHandler(req, res);
