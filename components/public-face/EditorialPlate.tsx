@@ -56,8 +56,9 @@ export const EditorialPlate: React.FC<EditorialPlateProps> = ({
           <PressMark label={folioLabel} tone="cobalt" />
         </div>
       </div>
-      <div className="lg:col-span-7 relative min-h-[42vh] lg:min-h-0 bg-[var(--mimi-ink,#0a0a0a)] overflow-hidden mimi-cobalt-haze">
-        {visual}
+      <div className="lg:col-span-7 relative min-h-[42vh] lg:min-h-0 overflow-hidden mimi-cobalt-field">
+        <div className="absolute inset-0 mimi-cobalt-haze" aria-hidden />
+        <div className="absolute inset-0">{visual}</div>
       </div>
     </section>
   );

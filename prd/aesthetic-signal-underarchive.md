@@ -10,9 +10,9 @@
 
 Mimi already carries MKUltra / Rococo / surveillance lore (Dolls, Obsidian Ledger, Oracle). The public face stays a quiet editorial archive. This layer adds a **controlled cold-war signal** so the house doesn’t read as a lifestyle magazine:
 
-- **Monolithic cobalt haze** — cold institutional atmosphere, not neon cyber
-- **Surveillance** — registry corners, closed-circuit quiet, provenance as observation
-- **MKUltra Rococo** — gilt whisper + baroque restraint (lace in the type, not chrome carnival)
+- **Monolithic cobalt haze** — the luminous foggy blue of the mimizine.app hero: backlit mist, desaturated cobalt → white-blue glow, vignette edges — not navy institutional panels, not neon cyber
+- **Surveillance** — obscured silhouette energy, registry corners, closed-circuit quiet
+- **MKUltra Rococo** — gilt whisper + baroque restraint in silhouette/structure (architectural coat, not ornament dump)
 
 Oracle and Dolls may go denser; public plates get a whisper.
 
@@ -37,9 +37,13 @@ Oracle and Dolls may go denser; public plates get a whisper.
 
 | Token | Value | Use |
 |-------|-------|-----|
-| `--mimi-cobalt` | `#1B3A5C` | Ink accent, marks |
-| `--mimi-cobalt-haze` | `rgba(45, 90, 140, 0.14)` | Edge vignette / atmosphere |
+| `--mimi-cobalt` | `#5A7D9A` | Mid atmospheric cobalt (marks, labels) |
+| `--mimi-cobalt-deep` | `#2A4058` | Vignette / depth |
+| `--mimi-cobalt-mist` | `#C5D4E2` | Backlit fog highlight |
+| `--mimi-cobalt-haze` | `rgba(90, 125, 160, 0.28)` | Fog wash |
 | `--mimi-gilt` | `#A89B6E` | Rare rococo whisper (not terracotta) |
+
+Reference mood: silhouetted figure in cobalt fog, centered serif **Mimi**, tagline over haze — high-fashion surveillance atmosphere.
 
 ## Motifs
 

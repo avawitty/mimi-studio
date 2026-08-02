@@ -28,6 +28,9 @@ These are **direction boards**, not production pixel specs. Implementation shoul
 | `18-signal-underarchive-board.jpg` | Signal Underarchive specimen |
 | `19-signal-studio-nod.jpg` | Studio cobalt/registry nod |
 | `20-signal-signature-rococo.jpg` | Signature surveillance + gilt whisper |
+| `21-cobalt-haze-hero.jpg` | Luminous cobalt haze hero (reference key) |
+| `22-cobalt-ui-application.jpg` | Cobalt fog applied to Front Page plate |
+| `23-cobalt-mobile-plate.jpg` | Mobile cobalt haze plate |
 
 Visual language target: high-contrast black/white, olive/stone accents, Cormorant + Geist, column rules, editorial-archive discipline — not cream/lifestyle cliché, and not “Mimi as a print shop.”
 

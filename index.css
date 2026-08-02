@@ -28,9 +28,11 @@
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
     --mimi-grain-opacity: 0.08;
-    /* Signal Underarchive — restrained MKUltra / surveillance / rococo nod */
-    --mimi-cobalt: #1b3a5c;
-    --mimi-cobalt-haze: rgba(45, 90, 140, 0.14);
+    /* Signal Underarchive — luminous monolithic cobalt haze (mimizine.app hero key) */
+    --mimi-cobalt: #5a7d9a; /* mid atmospheric cobalt */
+    --mimi-cobalt-deep: #2a4058; /* vignette / silhouette depth */
+    --mimi-cobalt-mist: #c5d4e2; /* backlit fog highlight */
+    --mimi-cobalt-haze: rgba(90, 125, 160, 0.28);
     --mimi-gilt: #a89b6e;
 
     /* Era Variables */
@@ -55,8 +57,10 @@
     --mimi-olive: #5a5a40;
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
-    --mimi-cobalt: #7a9bb8; /* Lighter cobalt on dark chrome */
-    --mimi-cobalt-haze: rgba(45, 90, 140, 0.22);
+    --mimi-cobalt: #8aa8c0; /* Luminous cobalt on dark chrome */
+    --mimi-cobalt-deep: #1e3044;
+    --mimi-cobalt-mist: #d0dce8;
+    --mimi-cobalt-haze: rgba(90, 125, 160, 0.35);
     --mimi-gilt: #a89b6e;
     --era-bg-image: url("https://www.transparenttextures.com/patterns/stardust.png");
   }
@@ -176,7 +180,7 @@
     font-variant-ligatures: none;
   }
 
-  /* Signal Underarchive — monolithic cobalt haze (worktables / opted-in chambers) */
+  /* Signal Underarchive — luminous monolithic cobalt fog (hero-key atmosphere) */
   .mimi-cobalt-haze {
     position: relative;
   }
@@ -188,13 +192,36 @@
     inset: 0;
     z-index: 0;
     background:
-      radial-gradient(ellipse 120% 80% at 50% -10%, var(--mimi-cobalt-haze) 0%, transparent 55%),
-      radial-gradient(ellipse 90% 60% at 100% 100%, var(--mimi-cobalt-haze) 0%, transparent 50%);
+      radial-gradient(
+        ellipse 70% 55% at 50% 42%,
+        color-mix(in srgb, var(--mimi-cobalt-mist, #c5d4e2) 55%, transparent) 0%,
+        var(--mimi-cobalt-haze) 42%,
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 140% 100% at 50% 100%,
+        color-mix(in srgb, var(--mimi-cobalt-deep, #2a4058) 55%, transparent) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 120% 80% at 50% 0%,
+        color-mix(in srgb, var(--mimi-cobalt-deep, #2a4058) 40%, transparent) 0%,
+        transparent 50%
+      );
+    mix-blend-mode: multiply;
+    opacity: 0.85;
   }
 
   .mimi-cobalt-haze > * {
     position: relative;
     z-index: 1;
+  }
+
+  /* Full-bleed hero atmosphere — Front Page visual / dark worktable fields */
+  .mimi-cobalt-field {
+    background:
+      radial-gradient(ellipse 55% 50% at 50% 45%, var(--mimi-cobalt-mist, #c5d4e2) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 80% at 50% 50%, var(--mimi-cobalt, #5a7d9a) 0%, var(--mimi-cobalt-deep, #2a4058) 70%, #152030 100%);
   }
 
   .mimi-gilt-rule {

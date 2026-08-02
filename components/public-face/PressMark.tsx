@@ -15,7 +15,7 @@ export const PressMark: React.FC<PressMarkProps> = ({
 }) => {
   const toneClass =
     tone === "cobalt"
-      ? "bg-[var(--mimi-cobalt,#1B3A5C)] text-[var(--mimi-cobalt,#1B3A5C)]"
+      ? "bg-[var(--mimi-cobalt,#5A7D9A)] text-[var(--mimi-cobalt,#5A7D9A)]"
       : tone === "gilt"
         ? "bg-[var(--mimi-gilt,#A89B6E)] text-[var(--mimi-gilt,#A89B6E)]"
         : "bg-[var(--mimi-olive,#5A5A40)] text-[var(--mimi-olive,#5A5A40)]";

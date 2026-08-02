@@ -22,8 +22,10 @@ Use `data-surface="public"` on Front Page, Share, Signature, Stand, and public s
 | Stone | `--mimi-stone` `#78716C` | metadata |
 | Hairline | `--mimi-hairline` `#D4D4D4` | column rules |
 | Grain | cool tooth ≤12% opacity | optional |
-| Cobalt | `--mimi-cobalt` `#1B3A5C` | Signal Underarchive accent |
-| Cobalt haze | `--mimi-cobalt-haze` | edge atmosphere on worktables |
+| Cobalt | `--mimi-cobalt` `#5A7D9A` | luminous atmospheric accent (mimizine hero key) |
+| Cobalt deep | `--mimi-cobalt-deep` `#2A4058` | vignette / silhouette depth |
+| Cobalt mist | `--mimi-cobalt-mist` `#C5D4E2` | backlit fog highlight |
+| Cobalt haze | `--mimi-cobalt-haze` | fog wash on worktables / heroes |
 | Gilt | `--mimi-gilt` `#A89B6E` | rare rococo whisper |
 
 ## Signal Underarchive (nod)

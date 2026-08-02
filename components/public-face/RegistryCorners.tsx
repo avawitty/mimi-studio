@@ -16,7 +16,7 @@ export const RegistryCorners: React.FC<RegistryCornersProps> = ({
 }) => {
   const color =
     tone === "cobalt"
-      ? "border-[var(--mimi-cobalt,#1B3A5C)]"
+      ? "border-[var(--mimi-cobalt,#5A7D9A)]"
       : "border-[var(--mimi-ink,#0a0a0a)]";
 
   const arm = `absolute w-3 h-3 ${color}`;

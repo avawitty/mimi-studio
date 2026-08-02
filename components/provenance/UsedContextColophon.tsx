@@ -75,7 +75,7 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
       >
         <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-3">
-            <span className="font-sans text-[9px] uppercase tracking-[0.3em] font-semibold text-[var(--mimi-cobalt,#1B3A5C)]">
+            <span className="font-sans text-[9px] uppercase tracking-[0.3em] font-semibold text-[var(--mimi-cobalt,#5A7D9A)]">
               Colophon
             </span>
             <PressMark label="Registry" tone="cobalt" />

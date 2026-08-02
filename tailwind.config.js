@@ -41,6 +41,8 @@ export default {
           stone: 'var(--mimi-stone)',
           hairline: 'var(--mimi-hairline)',
           cobalt: 'var(--mimi-cobalt)',
+          'cobalt-deep': 'var(--mimi-cobalt-deep)',
+          'cobalt-mist': 'var(--mimi-cobalt-mist)',
           gilt: 'var(--mimi-gilt)',
         },
         nous: {
