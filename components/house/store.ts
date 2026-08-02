@@ -195,3 +195,20 @@ export function extractPaletteFromImage(file: File): Promise<string[]> {
     img.src = url;
   });
 }
+
+export function imageFileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("Image file could not be encoded for persistence."));
+    };
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("Image file could not be read."));
+    };
+    reader.readAsDataURL(file);
+  });
+}

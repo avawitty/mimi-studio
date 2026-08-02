@@ -2,7 +2,14 @@ import { useCallback, useRef, useState, type DragEvent } from "react";
 import { ImageIcon, Link, Type, Upload, X } from "lucide-react";
 import { extractTags, EDITOR_VOICE, matchesHouseQuery } from "../editor";
 import SearchBar from "../SearchBar";
-import { extractPaletteFromImage, getState, setState, uid, useMimi } from "../store";
+import {
+  extractPaletteFromImage,
+  getState,
+  imageFileToDataUrl,
+  setState,
+  uid,
+  useMimi,
+} from "../store";
 import type { Debris } from "../types";
 import { FloorHeader, MimiVoice, SysLabel, TagChip } from "../shared";
 
@@ -44,8 +51,10 @@ export default function IngestFloor() {
     if (!file.type.startsWith("image/")) return;
     setUploading(true);
     try {
-      const palette = await extractPaletteFromImage(file);
-      const url = URL.createObjectURL(file);
+      const [palette, url] = await Promise.all([
+        extractPaletteFromImage(file),
+        imageFileToDataUrl(file),
+      ]);
       const item: Debris = {
         id: uid(),
         kind: "upload",
