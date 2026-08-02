@@ -144,8 +144,19 @@ function testEphemerisAndRising() {
 
 function testReadoutAndGeneration() {
   const inactive = compileCelestialReadout({ enabled: false });
-  assert(inactive.timingPhrase.includes("inactive"), "inactive copy");
+  assert(inactive.timingPhrase.toLowerCase().includes("inactive"), "inactive copy");
   assert(celestialTimingForGeneration({ enabled: false }) === null, "no gen string when off");
+
+  const preview = compileCelestialReadout({
+    enabled: false,
+    birthDate: "1990-06-01",
+  });
+  assert(preview.sun?.sign === "gemini", "preview derives while disabled");
+  assert(
+    preview.timingPhrase.includes("Gemini") &&
+      preview.timingPhrase.toLowerCase().includes("not used in generation"),
+    "preview phrase shows derived Sun without claiming generation use",
+  );
 
   const active = compileCelestialReadout({
     enabled: true,
@@ -195,6 +206,17 @@ function testReadoutAndGeneration() {
   });
   assert(locked.sun?.sign === "leo", "manual lock wins");
   assert(locked.sun?.method === "manual_override", "manual method");
+
+  const oracleDisabled = celestialReadoutForOracle({
+    enabled: false,
+    birthDate: "1990-06-01",
+  });
+  assert(oracleDisabled.enabled === false, "oracle disabled when toggle off");
+  assert(oracleDisabled.sun === null, "oracle omits sun when disabled");
+  assert(
+    (oracleDisabled.bodies as unknown[]).length === 0,
+    "oracle omits bodies when disabled",
+  );
 
   const oracle = celestialReadoutForOracle({
     enabled: true,

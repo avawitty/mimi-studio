@@ -135,22 +135,28 @@ export function compileCelestialReadout(
     draft?.seasonalAlignment?.trim() ||
     defaultSeasonalAlignmentPhrase(season);
 
-  let timingPhrase = "Celestial calibration inactive.";
-  if (enabled && sun) {
-    const seasonBit = season
-      ? ASTRONOMICAL_SEASON_LABELS[season]
-      : "Season unset";
-    const cuspBit =
-      sun.onCusp && sun.cuspNeighbor
-        ? ` · cusp toward ${ZODIAC_SIGN_LABELS[sun.cuspNeighbor]}`
-        : "";
-    const risingBit =
-      chart?.rising != null
-        ? ` · Rising ${ZODIAC_SIGN_LABELS[chart.rising.sign]}`
-        : "";
-    timingPhrase = `Tropical Sun in ${ZODIAC_SIGN_LABELS[sun.sign]}${cuspBit}${risingBit} · ${seasonBit}`;
+  const seasonBit = season
+    ? ASTRONOMICAL_SEASON_LABELS[season]
+    : "Season unset";
+  const cuspBit =
+    sun?.onCusp && sun.cuspNeighbor
+      ? ` · cusp toward ${ZODIAC_SIGN_LABELS[sun.cuspNeighbor]}`
+      : "";
+  const risingBit =
+    chart?.rising != null
+      ? ` · Rising ${ZODIAC_SIGN_LABELS[chart.rising.sign]}`
+      : "";
+  const derivedPhrase = sun
+    ? `Tropical Sun in ${ZODIAC_SIGN_LABELS[sun.sign]}${cuspBit}${risingBit} · ${seasonBit}`
+    : null;
+
+  let timingPhrase = "Celestial calibration inactive — enter a birth date.";
+  if (enabled && derivedPhrase) {
+    timingPhrase = derivedPhrase;
   } else if (enabled && !sun) {
     timingPhrase = "Enabled — enter a birth date to derive tropical Sun.";
+  } else if (!enabled && derivedPhrase) {
+    timingPhrase = `${derivedPhrase} · not used in generation yet`;
   }
 
   const hasCoords =
@@ -198,6 +204,25 @@ export function celestialReadoutForOracle(
   draft: CelestialCalibrationDraft | null | undefined,
 ): Record<string, unknown> {
   const readout = compileCelestialReadout(draft);
+  if (!readout.enabled) {
+    return {
+      enabled: false,
+      timingPhrase: readout.timingPhrase,
+      scopeNotice: readout.scopeNotice,
+      sun: null,
+      rising: null,
+      astronomicalSeason: null,
+      seasonalAlignment: null,
+      bodies: [],
+      aspects: [],
+      houseSystemNote: null,
+      birthTimezone: null,
+      hasCoordinates: false,
+      utcInstant: null,
+      unsupported: readout.unsupported,
+      lineage: null,
+    };
+  }
   const topAspects = (readout.chart?.aspects ?? []).slice(0, 8).map((a) => ({
     a: a.a,
     b: a.b,
