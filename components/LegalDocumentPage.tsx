@@ -39,7 +39,7 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({
 
         <article className="bg-[#fdfdfb] text-[#222] shadow-[0_12px_48px_rgba(0,0,0,0.35)] border border-[#e4dfd5]">
           <header className="px-6 pt-8 pb-6 md:px-12 md:pt-12 md:pb-8 border-b border-black/8">
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#666] mb-3">
+            <p className="font-mono text-[10px] tracking-[0.3em] text-[#666] mb-3">
               Mimi · mimi.you
             </p>
             <h1 className="font-serif text-3xl md:text-5xl italic text-black tracking-tight mb-3">
