@@ -65,7 +65,7 @@ test.describe('Mimi E2E Experience', () => {
     await page.goto('/');
     await waitForStableUI(page);
 
-    await expect(page).toHaveScreenshot('worktable-shell.png', {
+    await expect(page).toHaveScreenshot('studio-orientation-entry.png', {
       fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.03,

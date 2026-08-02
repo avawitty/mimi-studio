@@ -103,19 +103,22 @@ export const canonicalizeMimiRoute = (segment: string): string => {
 export const CANON_MODULES: CanonModule[] = [
   {
     id: "studio",
-    name: "Studio / Worktable",
+    name: "Studio",
     layer: "chamber",
     engine: "Orchestration Engine",
     priority: 8,
     status: "live",
     canonicalRoute: "/studio",
     implementedMode: "studio",
-    component: "InputStudio",
-    aliases: ["Worktable"],
-    inputs: ["prompt text", "media references", "Tailor logic", "Pocket/Mood Board/Darkroom artifacts", "zine options"],
+    component: "StudioOrientationEntry",
+    aliases: ["Orientation", "Intake"],
+    inputs: ["prompt text", "media references", "approved context when present"],
     generations: ["provider routing", "prompt optimization", "Tailor-aware context synthesis", "asset injection"],
     outputs: ["mini zines", "creative roadmaps", "image prompts", "content briefs", "instruction packets"],
-    userFlow: "Start in Studio, combine fragments and references, and receive a structured creative artifact you can save or export.",
+    userFlow:
+      "Land on a calm orientation screen, compose in one multimodal field, begin with a single primary action. The archival StudioWorktable desk is migration-only at /studio/worktable-legacy.",
+    notes:
+      "Do not mount StudioWorktable at /studio. Legacy desk: /studio/worktable-legacy.",
   },
   {
     id: "scribe",

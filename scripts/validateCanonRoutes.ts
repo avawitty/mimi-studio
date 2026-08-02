@@ -80,6 +80,9 @@ const CHAMBER_COMPONENT_FILES: Record<string, string> = {
   ExportChamber: "components/ExportChamber.tsx",
   ChamberMapView: "components/chambers/ChamberMapView.tsx",
   ProsceniumView: "components/ProsceniumView.tsx",
+  StudioOrientationEntry: "components/studio/StudioOrientationEntry.tsx",
+  StudioWorktable: "components/worktable/StudioWorktable.tsx",
+  InputStudio: "components/InputStudio.tsx",
 };
 
 const failures: string[] = [];

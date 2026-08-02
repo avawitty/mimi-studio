@@ -57,8 +57,12 @@ export const ROUTE_ENTRY_BY_MODE: Record<string, LazyRouteEntry> =
  * for progressive extraction and Suspense boundaries.
  */
 export const LAZY_CHAMBERS = {
-  /** Default-export Hub — Studio Worktable middle ground */
-  studio: lazy(() => import("../components/worktable/StudioWorktable")),
+  /** Primary /studio entry — orientation + intake (not the archival worktable) */
+  studio: lazy(() => import("../components/studio/StudioOrientationEntry")),
+  /** Migration-only archival desk — must not be wired to /studio */
+  "studio-worktable-legacy": lazy(
+    () => import("../components/worktable/StudioWorktable"),
+  ),
   stand: lazy(() =>
     import("../components/TheStand").then((m) => ({ default: m.TheStand })),
   ),
