@@ -20,19 +20,27 @@ export const WorkSurface: React.FC<WorkSurfaceProps> = ({
     <div
       data-specimen="WT-004"
       className={`studio-worktable-v2 relative h-full min-h-0 overflow-hidden ${className}`.trim()}
-      style={{
-        backgroundColor: "var(--wt-paper, var(--mimi-manila-sheet, #f7f3e8))",
-        color: "var(--wt-ink, var(--mimi-ink-soft, #111110))",
-      }}
+      style={
+        {
+          /* Parchment / warm ivory — Hub QA palette */
+          "--wt-paper": "#f6f3ec",
+          "--wt-paper-2": "#f0ede6",
+          "--wt-line": "#d8d3c6",
+          "--wt-ink": "#1b1b19",
+          "--wt-ink-2": "#6b6a66",
+          backgroundColor: "#f6f3ec",
+          color: "#1b1b19",
+        } as React.CSSProperties
+      }
     >
-      {/* Pencil grid */}
+      {/* Pencil grid — softer on parchment */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        className="pointer-events-none absolute inset-0 opacity-[0.22]"
         style={{
           backgroundImage: `
-            linear-gradient(var(--wt-line, var(--mimi-hairline, #d8d4c9)) 1px, transparent 1px),
-            linear-gradient(90deg, var(--wt-line, var(--mimi-hairline, #d8d4c9)) 1px, transparent 1px)
+            linear-gradient(var(--wt-line, #d8d3c6) 1px, transparent 1px),
+            linear-gradient(90deg, var(--wt-line, #d8d3c6) 1px, transparent 1px)
           `,
           backgroundSize: "24px 24px",
         }}

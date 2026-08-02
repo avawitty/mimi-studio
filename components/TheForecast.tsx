@@ -67,10 +67,18 @@ export const TheForecast: React.FC<{
 }> = ({ navigate }) => {
   const { user, profile, apiKeys } = useUser();
   const [forecastingScope, setForecastingScope] = useState<ForecastScope>("personal");
-  const [selectedVector, setSelectedVector] = useState<ForecastVector>("overview");
+  const [selectedVector, setSelectedVector] = useState<ForecastVector>(
+    user ? "overview" : "culture",
+  );
   const [contentForecast, setContentForecast] = useState<ResearchSynthesisResponse | null>(null);
   const [cultureReport, setCultureReport] = useState<ForecastReport | null>(null);
   const [isPingingLabs, setIsPingingLabs] = useState(false);
+
+  useEffect(() => {
+    if (!user && selectedVector !== "culture") {
+      setSelectedVector("culture");
+    }
+  }, [user, selectedVector]);
 
   useEffect(() => {
     if (selectedVector !== "content" || contentForecast) return;
@@ -94,25 +102,44 @@ export const TheForecast: React.FC<{
     let cancelled = false;
     const observed = loadMeanMedianModeReport("demonstration");
     const feedEntryCount = loadApprovedFeedEntries().length;
-    // Content research may already be loaded; culture still works offline from MMM alone.
-    void (contentForecast
-      ? Promise.resolve(contentForecast)
-      : fetchContentForecast(apiKeys)
-    ).then((external) => {
-      if (cancelled) return;
-      setCultureReport(
-        buildForecastReport({
-          observed,
-          external,
-          feedEntryCount,
-          runId: `forecast-culture-${observed.runId}`,
-        }),
-      );
-    });
+    // Always compose from MMM first so Cultural never hangs on research fetch.
+    setCultureReport(
+      buildForecastReport({
+        observed,
+        external: contentForecast,
+        feedEntryCount,
+        runId: `forecast-culture-${observed.runId}`,
+      }),
+    );
+
+    // Anonymous culture views keep the offline MMM report only — no gateway synthesis.
+    if (contentForecast || !user) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void fetchContentForecast(apiKeys)
+      .then((external) => {
+        if (cancelled) return;
+        setCultureReport(
+          buildForecastReport({
+            observed,
+            external,
+            feedEntryCount,
+            runId: `forecast-culture-${observed.runId}`,
+          }),
+        );
+        setContentForecast(external);
+      })
+      .catch(() => {
+        /* keep MMM-only report already set */
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [selectedVector, contentForecast, apiKeys]);
+  }, [selectedVector, contentForecast, apiKeys, user]);
 
   const go = (view: string) => {
     if (navigate) {
@@ -176,14 +203,8 @@ export const TheForecast: React.FC<{
             </p>
           </div>
 
-          {!user ? (
-            <div className="min-h-[240px] flex items-center justify-center border border-dashed border-nous-border px-6 py-12">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle text-center">
-                {FORECAST_COPY.identityRequired}
-              </p>
-            </div>
-          ) : (
-            <>
+          <>
+              {user ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-nous-border pb-4">
                 <div
                   className="inline-flex w-full sm:w-auto border border-nous-border"
@@ -219,20 +240,29 @@ export const TheForecast: React.FC<{
                     : FORECAST_COPY.personalScopeNote}
                 </p>
               </div>
+              ) : (
+                <p className="font-sans text-[11px] text-nous-subtle leading-relaxed max-w-2xl border border-dashed border-nous-border px-4 py-3">
+                  {FORECAST_COPY.identityRequired} Cultural vector still reads Observatory baselines without a personal season.
+                </p>
+              )}
 
               <div
                 className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1"
                 role="tablist"
                 aria-label="Forecast vectors"
               >
-                {VECTOR_TABS.map((tab) => (
+                {VECTOR_TABS.map((tab) => {
+                  const needsIdentity = tab.id !== "culture";
+                  const disabled = needsIdentity && !user;
+                  return (
                   <button
                     key={tab.id}
                     type="button"
                     role="tab"
                     aria-selected={selectedVector === tab.id}
+                    disabled={disabled}
                     onClick={() => setSelectedVector(tab.id)}
-                    className={`shrink-0 px-3 py-2 border font-mono text-[9px] uppercase tracking-widest inline-flex items-center gap-1.5 ${
+                    className={`shrink-0 px-3 py-2 border font-mono text-[9px] uppercase tracking-widest inline-flex items-center gap-1.5 disabled:opacity-40 ${
                       selectedVector === tab.id
                         ? "bg-nous-text text-nous-base border-nous-text"
                         : "bg-nous-surface text-nous-subtle border-nous-border hover:text-nous-text"
@@ -241,10 +271,19 @@ export const TheForecast: React.FC<{
                     {tab.icon}
                     {tab.label}
                   </button>
-                ))}
+                  );
+                })}
               </div>
 
-              {selectedVector === "overview" && (
+              {!user && selectedVector !== "culture" ? (
+                <div className="min-h-[160px] flex items-center justify-center border border-dashed border-nous-border px-6 py-12">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle text-center">
+                    {FORECAST_COPY.identityRequired}
+                  </p>
+                </div>
+              ) : null}
+
+              {user && selectedVector === "overview" && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[minmax(160px,auto)]">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -434,7 +473,7 @@ export const TheForecast: React.FC<{
                 </div>
               )}
 
-              {selectedVector === "content" && (
+              {user && selectedVector === "content" && (
                 <div className="flex flex-col gap-4">
                   <div className="border border-nous-border/60 bg-nous-surface/60 px-3 py-2">
                     <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle leading-relaxed">
@@ -569,7 +608,6 @@ export const TheForecast: React.FC<{
                 )
               )}
             </>
-          )}
         </div>
       </div>
     </ChamberShell>

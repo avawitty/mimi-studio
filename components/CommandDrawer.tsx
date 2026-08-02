@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Sparkles, Radar, X, Loader2, Image as ImageIcon, Search, Check } from 'lucide-react';
 import { GoogleGenAI } from"@google/genai";
 import { getClient } from '../services/geminiClient';
 import { SignatureUI } from './SignatureUI';
 import { searchGrounding } from '../services/searchService';
 import { saveArtifactLocally } from '../services/localArchive';
+import { useFeedback } from '../hooks/useFeedback';
+import { resolveMotionVariant } from '../lib/motion';
 
 interface CommandDrawerProps {
  isOpen: boolean;
@@ -14,6 +16,10 @@ interface CommandDrawerProps {
 }
 
 export const CommandDrawer: React.FC<CommandDrawerProps> = ({ isOpen, onClose, context }) => {
+ const feedback = useFeedback();
+ const reduceMotion = Boolean(useReducedMotion());
+ const sheet = resolveMotionVariant('sheetEnter', reduceMotion);
+ const settle = resolveMotionVariant('settleIntoRegistry', reduceMotion);
  const [activeTab, setActiveTab] = useState<'image' | 'search'>('image');
  const [prompt, setPrompt] = useState(context || '');
  const [generating, setGenerating] = useState(false);
@@ -74,10 +80,10 @@ export const CommandDrawer: React.FC<CommandDrawerProps> = ({ isOpen, onClose, c
  <AnimatePresence>
  {isOpen && (
  <motion.div
- initial={{ opacity: 0, scale: 0.95, y: 20 }}
- animate={{ opacity: 1, scale: 1, y: 0 }}
- exit={{ opacity: 0, scale: 0.95, y: 20 }}
- transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+ initial={sheet.initial}
+ animate={sheet.animate}
+ exit={sheet.exit}
+ transition={sheet.transition}
  className="fixed inset-0 z-[5000] bg-nous-base/90 backdrop-blur-xl flex items-center justify-center p-8"
  >
  <div className="max-w-5xl w-full">
@@ -120,7 +126,10 @@ export const CommandDrawer: React.FC<CommandDrawerProps> = ({ isOpen, onClose, c
  {generatedImage && (
  <div className="mt-4 space-y-2">
  <img src={generatedImage} alt="Generated"className="w-full h-80 object-cover border border-nous-border"/>
- <button 
+ <motion.button 
+ initial={false}
+ animate={isSaved ? settle.animate : { opacity: 1 }}
+ transition={settle.transition}
  onClick={async () => {
  try {
  await saveArtifactLocally({
@@ -130,15 +139,17 @@ export const CommandDrawer: React.FC<CommandDrawerProps> = ({ isOpen, onClose, c
  timestamp: Date.now()
  });
  setIsSaved(true);
+ feedback.trigger('artifact.saved', { confirmed: true });
  setTimeout(() => setIsSaved(false), 2000);
  } catch (error) {
  console.error("MIMI // Failed to save artifact locally:", error);
+ feedback.trigger('action.failed');
  }
  }}
  className={`w-full py-2 text-xs uppercase tracking-widest transition-colors ${isSaved ? 'bg-green-900 text-green-100' : 'bg-nous-base text-nous-subtle hover:bg-nous-base hover:text-nous-text'}`}
  >
  {isSaved ? <span className="flex items-center justify-center gap-2"><Check size={14}/> Saved</span> : 'Save to Archive'}
- </button>
+ </motion.button>
  </div>
  )}
  </div>

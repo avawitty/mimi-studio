@@ -90,8 +90,8 @@ export const MimiZineLayout: React.FC = () => {
         {/* Footer */}
         <footer className="px-12 py-8 flex justify-end items-end">
           <div className="flex gap-8 font-sans text-[9px] uppercase tracking-[0.2em] text-nous-subtle">
-            <a href="#">PRIVACY</a>
-            <a href="#">COMMUNITY</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/tos">Terms</a>
           </div>
         </footer>
       </main>

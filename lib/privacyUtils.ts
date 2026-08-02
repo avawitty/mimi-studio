@@ -14,10 +14,14 @@ export function truncateUid(
 export function sanitizeUsedContextForExport(
   snapshots: UsedContextSnapshot[],
 ): UsedContextSnapshot[] {
-  return snapshots.map(({ atomId, title, source }) => ({
-    atomId,
-    title: title || "Fragment",
-    source,
-    content: "",
-  }));
+  return snapshots
+    .filter((snapshot) => snapshot.visibility?.export !== false)
+    .map(({ atomId, title, source, capturedAt, visibility }) => ({
+      atomId,
+      title: title || "Fragment",
+      source,
+      capturedAt,
+      visibility,
+      content: "",
+    }));
 }

@@ -51,7 +51,7 @@ export const InstrumentBar: React.FC<InstrumentBarProps> = ({
         data-specimen="WT-007"
         role="toolbar"
         aria-label="Studio instruments"
-        className={`hidden lg:flex flex-col items-center gap-1 py-3 px-2 border border-[var(--wt-line,#d8d4c9)] bg-[var(--wt-paper-2,var(--mimi-manila-body,#f0e6c8))] sticky top-4 self-start ${className}`.trim()}
+        className={`hidden lg:flex flex-col items-center gap-1 py-3 px-2 border border-[var(--wt-line,#d8d3c6)] bg-[var(--wt-paper-2,#f0ede6)] sticky top-4 self-start ${className}`.trim()}
       >
         {instruments.map((item) => (
           <InstrumentButton key={item.id} item={item} onSelect={onSelect} />
@@ -65,7 +65,7 @@ export const InstrumentBar: React.FC<InstrumentBarProps> = ({
       data-specimen="WT-007"
       role="toolbar"
       aria-label="Studio instruments"
-      className={`flex lg:hidden items-stretch justify-between gap-0.5 px-2 py-1.5 border border-[var(--wt-line,#d8d4c9)] bg-[var(--wt-paper-2,var(--mimi-manila-body,#f0e6c8))] ${className}`.trim()}
+      className={`flex lg:hidden items-stretch justify-between gap-0.5 px-2 py-1.5 border border-[var(--wt-line,#d8d3c6)] bg-[var(--wt-paper-2,#f0ede6)] ${className}`.trim()}
     >
       {instruments.map((item) => (
         <InstrumentButton key={item.id} item={item} onSelect={onSelect} />
