@@ -183,7 +183,7 @@ const buildZineBodyHtml = (metadata: ZineMetadata): string => {
     <p style="font-family:Georgia,serif;font-size:18px;font-style:italic;color:#444;">"${mirror}"</p>
     <blockquote style="border-left:3px solid #111;padding-left:16px;margin:24px 0;font-style:italic;">${thesis}</blockquote>
     ${pages}
-    <p style="font-family:monospace;font-size:9px;color:#999;margin-top:32px;">Provenance: Mimi Zine ${metadata.id} · @${metadata.userHandle}</p>
+    <p style="font-family:monospace;font-size:9px;color:#999;margin-top:32px;">Provenance: Mimi ${metadata.id} · @${metadata.userHandle}</p>
   </div>`;
 };
 

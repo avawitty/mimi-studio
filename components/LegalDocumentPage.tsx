@@ -16,8 +16,8 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#18181A] flex flex-col items-center justify-center p-6 md:p-12 relative overflow-hidden text-nous-base">
-      <div className="absolute top-10 left-10 text-[#555] font-mono text-xs uppercase tracking-widest pointer-events-none hidden md:block">
-        MIMI ZINE ARCHIVE
+      <div className="absolute top-10 left-10 text-[#555] font-mono text-xs tracking-widest pointer-events-none hidden md:block">
+        Mimi Archive
       </div>
       <div className="absolute top-10 right-10 text-[#555] font-mono text-xs text-right uppercase tracking-widest pointer-events-none hidden md:block">
         [ REF: REPOSITORY ]

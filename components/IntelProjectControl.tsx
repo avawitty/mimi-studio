@@ -67,7 +67,7 @@ export const IntelProjectControl: React.FC<IntelProjectControlProps> = ({
       return hydrated;
     }
     if (restored) return restored;
-    const created = createIntelProjectRun('Mimi Zine');
+    const created = createIntelProjectRun('Mimi');
     writeIntelProjectRun(created);
     return created;
   });

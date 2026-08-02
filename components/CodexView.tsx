@@ -613,7 +613,7 @@ export const CodexView: React.FC = () => {
               <div>
                 <h1 className="font-serif italic text-3xl text-nous-text">The Codex</h1>
                 <p className="font-sans text-[10px] uppercase tracking-[0.2em] text-nous-subtle mt-1">
-                  The interpretive engine & manual of Mimi Zine
+                  The interpretive engine & manual of Mimi
                 </p>
               </div>
             </div>
@@ -729,7 +729,7 @@ export const CodexView: React.FC = () => {
               className="space-y-12"
             >
               <div className="prose prose-invert prose-p:font-serif prose-p:text-sm prose-p:leading-relaxed prose-p:text-nous-subtle max-w-none mb-12">
-                <h2 className="font-serif italic text-2xl text-nous-text mb-4">How to utilize Mimi Zine</h2>
+                <h2 className="font-serif italic text-2xl text-nous-text mb-4">How to utilize Mimi</h2>
                 <p>
                   Mimi is a systemic machine for aesthetic synthesis. It is designed to help you externalize your taste, analyze its DNA, and re-infuse it into structured outputs like Zines, Reports, and Scry readings.
                 </p>

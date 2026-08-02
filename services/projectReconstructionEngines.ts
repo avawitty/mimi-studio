@@ -156,7 +156,7 @@ const artifactCapabilities: Capability[] = [
   },
   {
     id: "mimizine-evidence-governance",
-    label: "MimiZine Evidence Governance",
+    label: "Mimi Evidence Governance",
     description: "Keeps observed, inferred, confirmed, rejected, and speculative claims separate.",
   },
 ];
@@ -210,7 +210,7 @@ const inferArtifactType = (artifact: ProjectArtifact): string => {
 
 const inferProjectName = (input: ProjectReconstructionContext): string => {
   const joined = input.artifacts.map((artifact) => `${artifact.name}\n${artifact.content}`).join("\n").toLowerCase();
-  if (joined.includes("mimi")) return "Mimi / MimiZine";
+  if (joined.includes("mimi")) return "Mimi";
   if (joined.includes("project")) return "Unspecified project system";
   return "Unknown project";
 };
@@ -247,7 +247,7 @@ Summarize the prompting workflow rather than summarizing the artifact.
 `,
   persistKnowledge: `
 Identify all information that should become persistent project knowledge, including architecture, product decisions, API decisions, component patterns, UX conventions, brand rules, engineering constraints, state machines, and business rules.
-MimiZine-specific rules must persist: every inference links to supporting evidence; Observed, Inferred, User-Confirmed, User-Rejected, and Speculative are separate states; the user is the final editor; dolls are projections, never source of truth; art history is thematic comparison, never identity or diagnostic claim; transformation matters more than imitation.
+Mimi-specific rules must persist: every inference links to supporting evidence; Observed, Inferred, User-Confirmed, User-Rejected, and Speculative are separate states; the user is the final editor; dolls are projections, never source of truth; art history is thematic comparison, never identity or diagnostic claim; transformation matters more than imitation.
 `,
   nextPrompts: `
 Based on the recovered workflow, generate the prompts that naturally come next for engineering, implementation, UI refinement, API development, testing, documentation, launch, and maintenance.
@@ -346,7 +346,7 @@ export const recoverInputsEngine = makeEngine<RecoveredInputs>({
           userEditable: true,
         },
         {
-          claim: "Recovered prompt systems should support transformation into MimiZine outputs without classifying the user.",
+          claim: "Recovered prompt systems should support transformation into Mimi outputs without classifying the user.",
           status: "inferred",
           supportingEvidence: allArtifactEvidence(input),
           userEditable: true,
@@ -539,7 +539,7 @@ export const generateNextPromptsEngine = makeEngine<NextPromptSet>({
       uiRefinement: "Create a dense project-analysis dashboard that makes evidence, inference, confidence, user confirmations, user rejections, and next actions scannable without hiding the prompt lineage.",
       apiDevelopment: "Expose a project reconstruction endpoint that accepts artifacts, runs the engine pipeline, and returns typed report and HTML dashboard payloads.",
       testing: "Add unit tests for validation failures, evidence-linked inferences, provenance generation, prompt lineage ordering, projection/source-of-truth boundaries, and no-placeholder HTML output.",
-      documentation: "Document the engine contract, each stage's input/output shape, and the user flow from artifact drop to reproducible build report. Include MimiZine rules: Taste Graph is source of truth, dolls are projections, art history is thematic comparison, and the user is final editor.",
+      documentation: "Document the engine contract, each stage's input/output shape, and the user flow from artifact drop to reproducible build report. Include Mimi rules: Taste Graph is source of truth, dolls are projections, art history is thematic comparison, and the user is final editor.",
       launch: "Prepare a release checklist covering data privacy, artifact size limits, error states, and export formats.",
       maintenance: "Review engine feedback logs and promote stable recovered decisions into persistent project memory.",
     };
@@ -622,7 +622,7 @@ export const projectReconstructionReportEngine = makeEngine<ProjectReconstructio
       maintenance: "",
     };
     return {
-      executiveSummary: "The artifacts describe a recoverable MimiZine project workflow: evidence is observed first, inferences stay reviewable, the Taste Graph remains the source of truth, and projections become creative outputs rather than identity claims.",
+      executiveSummary: "The artifacts describe a recoverable Mimi project workflow: evidence is observed first, inferences stay reviewable, the Taste Graph remains the source of truth, and projections become creative outputs rather than identity claims.",
       recoveredInputs,
       recoveredPromptSet,
       workflowDiagram,

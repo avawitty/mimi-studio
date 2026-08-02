@@ -608,7 +608,7 @@ app.get('/api/og/zine', async (req, res) => {
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>${escapeHtml(title)} | MimiZine Editorial</title>
+  <title>${escapeHtml(title)} | Mimi</title>
   <meta name="description" content="${escapeHtml(description)}" />
   <meta property="og:title" content="${escapeHtml(title)}" />
   <meta property="og:description" content="${escapeHtml(description)}" />

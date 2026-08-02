@@ -48,7 +48,7 @@ export const AVainLife: React.FC = () => {
  onClick={() => window.dispatchEvent(new CustomEvent('mimi:change_view', { detail: 'studio' }))}
  className="inline-flex items-center justify-between w-full p-4 border border hover:bg-white hover:text-black transition-all duration-300 group text-left mb-4"
  >
- <span className="text-xs uppercase tracking-[0.2em] font-mono font-bold">Access Mimi Zine</span>
+ <span className="text-xs tracking-[0.2em] font-mono font-bold">Access Mimi</span>
  <ArrowUpRight size={16} className="group-hover:rotate-45 transition-transform duration-300"/>
  </button>
 

@@ -554,7 +554,7 @@ export const SolitarianCaseStudy: React.FC<{ onClose?: () => void }> = ({ onClos
                   {selectedPreviewPage === 2 && "Page 3 outlines the emotional vectors, resolution parameters, and primary system conflict."}
                   {selectedPreviewPage === 3 && "Page 4 builds the Taste Constellation and mental nodes mapping coordinates."}
                   {selectedPreviewPage === 4 && "Page 5 establishes the micro-specifications of the visual operating physical systems."}
-                  {selectedPreviewPage === 5 && "Page 6 presents the ultimate prompt to trigger the Mimi Zine generation engine."}
+                  {selectedPreviewPage === 5 && "Page 6 presents the ultimate prompt to trigger the Mimi generation engine."}
                 </div>
               </div>
             </div>
@@ -599,7 +599,7 @@ export const SolitarianCaseStudy: React.FC<{ onClose?: () => void }> = ({ onClos
           {/* Top Classification Segment */}
           <div className="flex justify-between items-start border-b border-stone-900 pb-4 font-mono text-[8px] uppercase tracking-[0.25em] text-[#78716C] z-10">
             <div>
-              <span>Mimi Zine // Case Study</span>
+              <span>Mimi // Case Study</span>
               <br />
               <span className="text-[7px] text-stone-500 font-bold">SOLITARIAN PROTOCOL v0.1</span>
             </div>

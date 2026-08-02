@@ -295,6 +295,23 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         ],
       },
       {
+        mode: "house",
+        label: "The House",
+        note: "four-floor editorial loop",
+        keywords: [
+          "house",
+          "floors",
+          "ingest",
+          "curate",
+          "plate",
+          "penthouse",
+          "ascension",
+          "editorial house",
+          "debris",
+          "issue",
+        ],
+      },
+      {
         mode: "geo_engine",
         label: "GEO Engine",
         note: "search/signal profile",
