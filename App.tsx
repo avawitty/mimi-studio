@@ -2297,6 +2297,7 @@ export const App: React.FC = () => {
     residue: "Residue",
     observatory: "The Observatory",
     "mean-median-mode": "Mean Median Mode",
+    forecast: "Forecast",
     "celestial-calibration": "Celestial Calibration",
   };
 
@@ -2787,7 +2788,9 @@ export const App: React.FC = () => {
                         )}
                         {viewMode === "brand-intake" && <BrandIntakeView />}
                         {viewMode === "intel-hub" && <IntelHub />}
-                        {viewMode === "forecast" && <TheForecast />}
+                        {viewMode === "forecast" && (
+                          <TheForecast navigate={navigate} />
+                        )}
                         {viewMode === "qc_engine" && <ColorQCEngine />}
                         {viewMode === "scribe" && <ScribeChamber />}
                         {viewMode === "mimi-dolls" && (

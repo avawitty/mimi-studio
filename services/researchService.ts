@@ -37,7 +37,7 @@ export const fetchContentForecast = async (apiKeys?: Record<string, string>): Pr
       if (hasExa) {
         // Simulated Exa Neural Search Response mapped to our interface
         resolve({
-          provider: 'Exa Neural Search',
+          provider: 'Simulated · Exa Neural Search',
           synthesis: "[Exa Synthesized] The current neural graph shows dense clustering around low-fidelity visual media combined with high-fidelity audio.",
           trends: [
             {
@@ -52,7 +52,7 @@ export const fetchContentForecast = async (apiKeys?: Record<string, string>): Pr
       } else if (hasPerplexity) {
         // Simulated Perplexity Sonar Response mapped to our interface
         resolve({
-          provider: 'Perplexity Sonar',
+          provider: 'Simulated · Perplexity Sonar',
           synthesis: "[Perplexity Indexed] Analysis of 10,000 recent tech newsletters indicates a hard pivot towards 'Slow Web' architectures.",
           trends: [
             {
@@ -66,7 +66,7 @@ export const fetchContentForecast = async (apiKeys?: Record<string, string>): Pr
         });
       } else if (hasTavily) {
         resolve({
-          provider: 'Tavily Agentic Search',
+          provider: 'Simulated · Tavily Agentic Search',
           synthesis: "[Tavily Agent] Deep web scraping suggests a revival in decentralized, self-hosted blogs interlinked via WebRings.",
           trends: [
             {
@@ -81,7 +81,9 @@ export const fetchContentForecast = async (apiKeys?: Record<string, string>): Pr
       } else {
         // Default to ThinkingLabs (simulated/mock response if no keys, or if thinkinglabs key is present)
         resolve({
-          provider: hasThinkingLabs ? 'ThinkingLabs API' : 'ThinkingLabs (Mock Mode)',
+          provider: hasThinkingLabs
+            ? 'Simulated · ThinkingLabs API'
+            : 'Simulated · ThinkingLabs (Mock Mode)',
           synthesis: "Pivot towards artifact-based storytelling. The audience is exhausted by direct address; they prefer to discover meaning through curated, heavily-sourced fragments.",
           trends: [
             {
