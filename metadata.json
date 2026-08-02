@@ -1,7 +1,7 @@
 {
-  "name": "Remix: mimi zine",
-  "short_name": "mimi",
-  "description": "The Architecture of Perception: A pretentiously minimalist editor for the aesthetic superintelligence.",
+  "name": "Mimi",
+  "short_name": "Mimi",
+  "description": "Private AI editorial studio for taste, identity, and image-making.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FDFBF7",

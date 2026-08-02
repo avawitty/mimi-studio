@@ -1,14 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { getUserByHandle } from '../services/firebaseUtils';
 import { UserProfile } from '../types';
-import { Share2 } from 'lucide-react';
 import { injectZineSEO } from '../utils/seoHelper';
+import {
+  PublicField,
+  MimiWordmark,
+  ColumnRule,
+  PressMark,
+  PublicCTA,
+} from './public-face';
 
 const SEOInjector: React.FC<{ profile: UserProfile }> = ({ profile }) => {
   injectZineSEO({
     title: `@${profile.handle}`,
-    description: profile.tasteProfile?.semantic_signature || "Aesthetic Profile",
-    imageUrl: profile.photoURL || "https://raw.githubusercontent.com/Aris-A-C/mimi-assets/main/mimi_logo_new.png",
+    description: profile.tasteProfile?.semantic_signature || 'Aesthetic Profile',
+    imageUrl:
+      profile.photoURL ||
+      'https://raw.githubusercontent.com/Aris-A-C/mimi-assets/main/mimi_logo_new.png',
     authorName: profile.handle,
     publishDate: new Date().toISOString(),
   });
@@ -16,83 +24,109 @@ const SEOInjector: React.FC<{ profile: UserProfile }> = ({ profile }) => {
 };
 
 export const PublicSharePage: React.FC = () => {
- const [profile, setProfile] = useState<UserProfile | null>(null);
- const [loading, setLoading] = useState(true);
- const handle = window.location.pathname.split('/@')[1];
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const handle = window.location.pathname.split('/@')[1];
 
- useEffect(() => {
- const fetchProfile = async () => {
- if (handle) {
- const p = await getUserByHandle(handle);
- setProfile(p);
- }
- setLoading(false);
- };
- fetchProfile();
- }, [handle]);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (handle) {
+        const p = await getUserByHandle(handle);
+        setProfile(p);
+      }
+      setLoading(false);
+    };
+    fetchProfile();
+  }, [handle]);
 
- if (loading) return <div className="h-screen flex items-center justify-center font-serif italic text-nous-subtle">Manifesting...</div>;
- if (!profile) return <div className="h-screen flex items-center justify-center font-serif italic text-nous-subtle">Registry not found.</div>;
+  if (loading) {
+    return (
+      <PublicField className="h-screen flex items-center justify-center font-serif italic text-[var(--mimi-stone)]">
+        Manifesting…
+      </PublicField>
+    );
+  }
+  if (!profile) {
+    return (
+      <PublicField className="h-screen flex items-center justify-center font-serif italic text-[var(--mimi-stone)]">
+        Registry not found.
+      </PublicField>
+    );
+  }
 
- return (
- <div className="min-h-screen bg p-8 md:p-16 flex flex-col items-center">
- <SEOInjector profile={profile} />
- <div className="max-w-2xl w-full space-y-8">
- <div className="text-center space-y-2">
- <h1 className="font-header italic text-5xl text-nous-text ">@{profile.handle}</h1>
- <p className="font-sans text-[10px] uppercase tracking-[0.4em] text-nous-subtle font-black">Sovereign Identity</p>
- </div>
- 
- <div className="w-full bg-white rounded-none border border-nous-border p-8">
- <h2 className="font-serif italic text-2xl text-nous-text text-nous-text mb-2">Aesthetic Identity</h2>
- <p className="font-sans text-[10px] uppercase tracking-widest text-nous-subtle mb-6">Semantic Baseline</p>
+  return (
+    <PublicField className="min-h-screen p-8 md:p-16 flex flex-col items-center">
+      <SEOInjector profile={profile} />
+      <div className="max-w-2xl w-full space-y-10">
+        <div className="space-y-4 text-center">
+          <MimiWordmark size="sm" className="inline-block" />
+          <h1 className="font-serif italic text-5xl text-[var(--mimi-ink)]">
+            @{profile.handle}
+          </h1>
+          <PressMark label="Public stand" />
+        </div>
 
- {profile?.tasteProfile ? (
- <div className="space-y-6">
- <div>
- <h3 className="text-[10px] uppercase tracking-widest font-mono text-nous-subtle mb-3">Dominant Archetypes</h3>
- <div className="flex flex-wrap gap-2">
- {profile.tasteProfile.dominant_archetypes.map((archetype, i) => (
- <span key={i} className="px-4 py-2 bg-nous-base text-nous-text text-xs font-mono rounded-none border border-nous-border">
- {archetype}
- </span>
- ))}
- </div>
- </div>
- {profile.tasteProfile.constraints && profile.tasteProfile.constraints.length > 0 && (
- <div>
- <h3 className="text-[10px] uppercase tracking-widest font-mono text-nous-subtle mb-3">Constraints</h3>
- <div className="flex flex-wrap gap-2">
- {profile.tasteProfile.constraints.map((constraint, i) => (
- <span key={i} className="px-4 py-2 bg-nous-base /50 text-nous-subtle text-xs font-mono rounded-none border border-nous-border">
- {constraint}
- </span>
- ))}
- </div>
- </div>
- )}
- </div>
- ) : (
- <div className="text-center p-8 border border-dashed border-nous-border rounded-none">
- <p className="font-mono text-xs text-nous-subtle uppercase tracking-widest">No Graph Data Detected</p>
- </div>
- )}
- </div>
+        <ColumnRule />
 
- <div className="p-6 border border-nous-border rounded-none bg-nous-base /50">
- <h3 className="font-sans text-[10px] uppercase tracking-widest font-black text-nous-subtle mb-4">Aesthetic Profile</h3>
- <p className="font-serif italic text-nous-subtle leading-relaxed">
- {profile.tasteProfile?.semantic_signature ||"This registry has not yet manifested a descriptive signature."}
- </p>
- </div>
+        <div className="w-full space-y-6 py-2">
+          <div>
+            <h2 className="font-serif italic text-2xl text-[var(--mimi-ink)] mb-2">
+              Aesthetic identity
+            </h2>
+            <p className="font-sans text-[10px] uppercase tracking-[0.28em] text-[var(--mimi-stone)]">
+              Semantic baseline
+            </p>
+          </div>
 
- <button 
- onClick={() => navigator.clipboard.writeText(window.location.href).catch(e => console.error("MIMI // Clipboard error", e))}
- className="w-full py-4 bg-nous-base  text-white rounded-none font-sans text-[10px] uppercase tracking-[0.4em] font-black flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
- >
- <Share2 size={14} /> Share Taste Graph
- </button>
- </div>
- </div>
- );
+          {profile?.tasteProfile ? (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-[10px] uppercase tracking-[0.22em] font-sans text-[var(--mimi-stone)] mb-3">
+                  Dominant archetypes
+                </h3>
+                <p className="font-serif italic text-lg leading-relaxed">
+                  {(profile.tasteProfile.dominant_archetypes || []).join(' · ') ||
+                    'Awaiting approval'}
+                </p>
+              </div>
+              {profile.tasteProfile.constraints &&
+                profile.tasteProfile.constraints.length > 0 && (
+                  <div>
+                    <h3 className="text-[10px] uppercase tracking-[0.22em] font-sans text-[var(--mimi-stone)] mb-3">
+                      Constraints
+                    </h3>
+                    <p className="font-serif text-base text-[var(--mimi-stone)] leading-relaxed">
+                      {profile.tasteProfile.constraints.join(' · ')}
+                    </p>
+                  </div>
+                )}
+            </div>
+          ) : (
+            <p className="font-serif italic text-[var(--mimi-stone)]">
+              No graph data detected.
+            </p>
+          )}
+        </div>
+
+        <ColumnRule />
+
+        <div className="space-y-4">
+          <h3 className="font-sans text-[10px] uppercase tracking-[0.28em] text-[var(--mimi-stone)]">
+            Aesthetic profile
+          </h3>
+          <p className="font-serif italic text-[var(--mimi-ink)] leading-relaxed">
+            {profile.tasteProfile?.semantic_signature ||
+              'A private archive of approved taste — provenance intact.'}
+          </p>
+          <PublicCTA
+            onClick={() => {
+              window.location.href = '/';
+            }}
+          >
+            Enter Mimi
+          </PublicCTA>
+        </div>
+      </div>
+    </PublicField>
+  );
 };
