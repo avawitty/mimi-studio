@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { useUser } from "../../contexts/UserContext";
 import {
   dispatchChamberIntent,
   type ChamberIntent,
@@ -60,6 +61,25 @@ interface DossierContextValue extends StudioContextState {
 
 const STORAGE_KEY = "mimi:studio-context:v1";
 
+function scopedStorageKey(uid: string | undefined, override?: string): string {
+  if (override) return override;
+  return `${STORAGE_KEY}::${uid ?? "local"}`;
+}
+
+function migrateLegacyStudioContext(uid: string): void {
+  if (typeof window === "undefined") return;
+  const scopedKey = scopedStorageKey(uid);
+  if (window.localStorage.getItem(scopedKey)) return;
+  const legacy = window.localStorage.getItem(STORAGE_KEY);
+  if (!legacy) return;
+  try {
+    window.localStorage.setItem(scopedKey, legacy);
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in private browsing.
+  }
+}
+
 export const EMPTY_STUDIO_CONTEXT: StudioContextState = {
   activeDossier: null,
   recentMaterials: [],
@@ -103,11 +123,28 @@ export interface DossierProviderProps {
 export const DossierProvider: React.FC<DossierProviderProps> = ({
   children,
   initialState,
-  storageKey = STORAGE_KEY,
+  storageKey: storageKeyOverride,
 }) => {
-  const [state, setState] = useState<StudioContextState>(() =>
-    readStoredContext(storageKey, initialState),
+  const { user } = useUser();
+  const storageKey = useMemo(
+    () => scopedStorageKey(user?.uid, storageKeyOverride),
+    [storageKeyOverride, user?.uid],
   );
+
+  const [state, setState] = useState<StudioContextState>(() => {
+    if (initialState) return initialState;
+    if (storageKeyOverride) {
+      return readStoredContext(storageKeyOverride);
+    }
+    migrateLegacyStudioContext(user?.uid ?? "local");
+    return readStoredContext(scopedStorageKey(user?.uid));
+  });
+
+  useEffect(() => {
+    if (initialState || storageKeyOverride) return;
+    migrateLegacyStudioContext(user?.uid ?? "local");
+    setState(readStoredContext(scopedStorageKey(user?.uid)));
+  }, [initialState, storageKeyOverride, user?.uid]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
