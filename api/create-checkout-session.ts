@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { readJsonBody, requireMethod, sendError, sendJson, validateBody } from "../lib/apiUtils.js";
 import {
@@ -12,7 +13,14 @@ const checkoutSchema = z.object({
   interval: z.enum(["month", "year"]).optional(),
 });
 
-const PAID_LEGACY = new Set(["core", "optioning", "pro", "lab"]);
+const NON_TERMINAL_SUBSCRIPTION_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "incomplete",
+  "paused",
+]);
 
 export default async function handler(req: any, res: any) {
   if (!requireMethod(req, res, "POST")) return;
@@ -63,20 +71,49 @@ export default async function handler(req: any, res: any) {
     const protocol = String(req.headers["x-forwarded-proto"] || "https").split(",")[0];
     const baseUrl = configuredBase || `${protocol}://${forwardedHost}`;
 
+    if (process.env.MIMI_NEON_STRIPE_RECONCILIATION === "1") {
+      const [{ isNeonOperationalDatabaseConfigured }, { getNeonUnitOfWork }] =
+        await Promise.all([
+          import("../infrastructure/database/neon/connection.js"),
+          import("../infrastructure/database/neon/unitOfWork.js"),
+        ]);
+      if (!isNeonOperationalDatabaseConfigured()) {
+        sendError(
+          res,
+          503,
+          "Mimi billing reconciliation is not ready.",
+          "BILLING_UNAVAILABLE",
+        );
+        return;
+      }
+      const membership =
+        await getNeonUnitOfWork().repositories.memberships.findForUser(
+          decoded.uid,
+        );
+      customerId = membership?.providerCustomerId || customerId;
+    }
+
     // Ensure a durable Stripe Customer exists before Checkout so portal + webhooks
     // always resolve to the same Firebase uid.
     if (!customerId.startsWith("cus_")) {
       const customer = await stripe.customers.create({
         email: decoded.email || undefined,
-        metadata: { userId: decoded.uid },
+        metadata: { userId: decoded.uid, firebaseUid: decoded.uid },
+      }, {
+        idempotencyKey: `mimi-customer-${decoded.uid}`,
       });
       customerId = customer.id;
       await userRef.set({ stripeCustomerId: customerId }, { merge: true });
     }
 
-    const hasActiveSubscription =
-      userData.subscriptionStatus === "active" &&
-      PAID_LEGACY.has(String(userData.planStatus || userData.membershipPlan || ""));
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "all",
+      limit: 10,
+    });
+    const hasActiveSubscription = subscriptions.data.some((subscription) =>
+      NON_TERMINAL_SUBSCRIPTION_STATUSES.has(subscription.status),
+    );
 
     // Existing subscribers change plans via Customer Portal (proration / cancel)
     // instead of opening a second Checkout Session that could double-bill.
@@ -89,6 +126,9 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    const checkoutKey = createHash("sha256")
+      .update(`${decoded.uid}:${priceId}:${interval}:${new Date().toISOString().slice(0, 10)}`)
+      .digest("hex");
     const session = await stripe.checkout.sessions.create({
       integration_identifier: "mimi_subs_qfjrmtaz",
       mode: "subscription",
@@ -99,12 +139,14 @@ export default async function handler(req: any, res: any) {
       metadata: {
         plan: mimiPlan,
         userId: decoded.uid,
+        firebaseUid: decoded.uid,
         interval,
       },
       subscription_data: {
         metadata: {
           plan: mimiPlan,
           userId: decoded.uid,
+          firebaseUid: decoded.uid,
           interval,
         },
       },
@@ -116,6 +158,8 @@ export default async function handler(req: any, res: any) {
       ],
       success_url: `${baseUrl}/?checkout=success&plan=${plan}&interval=${interval}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/memberships`,
+    }, {
+      idempotencyKey: `mimi-checkout-${checkoutKey}`,
     });
 
     sendJson(res, 200, { url: session.url, mode: "checkout" });

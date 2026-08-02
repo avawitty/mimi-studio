@@ -10,6 +10,7 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { registerTailorRoutes } from './server/tailorRoutes';
+import { registerOperationalRoutes } from './server/operationalRoutes';
 import { buildSessionCookieHeader, clearSessionCookieHeader, SESSION_EXPIRES_MS } from './lib/sessionCookie';
 import { proxySessionLogin } from './lib/proxySessionToFunctions';
 import mimiImageHandler from "./api/mimi-image";
@@ -296,6 +297,7 @@ async function startServer() {
   if (db) {
     registerTailorRoutes(app, db);
   }
+  registerOperationalRoutes(app);
 
   async function generateViaGatewayFallback(messages: any[], systemInstruction: string, temperature: number, format: 'openai' | 'anthropic') {
     const gatewayKey = getServerAiGatewayKey();

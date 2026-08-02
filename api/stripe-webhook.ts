@@ -35,6 +35,52 @@ export default async function handler(req: any, res: any) {
     }
 
     const event = stripe.webhooks.constructEvent(rawBody, signature, endpointSecret);
+    const { isNeonOperationalDatabaseConfigured } = await import(
+      "../infrastructure/database/neon/connection.js"
+    );
+    const neonStripeEnabled =
+      process.env.MIMI_NEON_STRIPE_RECONCILIATION === "1";
+    if (neonStripeEnabled) {
+      if (!isNeonOperationalDatabaseConfigured()) {
+        sendJson(res, 503, {
+          received: false,
+          error: "Neon Stripe reconciliation is enabled but DATABASE_URL is unavailable.",
+        });
+        return;
+      }
+      try {
+        const [
+          { normalizeStripeMembershipEvent },
+          { getNeonMembershipReconciliationService },
+        ] =
+          await Promise.all([
+            import("../infrastructure/stripe/normalizeMembershipEvent.js"),
+            import("../infrastructure/database/neon/membershipRuntime.js"),
+          ]);
+        const normalized = await normalizeStripeMembershipEvent(stripe, event);
+        if (!normalized) {
+          sendJson(res, 200, { received: true, ignored: true });
+          return;
+        }
+        const result =
+          await getNeonMembershipReconciliationService().process(normalized);
+        sendJson(res, 200, {
+          received: true,
+          duplicate: result.duplicate,
+        });
+      } catch (error) {
+        // Signature is already verified, but membership/credit persistence is
+        // essential. Return 5xx so Stripe retries; the failed event state is
+        // also retained in Neon when reconciliation reached the repository.
+        console.error("MIMI // Neon Stripe reconciliation failed:", error);
+        sendJson(res, 500, {
+          received: false,
+          reconciliation: "failed",
+        });
+      }
+      return;
+    }
+
     const { db } = getServerFirebaseAdmin();
 
     if (!db) {
