@@ -207,6 +207,17 @@ function testReadoutAndGeneration() {
   assert(locked.sun?.sign === "leo", "manual lock wins");
   assert(locked.sun?.method === "manual_override", "manual method");
 
+  const oracleDisabled = celestialReadoutForOracle({
+    enabled: false,
+    birthDate: "1990-06-01",
+  });
+  assert(oracleDisabled.enabled === false, "oracle disabled when toggle off");
+  assert(oracleDisabled.sun === null, "oracle omits sun when disabled");
+  assert(
+    (oracleDisabled.bodies as unknown[]).length === 0,
+    "oracle omits bodies when disabled",
+  );
+
   const oracle = celestialReadoutForOracle({
     enabled: true,
     birthDate: "1990-06-01",

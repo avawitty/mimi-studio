@@ -204,6 +204,25 @@ export function celestialReadoutForOracle(
   draft: CelestialCalibrationDraft | null | undefined,
 ): Record<string, unknown> {
   const readout = compileCelestialReadout(draft);
+  if (!readout.enabled) {
+    return {
+      enabled: false,
+      timingPhrase: readout.timingPhrase,
+      scopeNotice: readout.scopeNotice,
+      sun: null,
+      rising: null,
+      astronomicalSeason: null,
+      seasonalAlignment: null,
+      bodies: [],
+      aspects: [],
+      houseSystemNote: null,
+      birthTimezone: null,
+      hasCoordinates: false,
+      utcInstant: null,
+      unsupported: readout.unsupported,
+      lineage: null,
+    };
+  }
   const topAspects = (readout.chart?.aspects ?? []).slice(0, 8).map((a) => ({
     a: a.a,
     b: a.b,
