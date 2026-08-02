@@ -46,6 +46,7 @@
     "sovereign:seed": "tsx scripts/seedSovereignDemo.ts",
     "sovereign:import": "tsx scripts/seedSovereignDemo.ts --import",
     "sovereign:export-firestore": "tsx scripts/exportFirestoreToSovereign.ts",
+    "sovereign:reindex": "tsx scripts/reindexSovereignEmbeddings.ts",
     "setup:mimi-rip-domains": "node scripts/setupMimiRipDomains.mjs",
     "setup:mimi-fish-domains": "node scripts/setupMimiFishDomains.mjs"
   },
@@ -60,7 +61,6 @@
     "@google/genai": "^1.52.0",
     "@modelcontextprotocol/ext-apps": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@neondatabase/serverless": "^1.1.0",
     "@noble/hashes": "^2.2.0",
     "@react-oauth/google": "^0.13.4",
     "@react-three/drei": "^10.7.7",

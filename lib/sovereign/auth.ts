@@ -1,12 +1,15 @@
-import { extractMimiSessionToken } from "../mimiSessionToken.js";
-import { getServerFirebaseAdmin } from "../serverFirebaseAdmin.js";
+import { extractSessionCookie } from "../sessionCookie";
+import { extractMimiSessionToken } from "../mimiSessionToken";
+import { getServerFirebaseAdmin } from "../serverFirebaseAdmin";
+
+export type SovereignAuthVia = "ingest_key" | "id_token" | "session_cookie" | "user_header";
 
 export type SovereignAuthResult =
-  | { ok: true; uid: string; via: "ingest_key" | "id_token" | "user_header" }
+  | { ok: true; uid: string; via: SovereignAuthVia }
   | { ok: false; status: number; code: string; message: string };
 
 export type SovereignRequester =
-  | { uid: string; via: "ingest_key" | "id_token" | "user_header" }
+  | { uid: string; via: SovereignAuthVia }
   | null;
 
 const strictAuthEnabled = (): boolean =>
@@ -14,11 +17,49 @@ const strictAuthEnabled = (): boolean =>
   process.env.MIMI_SOVEREIGN_STRICT_AUTH === "true" ||
   (process.env.NODE_ENV === "production" && process.env.MIMI_SOVEREIGN_STRICT_AUTH !== "0");
 
+const readHeader = (headers: Record<string, unknown>, name: string): string => {
+  const value = headers[name] ?? headers[name.toLowerCase()];
+  if (Array.isArray(value)) return String(value[0] || "").trim();
+  return String(value || "").trim();
+};
+
+const tryIngestKey = (
+  headers: Record<string, unknown>,
+): { matched: boolean; headerUid: string } => {
+  const ingestKey = process.env.MIMI_SOVEREIGN_INGEST_KEY?.trim();
+  if (!ingestKey) return { matched: false, headerUid: "" };
+  const provided =
+    readHeader(headers, "x-mimi-ingest-key") || readHeader(headers, "x-api-key");
+  if (!provided || provided !== ingestKey) return { matched: false, headerUid: "" };
+  return { matched: true, headerUid: readHeader(headers, "x-user-id") };
+};
+
+const verifyIdTokenUid = async (token: string): Promise<string | null> => {
+  const { auth } = getServerFirebaseAdmin();
+  if (!auth) return null;
+  try {
+    const decoded = await auth.verifyIdToken(token);
+    return decoded?.uid ? String(decoded.uid) : null;
+  } catch {
+    return null;
+  }
+};
+
+const verifySessionCookieUid = async (cookie: string): Promise<string | null> => {
+  const { auth } = getServerFirebaseAdmin();
+  if (!auth) return null;
+  try {
+    const decoded = await auth.verifySessionCookie(cookie, true);
+    return decoded?.uid ? String(decoded.uid) : null;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Authorize a sovereign write for `expectedUid`.
- * Preference order: ingest key → Firebase ID token → matching x-user-id (dev / no-admin).
- * In production (or MIMI_SOVEREIGN_STRICT_AUTH=1), soft x-user-id alone is rejected
- * unless MIMI_SOVEREIGN_TRUST_USER_HEADER=1.
+ * Preference: ingest key → Firebase ID token → Firebase __session cookie → soft x-user-id.
+ * Soft header is rejected in production unless MIMI_SOVEREIGN_TRUST_USER_HEADER=1.
  */
 export const authorizeSovereignWrite = async (
   req: { headers?: Record<string, unknown> },
@@ -34,32 +75,17 @@ export const authorizeSovereignWrite = async (
   }
 
   const headers = req.headers || {};
-  const ingestKey = process.env.MIMI_SOVEREIGN_INGEST_KEY?.trim();
-  if (ingestKey) {
-    const provided =
-      String(headers["x-mimi-ingest-key"] || "").trim() ||
-      String(headers["x-api-key"] || "").trim();
-    if (provided && provided === ingestKey) {
-      return { ok: true, uid: expectedUid, via: "ingest_key" };
-    }
+  const ingest = tryIngestKey(headers);
+  if (ingest.matched) {
+    return { ok: true, uid: expectedUid, via: "ingest_key" };
   }
 
   const token = extractMimiSessionToken(headers);
   if (token) {
     const { auth } = getServerFirebaseAdmin();
     if (auth) {
-      try {
-        const decoded = await auth.verifyIdToken(token);
-        if (decoded?.uid && decoded.uid === expectedUid) {
-          return { ok: true, uid: decoded.uid, via: "id_token" };
-        }
-        return {
-          ok: false,
-          status: 403,
-          code: "UID_MISMATCH",
-          message: "Token uid does not match resource owner",
-        };
-      } catch {
+      const uid = await verifyIdTokenUid(token);
+      if (!uid) {
         return {
           ok: false,
           status: 401,
@@ -67,14 +93,49 @@ export const authorizeSovereignWrite = async (
           message: "Mimi session is invalid or expired",
         };
       }
+      if (uid !== expectedUid) {
+        return {
+          ok: false,
+          status: 403,
+          code: "UID_MISMATCH",
+          message: "Token uid does not match resource owner",
+        };
+      }
+      return { ok: true, uid, via: "id_token" };
     }
   }
 
-  const headerUid = String(headers["x-user-id"] || "").trim();
+  // EventSource and some same-origin credentialed calls only send cookies.
+  const sessionCookie = extractSessionCookie(headers);
+  if (sessionCookie) {
+    const { auth } = getServerFirebaseAdmin();
+    if (auth) {
+      const uid = await verifySessionCookieUid(sessionCookie);
+      if (!uid) {
+        return {
+          ok: false,
+          status: 401,
+          code: "INVALID_SESSION_COOKIE",
+          message: "Session cookie is invalid or expired",
+        };
+      }
+      if (uid !== expectedUid) {
+        return {
+          ok: false,
+          status: 403,
+          code: "UID_MISMATCH",
+          message: "Session uid does not match resource owner",
+        };
+      }
+      return { ok: true, uid, via: "session_cookie" };
+    }
+  }
+
+  const headerUid = readHeader(headers, "x-user-id");
   if (headerUid && headerUid === expectedUid) {
     const allowSoftHeader =
       process.env.MIMI_SOVEREIGN_TRUST_USER_HEADER === "1" ||
-      (!strictAuthEnabled() && !ingestKey);
+      (!strictAuthEnabled() && !process.env.MIMI_SOVEREIGN_INGEST_KEY?.trim());
     if (allowSoftHeader) {
       return { ok: true, uid: headerUid, via: "user_header" };
     }
@@ -85,7 +146,7 @@ export const authorizeSovereignWrite = async (
     status: 401,
     code: "UNAUTHORIZED",
     message: strictAuthEnabled()
-      ? "Strict sovereign auth requires ID token or ingest key"
+      ? "Strict sovereign auth requires ID token, session cookie, or ingest key"
       : "Unauthorized sovereign write",
   };
 };
@@ -98,35 +159,31 @@ export const resolveSovereignRequesterUid = async (req: {
   headers?: Record<string, unknown>;
 }): Promise<SovereignRequester> => {
   const headers = req.headers || {};
-  const ingestKey = process.env.MIMI_SOVEREIGN_INGEST_KEY?.trim();
-  if (ingestKey) {
-    const provided =
-      String(headers["x-mimi-ingest-key"] || "").trim() ||
-      String(headers["x-api-key"] || "").trim();
-    if (provided && provided === ingestKey) {
-      const headerUid = String(headers["x-user-id"] || "").trim();
-      if (headerUid) return { uid: headerUid, via: "ingest_key" };
-    }
+  const ingest = tryIngestKey(headers);
+  if (ingest.matched && ingest.headerUid) {
+    return { uid: ingest.headerUid, via: "ingest_key" };
   }
 
   const token = extractMimiSessionToken(headers);
   if (token) {
-    const { auth } = getServerFirebaseAdmin();
-    if (auth) {
-      try {
-        const decoded = await auth.verifyIdToken(token);
-        if (decoded?.uid) return { uid: decoded.uid, via: "id_token" };
-      } catch {
-        return null;
-      }
-    }
+    const uid = await verifyIdTokenUid(token);
+    if (uid) return { uid, via: "id_token" };
+    // Invalid bearer — do not fall through to soft header in strict mode.
+    if (strictAuthEnabled()) return null;
   }
 
-  const headerUid = String(headers["x-user-id"] || "").trim();
+  const sessionCookie = extractSessionCookie(headers);
+  if (sessionCookie) {
+    const uid = await verifySessionCookieUid(sessionCookie);
+    if (uid) return { uid, via: "session_cookie" };
+    if (strictAuthEnabled()) return null;
+  }
+
+  const headerUid = readHeader(headers, "x-user-id");
   if (headerUid) {
     const allowSoftHeader =
       process.env.MIMI_SOVEREIGN_TRUST_USER_HEADER === "1" ||
-      (!strictAuthEnabled() && !ingestKey);
+      (!strictAuthEnabled() && !process.env.MIMI_SOVEREIGN_INGEST_KEY?.trim());
     if (allowSoftHeader) return { uid: headerUid, via: "user_header" };
   }
 

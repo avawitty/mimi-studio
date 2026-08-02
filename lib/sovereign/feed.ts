@@ -6,8 +6,8 @@ import {
 } from "../publicBaseUrl.js";
 import { buildRssXml, mapZineToRssItem, type RssFeedChannel } from "../rssFeed.js";
 import type { PublicFeedProfile, PublicFeedZine } from "../publicFeedQuery.js";
-import { getProfileByHandle, listUserZines } from "./store.js";
-import { isSovereignEnabled } from "./db.js";
+import { getProfileByHandle, listUserZines } from "./store";
+import { isSovereignEnabled } from "./db";
 
 const toFeedZine = (zine: {
   id: string;

@@ -9,7 +9,7 @@
  */
 
 import path from "node:path";
-import type { SovereignDriver } from "./driver.js";
+import type { SovereignDriver } from "./driver";
 
 let driverInstance: SovereignDriver | null = null;
 let initAttempted = false;
@@ -36,9 +36,10 @@ export const isSovereignEnabled = (): boolean => {
     return false;
   }
   const hasPostgres = Boolean(resolvePostgresUrl());
-  // Vercel: Neon/Postgres only — SQLite is not durable and crashes some runtimes.
-  if (process.env.VERCEL) {
-    return hasPostgres;
+  const hasSqlitePath = Boolean(process.env.MIMI_SOVEREIGN_DB?.trim());
+  // Vercel: require durable Postgres URL or explicit sqlite path/volume.
+  if (process.env.VERCEL && !hasPostgres && !hasSqlitePath) {
+    return false;
   }
   return true;
 };
@@ -72,30 +73,17 @@ const openDriver = async (): Promise<SovereignDriver | null> => {
 
   const postgresUrl = resolvePostgresUrl();
   if (postgresUrl) {
-    // Postgres/Neon path — never touch the sqlite module graph.
-    const { openPostgresDriver } = await import("./postgresDriver.js");
+    // Lazy-load so Vercel/Neon never evaluates node:sqlite.
+    const { openPostgresDriver } = await import("./postgresDriver");
     const driver = await openPostgresDriver(postgresUrl);
     console.info(`MIMI // Sovereign archive ready (postgres): ${driver.pathOrUrl}`);
     return driver;
   }
 
-  // Vercel serverless: require Neon/Postgres.
-  if (process.env.VERCEL) {
-    console.warn(
-      "MIMI // Sovereign archive: set DATABASE_URL (Neon) or MIMI_SOVEREIGN_DATABASE_URL on Vercel",
-    );
-    return null;
-  }
-
-  // Local/Fly only. Non-literal specifier so esbuild/nft do not pack sqlite into
-  // API lambdas that import this module for status/health.
+  // Local/Fly only — dynamic import keeps node:sqlite out of serverless bundles.
   const dbPath = resolveSovereignDbPath();
-  // Non-literal specifier keeps node:sqlite out of Vercel/API bundles.
-  const sqliteSpecifier = `./${"sqlite"}Driver.js`;
-  const sqliteModule = (await import(sqliteSpecifier)) as {
-    openSqliteDriver: (path: string) => Promise<SovereignDriver>;
-  };
-  const driver = await sqliteModule.openSqliteDriver(dbPath);
+  const { openSqliteDriver } = await import("./sqliteDriver");
+  const driver = await openSqliteDriver(dbPath);
   console.info(`MIMI // Sovereign archive ready (sqlite): ${dbPath}`);
   return driver;
 };
@@ -110,7 +98,7 @@ export const getSovereignDb = async (): Promise<SovereignDriver | null> => {
       .then((driver) => {
         driverInstance = driver;
         if (driver) {
-          import("./store.js")
+          import("./store")
             .then(({ seedDemoShelfIfEmpty }) => seedDemoShelfIfEmpty())
             .then((seeded) => {
               if (seeded > 0) {
