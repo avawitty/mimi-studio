@@ -31,7 +31,7 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({
       <div className="max-w-2xl w-full relative z-10">
         <a
           href="/"
-          className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#9a958a] hover:text-[#dccca9] transition-colors mb-8"
+          className="inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.25em] text-[#9a958a] hover:text-[#dccca9] transition-colors mb-8"
         >
           <ArrowLeft size={12} />
           Back to Mimi
