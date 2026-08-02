@@ -96,7 +96,7 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
           window.dispatchEvent(new CustomEvent("mimi:change_view", { detail: "oracle" })),
       },
       {
-        label: "→ Studio — open the worktable",
+        label: "→ Studio — start composing",
         onClick: () =>
           window.dispatchEvent(new CustomEvent("mimi:change_view", { detail: "studio" })),
       },
