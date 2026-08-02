@@ -650,24 +650,26 @@ export const CANON_MODULES: CanonModule[] = [
     aliases: ["Celestial", "Natal", "Zodiac", "Sun Sign"],
     inputs: [
       "birth date",
-      "optional birth time (UTC in Phase 1)",
-      "optional birth location (stored for future rising/houses)",
+      "optional birth time (local civil clock)",
+      "optional birth location (geocode → timezone + coordinates)",
       "seasonal alignment + lineage notes",
     ],
     generations: [
-      "tropical Sun sign from mean solar longitude",
+      "tropical Sun / Moon / planets via astronomy-engine",
+      "major aspects; Rising + Whole Sign houses when time + place resolve",
       "astronomical season",
-      "timing phrase for Tailor / generation context",
+      "timing phrase for Tailor / generation / Oracle Latent Space Translation",
     ],
     outputs: [
       "tailorDraft.celestialCalibration",
       "profile birth fields + zodiacSign",
       "optional generation timing context",
+      "structured readout for Oracle Latent Space Translation",
     ],
     userFlow:
-      "Enter birth data, review derived tropical Sun and season, opt in to generation use, save into Tailor, then hand off to Worktable or Oracle.",
+      "Enter birth data, resolve place for timezone/coords, review ephemeris readout, opt in to generation use, save into Tailor, then hand off to Worktable or Oracle.",
     notes:
-      "Phase 1 does not compute rising, houses, or aspects. Distinct from The Observatory (collective Mean Median Mode) and from poetic zine field celestial_calibration.",
+      "Rising/houses require birth time + geocoded coordinates. Sidereal and quadrant houses unsupported. Distinct from The Observatory (collective Mean Median Mode) and from poetic zine field celestial_calibration.",
   },
 ];
 

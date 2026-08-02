@@ -460,6 +460,11 @@ export interface TailorLogicDraft {
     birthDate?: string;
     birthTime?: string;
     birthLocation?: string;
+    birthTimezone?: string;
+    birthLatitude?: number;
+    birthLongitude?: number;
+    geocodeLabel?: string;
+    geocodeStatus?: "unset" | "resolved" | "manual" | "failed";
     astrologicalLineage?: string;
     seasonalAlignment?: string;
     /** When true, chamber keeps a user-chosen sun sign instead of recomputing. */

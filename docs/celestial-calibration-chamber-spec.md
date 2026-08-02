@@ -1,6 +1,6 @@
 # Celestial Calibration Chamber — Product and Functional Specification
 
-Status: Phase 1 vertical slice in progress  
+Status: Phases 1–4 landed (Sun/season → timezone/geocode → ephemeris chart → Oracle readout scoping)  
 Recommended route: `/celestial-calibration`  
 Aliases: `/celestial`, `/natal`, `/zodiac`  
 Recommended navigation: Create → Celestial Calibration  
@@ -17,7 +17,7 @@ It is not:
 - the poetic zine field `celestial_calibration` alone (atmospheric timing copy);
 - the Oracle “Latent Space Translation” metaphor (aesthetic DNA prose).
 
-It is a first-class home for structured `tailorDraft.celestialCalibration`, with honest scope about what Phase 1 can and cannot compute.
+It is a first-class home for structured `tailorDraft.celestialCalibration`, with honest scope about what can and cannot be computed without inventing natal math.
 
 ## Why this deserves its own chamber
 
@@ -53,13 +53,14 @@ As a privacy-conscious user, I want location/time stored for future rising/house
 
 ## Accuracy standards (locked)
 
-1. **Tropical Sun** from civil birth date via mean-sun ecliptic longitude (Meeus-style approximation).  
+1. **Tropical Sun** from astronomy-engine ephemeris when a birth instant resolves; Meeus mean-sun remains fallback.  
 2. **Cusp honesty** — within 1° of ingress, surface neighbor + confidence note.  
-3. **Missing time** — compute at 12:00 UTC and say so.  
-4. **Phase 1 time** — if provided, treat as UTC until timezone + geocode exist.  
-5. **No fake rising/houses/aspects** — list as unsupported.  
-6. **Symbolic notice** — self-expressive creative context, not science.  
-7. **Manual lock** — user may override Sun; method becomes `manual_override`.
+3. **Missing time** — compute at local noon when timezone is known, else 12:00 UTC, and say so.  
+4. **Timezone** — civil clock interpreted in resolved IANA zone; without zone, treat as UTC and say so.  
+5. **Rising / houses** — only when birth time + coordinates resolve; Whole Sign from Ascendant. Never invent.  
+6. **Planets / aspects** — ephemeris-backed major aspects only; list remaining systems as unsupported.  
+7. **Symbolic notice** — self-expressive creative context, not science.  
+8. **Manual lock** — user may override Sun; method becomes `manual_override`.
 
 ## Primary flow
 
@@ -71,12 +72,13 @@ As a privacy-conscious user, I want location/time stored for future rising/house
 ### 2. Enter birth data
 
 1. Birth date (required for derivation).
-2. Optional birth time and location (stored; time affects Sun only as UTC in Phase 1).
-3. Toggle **Use in generation**.
+2. Optional birth time (local civil clock).
+3. Optional birth location → **Resolve place** (geocode + IANA timezone + coordinates).
+4. Toggle **Use in generation**.
 
 ### 3. Review readout
 
-1. Derived tropical Sun, degrees into sign, ecliptic λ, astronomical season.
+1. Derived tropical Sun, Moon/planets, major aspects; Rising + Whole Sign houses when time + place resolve.
 2. Accept derived Sun into draft, or lock a manual sign.
 3. Edit seasonal alignment and lineage notes.
 
@@ -100,12 +102,12 @@ When `celestialCalibration.enabled` and a Sun is available, `sanitizeProfile` in
 
 ## Phased delivery
 
-| Phase | Slice |
-| --- | --- |
-| **1** | Chamber + tropical Sun + season + Tailor persist + canon/nav + verify + generation sanitize |
-| **2** | Timezone/geocode; document rising as still blocked without ephemeris |
-| **3** | Ephemeris-backed planets/aspects (vendor TBD); never invent |
-| **4** | Optional poetic layer that **consumes** structured readout (replace or scope `generateCelestialReading`) |
+| Phase | Slice | Status |
+| --- | --- | --- |
+| **1** | Chamber + tropical Sun + season + Tailor persist + canon/nav + verify + generation sanitize | Shipped |
+| **2** | Timezone/geocode (`POST /api/celestial/geocode`); civil clock → UTC | Shipped |
+| **3** | Ephemeris-backed planets/aspects/rising via `astronomy-engine`; Whole Sign houses; never invent | Shipped |
+| **4** | Oracle Latent Space Translation consumes structured readout (`celestialReadoutForOracle`) | Shipped |
 
 ## Risks
 
@@ -114,12 +116,13 @@ When `celestialCalibration.enabled` and a Sun is available, `sanitizeProfile` in
 | Confused with Observatory | Distinct canon id/route/copy; explicit disambiguation |
 | Costume astrology | Real longitude math + cusp notes + unsupported list |
 | Scope creep into full chart | Phase gates; no rising without coords + ephemeris |
-| Privacy of birth data | Same profile/Tailor persistence; no public Stand broadcast in Phase 1 |
+| Privacy of birth data | Same profile/Tailor persistence; no public Stand broadcast |
 
-## Non-goals (Phase 1)
+## Non-goals (current)
 
-- Full natal wheel UI
+- Full natal wheel UI / Placidus houses
 - Sidereal zodiac
 - Transit forecasts
-- Replacing Oracle chat
+- Replacing Oracle chat (Latent Space Translation only)
 - Changing Observatory / Residue MMM
+- Public Stand broadcast of birth data
