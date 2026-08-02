@@ -1,12 +1,14 @@
 import { cors, requireMethod, sendError } from "../lib/apiUtils.js";
 import { getPublicBaseUrl } from "../lib/publicBaseUrl.js";
-import { buildCreatorRssFeed, normalizeFeedHandle } from "../lib/publicFeedQuery.js";
+import { normalizeFeedHandle } from "../lib/publicFeedQuery.js";
 import { buildCreatorRssFeedFromSovereign } from "../lib/sovereign/feed.js";
-import { getServerFirebaseAdmin } from "../lib/serverFirebaseAdmin.js";
 
 /**
  * Creator public-issue RSS feed ("Keep Tabs").
  * Prefers the sovereign archive; falls back to Firestore Admin when needed.
+ *
+ * Firebase Admin + publicFeedQuery Firestore helpers are loaded lazily — static
+ * imports of serverFirebaseAdmin crash Vercel isolates at module evaluation.
  */
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
@@ -32,6 +34,8 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    const { getServerFirebaseAdmin } = await import("../lib/serverFirebaseAdmin.js");
+    const { buildCreatorRssFeed } = await import("../lib/publicFeedQuery.js");
     const { db } = getServerFirebaseAdmin();
     if (!db) {
       return sendError(

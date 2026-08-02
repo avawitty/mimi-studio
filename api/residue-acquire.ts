@@ -5,10 +5,7 @@
  */
 
 import { cors, readJsonBody, sendError, sendJson } from "../lib/apiUtils.js";
-import {
-  extractMimiSessionToken,
-  verifyMimiSession,
-} from "../lib/serverFirebaseAdmin.js";
+import { extractMimiSessionToken } from "../lib/mimiSessionToken.js";
 import { createApifySourceAcquisitionProvider } from "../services/residue/acquisition/providers/apify/apifySourceAcquisitionProvider.js";
 import { resolveResidueApifyActorId } from "../services/residue/acquisition/providers/apify/actorRegistry.js";
 import { normalizeSources } from "../services/residue/shared/normalizeSources.js";
@@ -102,6 +99,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
     try {
+      const { verifyMimiSession } = await import("../lib/serverFirebaseAdmin.js");
       const decoded = await verifyMimiSession(req.headers);
       authenticatedUid = decoded.uid || null;
     } catch (sessionError: any) {
