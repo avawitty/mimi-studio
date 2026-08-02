@@ -550,12 +550,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
+    // Key includes anon/registered so linking the same uid re-runs listeners.
+    const reconcileKey = `${uid}:${fbUser.isAnonymous ? "a" : "r"}`;
     console.info("MIMI // Reconciling Profile for:", uid, fbUser.isAnonymous ? "(Ghost)" : "(Swan)");
-    if (reconciliationInProgress.current === uid) {
-      console.info("MIMI // Reconciliation already in progress for this UID. Skipping.");
+    if (reconciliationInProgress.current === reconcileKey) {
+      console.info("MIMI // Reconciliation already in progress for this identity. Skipping.");
       return;
     }
-    reconciliationInProgress.current = uid;
+    reconciliationInProgress.current = reconcileKey;
     setSystemStatus(prev => ({ ...prev, auth: 'syncing' }));
 
     // Clear existing listeners to prevent duplication
@@ -625,15 +627,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       [cloudProfileSnap, cloudPrefsSnap] = await Promise.race([cloudSyncPromise, timeoutPromise]) as any;
       
-      if (reconciliationInProgress.current !== uid) {
+      if (reconciliationInProgress.current !== reconcileKey) {
           console.info("MIMI // User changed during reconciliation. Aborting.");
           return;
       }
 
+      // Prefer live auth identity — fbUser can be stale if account was linked mid-flight.
+      const liveIsAnonymous = () => auth.currentUser?.isAnonymous ?? !!fbUser.isAnonymous;
+
       // Fetch subscription data with a race to prevent hanging.
       // Anonymous ghosts don't have billing docs — skip the read.
       let subscription: any = null;
-      if (!fbUser.isAnonymous) {
+      if (!liveIsAnonymous()) {
         const subPromise = fetchUserSubscription(uid);
         const subTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 4000));
         subscription = await Promise.race([subPromise, subTimeout]) as any;
@@ -643,7 +648,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubscribeProfile.current = subscribeToUserProfile(uid, async (pData) => {
          try {
              // Reuse boot-time subscription for ghosts; only re-fetch for registered users.
-             const nextSub = fbUser.isAnonymous
+             const nextSub = liveIsAnonymous()
                ? null
                : await fetchUserSubscription(uid);
              setProfile(prev => {
@@ -662,7 +667,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       unsubscribePrefs.current = subscribeToUserPreferences(uid, async (prefsData) => {
          try {
-             const nextSub = fbUser.isAnonymous
+             const nextSub = liveIsAnonymous()
                ? null
                : await fetchUserSubscription(uid);
              setProfile(prev => {
@@ -679,7 +684,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       // Pocket live sync is for registered sessions; ghosts stay on local pocket.
-      if (!fbUser.isAnonymous) {
+      // Re-check live auth in case identity upgraded during cloud fetch.
+      if (!liveIsAnonymous()) {
         unsubscribePocket.current = subscribeToPocketItems(uid, (items) => {
           setPocket(items);
         });

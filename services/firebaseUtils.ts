@@ -767,10 +767,12 @@ export const addToPocket = async (uid: string, type: PocketItem['type'], content
       return;
     }
     await savePocketItemLocally(item);
+    window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
     return itemId;
   }
 
   await savePocketItemLocally(item);
+  window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
   if (uid && auth.currentUser && navigator.onLine) {
     try {
       await setDoc(doc(db, "pocket", itemId), sanitizeFirestoreData(item));
@@ -785,6 +787,7 @@ export const addToPocket = async (uid: string, type: PocketItem['type'], content
 
 export const deleteFromPocket = async (itemId: string): Promise<void> => {
   await deleteLocalPocketItem(itemId);
+  window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
   if (auth.currentUser && navigator.onLine) {
     try {
       await deleteDoc(doc(db, "pocket", itemId));
@@ -805,6 +808,7 @@ export const createMoodboard = async (uid: string, name: string, itemIds: string
     content: { name, itemIds } 
   };
   await savePocketItemLocally(item);
+  window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
   if (uid && auth.currentUser && navigator.onLine) {
     try {
       await setDoc(doc(db, "pocket", boardId), sanitizeFirestoreData(item));
@@ -821,6 +825,7 @@ export const updatePocketItem = async (itemId: string, patch: Partial<PocketItem
   if (index !== -1) {
     const updated = { ...localPocket[index], ...patch };
     await savePocketItemLocally(updated);
+    window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
   }
   if (isFullyAuthenticated() && navigator.onLine) {
     try {

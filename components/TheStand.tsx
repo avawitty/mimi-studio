@@ -25,6 +25,8 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   const [localZines, setLocalZines] = useState<ZineMetadata[]>([]);
   const [cloudZines, setCloudZines] = useState<ZineMetadata[]>([]);
   const [communityZines, setCommunityZines] = useState<ZineMetadata[]>([]);
+  /** Settled after first Floor fetch (even when empty / failed) — prevents refetch loops. */
+  const [floorSettled, setFloorSettled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'mine' | 'floor'>('mine');
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,8 +73,9 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
   }, [user]);
 
   // Lazy-load Floor only when opened — avoids public-zine reads on every Mine visit.
+  // floorSettled covers empty shelves and quota failures so we don't re-query.
   useEffect(() => {
-    if (mode !== 'floor' || communityZines.length > 0) return;
+    if (mode !== 'floor' || floorSettled) return;
     let cancelled = false;
     (async () => {
       try {
@@ -80,12 +83,14 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
         if (!cancelled) setCommunityZines(community || []);
       } catch (e) {
         console.warn('Mimi // Stand community feed unavailable', e);
+      } finally {
+        if (!cancelled) setFloorSettled(true);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [mode, communityZines.length]);
+  }, [mode, floorSettled]);
 
   const myZines = useMemo(() => {
     const merged = [...localZines, ...cloudZines];
