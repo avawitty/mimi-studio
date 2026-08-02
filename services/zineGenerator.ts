@@ -13,6 +13,10 @@ import {
   type IntelCatalogCandidate,
 } from "../lib/intelHubWorkflow";
 import { formatAtelierTasteContextForPrompt } from "./atelierService";
+import {
+  fetchDollImageReferencesAsMedia,
+  type DollImageReference,
+} from "./dollEngine";
 
 function groundAcquisitionSignal(
   currentSignal: Record<string, unknown>,
@@ -69,10 +73,20 @@ function cleanAndParse(text: string | undefined): any {
 
 export const createZine = async (text: string, media: any[], tone: ToneTag, profile: any, opts: any, apiKey?: string, transmissions?: any[], stackIds?: string[], selectedComponents?: any[], zineOptions?: ZineGenerationOptions): Promise<any> => {
     try {
+        const dollRefs: DollImageReference[] = Array.isArray(opts.dollImageReferences)
+            ? opts.dollImageReferences
+            : [];
+        let effectiveMedia = media;
+        if (dollRefs.length > 0) {
+            const dollMedia = await fetchDollImageReferencesAsMedia(dollRefs);
+            if (dollMedia.length > 0) {
+                effectiveMedia = [...dollMedia, ...(media || [])];
+            }
+        }
         // Populate tags if missing
         if (zineOptions && (!zineOptions.tags || zineOptions.tags.length === 0)) {
             const { generateTagsFromMedia } = await import("./geminiService");
-            const generatedTags = await generateTagsFromMedia(text, media);
+            const generatedTags = await generateTagsFromMedia(text, effectiveMedia);
             zineOptions.tags = generatedTags;
         }
         const isLite = !!opts.isLite;
@@ -162,9 +176,9 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             const parts: Part[] = [];
             let artifactInstruction = "";
 
-            if (media && media.length > 0) {
+            if (effectiveMedia && effectiveMedia.length > 0) {
                 let hasImagesOrVideo = false;
-                for (const m of media) {
+                for (const m of effectiveMedia) {
                     if ((m.type === 'image' || m.type === 'video') && m.data) {
                         hasImagesOrVideo = true;
                         parts.push({
@@ -176,7 +190,12 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                     }
                 }
                 if (hasImagesOrVideo) {
-                    artifactInstruction = "\nVISUAL ARTIFACTS: The user has provided visual artifacts (images/video). You MUST analyze these artifacts. Incorporate their specific visual elements, mood, colors, and subjects into the 'oracular_mirror', 'header_image_prompt', and 'visual_plates'. The zine should feel like a direct response to these specific artifacts + the text input.";
+                    const hasDollRef = effectiveMedia.some((m: { name?: string; tags?: string[] }) =>
+                        /doll/i.test(m.name || "") || m.tags?.some((tag) => /doll/i.test(tag)),
+                    );
+                    artifactInstruction = hasDollRef
+                        ? "\nVISUAL ARTIFACTS: The user has provided visual artifacts including calibrated Doll Portrait / Full Body / Profile identity references. You MUST analyze these artifacts and lock face structure, features, and hairstyle from the Doll Portrait reference. Incorporate their specific visual elements, mood, colors, and subjects into the 'oracular_mirror', 'header_image_prompt', and 'visual_plates'. The zine should feel like a direct response to these specific artifacts + the text input."
+                        : "\nVISUAL ARTIFACTS: The user has provided visual artifacts (images/video). You MUST analyze these artifacts. Incorporate their specific visual elements, mood, colors, and subjects into the 'oracular_mirror', 'header_image_prompt', and 'visual_plates'. The zine should feel like a direct response to these specific artifacts + the text input.";
                 }
             }
 

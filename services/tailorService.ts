@@ -529,6 +529,17 @@ export async function listDolls(userId: string, tasteGraphId?: string): Promise<
   }
 }
 
+export async function getDoll(userId: string, dollId: string): Promise<Doll | null> {
+  if (!userId || userId === 'ghost' || !dollId) return null;
+  try {
+    const snap = await getDoc(doc(userCol(userId, 'dolls'), dollId));
+    return snap.exists() ? (snap.data() as Doll) : null;
+  } catch (e) {
+    handleFirestoreError(e, OperationType.GET, 'dolls');
+    return null;
+  }
+}
+
 export async function saveDollMask(userId: string, mask: Omit<DollMask, 'id' | 'createdAt'>): Promise<DollMask> {
   const id = uid();
   const full: DollMask = { ...mask, id, createdAt: Date.now() };
@@ -543,6 +554,40 @@ export async function saveDollMask(userId: string, mask: Omit<DollMask, 'id' | '
     });
   }
   return full;
+}
+
+export async function listDollMasks(userId: string, dollId?: string): Promise<DollMask[]> {
+  if (!userId || userId === 'ghost') return [];
+  try {
+    const col = userCol(userId, 'dollMasks');
+    const q = dollId
+      ? query(col, where('dollId', '==', dollId), limit(40))
+      : query(col, limit(80));
+    const snap = await getDocs(q);
+    const masks = snap.docs.map((d) => d.data() as DollMask);
+    return dollId ? masks.filter((m) => m.dollId === dollId) : masks;
+  } catch (e) {
+    handleFirestoreError(e, OperationType.GET, 'dollMasks');
+    return [];
+  }
+}
+
+/** Ensure a Doll has default role masks; returns current masks (existing or newly seeded). */
+export async function ensureDefaultDollMasks(userId: string, doll: Doll): Promise<DollMask[]> {
+  if (!userId || userId === 'ghost') return [];
+  const existing = await listDollMasks(userId, doll.id);
+  if (existing.length > 0) return existing;
+
+  const { defaultMaskSeedsForDoll } = await import('./dollEngine');
+  const seeds = defaultMaskSeedsForDoll(doll);
+  const created: DollMask[] = [];
+  for (const seed of seeds) {
+    created.push(await saveDollMask(userId, seed));
+  }
+  if (created[0] && !doll.activeMaskId) {
+    await updateDoll(userId, doll.id, { activeMaskId: created[0].id });
+  }
+  return created;
 }
 
 // ─── Creative Dossier ─────────────────────────────────────────────────────────
