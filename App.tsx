@@ -2755,6 +2755,7 @@ export const App: React.FC = () => {
                           <ChamberMapView
                             onNavigate={setViewMode}
                             onOpenFind={() => setCommandDrawerOpen(true)}
+                            onOpenMenu={() => setIsNavOpen(true)}
                           />
                         )}
                         {viewMode === "atelier" && <AtelierChamber />}

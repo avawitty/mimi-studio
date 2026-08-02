@@ -55,6 +55,8 @@ type ChamberMapMode = "studio-map" | "architecture-registry";
 export interface ChamberMapViewProps {
   onNavigate?: (mode: string) => void;
   onOpenFind?: () => void;
+  /** Opens the shared NavigationDrawer (same path as StudioChrome). */
+  onOpenMenu?: () => void;
   initialMode?: ChamberMapMode;
 }
 
@@ -385,6 +387,7 @@ const ArchitectureRegistry: React.FC<{
 export const ChamberMapView: React.FC<ChamberMapViewProps> = ({
   onNavigate,
   onOpenFind,
+  onOpenMenu,
   initialMode = "studio-map",
 }) => {
   const [mode, setMode] = useState<ChamberMapMode>(initialMode);
@@ -404,6 +407,7 @@ export const ChamberMapView: React.FC<ChamberMapViewProps> = ({
       title={mode === "studio-map" ? "Studio desk" : "Architecture registry"}
       activeAnchor={mode === "studio-map" ? "map" : "find"}
       onNavigate={navigate}
+      onOpenMenu={onOpenMenu}
       onOpenFind={() => {
         if (onOpenFind) {
           onOpenFind();

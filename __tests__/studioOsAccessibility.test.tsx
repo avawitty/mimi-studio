@@ -1,7 +1,8 @@
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MimiGlyph } from "../components/studio-os/MimiGlyph";
+import { StudioHeader } from "../components/studio-os/StudioHeader";
 import { StudioNavigation } from "../components/studio-os/StudioNavigation";
 
 describe("Studio OS accessibility", () => {
@@ -33,5 +34,12 @@ describe("Studio OS accessibility", () => {
     for (const button of iconOnlyButtons) {
       expect(button).toHaveAccessibleName();
     }
+  });
+
+  it("exposes the shared full-menu control when wired", () => {
+    const onOpenMenu = vi.fn();
+    render(<StudioHeader phase="collect" onOpenMenu={onOpenMenu} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open full menu" }));
+    expect(onOpenMenu).toHaveBeenCalledTimes(1);
   });
 });
