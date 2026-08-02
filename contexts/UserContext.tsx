@@ -111,7 +111,7 @@ interface UserContextType {
   setDnaMapped: (mapped: boolean) => Promise<void>;
 }
 
-const UserContext = createContext<UserContextType | undefined>(undefined);
+export const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const useUser = () => {
   const context = useContext(UserContext);
@@ -120,6 +120,9 @@ export const useUser = () => {
   }
   return context;
 };
+
+/** Safe for surfaces that can mount outside UserProvider (e.g. debug /studio shells). */
+export const useOptionalUser = () => useContext(UserContext);
 
 const DEFAULT_FLAGS: FeatureFlags = {
   scry: true,
