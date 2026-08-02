@@ -33,7 +33,7 @@ export const getPublicBaseUrl = (req?: {
     return `${proto}://${headerHost}`.replace(/\/$/, "");
   }
 
-  return "https://mimi.you";
+  return "https://www.mimi.you";
 };
 
 /** Pretty RSS path for a creator handle (subscribe-once URL). */

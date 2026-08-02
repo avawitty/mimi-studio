@@ -2407,7 +2407,15 @@ export const App: React.FC = () => {
           className={`flex-1 flex flex-col relative ${
             ["studio", "taste-graph", "taste-discovery", "the-edit", "tailor", "moodboard", "darkroom", "private-studio", "quiet-studio"].includes(viewMode)
               ? "overflow-hidden min-h-0 pb-0 h-full"
-              : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0 mimi-page-pad"
+              : [
+                    "editorial-home",
+                    "stand",
+                    "signature",
+                    "showcase",
+                    "archival",
+                  ].includes(viewMode)
+                ? "overflow-y-auto bg-nous-base pb-8 md:pb-0 mimi-page-pad mimi-page-pad--public"
+                : "overflow-y-auto bg-nous-base pb-[72px] md:pb-0 mimi-page-pad"
           }`}
         >
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (

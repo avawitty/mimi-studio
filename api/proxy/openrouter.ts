@@ -17,7 +17,7 @@ export default async function handler(req: any, res: any) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": process.env.MIMI_PUBLIC_BASE_URL || "https://mimi.you",
+        "HTTP-Referer": process.env.MIMI_PUBLIC_BASE_URL || "https://www.mimi.you",
         "X-Title": "Mimi Zine",
       },
       body: JSON.stringify(await readJsonBody(req)),
