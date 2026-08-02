@@ -1,6 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { MediaFile, ZineGenerationOptions } from "../../types";
-import { useUser } from "../../contexts/UserContext";
+import { useOptionalUser } from "../../contexts/UserContext";
 import { WorkSurface } from "./WorkSurface";
 import { DossierTabs, type DossierFolder } from "./DossierTabs";
 import { PromptCycle } from "./PromptCycle";
@@ -30,18 +36,25 @@ const FOLDERS: DossierFolder[] = [
   { id: "stand", label: "ISSUE", name: "Stand", mode: "stand" },
 ];
 
+const EMPTY_ZINE_OPTIONS: ZineGenerationOptions = {
+  style: "balanced",
+  theme: "organic",
+  contentFocus: "balanced",
+  goals: "",
+};
+
 export type StudioWorktableProps = {
-  onRefine: (
+  onRefine?: (
     text: string,
     media: MediaFile[],
     tone: string,
     opts: Record<string, unknown>,
   ) => void;
-  isThinking: boolean;
+  isThinking?: boolean;
   initialValue?: string;
   initialMedia?: MediaFile[];
-  zineOptions: ZineGenerationOptions;
-  setZineOptions: (options: ZineGenerationOptions) => void;
+  zineOptions?: ZineGenerationOptions;
+  setZineOptions?: (options: ZineGenerationOptions) => void;
   initialHighFidelity?: boolean;
   /** Escape hatch to the dense InputStudio console */
   onOpenConsole?: () => void;
@@ -52,19 +65,26 @@ export type StudioWorktableProps = {
 /**
  * WT-001 — Archival atelier worktable: masthead, folders, prompt cycles,
  * instruments, aura meter, context strip. Mobile-first desk metaphor.
+ *
+ * Props are optional so the surface can mount standalone
+ * (`<Route path="/studio" element={<StudioWorktable />} />`) for redesign /
+ * debug shells, and also receive the live App generation callbacks.
  */
 export const StudioWorktable: React.FC<StudioWorktableProps> = ({
   onRefine,
-  isThinking,
+  isThinking: isThinkingProp,
   initialValue = "",
   initialMedia,
-  zineOptions,
-  setZineOptions,
+  zineOptions: zineOptionsProp,
+  setZineOptions: setZineOptionsProp,
   initialHighFidelity,
   onOpenConsole,
   onNavigate,
 }) => {
-  const { profile } = useUser();
+  // Optional — works outside UserProvider (sandbox / debug App)
+  const userCtx = useOptionalUser();
+  const profile = userCtx?.profile ?? null;
+
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [cycleIndex, setCycleIndex] = useState(0);
@@ -79,6 +99,15 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
   );
   const [useSearch, setUseSearch] = useState(false);
   const [deepThinking, setDeepThinking] = useState(false);
+  const [localThinking, setLocalThinking] = useState(false);
+  const [demoNote, setDemoNote] = useState<string | null>(null);
+  const [localZineOptions, setLocalZineOptions] =
+    useState<ZineGenerationOptions>(zineOptionsProp || EMPTY_ZINE_OPTIONS);
+
+  const zineOptions = zineOptionsProp ?? localZineOptions;
+  const setZineOptions = setZineOptionsProp ?? setLocalZineOptions;
+  const isThinking = isThinkingProp ?? localThinking;
+
   const [activeTreatmentId, setActiveTreatmentId] = useState<string | null>(
     zineOptions.selectedTreatmentId || null,
   );
@@ -91,12 +120,18 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
     if (initialMedia?.length) setMediaFiles(initialMedia);
   }, [initialMedia]);
 
+  useEffect(() => {
+    if (zineOptionsProp) setLocalZineOptions(zineOptionsProp);
+  }, [zineOptionsProp]);
+
   const treatments = useMemo(
     () =>
-      (profile?.savedTreatments || []).map((t: { id: string; treatmentName?: string; title?: string }) => ({
-        id: t.id,
-        name: t.treatmentName || t.title || "Untitled treatment",
-      })),
+      (profile?.savedTreatments || []).map(
+        (t: { id: string; treatmentName?: string; title?: string }) => ({
+          id: t.id,
+          name: t.treatmentName || t.title || "Untitled treatment",
+        }),
+      ),
     [profile?.savedTreatments],
   );
 
@@ -130,7 +165,8 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
       return;
     }
     const tone = auraMoodToTone(mood);
-    onRefine(text || PROMPT_CYCLES[cycleIndex], mediaFiles, tone, {
+    const payload = text || PROMPT_CYCLES[cycleIndex];
+    const opts = {
       deepThinking,
       isPublic: false,
       isLite: false,
@@ -139,9 +175,22 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
       useSearch,
       zineOptions: {
         ...zineOptions,
-        selectedTreatmentId: activeTreatmentId || zineOptions.selectedTreatmentId,
+        selectedTreatmentId:
+          activeTreatmentId || zineOptions.selectedTreatmentId,
       },
-    });
+    };
+
+    if (onRefine) {
+      onRefine(payload, mediaFiles, tone, opts);
+      return;
+    }
+
+    // Standalone / debug mount — local feedback only
+    setLocalThinking(true);
+    setDemoNote(`Spark queued · ${tone.toLowerCase()} · ${payload.slice(0, 72)}`);
+    window.setTimeout(() => {
+      setLocalThinking(false);
+    }, 900);
   }, [
     input,
     mediaFiles,
@@ -223,8 +272,8 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
       : "No approved context — Mimi will not invent sources";
 
   return (
-    <WorkSurface className="h-full">
-      <div className="flex flex-col h-full min-h-0 lg:flex-row lg:gap-4 lg:px-4 lg:pt-4 lg:pb-4">
+    <WorkSurface className="h-full min-h-[100dvh]">
+      <div className="flex flex-col h-full min-h-[100dvh] lg:flex-row lg:gap-4 lg:px-4 lg:pt-4 lg:pb-4">
         {/* Desktop folder spine */}
         <DossierTabs
           folders={FOLDERS}
@@ -290,6 +339,15 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
               onNext={advanceCycle}
               phaseLabel={isThinking ? "DEVELOPING" : "INTAKE"}
             />
+
+            {demoNote && !onRefine && (
+              <p
+                role="status"
+                className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--mimi-cobalt-deep,#6a8aa4)]"
+              >
+                {demoNote}
+              </p>
+            )}
 
             {mediaFiles.length > 0 && (
               <div className="flex gap-2 overflow-x-auto pb-1">
