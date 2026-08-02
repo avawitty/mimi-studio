@@ -1080,10 +1080,11 @@ export const fetchCommunityZines = async (count: number) => {
       const q = query(
         collection(db, "zines"),
         where("isPublic", "==", true),
-        limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
+        orderBy("timestamp", "desc"),
+        limit(Math.min(take, COMMUNITY_ZINE_READ_CAP)),
       );
       const docs = (await getDocs(q)).docs.map(d => d.data() as ZineMetadata);
-      return docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, take);
+      return docs.slice(0, take);
     } catch (e: any) {
       if (isFirestoreQuotaError(e)) {
         console.warn("MIMI // Community Fetch: Firestore quota exhausted — use sovereign host");

@@ -1,4 +1,5 @@
 import { cors, requireMethod, sendError } from "../../lib/apiUtils.js";
+import { resolveSovereignRequesterUid } from "../../lib/sovereign/auth.js";
 import { isSovereignEnabled } from "../../lib/sovereign/db.js";
 import { subscribeSovereignEvents } from "../../lib/sovereign/events.js";
 import { sovereignStatus } from "../../lib/sovereign/store.js";
@@ -16,6 +17,19 @@ export default async function handler(req: any, res: any) {
     return sendError(res, 503, "Sovereign archive disabled on this host.", "SOVEREIGN_DISABLED");
   }
 
+  const scope = String(req.query?.scope || "public"); // public | user
+  const userId = String(req.query?.userId || "").trim();
+
+  if (scope === "user") {
+    if (!userId) {
+      return sendError(res, 400, "userId required for scope=user", "MISSING_USER_ID");
+    }
+    const requester = await resolveSovereignRequesterUid(req);
+    if (!requester || requester.uid !== userId) {
+      return sendError(res, 401, "Authentication required for user-scoped events", "UNAUTHORIZED");
+    }
+  }
+
   // If this is a classic Node ServerResponse, stream SSE.
   if (typeof res.writeHead === "function" && typeof res.write === "function") {
     res.writeHead(200, {
@@ -27,9 +41,6 @@ export default async function handler(req: any, res: any) {
 
     const status = await sovereignStatus();
     res.write(`event: hello\ndata: ${JSON.stringify({ ok: true, archive: status })}\n\n`);
-
-    const scope = String(req.query?.scope || "public"); // public | user
-    const userId = String(req.query?.userId || req.headers?.["x-user-id"] || "").trim();
 
     const unsubscribe = subscribeSovereignEvents((event) => {
       if (scope === "public") {

@@ -104,11 +104,10 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
     };
   }, [mode, floorLoaded]);
 
-  // Server-side Floor search when sovereign is ready; otherwise filter client-side.
+  // Server-side Floor search when sovereign is ready; restore full shelf when cleared.
   useEffect(() => {
     if (mode !== 'floor' || !floorLoaded || !archive?.ready) return;
     const q = searchQuery.trim();
-    if (!q) return;
     let cancelled = false;
     const handle = setTimeout(async () => {
       try {
@@ -118,7 +117,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
       } catch {
         // keep client filter
       }
-    }, 220);
+    }, q ? 220 : 0);
     return () => {
       cancelled = true;
       clearTimeout(handle);

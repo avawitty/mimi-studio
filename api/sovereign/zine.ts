@@ -1,5 +1,8 @@
 import { cors, readJsonBody, sendError, sendJson, validateBody } from "../../lib/apiUtils.js";
-import { authorizeSovereignWrite } from "../../lib/sovereign/auth.js";
+import {
+  authorizeSovereignWrite,
+  resolveSovereignRequesterUid,
+} from "../../lib/sovereign/auth.js";
 import { isSovereignEnabled } from "../../lib/sovereign/db.js";
 import {
   deleteZine,
@@ -44,10 +47,10 @@ export default async function handler(req: any, res: any) {
       const userId = String(req.query?.userId || "").trim();
 
       if (id) {
-        const requesterUid = String(req.headers?.["x-user-id"] || "").trim();
+        const requester = await resolveSovereignRequesterUid(req);
         const zine = await getZineById(id, {
-          requesterUid,
-          includePrivate: Boolean(requesterUid),
+          requesterUid: requester?.uid,
+          includePrivate: Boolean(requester?.uid),
         });
         if (!zine) return sendError(res, 404, "Zine not found", "NOT_FOUND");
         res.setHeader("Cache-Control", zine.isPublic
@@ -58,10 +61,11 @@ export default async function handler(req: any, res: any) {
       }
 
       if (userId) {
-        const publicOnly = String(req.query?.publicOnly || "1") !== "0";
-        const requesterUid = String(req.headers?.["x-user-id"] || "").trim();
+        const wantsPrivate = String(req.query?.publicOnly || "1") === "0";
+        const requester = await resolveSovereignRequesterUid(req);
+        const includePrivate = wantsPrivate && requester?.uid === userId;
         const zines = await listUserZines(userId, {
-          publicOnly: publicOnly || requesterUid !== userId,
+          publicOnly: !includePrivate,
           limit: Number(req.query?.limit || 100),
         });
         res.setHeader("X-Mimi-Archive", "sovereign");

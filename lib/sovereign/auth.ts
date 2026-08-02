@@ -5,6 +5,10 @@ export type SovereignAuthResult =
   | { ok: true; uid: string; via: "ingest_key" | "id_token" | "user_header" }
   | { ok: false; status: number; code: string; message: string };
 
+export type SovereignRequester =
+  | { uid: string; via: "ingest_key" | "id_token" | "user_header" }
+  | null;
+
 const strictAuthEnabled = (): boolean =>
   process.env.MIMI_SOVEREIGN_STRICT_AUTH === "1" ||
   process.env.MIMI_SOVEREIGN_STRICT_AUTH === "true" ||
@@ -84,4 +88,47 @@ export const authorizeSovereignWrite = async (
       ? "Strict sovereign auth requires ID token or ingest key"
       : "Unauthorized sovereign write",
   };
+};
+
+/**
+ * Resolve the authenticated requester uid for sovereign reads (private zines, user SSE).
+ * Never trusts x-user-id alone in strict/production mode.
+ */
+export const resolveSovereignRequesterUid = async (req: {
+  headers?: Record<string, unknown>;
+}): Promise<SovereignRequester> => {
+  const headers = req.headers || {};
+  const ingestKey = process.env.MIMI_SOVEREIGN_INGEST_KEY?.trim();
+  if (ingestKey) {
+    const provided =
+      String(headers["x-mimi-ingest-key"] || "").trim() ||
+      String(headers["x-api-key"] || "").trim();
+    if (provided && provided === ingestKey) {
+      const headerUid = String(headers["x-user-id"] || "").trim();
+      if (headerUid) return { uid: headerUid, via: "ingest_key" };
+    }
+  }
+
+  const token = extractMimiSessionToken(headers);
+  if (token) {
+    const { auth } = getServerFirebaseAdmin();
+    if (auth) {
+      try {
+        const decoded = await auth.verifyIdToken(token);
+        if (decoded?.uid) return { uid: decoded.uid, via: "id_token" };
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  const headerUid = String(headers["x-user-id"] || "").trim();
+  if (headerUid) {
+    const allowSoftHeader =
+      process.env.MIMI_SOVEREIGN_TRUST_USER_HEADER === "1" ||
+      (!strictAuthEnabled() && !ingestKey);
+    if (allowSoftHeader) return { uid: headerUid, via: "user_header" };
+  }
+
+  return null;
 };
