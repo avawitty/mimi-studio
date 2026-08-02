@@ -84,6 +84,7 @@ The canonical architecture is documented in [`docs/mimi-system-architecture.md`]
 - Vite
 - Express
 - Firebase Authentication, Firestore, Admin SDK, and Functions
+- Sovereign archive (SQLite / Postgres) for owned Floor + Mine reads
 - OpenAI and Google GenAI integrations
 - Vercel AI Gateway compatibility
 - Model Context Protocol (MCP)
@@ -93,6 +94,20 @@ The canonical architecture is documented in [`docs/mimi-system-architecture.md`]
 - D3 and Recharts
 - Playwright
 - PDF, image, ZIP, and export tooling
+
+## Sovereign archive
+
+The **sovereign archive** is Mimi’s owned data plane for Stand Floor, Keep Tabs feeds, and Mine sync — so public reads do not depend on Firestore free-tier quotas.
+
+- **Local / Fly / Docker:** enabled by default with SQLite at `.data/sovereign.sqlite` (override with `MIMI_SOVEREIGN_DB`).
+- **Postgres / Neon:** set `MIMI_SOVEREIGN_DATABASE_URL`, or a `neon.tech` `DATABASE_URL` (auto). TLS cert verification is enforced.
+- **Vercel:** off unless a durable Postgres URL or explicit DB path is configured (serverless disk is ephemeral).
+- **Auth:** Firebase ID token + `__session` cookie (for SSE); ingest key for imports. Soft `x-user-id` is local-only.
+- **AI Gateway:** Floor `q=` search is hybrid keyword + Gateway embeddings (`openai/text-embedding-3-small` via `modelFor`). Reindex with `npm run sovereign:reindex`.
+- **Live updates:** `GET /api/sovereign/events` (SSE) on the long-lived Express host; clients fall back to polling on serverless.
+- **Seed / import:** `npm run sovereign:seed`, `npm run sovereign:import -- ./export.json`, `npm run sovereign:export-firestore`, `npm run sovereign:reindex`.
+
+See [`docs/sovereign-archive.md`](docs/sovereign-archive.md) for auth options, scale posture, and ops. Health reports archive status at `GET /api/health` → `sovereign`.
 
 ## Run locally
 
@@ -145,6 +160,9 @@ npm run validate:canon              # Validate canonical routes
 npm run verify:tailor-contract      # Verify Tailor profile contracts
 npm run verify:used-context         # Verify the Used Context flow
 npm run verify:zine-visual-policy   # Verify zine visual-policy rules
+npm run sovereign:seed              # Seed demo Floor into the sovereign archive
+npm run sovereign:import -- ./file  # Import a JSON export into sovereign
+npm run sovereign:export-firestore  # One-shot Firestore → sovereign (needs Admin)
 ```
 
 Additional integration checks are available for Shopify, Intel Hub, and Pinterest preview workflows.

@@ -571,6 +571,11 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
   } catch (pocketErr) {
     console.warn("MIMI // Auto-save zine to Pocket failed:", pocketErr);
   }
+  // Always mirror into the sovereign archive (Mine + Floor) — survives Firestore caps.
+  {
+    const { mirrorZineToSovereign } = await import("./sovereignClient");
+    void mirrorZineToSovereign(meta);
+  }
   if (uid && auth.currentUser && navigator.onLine) {
     try {
       console.info("MIMI // saveZineToProfile: Saving zine to Firestore...");
@@ -773,6 +778,10 @@ export const addToPocket = async (uid: string, type: PocketItem['type'], content
 
   await savePocketItemLocally(item);
   window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
+  {
+    const { mirrorPocketItemToSovereign } = await import("./sovereignClient");
+    void mirrorPocketItemToSovereign(item);
+  }
   if (uid && auth.currentUser && navigator.onLine) {
     try {
       await setDoc(doc(db, "pocket", itemId), sanitizeFirestoreData(item));
@@ -788,6 +797,10 @@ export const addToPocket = async (uid: string, type: PocketItem['type'], content
 export const deleteFromPocket = async (itemId: string): Promise<void> => {
   await deleteLocalPocketItem(itemId);
   window.dispatchEvent(new CustomEvent('mimi:pocket_updated'));
+  if (auth.currentUser) {
+    const { deleteSovereignPocketItem } = await import("./sovereignClient");
+    void deleteSovereignPocketItem(itemId, auth.currentUser.uid);
+  }
   if (auth.currentUser && navigator.onLine) {
     try {
       await deleteDoc(doc(db, "pocket", itemId));
@@ -850,6 +863,18 @@ export const fetchPocketItems = async (uid: string, forceRefresh = false) => {
     }
 
     try {
+      const { fetchSovereignPocketItems, isSovereignOnline } = await import("./sovereignClient");
+      const sovereign = await fetchSovereignPocketItems(uid);
+      if (sovereign !== null && ((await isSovereignOnline()) || sovereign.length > 0)) {
+        const sorted = [...sovereign].sort((a, b) => b.savedAt - a.savedAt);
+        pocketCache[uid] = { data: sorted, timestamp: Date.now() };
+        return sorted;
+      }
+    } catch {
+      // fall through
+    }
+
+    try {
       const q = query(collection(db, "pocket"), where("userId", "==", uid));
       const docs = (await getDocs(q)).docs.map(d => d.data() as PocketItem);
       const sorted = docs.sort((a, b) => b.savedAt - a.savedAt);
@@ -893,6 +918,19 @@ export const fetchUserZines = async (uid: string, forceRefresh = false) => {
     }
 
     try {
+      const { fetchSovereignUserZines, isSovereignOnline } = await import("./sovereignClient");
+      const publicOnly = !(auth.currentUser && uid === auth.currentUser.uid);
+      const sovereign = await fetchSovereignUserZines(uid, { publicOnly });
+      if (sovereign !== null && ((await isSovereignOnline()) || sovereign.length > 0)) {
+        const sorted = [...sovereign].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        zineCache[uid] = { data: sorted, timestamp: Date.now() };
+        return sorted;
+      }
+    } catch {
+      // fall through
+    }
+
+    try {
       let q;
       devLog.info("MIMI // fetchUserZines: querying");
       if (auth.currentUser && uid === auth.currentUser.uid) {
@@ -913,6 +951,19 @@ export const fetchUserZines = async (uid: string, forceRefresh = false) => {
     }
 };
 
+/** Cap Firestore community scans; prefer sovereign archive when available. */
+const COMMUNITY_ZINE_READ_CAP = 60;
+
+const isFirestoreQuotaError = (error: unknown): boolean => {
+  const code = typeof (error as any)?.code === "string" ? (error as any).code : "";
+  const message = error instanceof Error ? error.message : String(error || "");
+  return (
+    code === "resource-exhausted" ||
+    message.includes("RESOURCE_EXHAUSTED") ||
+    message.includes("Quota exceeded")
+  );
+};
+
 export const subscribeToUserZines = (
   uid: string,
   callback: (data: ZineMetadata[]) => void,
@@ -922,63 +973,213 @@ export const subscribeToUserZines = (
     callback([]);
     return () => {};
   }
-  let q;
-  if (uid === auth.currentUser.uid) {
-    q = query(collection(db, "zines"), where("userId", "==", uid));
-  } else {
-    q = query(collection(db, "zines"), where("userId", "==", uid), where("isPublic", "==", true));
-  }
-  return onSnapshot(q, (snapshot) => {
-    const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
-    const sorted = docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    zineCache[uid] = { data: sorted, timestamp: Date.now() }; // Update cache on snapshot
-    callback(sorted);
-  }, (error: any) => {
-    if (error.code === 'permission-denied' && auth.currentUser?.uid !== uid) {
-      console.warn(`MIMI // Ignored permission-denied for zines/${uid} due to auth state change.`);
-      onError?.(error);
+
+  let cancelled = false;
+  let unsubFirestore = () => {};
+  let unsubLive: (() => void) | null = null;
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  const publicOnly = !(auth.currentUser && uid === auth.currentUser.uid);
+
+  const hydrateSovereign = async () => {
+    try {
+      const { fetchSovereignUserZines, isSovereignOnline } = await import("./sovereignClient");
+      const online = await isSovereignOnline();
+      const sovereign = await fetchSovereignUserZines(uid, { publicOnly });
+      if (cancelled) return online;
+      if (sovereign !== null) {
+        const sorted = [...sovereign].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        zineCache[uid] = { data: sorted, timestamp: Date.now() };
+        callback(sorted);
+        return online;
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  };
+
+  const startPolling = () => {
+    if (pollTimer || cancelled) return;
+    pollTimer = setInterval(() => {
+      void hydrateSovereign();
+    }, 45_000);
+  };
+
+  (async () => {
+    const sovereignOnline = await hydrateSovereign();
+    if (cancelled) return;
+
+    if (sovereignOnline) {
+      const { subscribeSovereignLive } = await import("./sovereignClient");
+      unsubLive = subscribeSovereignLive(
+        "user",
+        {
+          onZine: () => {
+            void hydrateSovereign();
+          },
+          onUnsupported: () => {
+            unsubLive = null;
+            startPolling();
+          },
+        },
+        { userId: uid },
+      );
+      if (!unsubLive) startPolling();
       return;
     }
-    logFirestoreError(error, OperationType.LIST, "zines");
-    onError?.(error);
-  });
+
+    let q;
+    if (uid === auth.currentUser?.uid) {
+      q = query(collection(db, "zines"), where("userId", "==", uid));
+    } else {
+      q = query(collection(db, "zines"), where("userId", "==", uid), where("isPublic", "==", true));
+    }
+    unsubFirestore = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
+      const sorted = docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      zineCache[uid] = { data: sorted, timestamp: Date.now() };
+      callback(sorted);
+    }, (error: any) => {
+      if (error.code === 'permission-denied' && auth.currentUser?.uid !== uid) {
+        console.warn(`MIMI // Ignored permission-denied for zines/${uid} due to auth state change.`);
+        onError?.(error);
+        return;
+      }
+      if (isFirestoreQuotaError(error)) {
+        console.warn("MIMI // Mine subscribe: Firestore quota exhausted — use sovereign host");
+        onError?.(error);
+        return;
+      }
+      logFirestoreError(error, OperationType.LIST, "zines");
+      onError?.(error);
+    });
+  })();
+
+  return () => {
+    cancelled = true;
+    unsubFirestore();
+    unsubLive?.();
+    if (pollTimer) clearInterval(pollTimer);
+  };
 };
 
 /** Cap community scans so free-tier read quota isn't burned by full-collection gets. */
 const COMMUNITY_ZINE_READ_CAP = 60;
 
 export const fetchCommunityZines = async (count: number) => {
+    const take = Math.max(0, Math.min(count || 0, COMMUNITY_ZINE_READ_CAP));
+    if (take === 0) return [];
+
+    // Sovereign archive first — no Firestore free-tier burn for Floor.
+    try {
+      const { fetchSovereignCommunityZines, isSovereignOnline } = await import("./sovereignClient");
+      const sovereign = await fetchSovereignCommunityZines(take);
+      if (sovereign !== null && (await isSovereignOnline())) {
+        return sovereign;
+      }
+      if (sovereign && sovereign.length > 0) return sovereign;
+    } catch {
+      // fall through
+    }
+
     if (!auth.currentUser) return [];
     const take = Math.max(0, Math.min(count || 0, COMMUNITY_ZINE_READ_CAP));
     if (take === 0) return [];
     try {
-      // Limit at the server (same pattern as fetchFeaturedPublicZines). Over-fetch a little
-      // for client-side timestamp sort without scanning the whole public corpus.
       const q = query(
         collection(db, "zines"),
         where("isPublic", "==", true),
-        limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
+        orderBy("timestamp", "desc"),
+        limit(Math.min(take, COMMUNITY_ZINE_READ_CAP)),
       );
       const docs = (await getDocs(q)).docs.map(d => d.data() as ZineMetadata);
-      return docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, take);
+      return docs.slice(0, take);
     } catch (e: any) {
-      console.warn("MIMI // Community Fetch Error:", e.code);
+      if (isFirestoreQuotaError(e)) {
+        console.warn("MIMI // Community Fetch: Firestore quota exhausted — use sovereign host");
+      } else {
+        console.warn("MIMI // Community Fetch Error:", e.code);
+      }
       return [];
     }
 };
 
 export const subscribeToCommunityZines = (callback: (data: ZineMetadata[]) => void) => {
-  if (!auth.currentUser) return () => {};
   const take = 30;
-  const q = query(
-    collection(db, "zines"),
-    where("isPublic", "==", true),
-    limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
-  );
-  return onSnapshot(q, (snapshot) => {
-    const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
-    callback(docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, take));
-  }, (e) => logFirestoreError(e, OperationType.LIST, "zines"));
+  let cancelled = false;
+  let unsubFirestore = () => {};
+  let unsubLive: (() => void) | null = null;
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  const hydrateSovereign = async () => {
+    try {
+      const { fetchSovereignCommunityZines, isSovereignOnline } = await import("./sovereignClient");
+      const online = await isSovereignOnline();
+      const sovereign = await fetchSovereignCommunityZines(take);
+      if (cancelled) return online;
+      if (sovereign !== null) {
+        callback(sovereign);
+        return online;
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  };
+
+  const startPolling = () => {
+    if (pollTimer || cancelled) return;
+    pollTimer = setInterval(() => {
+      void hydrateSovereign();
+    }, 45_000);
+  };
+
+  (async () => {
+    const sovereignOnline = await hydrateSovereign();
+    if (cancelled) return;
+
+    // When sovereign is online, prefer SSE; poll as fallback. Never open Firestore.
+    if (sovereignOnline) {
+      const { subscribeSovereignLive } = await import("./sovereignClient");
+      unsubLive = subscribeSovereignLive("public", {
+        onZine: () => {
+          void hydrateSovereign();
+        },
+        onUnsupported: () => {
+          unsubLive = null;
+          startPolling();
+        },
+      });
+      if (!unsubLive) startPolling();
+      return;
+    }
+
+    if (!auth.currentUser) return;
+    const q = query(
+      collection(db, "zines"),
+      where("isPublic", "==", true),
+      orderBy("timestamp", "desc"),
+      limit(Math.min(take * 3, COMMUNITY_ZINE_READ_CAP)),
+    );
+    unsubFirestore = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => d.data() as ZineMetadata);
+      callback(docs.slice(0, take));
+    }, (e) => {
+      if (isFirestoreQuotaError(e)) {
+        console.warn("MIMI // Community subscribe: Firestore quota exhausted");
+        return;
+      }
+      logFirestoreError(e, OperationType.LIST, "zines");
+    });
+  })();
+
+  return () => {
+    cancelled = true;
+    unsubFirestore();
+    unsubLive?.();
+    if (pollTimer) clearInterval(pollTimer);
+  };
 };
 
 /**
@@ -991,6 +1192,10 @@ export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolea
     console.warn("MIMI // updateZineMetadata: No current user — persisting locally only");
     await saveZineLocally(metadata);
     invalidateZineCache();
+    {
+      const { mirrorZineToSovereign } = await import("./sovereignClient");
+      void mirrorZineToSovereign(metadata);
+    }
     return true;
   }
   if (!metadata.userId) {
@@ -1070,15 +1275,44 @@ export const updateZineMetadata = async (metadata: ZineMetadata): Promise<boolea
     await saveZineLocally(metadata);
     syncToShadowMemory(metadata);
     invalidateZineCache();
+    {
+      const { mirrorZineToSovereign } = await import("./sovereignClient");
+      void mirrorZineToSovereign(metadata);
+    }
     console.info("MIMI // updateZineMetadata: Update complete");
     return true;
   } catch (e) {
     console.error("MIMI // updateZineMetadata: Failed to update zine metadata", e);
-    throw e; // Rethrow to be caught by caller if needed
+    // Still try sovereign if Firestore write failed (quota / offline).
+    try {
+      const { mirrorZineToSovereign } = await import("./sovereignClient");
+      await mirrorZineToSovereign(metadata);
+      await saveZineLocally(metadata);
+      return true;
+    } catch {
+      throw e;
+    }
   }
 };
 
 export const fetchZineById = async (id: string) => {
+    try {
+      const { fetchSovereignZineById } = await import("./sovereignClient");
+      const sovereign = await fetchSovereignZineById(id);
+      if (sovereign) {
+        if (sovereign.content?.pagesJson && (!sovereign.content.pages || sovereign.content.pages.length === 0)) {
+          try {
+            sovereign.content.pages = JSON.parse(sovereign.content.pagesJson);
+          } catch {
+            // keep as-is
+          }
+        }
+        return sovereign;
+      }
+    } catch {
+      // fall through
+    }
+
     try {
       const zineDoc = await getDoc(doc(db, "zines", id));
       if (!zineDoc.exists()) return null;
@@ -1566,6 +1800,17 @@ export const getUserProfile = async (uid: string) => {
   const cached = getCache<UserProfile>(cacheKey);
   if (cached) return cached;
 
+  try {
+    const { fetchSovereignProfileByUid } = await import("./sovereignClient");
+    const sovereign = await fetchSovereignProfileByUid(uid);
+    if (sovereign) {
+      setCache(cacheKey, sovereign);
+      return sovereign;
+    }
+  } catch {
+    // fall through
+  }
+
   let retries = 2; // Reduced retries
   while (retries > 0) {
     try {
@@ -1581,6 +1826,10 @@ export const getUserProfile = async (uid: string) => {
       return null;
     } catch (e: any) {
       const errorMessage = e instanceof Error ? e.message : String(e);
+      if (isFirestoreQuotaError(e)) {
+        console.warn("MIMI // Profile Read: Firestore quota exhausted");
+        return null;
+      }
       if (errorMessage.includes('offline') && retries > 1) {
         console.warn(`MIMI // getUserProfile: Offline error, retrying... (${retries - 1} left)`);
         await new Promise(resolve => setTimeout(resolve, 800)); // Reduced delay
@@ -1596,6 +1845,10 @@ export const getUserProfile = async (uid: string) => {
 
 export const saveUserProfile = async (p: UserProfile) => {
   if (!p.uid || p.uid === 'ghost' || !auth.currentUser) return;
+  {
+    const { mirrorProfileToSovereign } = await import("./sovereignClient");
+    void mirrorProfileToSovereign(p);
+  }
   try {
     await setDoc(doc(db, "profiles_public", p.uid), sanitizeFirestoreData(p), { merge: true });
     setCache(`profile_${p.uid}`, p);
@@ -1783,6 +2036,13 @@ export const isHandleAvailable = async (handle: string, excludeUid?: string): Pr
 
 export const getUserByHandle = async (handle: string): Promise<UserProfile | null> => {
   try {
+    const { fetchSovereignProfileByHandle } = await import("./sovereignClient");
+    const sovereign = await fetchSovereignProfileByHandle(handle);
+    if (sovereign) return sovereign;
+  } catch {
+    // fall through
+  }
+  try {
     const q = query(collection(db, "profiles_public"), where("handle", "==", handle.toLowerCase()));
     const snap = await getDocs(q);
     if (snap.empty) return null;
@@ -1903,6 +2163,16 @@ export const deleteZine = async (zineId: string): Promise<void> => {
     } catch (e: any) {
       handleFirestoreError(e, OperationType.DELETE, `zines/${zineId}`);
     }
+  }
+  // Keep the owned archive in sync so deleted issues leave Floor / Mine.
+  try {
+    const uid = auth.currentUser?.uid;
+    if (uid && zineId) {
+      const { deleteSovereignZine } = await import("./sovereignClient");
+      void deleteSovereignZine(zineId, uid);
+    }
+  } catch {
+    // ignore mirror failures
   }
 };
 
