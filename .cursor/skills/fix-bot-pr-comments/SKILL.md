@@ -12,7 +12,7 @@ Actionable inline or review feedback from automation bots on open PRs — especi
 ## Scope
 
 - Default: all open PRs on the current repo (draft + ready). Prefer recent agent/`me*` branches when the user names one.
-- Bots to prioritize: `vercel`, `chatgpt-codex-connector`, `cursor`, `copilot`, `github-actions`.
+- Bots to prioritize: `vercel`, `chatgpt-codex-connector`, `cursor`, `copilot-pull-request-reviewer`, `github-actions`.
 - Skip non-actionable noise: deploy status blobs, Bugbot "usage limit reached", pure 👍 reactions, unanswered design questions.
 
 ## Workflow

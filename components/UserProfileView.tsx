@@ -513,7 +513,7 @@ export const UserProfileView: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto no-scrollbar bg-nous-base text-nous-text px-4 py-5 md:p-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
+    <div className="w-full h-full min-h-0 overflow-y-auto no-scrollbar bg-nous-base text-nous-text px-4 py-5 md:p-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
       <AnimatePresence>
         {message && (
           <motion.div
@@ -1565,7 +1565,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="w-full bg-white dark:bg-nous-base rounded-none border border-nous-border p-5 md:p-8 scroll-mt-24"
+          className="w-full bg-white dark:bg-nous-base rounded-none border border-nous-border p-4 sm:p-6 md:p-8 scroll-mt-24"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1675,7 +1675,7 @@ export const UserProfileView: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="w-full bg-white dark:bg-nous-base rounded-none border border-nous-border p-5 md:p-8"
+          className="w-full bg-white dark:bg-nous-base rounded-none border border-nous-border p-4 sm:p-6 md:p-8"
         >
           <div className="flex justify-between items-start mb-6">
             <h2 className="font-serif text-2xl italic">
@@ -1684,7 +1684,7 @@ export const UserProfileView: React.FC = () => {
             <UserCircle2 className="text-nous-subtle" size={16} />
           </div>
 
-          <div className="flex-grow flex flex-col justify-center py-2">
+          <div className="flex flex-col py-2">
             {isAddingPersona ? (
               <div className="space-y-4">
                 <input
@@ -1931,7 +1931,7 @@ export const UserProfileView: React.FC = () => {
             </div>
           </div>
 
-            <div className="flex-grow flex flex-col">
+            <div className="flex flex-col">
             <div className="flex items-end justify-between gap-4 mb-6">
               <h3 className="font-serif text-2xl italic">
                 Social Resonance
@@ -1950,7 +1950,7 @@ export const UserProfileView: React.FC = () => {
                 Open Proscenium →
               </button>
             </div>
-            <div className="flex-grow overflow-y-auto no-scrollbar min-h-[150px]">
+            <div className="flex flex-col gap-4">
               <ConnectionsManager embedded />
               <div className="p-4 mb-4 mt-4 border border-nous-border bg-nous-base/40 text-nous-subtle text-xs font-mono leading-relaxed">
                 Optional BYOK vault. Prefer server AI Gateway for default flows;

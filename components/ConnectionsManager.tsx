@@ -418,9 +418,13 @@ export const ConnectionsManager: React.FC<ConnectionsManagerProps> = ({
         ))}
       </div>
 
-      <div className="min-h-[280px] relative">
+      <div className={`relative ${embedded ? "min-h-0" : "min-h-[280px]"}`}>
         {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div
+            className={`${
+              embedded ? "py-8 flex items-center justify-center" : "absolute inset-0 flex items-center justify-center"
+            }`}
+          >
             <Loader2 size={22} className="animate-spin text-[var(--mimi-stone,#78716c)]" />
           </div>
         ) : (
@@ -443,7 +447,7 @@ export const ConnectionsManager: React.FC<ConnectionsManagerProps> = ({
                     />
                   ))
                 ) : (
-                  <EmptyState message="No connections established yet." />
+                  <EmptyState compact={embedded} message="No connections established yet." />
                 ))}
               {activeTab === "requests" &&
                 (requests.length > 0 ? (
@@ -457,7 +461,7 @@ export const ConnectionsManager: React.FC<ConnectionsManagerProps> = ({
                     />
                   ))
                 ) : (
-                  <EmptyState message="No pending connection requests." />
+                  <EmptyState compact={embedded} message="No pending connection requests." />
                 ))}
               {activeTab === "followers" &&
                 (followers.length > 0 ? (
@@ -470,7 +474,7 @@ export const ConnectionsManager: React.FC<ConnectionsManagerProps> = ({
                     />
                   ))
                 ) : (
-                  <EmptyState message="No resonants yet." />
+                  <EmptyState compact={embedded} message="No resonants yet." />
                 ))}
               {activeTab === "following" &&
                 (following.length > 0 ? (
@@ -483,7 +487,7 @@ export const ConnectionsManager: React.FC<ConnectionsManagerProps> = ({
                     />
                   ))
                 ) : (
-                  <EmptyState message="You haven't resonated with anyone yet." />
+                  <EmptyState compact={embedded} message="You haven't resonated with anyone yet." />
                 ))}
               {activeTab === "search" && (
                 <div className="space-y-6">
@@ -514,7 +518,7 @@ export const ConnectionsManager: React.FC<ConnectionsManagerProps> = ({
                       />
                     ))
                   ) : searchTerm.length >= 2 ? (
-                    <EmptyState message="No users found matching that handle." />
+                    <EmptyState compact={embedded} message="No users found matching that handle." />
                   ) : (
                     <p className="py-10 font-serif italic text-[var(--mimi-stone,#78716c)] text-sm">
                       Enter at least two characters to search the registry.
@@ -539,9 +543,19 @@ export const ConnectionsManager: React.FC<ConnectionsManagerProps> = ({
   );
 };
 
-const EmptyState: React.FC<{ message: string }> = ({ message }) => (
-  <div className="py-16 flex flex-col items-center justify-center text-center space-y-4">
-    <Users size={32} className="text-[var(--mimi-stone,#78716c)] opacity-50" />
-    <p className="font-serif italic text-[var(--mimi-stone,#78716c)]">{message}</p>
+const EmptyState: React.FC<{ message: string; compact?: boolean }> = ({
+  message,
+  compact,
+}) => (
+  <div
+    className={`${
+      compact ? "py-6" : "py-16"
+    } flex flex-col items-center justify-center text-center space-y-3`}
+  >
+    <Users
+      size={compact ? 22 : 32}
+      className="text-[var(--mimi-stone,#78716c)] opacity-50"
+    />
+    <p className="font-serif italic text-sm text-[var(--mimi-stone,#78716c)]">{message}</p>
   </div>
 );

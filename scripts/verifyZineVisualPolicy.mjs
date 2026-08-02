@@ -47,10 +47,12 @@ assert.doesNotMatch(
   "Loaded images must not retain a grayscale CSS filter.",
 );
 
-assert.match(reveal, /Semiotic commentary/, "Commerce cards need an editorial explanation surface.");
+assert.match(reveal, /Why it belongs|Editorial evidence of taste/, "Commerce cards need an editorial explanation surface.");
 assert.match(reveal, /t\.image_url/, "Commerce cards must support verified product thumbnails.");
 assert.doesNotMatch(reveal, /<Link2\b|<Printer\b/, "Toolbar duplicate link and PDF controls must stay removed.");
 assert.match(reveal, /From thesis to repeatable action/, "Authority Roadmap needs the editorial journey hierarchy.");
+assert.doesNotMatch(reveal, /bg-\[#F5F2EA\]|bg-\[#F7F4EC\]/, "Issue plates must not use warm cream fills.");
+assert.match(reveal, /ZineSpreadCanvas|Compose spread/, "Visual plates must support composed spreads.");
 
 console.log("✓ Zine visual policy verified");
 console.log("  - blank-slate image hierarchy");
@@ -58,3 +60,4 @@ console.log("  - color-preserving display");
 console.log("  - one toolbar control per intent");
 console.log("  - grounded commerce commentary cards");
 console.log("  - legible Authority Roadmap journey");
+console.log("  - house-style takeaways + spread compose");

@@ -34,6 +34,17 @@ import {
 } from '../services/atelierService';
 import { logProductTasteEvent } from '../services/tasteLogger';
 import { getFishShareUrl } from '../lib/siteHost';
+import { ZineLayoutEditor } from './ZineLayoutEditor';
+import { ZineSpreadCanvas } from './ZineSpreadCanvas';
+import {
+  defaultEditorTone,
+  pageHasCustomLayout,
+  plateGrammarClass,
+  resolveIssueMode,
+  shouldAutoDevelopPlates,
+  toEditableZinePage,
+} from '../lib/zineSpreadLayout';
+import type { EditorElement } from '../types';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -195,6 +206,8 @@ export const AnalysisDisplay: React.FC<{
  const [isEditing, setIsEditing] = useState(false);
  const [isExportingPDF, setIsExportingPDF] = useState(false);
  const [isDedicatedReadingMode, setIsDedicatedReadingMode] = useState(false);
+ const [composingPageIndex, setComposingPageIndex] = useState<number | null>(null);
+ const [isSavingSpread, setIsSavingSpread] = useState(false);
 
  useEffect(() => {
    const handleKeyDown = (e: KeyboardEvent) => {
@@ -842,6 +855,43 @@ export const AnalysisDisplay: React.FC<{
  } catch (e) {
  console.error("Failed to upload page image", e);
  }
+ };
+
+ const autoDevelopPlates = shouldAutoDevelopPlates(metadata);
+ const issueMode = resolveIssueMode(metadata.content.meta?.mode);
+
+ const handleSaveSpreadLayout = (
+   elements: EditorElement[],
+   trace?: { timestamp: number; note: string }[],
+ ) => {
+   if (composingPageIndex == null || !metadata.content.pages) return;
+   setIsSavingSpread(true);
+   try {
+     const updatedPages = [...metadata.content.pages];
+     const current = updatedPages[composingPageIndex];
+     updatedPages[composingPageIndex] = {
+       ...current,
+       customLayout: {
+         elements,
+         editTrace: trace || current.customLayout?.editTrace || [],
+       },
+     };
+     onUpdateMetadata({
+       ...metadata,
+       content: {
+         ...metadata.content,
+         pages: updatedPages,
+       },
+     });
+     setComposingPageIndex(null);
+     window.dispatchEvent(
+       new CustomEvent('mimi:registry_alert', {
+         detail: { message: 'Spread composed and saved to this issue.' },
+       }),
+     );
+   } finally {
+     setIsSavingSpread(false);
+   }
  };
 
  const handleHypothesisImageGenerated = async (base64: string) => {
@@ -1493,7 +1543,7 @@ export const AnalysisDisplay: React.FC<{
 
  {/* 3. HEADER IMAGE */}
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg-black overflow-hidden relative group print:min-h-0 print:py-12">
- <Visualizer prompt={metadata.content.hero_image_prompt || metadata.content?.headlines?.[0] || metadata.title} defaultAspectRatio="16:9"defaultImageSize={metadata.isHighFidelity ? '2K' : '1K'} isArtifact isLite={metadata.isLite} initialImage={metadata.coverImageUrl} artifacts={metadata.artifacts} treatmentId={metadata.treatmentId} autoDevelop={false} onImageGenerated={handleHeroImageGenerated} />
+ <Visualizer prompt={metadata.content.hero_image_prompt || metadata.content?.headlines?.[0] || metadata.title} defaultAspectRatio="16:9"defaultImageSize={metadata.isHighFidelity ? '2K' : '1K'} isArtifact isLite={metadata.isLite} initialImage={metadata.coverImageUrl} artifacts={metadata.artifacts} treatmentId={metadata.treatmentId} autoDevelop={autoDevelopPlates} onImageGenerated={handleHeroImageGenerated} />
  <div className="absolute bottom-12 left-12 p-4 bg-white/5 backdrop-blur-md rounded-none border border-white/10">
  <span className="font-mono text-[7px] text-white uppercase tracking-widest">FIG_01: PRIMARY_VISUAL</span>
  </div>
@@ -1524,7 +1574,7 @@ export const AnalysisDisplay: React.FC<{
  artifacts={metadata.artifacts?.length > 1 ? metadata.artifacts : undefined}
  treatmentId={metadata.treatmentId}
  initialImage={(metadata.content as any).hypothesis_image_url}
-                autoDevelop={false}
+                autoDevelop={autoDevelopPlates}
                 onImageGenerated={handleHypothesisImageGenerated}
  />
  <div className="absolute bottom-4 right-4 bg-black/80 text-white px-2 py-1 text-[8px] font-mono rounded-none">FIG 2.1 — ABSTRACT</div>
@@ -1579,8 +1629,8 @@ export const AnalysisDisplay: React.FC<{
  animate={{ rotateY: 0, opacity: 1 }}
  exit={{ rotateY: 90, opacity: 0 }}
  transition={{ duration: 0.28, ease: 'easeOut' }}
- className="absolute inset-0 flex flex-col bg-[#F7F4EC]"
- >
+ className="absolute inset-0 flex flex-col bg-white"
+>
  <button
    type="button"
    onClick={toggleFlip}
@@ -1843,85 +1893,169 @@ export const AnalysisDisplay: React.FC<{
  </div>
  </motion.section>
 
- {/* 8. VISUAL PLATES - REDESIGNED AS EDITORIAL SPREADS */}
- <div className="bg-white py-32 space-y-32">
- <div className="px-6 md:px-24 w-full">
- <SectionHeader label="Visual Plates"icon={Grid3X3} style={{ color: accentColor }} />
+ {/* 8. VISUAL PLATES - EDITORIAL SPREADS (+ COMPOSED LAYOUTS) */}
+ <div className="bg-white py-32 space-y-32" data-surface="public">
+ <div className="px-6 md:px-24 w-full flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+ <SectionHeader label="Visual Plates" icon={Grid3X3} style={{ color: accentColor }} />
+ <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-stone,#78716C)] pb-2">
+ {issueMode} grammar
+ {isOwner ? ' · compose to author spreads' : ''}
+ </p>
  </div>
  
  {metadata.content.pages?.map((page, i) => {
- const isEven = i % 2 === 0;
+ const composed = pageHasCustomLayout(page);
  return (
- <motion.section key={i} initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start w-full">
- <div className={`flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-stretch md:h-[100dvh]`}>
- 
- {/* VISUAL COMPONENT */}
- <div className="w-full md:w-1/2 relative group h-[42dvh] md:h-full flex items-center justify-center p-6 md:p-24">
- <div className="relative w-full h-full max-h-[80vh] border border-nous-border bg-nous-base overflow-hidden">
- <Visualizer 
- prompt={page.imagePrompt} 
- defaultAspectRatio="3:4"
- defaultImageSize={metadata.isHighFidelity ? '2K' : '1K'}
- isArtifact 
- isLite={metadata.isLite} 
- initialImage={page.image_url} 
- delay={800 + (i * 1200)}
- artifacts={metadata.artifacts?.length > 1 ? metadata.artifacts : undefined}
- treatmentId={metadata.treatmentId}
-                autoDevelop={false}
-                onImageGenerated={(base64) => handlePageImageGenerated(base64, i)}
- />
- {/* PLATE METADATA OVERLAY */}
- <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end pointer-events-none mix-blend-difference text-white opacity-0 group-hover:opacity-100 transition-opacity duration-700">
- <div className="flex flex-col gap-1">
- <span className="font-mono text-[7px] uppercase tracking-widest">FIG. 0{i+1}</span>
- <span className="font-sans text-[7px] font-black uppercase tracking-widest">Aspect: 3:4</span>
+ <motion.section
+   key={page.pageNumber ?? i}
+   initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }}
+   whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+   viewport={{ once: true, margin: '-10%' }}
+   transition={{ duration: 1, ease: 'easeOut' }}
+   className="min-h-[100dvh] flex flex-col justify-center snap-start w-full"
+   data-plate-mode={issueMode}
+ >
+ {composed ? (
+ <div className="w-full px-6 md:px-24 flex flex-col items-center gap-8">
+   <div className="w-full max-w-3xl">
+     <ZineSpreadCanvas page={page} />
+   </div>
+   <div className="w-full max-w-3xl flex items-center justify-between gap-4">
+     <div className="flex items-center gap-4 text-[var(--mimi-stone,#78716C)]">
+       <span className="font-serif italic text-3xl text-[var(--mimi-ink,#0A0A0A)]">{i + 1}.</span>
+       <span className="font-mono text-[8px] uppercase tracking-widest">Composed spread</span>
+     </div>
+     {isOwner && (
+       <button
+         type="button"
+         onClick={() => setComposingPageIndex(i)}
+         className="min-h-[44px] inline-flex items-center gap-2 px-4 border border-[var(--mimi-hairline,#D4D4D4)] font-mono text-[9px] uppercase tracking-widest text-[var(--mimi-ink,#0A0A0A)] hover:border-[var(--mimi-olive,#5A5A40)] transition-colors"
+       >
+         <PenTool size={12} /> Edit spread
+       </button>
+     )}
+   </div>
  </div>
- <div className="font-mono text-[7px] uppercase tracking-widest">PROMPT_REF_{i+1}</div>
- </div>
- </div>
+ ) : (
+ <div className={`flex items-stretch md:h-[100dvh] ${plateGrammarClass(issueMode, i)}`}>
+ <div
+   className={`w-full relative group flex items-center justify-center p-6 md:p-24 ${
+     issueMode === 'seasonal'
+       ? 'md:w-[58%] h-[48dvh] md:h-full'
+       : issueMode === 'research'
+         ? 'md:w-full h-[42dvh] md:h-[55dvh]'
+         : issueMode === 'oracle'
+           ? 'md:w-1/2 h-[42dvh] md:h-full bg-stone-950'
+           : 'md:w-1/2 h-[42dvh] md:h-full'
+   }`}
+ >
+   <div className="relative w-full h-full max-h-[80vh] border border-[var(--mimi-hairline,#D4D4D4)] bg-white overflow-hidden">
+     <Visualizer
+       prompt={page.imagePrompt}
+       defaultAspectRatio="3:4"
+       defaultImageSize={metadata.isHighFidelity ? '2K' : '1K'}
+       isArtifact
+       isLite={metadata.isLite}
+       initialImage={page.image_url}
+       delay={800 + i * 1200}
+       artifacts={metadata.artifacts?.length > 1 ? metadata.artifacts : undefined}
+       treatmentId={metadata.treatmentId}
+       autoDevelop={autoDevelopPlates}
+       onImageGenerated={(base64) => handlePageImageGenerated(base64, i)}
+     />
+     <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end pointer-events-none mix-blend-difference text-white opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+       <div className="flex flex-col gap-1">
+         <span className="font-mono text-[7px] uppercase tracking-widest">FIG. 0{i + 1}</span>
+         <span className="font-sans text-[7px] font-black uppercase tracking-widest">Aspect: 3:4</span>
+       </div>
+       <div className="font-mono text-[7px] uppercase tracking-widest">PROMPT_REF_{i + 1}</div>
+     </div>
+   </div>
  </div>
 
- {/* TEXT COMPONENT */}
- <div className="w-full md:w-1/2 flex flex-col justify-center px-6 py-10 sm:px-8 md:p-24 space-y-6 md:space-y-12">
- <div className="flex items-center gap-4 text-nous-subtle">
- <span className="font-serif italic text-4xl text-nous-text">{i+1}.</span>
- <div className="h-px flex-1 bg-nous-base"/>
+ <div
+   className={`w-full flex flex-col justify-center px-6 py-10 sm:px-8 md:p-24 space-y-6 md:space-y-12 ${
+     issueMode === 'seasonal'
+       ? 'md:w-[42%]'
+       : issueMode === 'research'
+         ? 'md:w-full md:max-w-3xl md:mx-auto'
+         : issueMode === 'oracle'
+           ? 'md:w-1/2 bg-stone-950 text-white'
+           : 'md:w-1/2'
+   }`}
+ >
+   <div className={`flex items-center gap-4 ${issueMode === 'oracle' ? 'text-white/50' : 'text-nous-subtle'}`}>
+     <span className={`font-serif italic text-4xl ${issueMode === 'oracle' ? 'text-white' : 'text-nous-text'}`}>{i + 1}.</span>
+     <div className={`h-px flex-1 ${issueMode === 'oracle' ? 'bg-white/20' : 'bg-nous-base'}`} />
+   </div>
+   <h3 className={`${fontStyle} text-3xl sm:text-4xl md:text-5xl italic tracking-tight leading-snug ${issueMode === 'oracle' ? 'text-white' : 'text-nous-text'}`}>
+     {page.headline}
+   </h3>
+   <div className="pl-6 border-l-2" style={{ borderColor: `${accentColor}40` }}>
+     <ZineTextContent
+       content={page.bodyCopy}
+       className={`text-base md:text-lg ${issueMode === 'oracle' ? 'text-white/90' : 'text-nous-text'}`}
+     />
+     {page.supportingText && (
+       <div className={`mt-6 pt-4 border-t ${issueMode === 'oracle' ? 'border-white/15' : 'border-stone-200 dark:border-stone-800'}`}>
+         <ZineTextContent
+           content={page.supportingText}
+           className={`text-sm italic ${issueMode === 'oracle' ? 'text-white/55' : 'text-nous-subtle'}`}
+           enableDropCap={false}
+         />
+       </div>
+     )}
+   </div>
+
+   <div className={`pt-8 flex flex-wrap items-center gap-4 ${issueMode === 'oracle' ? 'opacity-60' : 'opacity-40'}`}>
+     <Hash size={12} />
+     <p className="font-mono text-[8px] uppercase leading-relaxed max-w-xs">
+       Generative Output • {metadata.tone} • Plate {i + 1} of {metadata.content.pages.length}
+     </p>
+     {isOwner && (
+       <button
+         type="button"
+         onClick={() => setComposingPageIndex(i)}
+         className={`ml-auto min-h-[44px] inline-flex items-center gap-2 px-3 border font-mono text-[9px] uppercase tracking-widest opacity-100 transition-colors ${
+           issueMode === 'oracle'
+             ? 'border-white/25 text-white hover:border-white/60'
+             : 'border-[var(--mimi-hairline,#D4D4D4)] text-[var(--mimi-ink,#0A0A0A)] hover:border-[var(--mimi-olive,#5A5A40)]'
+         }`}
+       >
+         <PenTool size={12} /> Compose spread
+       </button>
+     )}
+   </div>
  </div>
- <h3 className={`${fontStyle} text-3xl sm:text-4xl md:text-5xl italic tracking-tight leading-snug text-nous-text`}>
- {page.headline}
- </h3>
- <div className="pl-6 border-l-2"style={{ borderColor: `${accentColor}40` }}>
- <ZineTextContent content={page.bodyCopy} className="text-base md:text-lg text-nous-text" />
- {page.supportingText && (
- <div className="mt-6 pt-4 border-t border-stone-200 dark:border-stone-800">
- <ZineTextContent content={page.supportingText} className="text-sm italic text-nous-subtle" enableDropCap={false} />
  </div>
  )}
- </div>
- 
- {/* CAPTION STYLE FOOTNOTE */}
- <div className="pt-8 flex gap-4 opacity-40">
- <Hash size={12} />
- <p className="font-mono text-[8px] uppercase leading-relaxed max-w-xs">
- Generative Output • {metadata.tone} • Plate {i+1} of {metadata.content.pages.length}
- </p>
- </div>
- </div>
- </div>
- </motion.section> ); })}
+ </motion.section>
+ );
+ })}
  </div>
 
+ {composingPageIndex != null && metadata.content.pages?.[composingPageIndex] && (
+   <ZineLayoutEditor
+     page={toEditableZinePage(metadata.content.pages[composingPageIndex])}
+     tone={defaultEditorTone(metadata.tone)}
+     initialTitle={metadata.title || 'Untitled Manifest'}
+     onSave={(elements, trace) => handleSaveSpreadLayout(elements, trace)}
+     onCancel={() => {
+       if (!isSavingSpread) setComposingPageIndex(null);
+     }}
+   />
+ )}
+
  {/* 9. THE ROADMAP (BLUEPRINT) - EDITORIAL JOURNEY */}
- <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] snap-start bg-[#F5F2EA] text-stone-950 print:min-h-0 print:py-12 relative overflow-hidden py-24 md:py-32">
- <div className="absolute inset-0 opacity-[0.035] pointer-events-none" style={{ backgroundImage: 'linear-gradient(#111 1px, transparent 1px), linear-gradient(90deg, #111 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+ <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] snap-start bg-white text-[var(--mimi-ink,#0A0A0A)] print:min-h-0 print:py-12 relative overflow-hidden py-24 md:py-32" data-surface="public">
+ <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(#0A0A0A 1px, transparent 1px), linear-gradient(90deg, #0A0A0A 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
  <div className="w-full relative z-10 px-6 md:px-24">
- <div className="flex items-start justify-between gap-4 mb-12 text-stone-900">
+ <div className="flex items-start justify-between gap-4 mb-12 text-[var(--mimi-ink,#0A0A0A)]">
  <div className="flex items-center gap-4">
- <div className="p-2 border border-stone-300 bg-white"><RoadmapIcon size={16} style={{ color: accentColor }} /></div>
+ <div className="p-2 border border-[var(--mimi-hairline,#D4D4D4)] bg-white"><RoadmapIcon size={16} style={{ color: accentColor }} /></div>
  <div>
- <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-stone-500">Keep what belongs to you</p>
-  <p className="font-serif italic text-[14px] md:text-[16px] text-stone-600 mt-2">From thesis to repeatable action</p>
+ <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-[var(--mimi-stone,#78716C)]">Keep what belongs to you</p>
+  <p className="font-serif italic text-[14px] md:text-[16px] text-[var(--mimi-stone,#78716C)] mt-2">From thesis to repeatable action</p>
  <h2 className="font-serif text-3xl md:text-5xl italic">Signature Takeaways</h2>
  </div>
  </div>

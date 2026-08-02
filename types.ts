@@ -588,10 +588,17 @@ export interface ZinePageSpec {
   supportingText?: string;
   imagePrompt: string;
   image_url?: string;
+  /** Media seed for the freeform spread editor (often mirrors image_url). */
+  originalMediaUrl?: string;
   pageType?: 'standard' | 'thread_timeline';
   threadData?: {
     artifacts: any[]; // Will be PocketItem[]
     commentary: string;
+  };
+  /** Owner-composed absolute layout; when present, reveal renders this over the L/R template. */
+  customLayout?: {
+    elements: EditorElement[];
+    editTrace?: { timestamp: number; note: string }[];
   };
 }
 
@@ -1028,13 +1035,7 @@ export interface EditorElement {
 }
 
 export interface ZinePage extends ZinePageSpec {
-  image_url?: string;
-  originalMediaUrl?: string;
   negativePrompt?: string;
-  customLayout?: {
-    elements: EditorElement[];
-    editTrace?: { timestamp: number; note: string }[];
-  };
 }
 
 export interface Treatment {

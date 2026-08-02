@@ -3,16 +3,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   X, 
   Search, 
-  Compass, 
-  Sparkles, 
-  ChevronRight, 
-  Terminal, 
-  Info, 
-  HelpCircle, 
   BookOpen, 
-  HelpCircle as QuestionIcon,
-  Workflow,
-  Plus
+  HelpCircle, 
+  Terminal
 } from "lucide-react";
 
 interface GuideItem {
@@ -24,138 +17,151 @@ interface GuideItem {
   keywords: string[];
 }
 
+/**
+ * Application Guide index — mirrors `MENU_STRUCTURE` in navigationConfig.ts.
+ * One entry per menu section (not per chamber), so wings/aliases are not
+ * re-listed as separate chambers (Proscenium wings, Threads→Scribe, etc.).
+ */
 const GUIDE_DATA: GuideItem[] = [
   {
     id: "chambers-collect",
-    title: "Collect: Scribe & Darkroom",
+    title: "Collect: Scry · Scribe · Darkroom",
     category: "chambers",
-    description: "Your starting chambers for gathering research context, raw assets, and vocal transcriptions.",
+    description: "Bring source material in: search, memory atoms, and raw media.",
     details: [
-      "Scribe Portal: Capture text snippets, notes, and strategic context to feed into workspace memory.",
-      "Darkroom Ingestion: A temporary staging area for raw uploads, file fragments, and newly transcribed audios.",
-      "Persistence: Elements collected here can be labeled, structured, and saved into your active dossiers."
+      "Scry: Search tags, embeddings, and the web for specimens and drift signals.",
+      "Scribe: Project context and memory atoms — including narrative Threads as a tab, not a separate chamber.",
+      "Darkroom: Staging for uploads, file fragments, and unprocessed media."
     ],
-    keywords: ["scribe", "darkroom", "collect", "gather", "uploads", "transcription", "audio", "text", "atoms", "research"]
+    keywords: ["scry", "scribe", "darkroom", "collect", "atoms", "uploads", "threads", "research"]
   },
   {
     id: "chambers-organize",
-    title: "Organize: Pocket & Wardrobe",
+    title: "Organize: Pocket · Wardrobe",
     category: "chambers",
-    description: "Catalog and access your saved zines, visual looks, and compiled strategy profiles.",
+    description: "Catalog saved zines, context, and style references for later handoff.",
     details: [
-      "Pocket Registry: Access your saved zine creations, historical audits, and generated briefs in a unified registry.",
-      "Wardrobe Archive: Browse saved outfits, brand identities, and style rules compiled from active workspaces.",
-      "Handoff Integration: Use items in your Pocket to feed directly back into creative and compilation chambers."
+      "Pocket: Registry of saved zines, audits, and compiled context.",
+      "Wardrobe: Saved looks and style references drawn from active work.",
+      "Handoff: Pocket items feed Create and Edit chambers — not a public showcase (that is The Stand)."
     ],
-    keywords: ["pocket", "wardrobe", "organize", "saved", "archive", "zines", "outfits", "looks", "looksbook", "registry"]
+    keywords: ["pocket", "wardrobe", "organize", "saved", "archive", "registry", "looks"]
   },
   {
     id: "chambers-edit",
-    title: "The Edit: Editorial Compile",
+    title: "Edit: The Edit",
     category: "chambers",
-    description: "The primary workspace to draft, compile, and align text and visual layouts.",
+    description: "Editorial compile and diagnose — thesis, fragments, and layout alignment.",
     details: [
-      "Draft Lead Elements: Establish the main thesis, opening remarks, and featured narratives of your current zine.",
-      "Editorial Alignment: Review, edit, and organize individual text blocks and visual curation cards.",
-      "Workspace Exporters: Push compiled drafts seamlessly to Google Docs, or download standard offline PDF layouts."
+      "Compile: Assemble thesis, opening remarks, and featured narratives.",
+      "Diagnose: Review text blocks and visual curation before export.",
+      "Handoff: Push a finished compile toward The Press — export lives there, not here."
     ],
-    keywords: ["edit", "the edit", "editorial", "compile", "thesis", "draft", "google docs", "pdf", "export"]
+    keywords: ["edit", "the edit", "editorial", "compile", "diagnose", "thesis"]
   },
   {
     id: "chambers-create",
-    title: "Create: Worktable & Moodboard",
+    title: "Create: Worktable · Briefs · Mood Board · Tailor",
     category: "chambers",
-    description: "The visual engines of the platform, designed to create layouts, prompt models, and compose visuals.",
+    description: "Make artifacts: zines, presets, visual boards, and taste constraints.",
     details: [
-      "Worktable (Studio): Configure zine structures, customize title options, select cover themes, and run AI prompt generation.",
-      "Mood Board Composer: An infinite spatial canvas. Position, crop, scale, and layer image cards to curate visual stories.",
-      "Preset Trajectories: Inject established visual directions, typography constraints, and semiotic target configurations."
+      "Worktable: Primary studio for zine structures, covers, and prompt generation.",
+      "Brief Calibration & Quiet Studio: Reusable presets and a non-dialogic worktable variant — not separate product lines.",
+      "Mood Board: Spatial canvas for visual stories; Tailor locks profile, evidence, and style diagnostics."
     ],
-    keywords: ["worktable", "moodboard", "create", "composer", "spatial", "canvas", "prompts", "generate", "zine", "visuals"]
+    keywords: ["worktable", "studio", "brief", "quiet studio", "moodboard", "tailor", "create", "zine"]
   },
   {
-    id: "chambers-analyze",
-    title: "Analyze: The Lens & Clique",
+    id: "chambers-publish",
+    title: "Publish: Press · Front Page · Stand",
     category: "chambers",
-    description: "Analyze semiotic signals, subcultural alignments, and brand temperature metrics.",
+    description: "Export, editorial surface, and your published showcase.",
     details: [
-      "The Lens Audit: Scan your assets for entropy, visual density, warmth temperature, and color stories.",
-      "Clique Radar: Evaluate target audience subcultures, subcultural profiles, and youth culture index indicators.",
-      "Strategic Directives: Receive actionable brand directives based on AI-driven semiotic telemetry analysis."
+      "The Press: Export packs, manifests, and publishing outputs.",
+      "Front Page: Editorial homepage for the house.",
+      "The Stand: Your published zine showcase — distinct from Pocket (private registry)."
     ],
-    keywords: ["lens", "clique", "analyze", "semiotic", "radar", "entropy", "density", "metrics", "directives", "audit"]
+    keywords: ["press", "export", "front page", "stand", "publish", "showcase"]
+  },
+  {
+    id: "chambers-identity",
+    title: "Identity: Signature · Taste Graph · Dolls · Rip",
+    category: "chambers",
+    description: "Public and private taste identity — under All Chambers, not the core loop.",
+    details: [
+      "Signature & Taste Graph: Taste summary, stats, clusters, and map.",
+      "Mimi Dolls & mimi.rip: Editorial identity archive and inverse / dark-mirror reading.",
+      "Profile · Ward · Sanctuary: Account face, IP custody, and local-only vault."
+    ],
+    keywords: ["signature", "taste graph", "dolls", "mimi.rip", "profile", "ward", "sanctuary", "identity"]
   },
   {
     id: "chambers-proscenium",
-    title: "Observe: The Proscenium",
+    title: "Social: The Proscenium",
     category: "chambers",
-    description: "The public arch — transmissions, correspondents, and named cliques in one stage.",
+    description: "One social chamber — Stage, Correspondents, and Cliques are wings, not menu siblings.",
     details: [
-      "Stage: Witness live (or clearly labeled demo) transmissions. Resonate, absorb, or refract with lineage.",
-      "Correspondents: Soft follows and mutual consonants — the people whose Stand you keep on the Floor.",
-      "Cliques: Invite-only circles (Follow → Clique → Collab seat) for shared boards and critique — not a feed."
+      "Stage: Witness transmissions; resonate, absorb, or refract with lineage.",
+      "Correspondents & Cliques: Opens as Proscenium wings (legacy /connections and /cliques redirect here).",
+      "Do not look for separate Correspondents or Cliques chambers in the menu."
     ],
     keywords: [
       "proscenium",
       "stage",
       "correspondents",
-      "connections",
       "cliques",
-      "resonate",
-      "transmit",
       "social",
-      "circle",
-      "follow"
+      "follow",
+      "connections"
+    ]
+  },
+  {
+    id: "chambers-house",
+    title: "House tools: Atelier · Intel · GEO · System",
+    category: "chambers",
+    description: "Strategy, commerce signals, and system docs — listed once under All Chambers.",
+    details: [
+      "Atelier: Taste-signal objects pinned from zines (not Memberships / plan tiers).",
+      "Intel Hub · Intelligence Report · GEO Engine: Strategy and AI-readable signal packaging.",
+      "System (Codex) · Chamber Map · The Voice: Architecture manual, registry inspector, brand-voice dossier."
+    ],
+    keywords: [
+      "atelier",
+      "intel",
+      "geo",
+      "codex",
+      "system",
+      "chamber map",
+      "voice",
+      "oracle",
+      "thimble",
+      "drop",
+      "memberships"
     ]
   },
   {
     id: "studio-ingestion",
-    title: "Input Studio: Media Ingestion",
+    title: "Input Studio: Media & dictation",
     category: "input-studio",
-    description: "Direct asset ingestion via drag-and-drop or batch selection.",
+    description: "In-Worktable intake — complements Darkroom/Scribe; does not replace those chambers.",
     details: [
-      "Drag-and-Drop: Drop any high-resolution reference image or design directly onto the workspace.",
-      "Aesthetic Analysis: Gemini models instantly parse image compositions, color palettes, and stylistic cues.",
-      "Auto-Tagging: Automatically generate high-fidelity keywords and tone descriptors for instant labeling."
+      "Media drop: Reference images onto the active worktable for analysis and tagging.",
+      "Dictation: Speech-to-text into notes that can stitch into boards or strategy.",
+      "Persistence: Long-term storage still belongs in Darkroom (raw) and Scribe/Pocket (atoms/registry)."
     ],
-    keywords: ["media", "ingestion", "upload", "drag", "drop", "image", "analysis", "palette", "tags", "labels"]
-  },
-  {
-    id: "studio-transcription",
-    title: "Input Studio: Auditory Dictation",
-    category: "input-studio",
-    description: "Harness your voice to transcribe notes, outline directions, and capture spoken concepts.",
-    details: [
-      "Speech-to-Text: Dictate brainstorms, field reviews, or auditory briefs directly through your microphone.",
-      "Instant Transcription: Built-in model processing generates high-accuracy editable text blocks.",
-      "Context Stitching: Append audio transcriptions directly to visual moodboards or project strategy folders."
-    ],
-    keywords: ["auditory", "dictation", "voice", "microphone", "speech", "transcribe", "notes", "audios", "brainstorm"]
+    keywords: ["media", "ingestion", "upload", "dictation", "voice", "worktable", "input studio"]
   },
   {
     id: "studio-orchestration",
-    title: "Input Studio: AI Prompt Engine",
+    title: "Input Studio: Prompt & grounding",
     category: "input-studio",
-    description: "Customize the level of Gemini cognitive reasoning and grounding for your input curation.",
+    description: "Reasoning depth and live grounding for Worktable prompts.",
     details: [
-      "Deep Thinking / Lite Mode: Toggle between lightweight speed and deep multi-step reasoning capabilities.",
-      "Search Grounding: Connect prompts directly to live Google Search indices for real-time brand relevance checks.",
-      "Maps Grounding: Leverage Google Places data to contextualize designs based on geographical coordinates.",
-      "Task Intelligence: Auto-transform chaotic ideas into beautiful, structured task lists and project roadmaps."
+      "Thinking modes: Toggle lightweight speed vs deeper multi-step reasoning.",
+      "Grounding: Optional search and place context when the brief needs live signal.",
+      "Task shaping: Turn messy briefs into structured worktable instruction packets."
     ],
-    keywords: ["ai", "gemini", "prompt", "grounding", "search", "maps", "thinking", "lite", "cognitive", "reasoning"]
-  },
-  {
-    id: "studio-dossiers",
-    title: "Input Studio: Project Dossier Export",
-    category: "input-studio",
-    description: "Organize input assets into formal dossiers and synchronize them directly to Google Workspace.",
-    details: [
-      "Strategic Folder dossiers: Aggregate raw media, strategy memos, and text blocks into structured project envelopes.",
-      "Google Slides Synchronizer: Turn dossier visual collections into curated presentation decks with a single click.",
-      "Google Docs Publisher: Assemble strategy briefs, color guides, and copy text into clean formatted Google Documents."
-    ],
-    keywords: ["dossier", "export", "google slides", "google docs", "synchronize", "folder", "strategy", "presentation", "deck"]
+    keywords: ["ai", "prompt", "grounding", "search", "thinking", "worktable", "orchestration"]
   }
 ];
 
@@ -255,7 +261,8 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
                 Application Guide.
               </h2>
               <p className="font-sans text-[11px] text-stone-400 leading-relaxed max-w-xl">
-                A blueprint index explaining the core capabilities of the creative <strong>Chambers</strong> and the cognitive <strong>Input Studio</strong>.
+                Menu-aligned index of <strong>Chambers</strong> (by section) and Worktable{" "}
+                <strong>Input Studio</strong>. Wings and route aliases are not listed twice.
               </p>
             </div>
 
@@ -385,7 +392,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
                     No matching coordinates found.
                   </p>
                   <p className="font-mono text-[8px] uppercase tracking-widest text-stone-500 font-extrabold">
-                    Try searching for Scribe, Gemini, Ingestion, Lens, or Edit
+                    Try Scribe, Worktable, Proscenium, Press, or Tailor
                   </p>
                 </div>
               )}
@@ -395,7 +402,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             <div className="px-6 md:px-8 py-4 border-t border-stone-850 bg-[#161514] flex items-center justify-between select-none">
               <div className="flex items-center gap-1.5 text-stone-500 font-mono text-[7px] uppercase tracking-[0.2em] font-extrabold">
                 <Terminal size={10} />
-                <span>INDEX VERSION 2.4.0_ALPHA</span>
+                <span>INDEX VERSION 2.5.0 — MENU-ALIGNED</span>
               </div>
               <button
                 type="button"

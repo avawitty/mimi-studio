@@ -212,14 +212,37 @@ export const AestheticIntelligenceChamber: React.FC = () => {
     loadData();
   }, []);
 
-  // Demo mode: no zines generated yet AND no meaningful profile draft signals
+  // Demo mode: no zines yet AND no user-compiled profile signals.
+  // UserContext ships DEFAULT_DRAFT with stock cultural refs / exclusions / DNA —
+  // those must not count as a compiled profile (otherwise every new user skips demo).
   const draft = profile?.tailorDraft;
+  const STOCK_CULTURAL = ["Brutalism", "Cyber-Noir", "Analog-Glitch"];
+  const STOCK_EXCLUSIONS = [
+    "Avoid reactive trend commentary",
+    "Refuse cross-cluster dilution without thesis",
+  ];
+  const STOCK_DNA = "Post-Digital Minimalism.";
+  const sameStringSet = (a: string[] | undefined, stock: string[]) => {
+    if (!a?.length) return true;
+    if (a.length !== stock.length) return false;
+    const sorted = [...a].map((s) => s.trim()).sort();
+    const stockSorted = [...stock].map((s) => s.trim()).sort();
+    return sorted.every((v, i) => v === stockSorted[i]);
+  };
+  const refs = draft?.positioningCore?.anchors?.culturalReferences;
+  const exclusions = draft?.positioningCore?.exclusionPrinciples;
+  const dna = (draft?.strategicSummary?.aestheticDNA || "").trim();
+  const hasCustomRefs = Boolean(refs?.length) && !sameStringSet(refs, STOCK_CULTURAL);
+  const hasCustomExclusions =
+    Boolean(exclusions?.length) && !sameStringSet(exclusions, STOCK_EXCLUSIONS);
+  const hasCustomDna = Boolean(dna) && dna !== STOCK_DNA;
   const hasDraftData = Boolean(
-    draft?.positioningCore?.aestheticCore?.tags?.length ||
-    draft?.positioningCore?.anchors?.culturalReferences?.length ||
-    draft?.positioningCore?.exclusionPrinciples?.length ||
-    draft?.strategicSummary?.aestheticDNA ||
-    draft?.expressionEngine?.chromaticRegistry?.primaryPalette?.length,
+    draft?.draftStatus === "aligned" ||
+      draft?.positioningCore?.aestheticCore?.tags?.length ||
+      draft?.expressionEngine?.chromaticRegistry?.primaryPalette?.length ||
+      hasCustomRefs ||
+      hasCustomExclusions ||
+      hasCustomDna,
   );
   const isDemo = zines.length === 0 && !hasDraftData;
 
@@ -330,12 +353,18 @@ export const AestheticIntelligenceChamber: React.FC = () => {
   // Aggregate stats
   const totalAnalyzed = activeZines.length;
   const dominantTone =
-    Object.entries(toneCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "editorial";
-  const dominantColor = chromaticsChartData[0]?.name || "#000000";
-  const avgDensity = (
-    activeZines.reduce((acc, z) => acc + (z.content?.visual_guidance?.composition_density || 5), 0) /
-    totalAnalyzed
-  ).toFixed(1);
+    Object.entries(toneCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ||
+    (totalAnalyzed === 0 ? "—" : "editorial");
+  const dominantColor = chromaticsChartData[0]?.name || (totalAnalyzed === 0 ? "—" : "#000000");
+  const avgDensity =
+    totalAnalyzed === 0
+      ? "—"
+      : (
+          activeZines.reduce(
+            (acc, z) => acc + (z.content?.visual_guidance?.composition_density || 5),
+            0,
+          ) / totalAnalyzed
+        ).toFixed(1);
 
   return (
     <div className="w-full h-full flex flex-col bg-[#FAF9F5] dark:bg-[#0C0A09] text-stone-900 dark:text-stone-100 overflow-y-auto no-scrollbar">
@@ -652,7 +681,9 @@ export const AestheticIntelligenceChamber: React.FC = () => {
                         <div className="flex items-center gap-2 font-mono">
                           <span className="text-stone-400">({t.value})</span>
                           <span className="font-bold text-amber-500">
-                            {((t.value / totalAnalyzed) * 100).toFixed(0)}%
+                            {totalAnalyzed === 0
+                              ? "—"
+                              : `${((t.value / totalAnalyzed) * 100).toFixed(0)}%`}
                           </span>
                         </div>
                       </div>

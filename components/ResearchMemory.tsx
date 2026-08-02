@@ -254,7 +254,7 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
 
   return (
     <div className={`flex flex-col h-full bg-nous-base ${embedded ? 'overflow-hidden' : 'overflow-y-auto pb-32'}`}>
-      <div className={`${embedded ? 'p-4 md:p-6 space-y-6 h-full overflow-y-auto' : 'p-4 md:p-8 pt-8 md:pt-12 space-y-8'} max-w-6xl mx-auto w-full`}>
+      <div className={`${embedded ? 'p-3 md:p-6 space-y-4 md:space-y-6 h-full overflow-y-auto' : 'p-4 md:p-8 pt-8 md:pt-12 space-y-8'} max-w-6xl mx-auto w-full`}>
         
         {/* HEADER */}
         {!embedded && (
@@ -282,11 +282,71 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
         </div>
         )}
 
+        {/* Embedded mobile: horizontal project chips so atoms stay above the fold */}
+        {embedded && (
+          <div className="lg:hidden space-y-2 -mx-1">
+            <div className="flex items-center justify-between px-1">
+              <span className="font-sans text-[9px] uppercase tracking-widest font-black text-nous-subtle">
+                Containers
+              </span>
+              {!showNewProjectInput && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewProjectInput(true)}
+                  className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center"
+                  aria-label="Add project"
+                >
+                  <Plus size={14} className="text-nous-text" />
+                </button>
+              )}
+            </div>
+            {showNewProjectInput && (
+              <form onSubmit={handleAddProject} className="flex gap-2 px-1">
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="Project title…"
+                  className="flex-1 px-3 py-2 border border-nous-border bg-nous-base font-serif italic text-sm text-nous-text focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-2 bg-nous-text text-nous-base text-[9px] uppercase tracking-wider font-sans"
+                >
+                  Add
+                </button>
+              </form>
+            )}
+            <div className="flex gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-none">
+              {projects.map((proj) => {
+                const projectCount = atoms.filter((a) => a.projectId === proj).length;
+                const isSelected = selectedProject === proj;
+                return (
+                  <button
+                    key={proj}
+                    type="button"
+                    onClick={() => setSelectedProject(proj)}
+                    className={`shrink-0 flex items-center gap-2 px-3 py-2 min-h-[40px] border font-serif italic text-sm transition-colors ${
+                      isSelected
+                        ? "bg-nous-text text-nous-base border-nous-text"
+                        : "border-nous-border text-nous-subtle"
+                    }`}
+                  >
+                    <span className="truncate max-w-[9rem]">{proj}</span>
+                    <span className="font-mono text-[9px] opacity-70">{projectCount}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* THREE COLUMN BENTO GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
           
-          {/* COLUMN 1: PROJECT SELECTOR (LG: 3 cols) */}
-          <div className="lg:col-span-3 space-y-6">
+          {/* COLUMN 1: PROJECT SELECTOR (desktop / non-embedded) */}
+          <div className={`${embedded ? "hidden lg:block" : ""} lg:col-span-3 space-y-6`}>
             <div className="p-5 border border-nous-border bg-nous-base0/15 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-nous-subtle">
@@ -357,7 +417,7 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
               </div>
             </div>
 
-            <div className="p-5 border border-nous-border bg-nous-base0/10 space-y-3 font-sans text-[11px] leading-relaxed text-nous-subtle">
+            <div className="hidden lg:block p-5 border border-nous-border bg-nous-base0/10 space-y-3 font-sans text-[11px] leading-relaxed text-nous-subtle">
               <div className="flex items-center gap-1.5 font-bold uppercase tracking-widest text-nous-text">
                 <Brain size={12} />
                 Cognitive Synthesis
@@ -567,10 +627,10 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
                             </div>
 
                             {/* CARD ACTIONS */}
-                            <div className="flex items-center gap-1 opacity-10 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                               <button
                                 onClick={() => handleSendToStudio(atom)}
-                                className="p-1.5 border border-nous-border bg-nous-base hover:bg-emerald-500/10 text-nous-subtle hover:text-emerald-400"
+                                className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center border border-nous-border bg-nous-base hover:bg-emerald-500/10 text-nous-subtle hover:text-emerald-400"
                                 title="Send to Studio Used Context"
                               >
                                 {sentToStudioId === atom.id ? (
@@ -582,7 +642,7 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
                               {(mode === 'retrieve' || mode === 'manage') && (
                               <button
                                 onClick={() => handleSendToEdit(atom)}
-                                className="p-1.5 border border-nous-border bg-nous-base hover:bg-violet-500/10 text-nous-subtle hover:text-violet-400"
+                                className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center border border-nous-border bg-nous-base hover:bg-violet-500/10 text-nous-subtle hover:text-violet-400"
                                 title="Send to The Edit Used Context"
                               >
                                 {sentToEditId === atom.id ? (
@@ -594,21 +654,21 @@ export const ResearchMemory: React.FC<ResearchMemoryProps> = ({ mode = 'manage',
                               )}
                               <button
                                 onClick={() => handleStartEdit(atom)}
-                                className="p-1.5 border border-nous-border bg-nous-base hover:bg-nous-base0/50 text-nous-subtle hover:text-nous-text"
+                                className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center border border-nous-border bg-nous-base hover:bg-nous-base0/50 text-nous-subtle hover:text-nous-text"
                                 title="Edit Atom"
                               >
                                 <Edit2 size={12} />
                               </button>
                               <button
                                 onClick={() => handleCopy(atom)}
-                                className="p-1.5 border border-nous-border bg-nous-base hover:bg-nous-base0/50 text-nous-subtle hover:text-nous-text"
+                                className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center border border-nous-border bg-nous-base hover:bg-nous-base0/50 text-nous-subtle hover:text-nous-text"
                                 title="Copy Content"
                               >
                                 {copiedId === atom.id ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                               </button>
                               <button
                                 onClick={() => handleDeleteAtom(atom.id)}
-                                className="p-1.5 border border-nous-border bg-nous-base hover:bg-red-500/10 text-nous-subtle hover:text-red-500"
+                                className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center border border-nous-border bg-nous-base hover:bg-red-500/10 text-nous-subtle hover:text-red-500"
                                 title="Purge Atom"
                               >
                                 <Trash2 size={12} />
