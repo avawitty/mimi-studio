@@ -13,6 +13,7 @@ import { getClient, withResilience, tryModels, ORACLE_PERSONA as CLIENT_PERSONA 
 import { modelFor } from "./modelConfig";
 import { coerceToString } from "../lib/utils";
 import { isPaidPatronPlan } from "../constants";
+import { celestialReadoutForOracle } from "../lib/celestial/compileCelestialReadout";
 
 export { getClient, withResilience, tryModels };
 
@@ -3457,15 +3458,38 @@ Persona Active: ${activePersona?.name || 'None'}`;
 };
 
 export const generateCelestialReading = async (profile: any) => {
+  const draft =
+    profile?.tailorDraft?.celestialCalibration ||
+    profile?.extensions?.celestialCalibration ||
+    null;
+  const celestial = celestialReadoutForOracle(draft);
+  const taste = {
+    aestheticSignature: profile?.tasteProfile?.aestheticSignature ?? null,
+    aestheticDNA:
+      profile?.tailorDraft?.styleDoctrine?.aestheticDNA ||
+      profile?.tasteProfile?.aestheticDNA ||
+      null,
+    keywords: profile?.tasteProfile?.keywords?.slice?.(0, 12) ?? [],
+    displayName: profile?.displayName || profile?.username || null,
+  };
+
   return await withResilience(async (ai) => {
     const response = await ai.models.generateContent({
       model: 'gemini-3.5-flash',
-      contents: `Based on the user's profile and onboarding data: ${JSON.stringify(profile)}, generate a 'Latent Space Translation' (formerly Celestial Reading).
-      This should be a 2-3 sentence high-level insight into what their taste actually means in the broader cultural landscape.
-      Make it sound like an omniscient AI mapping their aesthetic DNA. Use terms like 'semantic associations', 'cultural positioning', or 'latent space'.
-      Keep it ethereal but analytical.`,
+      contents: `Generate a 'Latent Space Translation' (formerly Celestial Reading).
+
+Structured celestial readout (authoritative timing math — do not invent rising/houses/aspects beyond this JSON):
+${JSON.stringify(celestial)}
+
+Taste signals (aesthetic DNA context, secondary to the readout):
+${JSON.stringify(taste)}
+
+Write 2-3 sentences: map how the structured celestial timing orients their aesthetic DNA in the broader cultural landscape.
+Use terms like 'semantic associations', 'cultural positioning', or 'latent space'.
+When the readout includes Sun/Moon/Rising or aspects, weave those facts; when fields are null or listed unsupported, do not fabricate them.
+Keep it ethereal but analytical.`,
       config: {
-        systemInstruction: "You are Mimi, an Omniscient Temporal Editor.",
+        systemInstruction: "You are Mimi, an Omniscient Temporal Editor. Ground Latent Space Translation in the provided structured celestial readout; never invent natal positions absent from that JSON.",
       }
     });
     return response.text || "The latent space is currently shifting. Your aesthetic coordinates are being recalculated.";
