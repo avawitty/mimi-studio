@@ -29,7 +29,8 @@
     "test:e2e": "playwright test",
     "start": "node dist/server.cjs",
     "test:unit": "vitest run",
-    "test:unit:watch": "vitest"
+    "test:unit:watch": "vitest",
+    "setup:mimi-rip-domains": "node scripts/setupMimiRipDomains.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
