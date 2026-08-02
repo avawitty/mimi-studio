@@ -1,7 +1,9 @@
 import type { PocketItem, UserProfile, ZineMetadata } from "../../types";
-import { getSovereignDb } from "./db";
+import { cacheGet, cacheInvalidatePrefix, cacheSet } from "./cache";
+import { getSovereignDb, resolveSovereignDbPath } from "./db";
 
 const COMMUNITY_CAP = 60;
+const FLOOR_CACHE_TTL_MS = 30_000;
 
 const asZine = (raw: string): ZineMetadata => JSON.parse(raw) as ZineMetadata;
 const asProfile = (raw: string): UserProfile => JSON.parse(raw) as UserProfile;
@@ -36,48 +38,121 @@ export const slimZineForFloor = (zine: ZineMetadata): ZineMetadata => {
 export const sovereignStatus = () => {
   const db = getSovereignDb();
   if (!db) {
-    return { enabled: false, ready: false, zineCount: 0, publicCount: 0 };
+    return {
+      enabled: false,
+      ready: false,
+      backend: "sqlite" as const,
+      path: null as string | null,
+      zineCount: 0,
+      publicCount: 0,
+      profileCount: 0,
+      pocketCount: 0,
+    };
   }
   const total = db.prepare("SELECT COUNT(*) AS n FROM zines").get() as { n: number };
   const pub = db.prepare("SELECT COUNT(*) AS n FROM zines WHERE is_public = 1").get() as {
     n: number;
   };
+  const profiles = db.prepare("SELECT COUNT(*) AS n FROM profiles").get() as { n: number };
+  const pocket = db.prepare("SELECT COUNT(*) AS n FROM pocket_items").get() as { n: number };
   return {
     enabled: true,
     ready: true,
+    backend: "sqlite" as const,
+    path: resolveSovereignDbPath(),
     zineCount: Number(total?.n || 0),
     publicCount: Number(pub?.n || 0),
+    profileCount: Number(profiles?.n || 0),
+    pocketCount: Number(pocket?.n || 0),
   };
 };
 
-export const listPublicZines = (count: number): ZineMetadata[] => {
+export const listPublicZines = (count: number, queryText = ""): ZineMetadata[] => {
   const db = getSovereignDb();
   if (!db) return [];
   const take = Math.max(0, Math.min(count || 0, COMMUNITY_CAP));
   if (take === 0) return [];
 
-  const rows = db
-    .prepare(
-      `SELECT data FROM zines
-       WHERE is_public = 1
-       ORDER BY timestamp DESC
-       LIMIT ?`,
-    )
-    .all(take) as Array<{ data: string }>;
+  const q = queryText.trim().toLowerCase();
+  const cacheKey = `floor:${take}:${q}`;
+  const cached = cacheGet<ZineMetadata[]>(cacheKey);
+  if (cached) return cached;
 
-  return rows.map((row) => slimZineForFloor(asZine(row.data)));
+  let rows: Array<{ data: string }>;
+  if (q) {
+    rows = db
+      .prepare(
+        `SELECT data FROM zines
+         WHERE is_public = 1
+           AND (
+             lower(title) LIKE ? OR
+             lower(user_handle) LIKE ? OR
+             lower(coalesce(tone, '')) LIKE ?
+           )
+         ORDER BY timestamp DESC
+         LIMIT ?`,
+      )
+      .all(`%${q}%`, `%${q}%`, `%${q}%`, take) as Array<{ data: string }>;
+  } else {
+    rows = db
+      .prepare(
+        `SELECT data FROM zines
+         WHERE is_public = 1
+         ORDER BY timestamp DESC
+         LIMIT ?`,
+      )
+      .all(take) as Array<{ data: string }>;
+  }
+
+  const result = rows.map((row) => slimZineForFloor(asZine(row.data)));
+  cacheSet(cacheKey, result, FLOOR_CACHE_TTL_MS);
+  return result;
 };
 
-export const getZineById = (id: string): ZineMetadata | null => {
+export const getZineById = (
+  id: string,
+  opts?: { requesterUid?: string; includePrivate?: boolean },
+): ZineMetadata | null => {
   const db = getSovereignDb();
   if (!db || !id) return null;
-  const row = db.prepare("SELECT data, is_public FROM zines WHERE id = ?").get(id) as
-    | { data: string; is_public: number }
+  const row = db.prepare("SELECT data, is_public, user_id FROM zines WHERE id = ?").get(id) as
+    | { data: string; is_public: number; user_id: string }
     | undefined;
   if (!row) return null;
   const zine = asZine(row.data);
-  if (!row.is_public && !zine.isPublic) return null;
-  return zine;
+  const isPublic = Boolean(row.is_public || zine.isPublic);
+  if (isPublic) return zine;
+  if (opts?.includePrivate && opts.requesterUid && opts.requesterUid === row.user_id) {
+    return zine;
+  }
+  return null;
+};
+
+export const listUserZines = (
+  userId: string,
+  opts?: { publicOnly?: boolean; limit?: number },
+): ZineMetadata[] => {
+  const db = getSovereignDb();
+  if (!db || !userId) return [];
+  const take = Math.max(1, Math.min(opts?.limit || 100, 200));
+  const rows = opts?.publicOnly
+    ? (db
+        .prepare(
+          `SELECT data FROM zines
+           WHERE user_id = ? AND is_public = 1
+           ORDER BY timestamp DESC
+           LIMIT ?`,
+        )
+        .all(userId, take) as Array<{ data: string }>)
+    : (db
+        .prepare(
+          `SELECT data FROM zines
+           WHERE user_id = ?
+           ORDER BY timestamp DESC
+           LIMIT ?`,
+        )
+        .all(userId, take) as Array<{ data: string }>);
+  return rows.map((row) => asZine(row.data));
 };
 
 export const upsertZine = (zine: ZineMetadata): void => {
@@ -126,17 +201,18 @@ export const upsertZine = (zine: ZineMetadata): void => {
     payload,
     now,
   );
+  cacheInvalidatePrefix("floor:");
 };
 
 export const deleteZine = (id: string, userId?: string): boolean => {
   const db = getSovereignDb();
   if (!db || !id) return false;
-  if (userId) {
-    const result = db.prepare("DELETE FROM zines WHERE id = ? AND user_id = ?").run(id, userId);
-    return Number(result.changes || 0) > 0;
-  }
-  const result = db.prepare("DELETE FROM zines WHERE id = ?").run(id);
-  return Number(result.changes || 0) > 0;
+  const result = userId
+    ? db.prepare("DELETE FROM zines WHERE id = ? AND user_id = ?").run(id, userId)
+    : db.prepare("DELETE FROM zines WHERE id = ?").run(id);
+  const changed = Number(result.changes || 0) > 0;
+  if (changed) cacheInvalidatePrefix("floor:");
+  return changed;
 };
 
 export const upsertProfile = (profile: UserProfile): void => {
@@ -162,6 +238,15 @@ export const upsertProfile = (profile: UserProfile): void => {
     JSON.stringify(profile),
     Date.now(),
   );
+};
+
+export const getProfileByUid = (uid: string): UserProfile | null => {
+  const db = getSovereignDb();
+  if (!db || !uid) return null;
+  const row = db.prepare("SELECT data FROM profiles WHERE uid = ?").get(uid) as
+    | { data: string }
+    | undefined;
+  return row ? asProfile(row.data) : null;
 };
 
 export const getProfileByHandle = (handle: string): UserProfile | null => {
@@ -208,4 +293,111 @@ export const upsertPocketItem = (item: PocketItem): void => {
     Number(item.savedAt || Date.now()),
     JSON.stringify(item),
   );
+};
+
+export const deletePocketItem = (id: string, userId?: string): boolean => {
+  const db = getSovereignDb();
+  if (!db || !id) return false;
+  const result = userId
+    ? db.prepare("DELETE FROM pocket_items WHERE id = ? AND user_id = ?").run(id, userId)
+    : db.prepare("DELETE FROM pocket_items WHERE id = ?").run(id);
+  return Number(result.changes || 0) > 0;
+};
+
+export const importZines = (
+  zines: ZineMetadata[],
+): { imported: number; skipped: number } => {
+  let imported = 0;
+  let skipped = 0;
+  for (const zine of zines) {
+    if (!zine?.id || !zine.userId) {
+      skipped += 1;
+      continue;
+    }
+    try {
+      upsertZine(zine);
+      imported += 1;
+    } catch {
+      skipped += 1;
+    }
+  }
+  return { imported, skipped };
+};
+
+/** Seed a small public demo shelf when the archive is empty (opt-in). */
+export const seedDemoShelfIfEmpty = (): number => {
+  if (process.env.MIMI_SOVEREIGN_SEED_DEMO !== "1") return 0;
+  const db = getSovereignDb();
+  if (!db) return 0;
+  const status = sovereignStatus();
+  if (status.publicCount > 0) return 0;
+
+  const now = Date.now();
+  const demos: ZineMetadata[] = [
+    {
+      id: "sovereign_demo_press",
+      userId: "mimi_press",
+      userHandle: "mimi",
+      title: "The Press Is Open",
+      tone: "editorial" as ZineMetadata["tone"],
+      timestamp: now - 60_000,
+      createdAt: now - 60_000,
+      likes: 12,
+      isPublic: true,
+      publishedAt: now - 60_000,
+      fragmentsUsed: [],
+      theme: "sovereign",
+      aestheticVector: {},
+      coverImageUrl: null,
+      content: {
+        title: "The Press Is Open",
+        headlines: ["A shelf that belongs to the house"],
+        vocal_summary_blurb:
+          "Public issues now live in Mimi’s own archive — quiet, local, free of cloud quotas.",
+        pages: [
+          {
+            pageNumber: 1,
+            bodyCopy:
+              "Floor reads no longer spend Firebase free-tier units. Publish once; the stand remembers.",
+          },
+        ],
+      } as ZineMetadata["content"],
+    },
+    {
+      id: "sovereign_demo_floor",
+      userId: "mimi_press",
+      userHandle: "mimi",
+      title: "Notes from the Floor",
+      tone: "research" as ZineMetadata["tone"],
+      timestamp: now - 120_000,
+      createdAt: now - 120_000,
+      likes: 7,
+      isPublic: true,
+      publishedAt: now - 120_000,
+      fragmentsUsed: [],
+      theme: "sovereign",
+      aestheticVector: {},
+      content: {
+        title: "Notes from the Floor",
+        headlines: ["Covers as plates"],
+        vocal_summary_blurb: "The Floor is a shelf, not a feed. Come back when something new lands.",
+        pages: [
+          {
+            pageNumber: 1,
+            bodyCopy: "Search the stand. Filter by tone. Leave when you’ve found your issue.",
+          },
+        ],
+      } as ZineMetadata["content"],
+    },
+  ];
+
+  upsertProfile({
+    uid: "mimi_press",
+    handle: "mimi",
+    displayName: "Mimi Press",
+    photoURL: null,
+  } as UserProfile);
+
+  for (const zine of demos) upsertZine(zine);
+  return demos.length;
 };

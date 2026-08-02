@@ -98,6 +98,17 @@ export const getSovereignDb = (): DatabaseSync | null => {
     migrate(db);
     dbInstance = db;
     console.info(`MIMI // Sovereign archive ready: ${dbPath}`);
+    // Lazy import avoids circular init with store ↔ db.
+    import("./store")
+      .then(({ seedDemoShelfIfEmpty }) => {
+        const seeded = seedDemoShelfIfEmpty();
+        if (seeded > 0) {
+          console.info(`MIMI // Sovereign demo shelf seeded (${seeded} issues)`);
+        }
+      })
+      .catch(() => {
+        // ignore seed failures at boot
+      });
     return dbInstance;
   } catch (error) {
     console.warn("MIMI // Sovereign archive unavailable:", error);

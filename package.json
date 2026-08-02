@@ -43,6 +43,8 @@
     "start": "node dist/server.cjs",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "sovereign:seed": "tsx scripts/seedSovereignDemo.ts",
+    "sovereign:import": "tsx scripts/seedSovereignDemo.ts --import",
     "setup:mimi-rip-domains": "node scripts/setupMimiRipDomains.mjs",
     "setup:mimi-fish-domains": "node scripts/setupMimiFishDomains.mjs"
   },

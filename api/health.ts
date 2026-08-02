@@ -1,4 +1,5 @@
 import { cors, sendJson } from "../lib/apiUtils.js";
+import { sovereignStatus } from "../lib/sovereign/store.js";
 
 export default function handler(req: any, res: any) {
   if (cors(req, res)) return;
@@ -24,6 +25,7 @@ export default function handler(req: any, res: any) {
       gateway: aiGatewayAvailable,
       replicate: serverAiEnabled && Boolean(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY),
     },
+    sovereign: sovereignStatus(),
     timestamp: new Date().toISOString(),
   });
 }

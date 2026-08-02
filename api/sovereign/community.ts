@@ -3,7 +3,7 @@ import { isSovereignEnabled } from "../../lib/sovereign/db.js";
 import { listPublicZines, sovereignStatus } from "../../lib/sovereign/store.js";
 
 /**
- * GET /api/sovereign/community?limit=40
+ * GET /api/sovereign/community?limit=40&q=search
  * Public Floor feed from the sovereign SQLite archive (no Firestore reads).
  */
 export default async function handler(req: any, res: any) {
@@ -22,14 +22,16 @@ export default async function handler(req: any, res: any) {
   try {
     const rawLimit = Number(req.query?.limit ?? req.query?.count ?? 40);
     const limit = Number.isFinite(rawLimit) ? rawLimit : 40;
-    const zines = listPublicZines(limit);
+    const q = String(req.query?.q || req.query?.search || "");
+    const zines = listPublicZines(limit, q);
     const status = sovereignStatus();
 
-    res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    res.setHeader("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
     res.setHeader("X-Mimi-Archive", "sovereign");
     return sendJson(res, 200, {
       zines,
       count: zines.length,
+      query: q || null,
       archive: status,
     });
   } catch (error: any) {

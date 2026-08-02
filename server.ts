@@ -40,6 +40,9 @@ import liveTokenHandler from "./api/live/token";
 import sovereignCommunityHandler from "./api/sovereign/community";
 import sovereignZineHandler from "./api/sovereign/zine";
 import sovereignStatusHandler from "./api/sovereign/status";
+import sovereignProfileHandler from "./api/sovereign/profile";
+import sovereignPocketHandler from "./api/sovereign/pocket";
+import sovereignImportHandler from "./api/sovereign/import";
 import { sovereignStatus } from "./lib/sovereign/store";
 import { isPaidPatronPlan } from "./constants";
 
@@ -1007,6 +1010,27 @@ async function startServer() {
   });
   app.delete("/api/sovereign/zines/:id", async (req, res) => {
     await sovereignZineHandler(req, res);
+  });
+  app.get("/api/sovereign/zines", async (req, res) => {
+    await sovereignZineHandler(req, res);
+  });
+  app.get("/api/sovereign/profile", async (req, res) => {
+    await sovereignProfileHandler(req, res);
+  });
+  app.post("/api/sovereign/profile", async (req, res) => {
+    await sovereignProfileHandler(req, res);
+  });
+  app.get("/api/sovereign/pocket", async (req, res) => {
+    await sovereignPocketHandler(req, res);
+  });
+  app.post("/api/sovereign/pocket", async (req, res) => {
+    await sovereignPocketHandler(req, res);
+  });
+  app.delete("/api/sovereign/pocket", async (req, res) => {
+    await sovereignPocketHandler(req, res);
+  });
+  app.post("/api/sovereign/import", async (req, res) => {
+    await sovereignImportHandler(req, res);
   });
 
   app.get("/api/heartbeat", (_req, res) => {
