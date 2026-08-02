@@ -111,6 +111,7 @@ service cloud.firestore {
           'isPatron',
           'patronActivatedAt',
           'patronKey',
+          'plan',
           'planStatus'
         ])
       );
@@ -350,7 +351,9 @@ service cloud.firestore {
           'subscriptionInterval',
           'isPatron',
           'patronActivatedAt',
-          'patronKey'
+          'patronKey',
+          'plan',
+          'planStatus'
         ])
       );
       allow delete: if isOwner(userId) || isAdmin();
