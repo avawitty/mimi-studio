@@ -1,9 +1,8 @@
-
 // @ts-nocheck
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { X } from 'lucide-react';
-import { getLegalDocument } from '../lib/legalContent';
+import { getLegalDocument, legalPathFor } from '../lib/legalContent';
 
 interface LegalOverlayProps {
  type: 'privacy' | 'terms' | null;
@@ -12,40 +11,40 @@ interface LegalOverlayProps {
 
 const LEGAL_SUMMARY = {
  privacy: {
- title:"Privacy Refraction",
- subtitle:"The Zero-Extraction Mandate",
- href: '/privacy',
+ title: "Privacy",
+ subtitle: "How we look after your information",
+ href: legalPathFor('privacy'),
  sections: [
  {
- head:"Identity Sanctity",
- body:"Your debris (data) is yours. We do not sell your taste to the pedestrian masses. We respect your autonomy; your art is never used to train our base machine learning models."
+ head: "Your work stays yours",
+ body: "We do not sell your personal information or your creative work. Your private studio material is not used to train public foundation models."
  },
  {
- head:"The Ghost Clause",
- body:"Anonymous users exist only in local memory (localStorage). Once you purge your cache, the machine forgets you. This is true digital death."
+ head: "Guest mode stays local",
+ body: "If you explore as a guest, much of what you make can stay in your browser. Clearing your cache can remove it — so sign in when you want a lasting archive."
  },
  {
- head:"Swan Persistence & Mean Median Mode",
- body:"Anchored identities may stage work on The Proscenium. When you acknowledge publish disclosure, eligible structure — themes, motifs, inquiry types, and form — may contribute anonymized signals to Mean Median Mode inside The Observatory. We do not put private Studio, Tailor memory, or personal Scry into that readout, and we do not show exact private wording as collective data."
+ head: "You choose what goes public",
+ body: "Public profiles and shared zines only show what you publish. Private studio and Tailor memory stay out of collective readouts unless you explicitly share."
  }
  ]
  },
  terms: {
- title:"Callithumpian Decree",
- subtitle:"Top Secret Manifesto of Service",
- href: '/terms',
+ title: "Terms of Service",
+ subtitle: "A fair agreement for using Mimi",
+ href: legalPathFor('terms'),
  sections: [
  {
- head:"The Sweet Intent",
- body:"Our singular intention is to expand your capacity for self-expression and unbridled creativity. This is a playground, not a factory."
+ head: "Made for making",
+ body: "Mimi is here to help you express yourself. This is a creative studio — use it kindly, and we will too."
  },
  {
- head:"Conduct of the Muse",
- body:"You are responsible for the debris you manifest. Violence and harm are aesthetically wretched and grounds for vault suspension."
+ head: "Be good to the space",
+ body: "You are responsible for what you create and share. Harassment, harm, and illegal content are not welcome and can lead to account suspension."
  },
  {
- head:"Intellectual Sovereignty",
- body:"You own your refractions. Mimi owns the machine that refines them. It is a partnership of velvet and logic."
+ head: "You own your work",
+ body: "You keep ownership of what you make. Mimi only gets the limited rights needed to host, show, and operate the service — including public work you choose to publish."
  }
  ]
  }
@@ -66,7 +65,7 @@ export const LegalOverlay: React.FC<LegalOverlayProps> = ({ type, onClose }) => 
  <div className="max-w-xl w-full">
  <div className="flex justify-between items-start mb-16">
  <div className="space-y-2">
- <h2 className="font-serif text-5xl italic tracking-tighter">{content.title}.</h2>
+ <h2 className="font-serif text-5xl italic tracking-tighter">{content.title}</h2>
  <p className="font-sans text-[10px] uppercase tracking-[0.4em] text-nous-subtle font-black">{content.subtitle}</p>
  </div>
  <button onClick={onClose} className="p-3 text-nous-subtle hover:text-nous-text transition-all">
@@ -101,7 +100,7 @@ export const LegalOverlay: React.FC<LegalOverlayProps> = ({ type, onClose }) => 
  >
  Read full {fullDoc.title}
  </a>
- <button onClick={onClose} className="font-sans text-[10px] uppercase tracking-[0.5em] font-black text-nous-subtle hover:text-nous-text transition-all">Return to Vault</button>
+ <button onClick={onClose} className="font-sans text-[10px] uppercase tracking-[0.5em] font-black text-nous-subtle hover:text-nous-text transition-all">Close</button>
  </div>
  </div>
  </motion.div>

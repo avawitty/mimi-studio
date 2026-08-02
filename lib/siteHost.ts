@@ -113,6 +113,7 @@ const HOST_RESERVED_SEGMENTS = new Set([
   "showcase",
   "privacy",
   "terms",
+  "tos",
   "api",
   "auth",
   "u",
