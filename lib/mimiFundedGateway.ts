@@ -266,10 +266,9 @@ export const resolveMimiFundedGatewayAccess = async (
           console.warn("MIMI // billing/subscription read failed during credit heal:", err);
         }
 
-        let grant =
-          data.membershipCredits ||
-          data.subscription?.credits ||
-          billingData.credits;
+        // Never trust top-level `subscription.credits` — owners can forge that
+        // object. Only Admin-written membershipCredits + billing/** credits.
+        let grant = data.membershipCredits || billingData.credits;
         const shouldReloadPeriod = needsMembershipPeriodReload(grant);
         const needsMint = needsMembershipCreditMint(grant);
         // Only hit Stripe when a heal would actually run.

@@ -140,18 +140,37 @@ const buildCreditGrant = (planInput, interval = 'month') => {
 };
 const collectStripeCustomerIdCandidates = (...sources) => {
     var _a;
+    // Keep in sync with lib/verifyStripeEntitlement.ts (Functions can't import root lib).
     const ids = new Set();
     for (const source of sources) {
         if (!source)
             continue;
-        const direct = String(source.stripeCustomerId || '').trim();
-        if (direct.startsWith('cus_'))
-            ids.add(direct);
+        for (const key of ['stripeCustomerId', 'customerId']) {
+            const value = String(source[key] || '').trim();
+            if (value.startsWith('cus_'))
+                ids.add(value);
+        }
         const nested = String(((_a = source.subscription) === null || _a === void 0 ? void 0 : _a.stripeCustomerId) || '').trim();
         if (nested.startsWith('cus_'))
             ids.add(nested);
     }
     return [...ids];
+};
+/** Preserve stored allowance on period reload (mirrors lib/mimiFundedGateway). */
+const rollForwardMembershipGrant = (grant, interval = 'month', now = Date.now()) => {
+    var _a;
+    const normalizedInterval = interval === 'year' ? 'year' : 'month';
+    const allowance = Number((_a = grant === null || grant === void 0 ? void 0 : grant.allowance) !== null && _a !== void 0 ? _a : 0);
+    const periodMs = (normalizedInterval === 'year' ? 365 : 30) * 24 * 60 * 60 * 1000;
+    return {
+        allowance,
+        remaining: allowance,
+        used: 0,
+        interval: normalizedInterval,
+        periodStartedAt: now,
+        periodEndsAt: now + periodMs,
+        lastGrantedAt: now,
+    };
 };
 /**
  * Verify cus_* against Stripe. Firestore docs are owner-writable (incl. billing/**
@@ -347,7 +366,7 @@ const extractBearerToken = (req) => {
     return header.replace(/^Bearer\s+/i, '');
 };
 app.post('/api/funded-gateway/access', async (req, res) => {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e;
     try {
         const token = extractBearerToken(req);
         if (!token) {
@@ -375,13 +394,14 @@ app.post('/api/funded-gateway/access', async (req, res) => {
                 const billingSnap = await userRef.collection('billing').doc('subscription').get();
                 billingData = (billingSnap.data() || {});
             }
-            catch (_g) {
+            catch (_f) {
                 billingData = {};
             }
-            let grant = data.membershipCredits || ((_b = data.subscription) === null || _b === void 0 ? void 0 : _b.credits) || billingData.credits;
+            // Never trust top-level subscription.credits (owner-writable forge vector).
+            let grant = data.membershipCredits || billingData.credits;
             const allowanceNum = Number(grant === null || grant === void 0 ? void 0 : grant.allowance);
             const hasAllowance = Number.isFinite(allowanceNum) && allowanceNum > 0;
-            const periodEndsAt = Number((_c = grant === null || grant === void 0 ? void 0 : grant.periodEndsAt) !== null && _c !== void 0 ? _c : 0);
+            const periodEndsAt = Number((_b = grant === null || grant === void 0 ? void 0 : grant.periodEndsAt) !== null && _b !== void 0 ? _b : 0);
             const now = Date.now();
             const needsPeriodReload = hasAllowance && Number.isFinite(periodEndsAt) && periodEndsAt > 0 && periodEndsAt < now;
             const needsMint = !hasAllowance;
@@ -391,8 +411,9 @@ app.post('/api/funded-gateway/access', async (req, res) => {
             const needsTrustedMint = needsMint && trustedBilling;
             if ((needsPeriodReload && trustedBilling) || needsTrustedMint) {
                 const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month');
+                // Period reload preserves stored allowance; mint derives from plan.
                 const credits = needsPeriodReload
-                    ? buildCreditGrant(plan, interval)
+                    ? rollForwardMembershipGrant(grant, interval, now)
                     : periodEndsAt > now
                         ? Object.assign(Object.assign({}, buildCreditGrant(plan, interval)), { periodEndsAt }) : buildCreditGrant(plan, interval);
                 const healPatch = {
@@ -406,16 +427,12 @@ app.post('/api/funded-gateway/access', async (req, res) => {
                 ]);
                 grant = credits;
             }
-            else if (needsPeriodReload && !trustedBilling) {
-                // Expired period without Stripe-verified entitlement — never rollForward
-                // a client-controlled allowance.
-                res.status(200).send({ allowed: false, billable: false, uid: decoded.uid, cost });
-                return;
-            }
-            remaining = Number((_d = grant === null || grant === void 0 ? void 0 : grant.remaining) !== null && _d !== void 0 ? _d : 0);
+            // Expired period without Stripe verify: no refill, but leftover remaining
+            // credits below can still be spent.
+            remaining = Number((_c = grant === null || grant === void 0 ? void 0 : grant.remaining) !== null && _c !== void 0 ? _c : 0);
         }
         else {
-            remaining = Number((_f = (_e = data.trial) === null || _e === void 0 ? void 0 : _e.remainingCredits) !== null && _f !== void 0 ? _f : 0);
+            remaining = Number((_e = (_d = data.trial) === null || _d === void 0 ? void 0 : _d.remainingCredits) !== null && _e !== void 0 ? _e : 0);
         }
         res.status(200).send({
             allowed: remaining >= cost,

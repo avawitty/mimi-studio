@@ -64,6 +64,10 @@ export const applyPromoCode = async (uid: string, code: string) => {
     });
 
     const data = await response.json();
+    // Idempotent redeem: alreadyRedeemed returns applied:false with ok/success.
+    if (data.alreadyRedeemed === true && (data.ok === true || data.success === true)) {
+      return data;
+    }
     if (!response.ok || data.applied === false) {
       // Entitlement fields are Admin-only in Firestore rules — do not forge
       // stripeCustomerId / membershipCredits from the client.

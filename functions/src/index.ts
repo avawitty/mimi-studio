@@ -426,7 +426,8 @@ app.post('/api/funded-gateway/access', async (req, res) => {
         billingData = {};
       }
 
-      let grant = data.membershipCredits || data.subscription?.credits || billingData.credits;
+      // Never trust top-level subscription.credits (owner-writable forge vector).
+      let grant = data.membershipCredits || billingData.credits;
       const allowanceNum = Number(grant?.allowance);
       const hasAllowance = Number.isFinite(allowanceNum) && allowanceNum > 0;
       const periodEndsAt = Number(grant?.periodEndsAt ?? 0);
