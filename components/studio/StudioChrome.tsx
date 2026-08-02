@@ -3,18 +3,12 @@ import { GripVertical, Menu, Moon, Sparkles, Sun, User, Layers } from "lucide-re
 import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
+import { chromeDataAttr } from "../../lib/chamberChrome";
 import {
-<<<<<<< HEAD
-  chromeDataAttr,
+  CREATOR_PATH,
   isDarkPlateMode,
   isPublicFaceMode,
-} from "../../lib/chamberChrome";
-=======
-  CREATOR_PATH,
-  DARK_PLATE_MODES,
-  PUBLIC_FACE_MODES,
 } from "../../lib/design-system";
->>>>>>> origin/main
 
 export const StudioChrome: React.FC<{
   theme: StudioTheme;
