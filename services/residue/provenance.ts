@@ -3,7 +3,8 @@
  * Distinguishes observed evidence from model inference.
  */
 
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import {
   RESIDUE_ENGINE_ID,
   RESIDUE_PROMPT_VERSION,
@@ -21,7 +22,7 @@ import type {
 
 export function hashResidueInput(parts: unknown[]): string {
   const payload = JSON.stringify(parts);
-  return createHash("sha256").update(payload).digest("hex").slice(0, 32);
+  return bytesToHex(sha256(new TextEncoder().encode(payload))).slice(0, 32);
 }
 
 export function createRunMetadata(input: {
