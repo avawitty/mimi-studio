@@ -2,6 +2,7 @@ import React from "react";
 import { LayoutGrid } from "lucide-react";
 import { useChamber } from "../../hooks/useChamber";
 import { useIsNarrow } from "../../hooks/useBreakpoint";
+import { mainShellClassName } from "../../lib/chamberChrome";
 
 export interface AppShellProps {
   viewMode: string;
@@ -14,42 +15,6 @@ export interface AppShellProps {
   chrome?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
-}
-
-function mainSurfaceClass(viewMode: string): string {
-  const chamber = {
-    isWorktable: [
-      "studio",
-      "taste-graph",
-      "taste-discovery",
-      "the-edit",
-      "tailor",
-      "moodboard",
-      "darkroom",
-      "private-studio",
-      "quiet-studio",
-      "brand-intake",
-    ].includes(viewMode),
-    isVoid: viewMode === "mimi-rip" || viewMode === "scry",
-    isPublicPad: [
-      "editorial-home",
-      "stand",
-      "signature",
-      "showcase",
-      "archival",
-    ].includes(viewMode),
-  };
-
-  if (chamber.isWorktable) {
-    return "overflow-hidden min-h-0 pb-0 h-full";
-  }
-  if (chamber.isVoid) {
-    return "overflow-hidden min-h-0 pb-0 h-full bg-[#050506]";
-  }
-  if (chamber.isPublicPad) {
-    return "overflow-y-auto bg-nous-base pb-8 md:pb-0 mimi-page-pad mimi-page-pad--public";
-  }
-  return "overflow-y-auto bg-nous-base pb-[max(1.25rem,env(safe-area-inset-bottom))] md:pb-0 mimi-page-pad";
 }
 
 /**
@@ -142,7 +107,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         )}
 
         <main
-          className={`flex-1 flex flex-col relative ${mainSurfaceClass(viewMode)}`}
+          className={mainShellClassName(viewMode)}
         >
           {children}
         </main>

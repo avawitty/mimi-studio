@@ -2318,7 +2318,7 @@ export const App: React.FC = () => {
     "taste-identity": "Taste Identity",
     "taste-discovery": "Taste Discovery",
     architecture: "System Architecture",
-    "chamber-map": "Chamber Registry",
+    "chamber-map": "Studio Map",
     atelier: "Atelier",
     house: "The House",
     residue: "Residue",
@@ -2452,11 +2452,15 @@ export const App: React.FC = () => {
 
       <AppShell
         viewMode={viewMode}
-        hideBinder={appState === AppState.REVEALED}
+        hideBinder={
+          appState === AppState.REVEALED || viewMode === "chamber-map"
+        }
         menuOpen={isNavOpen}
         onToggleMenu={() => setIsNavOpen(!isNavOpen)}
         chrome={
-          appState !== AppState.REVEALED && viewMode !== "studio" ? (
+          appState !== AppState.REVEALED &&
+          viewMode !== "studio" &&
+          viewMode !== "chamber-map" ? (
             <StudioChrome
               theme={currentPalette.isDark ? "dark" : "light"}
               onToggleTheme={toggleMode}
@@ -2507,7 +2511,9 @@ export const App: React.FC = () => {
             <motion.div
               key={viewMode}
               className={`flex-1 w-full relative ${
-                viewMode === "studio" ? "h-full min-h-0" : "h-full min-h-0 overflow-y-auto"
+                viewMode === "studio" || viewMode === "chamber-map"
+                  ? "h-full min-h-0"
+                  : "h-full min-h-0 overflow-y-auto"
               }`}
               initial={{ opacity: 0, y: isStandalonePwaShell ? 0 : 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2746,7 +2752,10 @@ export const App: React.FC = () => {
                           <RipChamber navigate={navigate} />
                         )}
                         {viewMode === "chamber-map" && (
-                          <ChamberMapView onNavigate={setViewMode} />
+                          <ChamberMapView
+                            onNavigate={setViewMode}
+                            onOpenFind={() => setCommandDrawerOpen(true)}
+                          />
                         )}
                         {viewMode === "atelier" && <AtelierChamber />}
                         {viewMode === "house" && (

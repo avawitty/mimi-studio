@@ -1,114 +1,36 @@
+import {
+  DARK_PLATE_MODES as DESIGN_DARK_PLATE_MODES,
+  PUBLIC_FACE_MODES as DESIGN_PUBLIC_FACE_MODES,
+  WORKTABLE_MODES,
+  chamberFamilyForMode,
+  type StudioFamily,
+} from "./design-system";
+
 /**
- * Chamber-aware shell helpers — Psychic Oracle Spy / editorial archive.
- *
- * Classifies routes into meta-chambers (overlay + atmosphere) and face kinds
- * (chrome density + main pad). Keeps App shell and StudioChrome in sync.
+ * Chamber-aware shell helpers. Product family comes from CanonModule metadata;
+ * this module owns only chrome density and main-surface behavior.
  */
 
-export type ChamberFamily =
-  | "create"
-  | "reflect"
-  | "refine"
-  | "signature"
-  | "observe"
-  | "system";
+export type ChamberFamily = StudioFamily;
 
 /** How the global chrome / main pad should treat the surface */
 export type FaceKind = "public" | "public-dark" | "worktable" | "void";
 
 /** Quiet public plates — Menu + identity only (no pocket/oracle chrome) */
-export const PUBLIC_FACE_MODES = [
-  "editorial-home",
-  "stand",
-  "signature",
-  "showcase",
-  "archival",
-  "mimi-rip",
-  "scry",
-] as const;
+export const PUBLIC_FACE_MODES = [...DESIGN_PUBLIC_FACE_MODES] as const;
 
 /** Forced-dark public plates — chrome must match (no light-over-dark seam) */
-export const DARK_PLATE_MODES = ["mimi-rip", "scry"] as const;
+export const DARK_PLATE_MODES = [...DESIGN_DARK_PLATE_MODES] as const;
 
 /** Full-bleed worktables — overflow locked, no page pad */
-export const WORKTABLE_OVERFLOW_MODES = [
-  "studio",
-  "taste-graph",
-  "taste-discovery",
-  "the-edit",
-  "tailor",
-  "moodboard",
-  "darkroom",
-  "private-studio",
-  "quiet-studio",
-  "brand-intake",
-] as const;
+export const WORKTABLE_OVERFLOW_MODES = [...WORKTABLE_MODES] as const;
 
 const PUBLIC_FACE_SET = new Set<string>(PUBLIC_FACE_MODES);
 const DARK_PLATE_SET = new Set<string>(DARK_PLATE_MODES);
 const WORKTABLE_OVERFLOW_SET = new Set<string>(WORKTABLE_OVERFLOW_MODES);
 
-const CREATE_MODES = new Set([
-  "studio",
-  "moodboard",
-  "darkroom",
-  "private-studio",
-  "quiet-studio",
-  "briefs",
-]);
-
-const REFLECT_MODES = new Set([
-  "oracle",
-  "geo_engine",
-  "thimble",
-  "archival",
-  "threads",
-  "latent-constellation",
-  "the-lens",
-  "residue",
-  "intel-hub",
-  "forecast",
-  "scry",
-]);
-
-const REFINE_MODES = new Set([
-  "tailor",
-  "celestial-calibration",
-  "loom",
-  "action-board",
-  "the-edit",
-  "the-press",
-  "wardrobe",
-  "mimi-drop",
-]);
-
-const SIGNATURE_MODES = new Set([
-  "signature",
-  "ward",
-  "profile",
-  "taste-graph",
-  "pocket",
-  "scribe",
-  "mimi-dolls",
-  "mimi-rip",
-  "atelier",
-  "house",
-]);
-
-const OBSERVE_MODES = new Set([
-  "nebula",
-  "proscenium",
-  "observatory",
-  "mean-median-mode",
-]);
-
 export function getChamberFamily(mode: string): ChamberFamily {
-  if (CREATE_MODES.has(mode)) return "create";
-  if (REFLECT_MODES.has(mode)) return "reflect";
-  if (REFINE_MODES.has(mode)) return "refine";
-  if (SIGNATURE_MODES.has(mode)) return "signature";
-  if (OBSERVE_MODES.has(mode)) return "observe";
-  return "system";
+  return chamberFamilyForMode(mode);
 }
 
 export function isPublicFaceMode(mode: string): boolean {
@@ -130,7 +52,7 @@ export function getFaceKind(mode: string): FaceKind {
 /** CSS classes for the App `<main>` region by route */
 export function mainShellClassName(mode: string): string {
   const base = "flex-1 flex flex-col relative";
-  if (WORKTABLE_OVERFLOW_SET.has(mode)) {
+  if (WORKTABLE_OVERFLOW_SET.has(mode) || mode === "chamber-map") {
     return `${base} overflow-hidden min-h-0 pb-0 h-full`;
   }
   if (DARK_PLATE_SET.has(mode)) {

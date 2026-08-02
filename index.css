@@ -41,12 +41,16 @@
     --mimi-manila-sheet: #f7f3e8;
     --mimi-manila-ink: #5c5334;
     /* Atelier collage objects (Desk / Index) — never the public field fill */
-    --mimi-artifact-bone: #f4f1ea;
+    --mimi-bone: #f4f1ea;
+    --mimi-artifact-bone: var(--mimi-bone);
     --mimi-newsprint: #ede9df;
     --mimi-pencil: #8a877f;
-    --mimi-gridline: #d8d4c9;
+    --mimi-rule: #d8d4c9;
+    --mimi-gridline: var(--mimi-rule);
     --mimi-periwinkle: #b9c4e0;
-    --mimi-seal: #c33b32;
+    --mimi-red: #c33b32;
+    --mimi-seal: var(--mimi-red);
+    --mimi-blush: #ead9d5;
     --mimi-ink-soft: #111110;
 
     /* Era Variables */
@@ -155,6 +159,15 @@
     --studio-icon-hover: rgba(0, 0, 0, 0.04);
   }
 
+  .studio-worktable-v2 {
+    --wt-paper: var(--mimi-bone);
+    --wt-paper-2: var(--mimi-newsprint);
+    --wt-ink: var(--mimi-ink-soft);
+    --wt-ink-2: var(--mimi-pencil);
+    --wt-line: var(--mimi-rule);
+    --wt-seal: var(--mimi-red);
+  }
+
   /* Binder Portfolio dark field: cool header chrome on black gallery */
   .studio-worktable[data-studio-theme="dark"],
   .studio-worktable.binder-portfolio[data-studio-theme="dark"] {
@@ -186,12 +199,16 @@
     --mimi-olive: #5a5a40;
     --mimi-stone: #78716c;
     --mimi-hairline: #d4d4d4;
-    --mimi-artifact-bone: #f4f1ea;
+    --mimi-bone: #f4f1ea;
+    --mimi-artifact-bone: var(--mimi-bone);
     --mimi-newsprint: #ede9df;
     --mimi-pencil: #8a877f;
-    --mimi-gridline: #d8d4c9;
+    --mimi-rule: #d8d4c9;
+    --mimi-gridline: var(--mimi-rule);
     --mimi-periwinkle: #b9c4e0;
-    --mimi-seal: #c33b32;
+    --mimi-red: #c33b32;
+    --mimi-seal: var(--mimi-red);
+    --mimi-blush: #ead9d5;
     --mimi-ink-soft: #111110;
     color: var(--mimi-ink);
     background-color: var(--mimi-field);
