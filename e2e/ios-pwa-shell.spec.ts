@@ -189,15 +189,28 @@ test.describe("Keyboard avoidance", () => {
     expect(overscroll).toBe("none");
   });
 
-  test("viewport meta disables user-scalable to prevent zoom on input tap", async ({
+  test("viewport meta allows pinch-zoom; focus-zoom is blocked via 16px inputs", async ({
     page,
   }) => {
     await page.goto("/");
     const content = await page
       .locator('meta[name="viewport"]')
       .getAttribute("content");
-    // iOS PWA convention: prevent accidental zoom when tapping inputs.
-    expect(content).toMatch(/user-scalable=no/);
+    // A11y policy: keep pinch-zoom available — do not lock scale.
+    expect(content).toContain("viewport-fit=cover");
+    expect(content ?? "").not.toMatch(/user-scalable\s*=\s*no/i);
+    expect(content ?? "").not.toMatch(/maximum-scale\s*=\s*1(\.0)?(\s|,|$)/i);
+
+    // iOS focus-zoom is prevented by ≥16px form controls on narrow viewports.
+    const inputFontSize = await page.evaluate(() => {
+      const el = document.createElement("input");
+      el.type = "text";
+      document.body.appendChild(el);
+      const size = Number.parseFloat(getComputedStyle(el).fontSize);
+      el.remove();
+      return size;
+    });
+    expect(inputFontSize).toBeGreaterThanOrEqual(16);
   });
 });
 
