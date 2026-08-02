@@ -4,6 +4,14 @@
       "collectionGroup": "zines",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "isPublic", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "zines",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "isPublic", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }

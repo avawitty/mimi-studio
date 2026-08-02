@@ -59,7 +59,18 @@ export const diagnoseZines = async () => {
         console.error("Local Archive Error:", e);
     }
 
-    // Check Cloud
+    // Check Sovereign archive
+    try {
+        const { fetchSovereignStatus, fetchSovereignCommunityZines } = await import("./sovereignClient");
+        const status = await fetchSovereignStatus(true);
+        console.log("Sovereign Archive:", status);
+        const floor = await fetchSovereignCommunityZines(5);
+        console.log("Sovereign Floor (Limit 5):", floor?.length ?? null);
+    } catch (e) {
+        console.error("Sovereign Archive Error:", e);
+    }
+
+    // Check Cloud (Firestore fallback)
     try {
         const { fetchCommunityZines } = await import("./firebaseUtils");
         const cloud = await fetchCommunityZines(5);
