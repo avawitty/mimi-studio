@@ -129,7 +129,7 @@ Start the development server:
 npm run dev
 ```
 
-The server uses `PORT` or `DEV_PORT` when provided and otherwise defaults to port `3000`.
+The server uses `PORT` or `DEV_PORT` when provided and otherwise defaults to port `3000`. The app is fully navigable with no env vars; missing Firebase Admin / Stripe / AI keys simply disable those integrations.
 
 ## Useful commands
 
@@ -141,13 +141,71 @@ npm run build:vercel                # Build the Vite client for Vercel
 npm run preview                     # Preview the production client build
 npm run lint                        # Type-check the project
 npm run test:e2e                    # Run Playwright end-to-end tests
+npm run test:unit                   # Run Vitest unit tests
 npm run validate:canon              # Validate canonical routes
 npm run verify:tailor-contract      # Verify Tailor profile contracts
 npm run verify:used-context         # Verify the Used Context flow
 npm run verify:zine-visual-policy   # Verify zine visual-policy rules
+npm run verify:zine-spread-compose  # Verify customLayout spread compose
+npm run verify:structured-zine-pdf  # Verify archival structured PDF export
+npm run verify:doll-engine          # Verify Doll Engine projection helpers
+npm run verify:doll-staple          # Verify Mimi Shell staple prompt lock
+npm run verify:fish                 # Verify mimi.fish share/shelf URL rules
+npm run verify:gateway-generate-text # Needs AI_GATEWAY_API_KEY
+npm run review:mobile               # iPhone-width UX probe (needs :3000 or pass URL)
+npm run setup:mimi-fish-domains     # Auth domains for mimi.fish (+ optional Vercel)
+npm run setup:mimi-rip-domains      # Auth domains for mimi.rip
 ```
 
-Additional integration checks are available for Shopify, Intel Hub, and Pinterest preview workflows.
+Additional integration checks are available for Shopify, Intel Hub, Residue, and Pinterest preview workflows.
+
+## Operational developer notes
+
+Concise pitfalls and contracts that are easy to miss. Deeper chamber maps live in [`docs/mimi-chamber-implementation-audit.md`](docs/mimi-chamber-implementation-audit.md); durable architecture in [`docs/mimi-system-architecture.md`](docs/mimi-system-architecture.md).
+
+### Public host skins and share links
+
+One SPA, three public skins (`lib/siteHost.ts`):
+
+| Skin | Host | Notes |
+| --- | --- | --- |
+| `you` | `mimi.you` | Full app (also localhost / `*.vercel.app`) |
+| `rip` | `mimi.rip` | Inverse public plates |
+| `fish` | `mimi.fish` | Share plate + creator shelf |
+
+- Canonical zine share URL: `https://mimi.fish/s/:zineId` (`getFishShareUrl` / `getZineShareUrl`).
+- Local QA without DNS: `?skin=rip|fish` or `localStorage.mimi_site_skin`.
+- After attaching custom domains, run `npm run setup:mimi-fish-domains` / `setup:mimi-rip-domains` so Firebase Auth authorized domains stay in sync.
+- Offline URL-rule check: `npm run verify:fish`.
+
+### `POST /api/mimi/generate-text`
+
+Body (Zod-validated): `{ prompt, system?, role?: "textFast"|"textDeep", temperature? }`.
+
+- Uses `generateGatewayText` from `lib/ai/generate.ts` with Gateway model roles from `services/modelConfig.ts` — do not hardcode outdated provider model strings.
+- Same funded-gateway credit gate as `/api/proxy/ai-gateway`: signed-in trial/plan credits, or a personal Gateway/provider key (BYOK Bearer).
+- Verify requires `AI_GATEWAY_API_KEY`: `npm run verify:gateway-generate-text`.
+
+### Stale chunk / post-deploy MIME recovery
+
+After a deploy, browsers or the service worker can request old `/assets/*.js` and receive HTML → MIME / chunk-load errors.
+
+Recovery path (`lib/staleChunkRecovery.ts`, wired from `index.tsx` + `ErrorBoundary`):
+
+1. Detect stale-asset error signatures (MIME, dynamic import failure, chunk load).
+2. Clear Cache Storage and unregister service workers.
+3. Hard-reload once with `?recovered=1` (45s cooldown to avoid loops).
+
+`public/sw.js` intentionally avoids caching `/assets/*` and rejects HTML-as-asset responses. If a user is stuck after a ship, a hard refresh or clearing site data recovers; the automated path should fire first.
+
+### Mobile UX review
+
+```bash
+npm run dev                         # separate terminal
+npm run review:mobile               # or: npm run review:mobile -- https://preview.example
+```
+
+Playwright Chromium at 390×844 probes Front Page, Stand, Signature, Rip, and Studio. Screenshots + `review.json` land under `/opt/cursor/artifacts/mobile-ux-review`. Non-zero exit means checklist failures (quiet public chrome, brand casing, Stand Floor tabs, Studio sheets, no app-owned right-edge FAB). See `AGENTS.md` for the full checklist.
 
 ## Repository status
 

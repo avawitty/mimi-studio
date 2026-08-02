@@ -85,6 +85,21 @@ Generation credits are an **in-app allowance** refreshed on successful invoice/p
 boundaries — not Stripe Billing Meters / Metronome. Keep prepaid credit burndown in
 Firestore until you need true usage-based overage billing.
 
+### Entitlement helper contract
+
+Client and server feature gates should go through `lib/mimiEntitlements.ts` rather than
+re-deriving plan → credits/features ad hoc:
+
+| Export | Role |
+| --- | --- |
+| `MIMI_PRICE_ID_PLAN_MAP` | Stripe Price ID → plan (live + legacy/sandbox IDs) |
+| `getEntitlementForPlan(plan)` | Credits, rollover, `serverAiAccess`, feature flags |
+| `normalizeMimiPlan(...)` | Coerce Firestore / checkout plan strings |
+
+`lib/stripeMembership.ts` writes the webhook payload; `mimiEntitlements` is the read-side
+contract used by UI gates and AI credit checks. Keep price IDs in sync with `constants.ts`
+(`STRIPE_PRICES` / `STRIPE_PRICES_ANNUAL`).
+
 ## Tax
 
 Do **not** enable `automatic_tax` until an active Stripe Tax registration exists for the
@@ -104,3 +119,4 @@ relevant jurisdictions. Enabling the flag without a registration silently collec
 - Full page: `SubscriptionMatrix` in `components/SovereignCommerceEngine.tsx` (`view=memberships`)
 - Modal: `ImperialPatronageModal`
 - Shared copy/pricing: `lib/patronageTiers.ts`
+- Entitlement helpers: `lib/mimiEntitlements.ts`
