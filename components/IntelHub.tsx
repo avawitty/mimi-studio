@@ -630,8 +630,8 @@ export const IntelHub: React.FC = () => {
       <footer className="max-w-6xl mx-auto border-t border-nous-border mt-16 pt-8 pb-12 flex flex-col sm:flex-row justify-between items-center gap-4 text-nous-subtle font-mono text-[9px] uppercase tracking-[0.2em]">
         <span>© {new Date().getFullYear()} Mimi Logic Registry // Aesthetic Architecture Corporation</span>
         <div className="flex gap-6">
-          <a href="/privacy" className="hover:text-nous-text">Privacy Sovereign Protocol</a>
-          <a href="/terms" className="hover:text-nous-text">Terms of Curation</a>
+          <a href="/privacy" className="hover:text-nous-text">Privacy</a>
+          <a href="/tos" className="hover:text-nous-text">Terms of Service</a>
         </div>
       </footer>
     </div>

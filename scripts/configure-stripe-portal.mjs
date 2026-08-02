@@ -44,7 +44,7 @@ const body = new URLSearchParams();
 body.set("default_return_url", `${BASE}/memberships`);
 body.set("business_profile[headline]", "Maison Mimi Patronage");
 body.set("business_profile[privacy_policy_url]", `${BASE}/privacy`);
-body.set("business_profile[terms_of_service_url]", `${BASE}/terms`);
+body.set("business_profile[terms_of_service_url]", `${BASE}/tos`);
 body.set("features[subscription_update][enabled]", "true");
 body.set("features[subscription_update][proration_behavior]", "create_prorations");
 body.append("features[subscription_update][default_allowed_updates][]", "price");

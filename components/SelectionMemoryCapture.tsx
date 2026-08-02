@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useUser } from '../contexts/UserContext';
+import { useFeedback } from '../hooks/useFeedback';
+import { resolveMotionVariant } from '../lib/motion';
 import { createAtomFromScribeSignal, saveMemoryAtom, suggestTitleForAtom, mirrorAtomToPocket } from '../services/memoryService';
 import { addToUsedContext } from '../services/usedContextService';
 import { MemoryAtom } from '../types';
@@ -8,6 +10,9 @@ import { Brain, Loader2, Check, ArrowRight } from 'lucide-react';
 
 export const SelectionMemoryCapture: React.FC = () => {
   const { user } = useUser();
+  const feedback = useFeedback();
+  const reduceMotion = Boolean(useReducedMotion());
+  const gather = resolveMotionVariant('gatherIntoPocket', reduceMotion);
   const [text, setText] = useState('');
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [show, setShow] = useState(false);
@@ -65,6 +70,8 @@ export const SelectionMemoryCapture: React.FC = () => {
     if (!user?.uid || !text) return;
     
     setStatus('saving');
+    // Analysis/capture in progress — visual only, no haptic.
+    feedback.trigger('analysis.started');
     try {
       const title = await suggestTitleForAtom(text);
       
@@ -79,12 +86,17 @@ export const SelectionMemoryCapture: React.FC = () => {
       await mirrorAtomToPocket(user.uid, newAtom);
       setSavedAtom(newAtom);
       setStatus('saved');
+      feedback.trigger('source.captured', {
+        confirmed: true,
+        sourceElement: bubbleRef.current,
+      });
       
       window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
         detail: { message: `Atomized selection: "${title}"`, type: 'success' } 
       }));
     } catch (e) {
       console.error("MIMI // Inline capture failed:", e);
+      feedback.trigger('action.failed');
       setStatus('idle');
     }
   };
@@ -116,8 +128,9 @@ export const SelectionMemoryCapture: React.FC = () => {
         >
           {status === 'saved' && savedAtom ? (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 5 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
+              initial={gather.initial}
+              animate={gather.animate}
+              transition={gather.transition}
               className="flex flex-col gap-1 shadow-xl border border-white/20"
             >
               <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-900 text-white font-sans text-[9px] uppercase tracking-widest font-black">
@@ -134,9 +147,10 @@ export const SelectionMemoryCapture: React.FC = () => {
             </motion.div>
           ) : (
             <motion.button
-              initial={{ opacity: 0, scale: 0.9, y: 5 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 5 }}
+              initial={gather.initial}
+              animate={gather.animate}
+              exit={gather.exit}
+              transition={gather.transition}
               onClick={handleCapture}
               className="flex items-center gap-2 px-3 py-1.5 bg-nous-text text-nous-base hover:bg-nous-text/90 shadow-xl border border-white/20 select-none font-sans text-[9px] uppercase tracking-widest font-black"
             >

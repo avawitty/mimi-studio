@@ -92,10 +92,12 @@ console.warn = (...args) => {
 import { App } from './App';
 import './index.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { MotionProvider } from './components/motion/MotionProvider';
 import { UserProvider } from './contexts/UserContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AgentProvider } from './contexts/AgentContext';
 import { DossierProvider } from './components/studio-os/DossierContext';
+import { FeedbackProvider } from './contexts/FeedbackProvider';
 import { installStaleAssetListeners } from './lib/staleChunkRecovery';
 
 installStaleAssetListeners();
@@ -105,15 +107,19 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <ErrorBoundary>
-        <ThemeProvider>
-          <UserProvider>
-            <AgentProvider>
-              <DossierProvider>
-                <App />
-              </DossierProvider>
-            </AgentProvider>
-          </UserProvider>
-        </ThemeProvider>
+        <MotionProvider>
+          <ThemeProvider>
+            <UserProvider>
+              <AgentProvider>
+                <FeedbackProvider>
+                  <DossierProvider>
+                    <App />
+                  </DossierProvider>
+                </FeedbackProvider>
+              </AgentProvider>
+            </UserProvider>
+          </ThemeProvider>
+        </MotionProvider>
       </ErrorBoundary>
     </React.StrictMode>
   );
