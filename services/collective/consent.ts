@@ -22,7 +22,10 @@ export const MMM_PUBLISH_DISCLOSURE_BODY = [
 ].join(" ");
 
 export const MMM_PUBLISH_DISCLOSURE_SECONDARY =
-  "You can unpublish later to stop future contribution. Frozen historical reports may retain anonymized aggregates already computed.";
+  "You can unpublish later to withdraw from future live windows. Frozen historical reports may retain anonymized aggregates already computed.";
+
+/** Live aggregation eligibility status on a zine after Proscenium disclosure. */
+export type MmmContributionStatus = "active" | "withdrawn" | "never";
 
 export function buildPublishConsent(input: {
   artifactId: string;
@@ -42,16 +45,20 @@ export function buildPublishConsent(input: {
 /**
  * No disclosure acknowledgment → must not contribute.
  * Opt-out after disclosure → stage without aggregating.
+ * Withdrawn contributions are excluded from live windows (Update 21).
  */
 export function mayContributeToMeanMedianMode(consent: {
   disclosedAt?: number | null;
   disclosureVersion?: string | null;
   contributeToMeanMedianMode?: boolean | null;
   acknowledgedDisclosure?: boolean;
+  mmmContributionStatus?: MmmContributionStatus | string | null;
 } | null | undefined): boolean {
   if (!consent) return false;
   if (consent.acknowledgedDisclosure === false) return false;
   if (!consent.disclosedAt || !consent.disclosureVersion) return false;
+  if (consent.mmmContributionStatus === "withdrawn") return false;
+  if (consent.mmmContributionStatus === "never") return false;
   return consent.contributeToMeanMedianMode === true;
 }
 
@@ -79,6 +86,8 @@ export function consentFieldsForZine(consent: ProsceniumPublishConsent): {
   contributeToMeanMedianMode: boolean;
   disclosedAt: number;
   disclosureVersion: string;
+  mmmContributionStatus: MmmContributionStatus;
+  mmmWithdrawnAt: null;
   publishedAt: number;
   timestamp: number;
 } {
@@ -88,19 +97,28 @@ export function consentFieldsForZine(consent: ProsceniumPublishConsent): {
     contributeToMeanMedianMode: consent.contributeToMeanMedianMode,
     disclosedAt: consent.disclosedAt,
     disclosureVersion: consent.disclosureVersion,
+    mmmContributionStatus: consent.contributeToMeanMedianMode ? "active" : "never",
+    mmmWithdrawnAt: null,
     publishedAt: now,
     timestamp: now,
   };
 }
 
-/** Firestore field patch when unpublishing — stop future contribution. */
-export function unpublishFieldsForZine(): {
+/**
+ * Firestore field patch when unpublishing — withdraw from future live windows.
+ * Frozen / already-published reports may retain anonymized aggregates (disclosed).
+ */
+export function unpublishFieldsForZine(now = Date.now()): {
   isPublic: false;
   contributeToMeanMedianMode: false;
+  mmmContributionStatus: "withdrawn";
+  mmmWithdrawnAt: number;
 } {
   return {
     isPublic: false,
     contributeToMeanMedianMode: false,
+    mmmContributionStatus: "withdrawn",
+    mmmWithdrawnAt: now,
   };
 }
 

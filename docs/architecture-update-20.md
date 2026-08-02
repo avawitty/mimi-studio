@@ -533,6 +533,8 @@ Persistence and Delivery
 
 ## 16. Open Questions
 
+> **Resolved in [Architecture Update 21](./architecture-update-21.md).** The list below is retained for history; treat Update 21 as the decision source.
+
 1. Which objects remain canonically owned by Firestore, and which should migrate to the Sovereign Data Plane?
 2. Is the Sovereign archive a publication projection, a complete application store, or a gradually expanding hybrid?
 3. Should Memory Atoms and Context Runs ever be stored in Sovereign Postgres?

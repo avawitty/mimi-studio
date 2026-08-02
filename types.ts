@@ -658,6 +658,10 @@ export interface ZineMetadata {
   disclosedAt?: number;
   /** Disclosure copy version (e.g. mmm-consent-v1). */
   disclosureVersion?: string;
+  /** Live-window MMM eligibility after unpublish/withdraw (Architecture Update 21). */
+  mmmContributionStatus?: "active" | "withdrawn" | "never";
+  /** When contribution was withdrawn from future live windows. */
+  mmmWithdrawnAt?: number;
   isLocked?: boolean;
   mask?: string;
   useSearch?: boolean;

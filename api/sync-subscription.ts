@@ -1,10 +1,6 @@
 import { cors, requireMethod, sendError, sendJson } from "../lib/apiUtils.js";
 import { extractMimiSessionToken } from "../lib/mimiSessionToken.js";
 import { proxyToFunctions } from "../lib/proxyToFunctions.js";
-import {
-  subscriptionPeriodEnd,
-  writeMembershipEntitlements,
-} from "../lib/stripeMembership.js";
 
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
@@ -12,7 +8,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     // Prefer Cloud Functions when Admin is not opted-in — loading firebase-admin
-    // on Vercel has crashed isolates (FUNCTION_INVOCATION_FAILED).
+    // / Stripe on Vercel has crashed isolates (FUNCTION_INVOCATION_FAILED).
     const preferLocalAdmin = process.env.MIMI_USE_VERCEL_FIREBASE_ADMIN === "1";
     if (!preferLocalAdmin) {
       const token = extractMimiSessionToken(req.headers || {});
@@ -71,6 +67,11 @@ export default async function handler(req: any, res: any) {
       });
       return;
     }
+
+    const {
+      subscriptionPeriodEnd,
+      writeMembershipEntitlements,
+    } = await import("../lib/stripeMembership.js");
 
     const data = pendingSnap.data() || {};
     await writeMembershipEntitlements({

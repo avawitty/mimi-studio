@@ -235,7 +235,7 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow:
       "Turn scattered material into an editorial read, bake hi-fi plates, compose issue spreads, then publish or export.",
     notes:
-      "Legacy /press aliases here. Distinct from The Press export chamber. Architecture Update 20: chamber now spans interpretive governance and artifact composition (Signal Edit vs Issue Edit canon split still open).",
+      "Legacy /press aliases here. Distinct from The Press export chamber. Architecture Update 21: one chamber with Signal / Issue / Forecast panels (default Signal). ?panel=signal|issue|forecast supported.",
   },
   {
     id: "the-press",
@@ -702,8 +702,9 @@ export const CANON_INFRASTRUCTURE: CanonInfrastructure[] = [
     name: "AI Gateway Embeddings",
     status: "live",
     purpose: "Shared embedding pipeline with executed-model and dimension provenance",
-    owns: ["Scry", "Taste clustering", "Shadow Memory", "Sovereign search embeddings"],
-    notes: "Different dimensions are never compared; stored model reflects executed model.",
+    owns: ["Scry", "Taste clustering", "Shadow Memory", "Sovereign search embeddings", "EmbeddingSpaceId contract"],
+    notes:
+      "Different dimensions/models are never compared. Shared contract: schemas/embeddingContracts.ts (Architecture Update 21).",
   },
   {
     id: "shadow-memory-migration",
@@ -722,10 +723,18 @@ export const CANON_INFRASTRUCTURE: CanonInfrastructure[] = [
   {
     id: "serverless-lazy-graphs",
     name: "Serverless Module Boundary",
-    status: "hardening",
+    status: "live",
     purpose: "Load Node-heavy graphs only after cheap request checks on the active route",
     owns: ["Firebase Admin", "Stripe", "Apify", "SQLite", "dossier prompts", "Gemini service lazy paths"],
-    notes: "CI dynamic-import invariants remain proposed.",
+    notes: "CI: npm run verify:api-lazy-graphs (Architecture Update 21).",
+  },
+  {
+    id: "data-plane-ownership",
+    name: "Data Plane Ownership Map",
+    status: "live",
+    purpose: "Firebase identity/private state; Sovereign public publication/discovery; IndexedDB ghost buffer",
+    owns: ["ownership rules", "Stand/Floor/Mine/Press distinctions", "anon migrate policy"],
+    notes: "See docs/architecture-update-21.md and docs/sovereign-archive.md.",
   },
 ];
 

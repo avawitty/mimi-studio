@@ -2,7 +2,6 @@ import {
   getServerAiGatewayKey,
   openAiMessagesViaGateway,
 } from "./aiGatewayCompat.js";
-import { ApifyClient } from "apify-client";
 import {
   RAG_WEB_BROWSER_ACTOR_ID,
   type RagWebBrowserItem,
@@ -30,11 +29,25 @@ export type YouSearchResponse = {
   notice?: string;
 };
 
-let apifyClientCache: { token: string; client: ApifyClient } | null = null;
+type ApifyClientLike = {
+  actor: (id: string) => {
+    call: (
+      input: Record<string, unknown>,
+      opts: { waitSecs: number },
+    ) => Promise<{ defaultDatasetId?: string; status?: string }>;
+  };
+  dataset: (id: string) => {
+    listItems: (opts?: { limit?: number }) => Promise<{ items?: RagWebBrowserItem[] }>;
+  };
+};
 
-function getApifyClient(token: string): ApifyClient {
+let apifyClientCache: { token: string; client: ApifyClientLike } | null = null;
+
+/** Lazy-load apify-client so GET/health paths never evaluate the Actor SDK graph. */
+async function getApifyClient(token: string): Promise<ApifyClientLike> {
   if (apifyClientCache?.token === token) return apifyClientCache.client;
-  const client = new ApifyClient({ token });
+  const { ApifyClient } = await import("apify-client");
+  const client = new ApifyClient({ token }) as unknown as ApifyClientLike;
   apifyClientCache = { token, client };
   return client;
 }
@@ -247,7 +260,7 @@ export async function fetchApifyResearchLeads(params: {
   const actorId =
     String(process.env.APIFY_ACTOR_ID || "").trim() || RAG_WEB_BROWSER_ACTOR_ID;
 
-  const client = getApifyClient(token);
+  const client = await getApifyClient(token);
   // Keep Actor wait well under the Vercel 60s budget so gateway/demo fallbacks
   // can still run if Apify is slow or times out.
   const waitSecs = Math.min(

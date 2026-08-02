@@ -20,6 +20,7 @@ export function contributePublicZineToMeanMedianMode(
       disclosedAt: zine.disclosedAt,
       disclosureVersion: zine.disclosureVersion,
       contributeToMeanMedianMode: zine.contributeToMeanMedianMode,
+      mmmContributionStatus: zine.mmmContributionStatus,
       acknowledgedDisclosure: true,
     })
   ) {
@@ -29,7 +30,7 @@ export function contributePublicZineToMeanMedianMode(
         artifactId: zine.id,
         contributedSignalIds: [],
         excludedSignals: [zine.id],
-        exclusionReasons: ["no_consent_or_opt_out"],
+        exclusionReasons: ["no_consent_or_opt_out_or_withdrawn"],
       }),
     };
   }

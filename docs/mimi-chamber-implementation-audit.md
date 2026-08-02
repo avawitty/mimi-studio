@@ -128,7 +128,7 @@ Ask → Atomize → Retrieve → Show Used Context
 | Scry evidence lanes | `/scry` | Live — archive, web, reading, shadow + honest coverage |
 | Residue Cultural / Emotional | `/residue` | Live vertical slice — offline-first; optional Apify acquire |
 | Observatory / Mean Median Mode | `/observatory`, `/mean-median-mode` | Live vertical slice — Proscenium consent required |
-| The Edit hi-fi plates + spreads | `/the-edit` | Live — composition + plate bake; Signal/Issue Edit split open |
+| The Edit Signal / Issue / Forecast | `/the-edit` | Live — Update 21 panel split; default Signal; `?panel=` |
 | Mimi Dolls shell-first | `/mimi-dolls` | Live — porcelain primary; Shader Lab secondary |
 | Scribe mobile grammar | `/scribe` | Live polished — reduced chrome, Guide in mode bar |
 | Sovereign Data Plane | `/api/sovereign/*` | Live / hardening — see `docs/sovereign-archive.md` |
