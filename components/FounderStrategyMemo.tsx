@@ -13,9 +13,11 @@ import {
   buildIntelEvidence,
   createIntelProjectRun,
   createIntelProjectRunFromHandoff,
+  INTEL_MAX_SELECTED_CANDIDATES,
   normalizeIntelCatalogCandidate,
   readIntelHubPressHandoff,
   readIntelProjectRun,
+  resolveSelectedCandidates,
   updateIntelProjectRun,
   writeIntelHubPressHandoff,
   writeIntelProjectRun,
@@ -120,10 +122,13 @@ export const FounderStrategyMemo: React.FC = () => {
     () => restoredPressHandoff?.commerceQuery || buildCommerceQuery(DEFAULT_CLIENT, []),
   );
   const [catalogCandidates, setCatalogCandidates] = useState<IntelCatalogCandidate[]>(
-    () => restoredPressHandoff?.selectedCandidate ? [restoredPressHandoff.selectedCandidate] : [],
+    () => {
+      const restored = resolveSelectedCandidates(restoredPressHandoff);
+      return restored.length ? restored : [];
+    },
   );
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string>(
-    () => restoredPressHandoff?.selectedCandidate?.id || '',
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>(
+    () => resolveSelectedCandidates(restoredPressHandoff).map((candidate) => candidate.id),
   );
   const [catalogState, setCatalogState] = useState<'idle' | 'searching' | 'done' | 'error'>('idle');
   const [catalogMessage, setCatalogMessage] = useState('');
@@ -196,7 +201,7 @@ export const FounderStrategyMemo: React.FC = () => {
       setApprovedContext([]);
       setCommerceQuery(buildCommerceQuery(hydrated, []));
       setCatalogCandidates([]);
-      setSelectedCandidateId('');
+      setSelectedCandidateIds([]);
       setCatalogState('idle');
       setCatalogMessage('');
       const nextRun = createIntelProjectRun(hydrated.clientName, nextReview.length);
@@ -394,16 +399,17 @@ export const FounderStrategyMemo: React.FC = () => {
       });
       const normalized = result.products.map(normalizeIntelCatalogCandidate);
       setCatalogCandidates(normalized);
-      setSelectedCandidateId(normalized[0]?.id || '');
+      const initialSelection = normalized[0]?.id ? [normalized[0].id] : [];
+      setSelectedCandidateIds(initialSelection);
       updateProjectRunState({
         commerceQuery,
         catalogCandidateCount: normalized.length,
-        selectedCandidateId: normalized[0]?.id || undefined,
+        selectedCandidateId: initialSelection[0],
       });
       setCatalogState('done');
       setCatalogMessage(
         normalized.length
-          ? `${normalized.length} candidate${normalized.length === 1 ? '' : 's'} retrieved from Shopify.`
+          ? `${normalized.length} candidate${normalized.length === 1 ? '' : 's'} retrieved — select up to ${INTEL_MAX_SELECTED_CANDIDATES} for the issue plate.`
           : 'Shopify returned no available candidates for this query.',
       );
     } catch (error) {
@@ -417,7 +423,10 @@ export const FounderStrategyMemo: React.FC = () => {
       showNotification("Approve Used Context before compiling an artifact pack.");
       return;
     }
-    const selectedCandidate = catalogCandidates.find((candidate) => candidate.id === selectedCandidateId);
+    const selectedCandidates = catalogCandidates
+      .filter((candidate) => selectedCandidateIds.includes(candidate.id))
+      .slice(0, INTEL_MAX_SELECTED_CANDIDATES);
+    const selectedCandidate = selectedCandidates[0];
     const compiledAt = Date.now();
     const handoff: IntelHubPressHandoff = {
       version: 1,
@@ -428,6 +437,7 @@ export const FounderStrategyMemo: React.FC = () => {
       approvedContext,
       commerceQuery,
       selectedCandidate,
+      selectedCandidates,
       compiledAt,
       status: 'review_required',
     };
@@ -438,7 +448,11 @@ export const FounderStrategyMemo: React.FC = () => {
       selectedCandidateId: selectedCandidate?.id,
       pressStatus: 'review_required',
     });
-    showNotification("Artifact pack compiled for human review in The Press.");
+    showNotification(
+      selectedCandidates.length > 1
+        ? `Artifact pack compiled with ${selectedCandidates.length} commerce objects for The Press.`
+        : "Artifact pack compiled for human review in The Press.",
+    );
   };
 
   const openPress = () => {
@@ -754,16 +768,32 @@ export const FounderStrategyMemo: React.FC = () => {
 
                 {catalogCandidates.length > 0 ? (
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    <p className="font-mono text-[7px] uppercase tracking-widest text-stone-600">
+                      Selected {selectedCandidateIds.length}/{INTEL_MAX_SELECTED_CANDIDATES} for zine plate
+                    </p>
                     {catalogCandidates.map((candidate) => {
-                      const selected = selectedCandidateId === candidate.id;
+                      const selected = selectedCandidateIds.includes(candidate.id);
                       return (
                         <button
                           type="button"
                           key={candidate.id}
                           aria-pressed={selected}
                           onClick={() => {
-                            setSelectedCandidateId(candidate.id);
-                            updateProjectRunState({ selectedCandidateId: candidate.id });
+                            setSelectedCandidateIds((prev) => {
+                              if (prev.includes(candidate.id)) {
+                                const next = prev.filter((id) => id !== candidate.id);
+                                updateProjectRunState({ selectedCandidateId: next[0] });
+                                return next;
+                              }
+                              if (prev.length >= INTEL_MAX_SELECTED_CANDIDATES) {
+                                const next = [...prev.slice(1), candidate.id];
+                                updateProjectRunState({ selectedCandidateId: next[0] });
+                                return next;
+                              }
+                              const next = [...prev, candidate.id];
+                              updateProjectRunState({ selectedCandidateId: next[0] });
+                              return next;
+                            });
                           }}
                           className={`w-full border p-3 text-left ${
                             selected
@@ -784,7 +814,7 @@ export const FounderStrategyMemo: React.FC = () => {
                                 Grounded by {approvedContext.slice(0, 2).map((item) => item.title).join(' + ')}
                               </p>
                             </div>
-                            {selected ? <CheckCircle2 size={12} className="text-[#95BF47]" /> : null}
+                            {selected ? <CheckCircle2 size={12} className="text-[#95BF47]" /> : <Circle size={12} className="text-stone-700" />}
                           </div>
                         </button>
                       );
@@ -812,8 +842,8 @@ export const FounderStrategyMemo: React.FC = () => {
                     <p className="font-serif text-lg text-stone-300 mt-1">{approvedContext.length}</p>
                   </div>
                   <div className="border border-stone-800 p-3">
-                    <p className="font-mono text-[7px] uppercase tracking-widest text-stone-600">Candidate</p>
-                    <p className="font-serif text-lg text-stone-300 mt-1">{selectedCandidateId ? '1' : '—'}</p>
+                    <p className="font-mono text-[7px] uppercase tracking-widest text-stone-600">Objects</p>
+                    <p className="font-serif text-lg text-stone-300 mt-1">{selectedCandidateIds.length || '—'}</p>
                   </div>
                   <div className="border border-stone-800 p-3">
                     <p className="font-mono text-[7px] uppercase tracking-widest text-stone-600">Status</p>

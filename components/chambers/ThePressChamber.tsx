@@ -16,6 +16,7 @@ import {
   INTEL_HUB_HANDOFF_CHANGED,
   readIntelProjectRun,
   readIntelHubPressHandoff,
+  resolveSelectedCandidates,
   updateIntelProjectRun,
   writeIntelProjectRun,
   type IntelHubPressHandoff,
@@ -98,7 +99,7 @@ export const ThePressChamber: React.FC = () => {
                 <li>Publish (make public) so the issue files in your Keep Tabs feed.</li>
                 <li>Review any Intel Hub artifact pack before choosing a Shopify or file export.</li>
                 <li>Validate manifest includes fragmentsUsed and editorial-compile.md when context was applied.</li>
-                <li>Share OG link — previews resolve at mimi.you/zine/:id. Readers Keep Tabs at /u/:handle/feed.xml.</li>
+                <li>Share plate — attention links resolve at mimi.fish/s/:id (canonical issue at mimi.you/zine/:id). Readers Keep Tabs at /u/:handle/feed.xml.</li>
               </>
             )}
           </ul>
@@ -209,10 +210,15 @@ export const ThePressChamber: React.FC = () => {
                     </div>
                     <div className="border archive-border p-3">
                       <p className="font-mono text-[7px] uppercase tracking-widest archive-text-muted">
-                        Commerce candidate
+                        Commerce objects
                       </p>
                       <p className="font-serif text-sm archive-text-ink mt-1 truncate">
-                        {pendingIntelPack.selectedCandidate?.title || "Not selected"}
+                        {(() => {
+                          const selected = resolveSelectedCandidates(pendingIntelPack);
+                          if (!selected.length) return "Not selected";
+                          if (selected.length === 1) return selected[0].title;
+                          return `${selected.length} selected · ${selected[0].title}`;
+                        })()}
                       </p>
                     </div>
                     <div className="border archive-border p-3">
