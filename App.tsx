@@ -1393,7 +1393,12 @@ export const App: React.FC = () => {
         return;
       }
       const normalizedMode = canonicalizeMimiRoute(mode);
-      if (normalizedMode === "mimi-dolls" || normalizedMode === "mimi-you") {
+      // mimi.you alias opens the private universe hub; mimi-dolls stays shell-first.
+      if (mode === "mimi-you") {
+        navigate("/mimi-dolls/overview");
+        return;
+      }
+      if (normalizedMode === "mimi-dolls") {
         navigate("/mimi-dolls");
         return;
       }
@@ -2728,7 +2733,10 @@ export const App: React.FC = () => {
                         {viewMode === "qc_engine" && <ColorQCEngine />}
                         {viewMode === "scribe" && <ScribeChamber />}
                         {viewMode === "mimi-dolls" && (
-                          <MimiDollsChamber navigate={navigate} />
+                          <MimiDollsChamber
+                            navigate={navigate}
+                            pathSegment={pathParts[1] ?? null}
+                          />
                         )}
                         {viewMode === "mimi-rip" && (
                           <RipChamber navigate={navigate} />
