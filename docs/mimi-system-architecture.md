@@ -4,7 +4,7 @@ Status: Canonical living architecture
 
 Scope: Product domains, workflows, objects, engines, capabilities, and system contracts
 
-Last updated: 2026-08-02
+Last updated: 2026-08-03
 
 This document defines Mimi's durable product architecture. It is intentionally not a screen map. Screens and chamber names may evolve, but the domains, objects, engines, capabilities, and contracts described here should remain stable unless an explicit architecture decision changes them.
 
@@ -94,8 +94,9 @@ This is the practical bridge from research and taste to production. Collection d
 | Layer | Responsibility | Examples |
 | --- | --- | --- |
 | Creator Interfaces | Present workflows, decisions, object state, and provenance to the creator | Scribe, Scry, Residue, Observatory, Tailor, Pocket, Studio, The Edit, The Press, Mimi Dolls |
+| Studio OS shell | Shared orientation chrome and artifact primitives driven by Canon family/phase metadata | `components/studio-os/`, `lib/design-system.ts`, `lib/chamberChrome.ts` |
 | Domain Workflows | Coordinate domain-specific steps and enforce ownership boundaries | Research intake, evidence-lane retrieval, taste reading, collective statistics, editorial direction, product briefing, publishing |
-| Capabilities | Provide reusable user-facing operations shared across workflows | Capture, Interpretation, Highlight, Approval, Retrieval, Composition, Export, Consent |
+| Capabilities | Provide reusable user-facing operations shared across workflows | Capture, Interpretation, Highlight, Approval, Retrieval, Composition, Export, Consent, Feedback (semantic motion/haptics) |
 | Knowledge Objects | Hold durable, typed, versioned product state | Source Object, Evidence, Approval, Memory Atom, Context Packet, Build Brief, CentralTendencyProfile |
 | Shared Intelligence Infrastructure | Route models, embeddings, entitlements, and provenance across chambers | AI Gateway, Gateway embeddings, provider adapters, entitlement verification, model provenance |
 | Platform Services | Persist, index, authorize, relate, validate, and synchronize objects | Object registry, identity, Sovereign Data Plane, Firestore, IndexedDB, search, SSE, permissions, event log |
@@ -480,11 +481,15 @@ Practical loop still demonstrated as:
 | Editorial validation | `TheEditCompile` (primary), `TheEditChamber` spine tabs, export diagnostics | Implemented for compile path; commerce remains secondary; Edit → Press compile markdown sync is wired |
 | Zine editorial intelligence | [Zine Editorial Intelligence Specification](./zine-editorial-intelligence-spec.md) | Product contract v1 complete; typed issue planner, rhythm engine, compression pass, composition critic, and approval integration remain proposed |
 | Spread composition | `customLayout` on `ZinePageSpec`, `ZineLayoutEditor` / `ZineSpreadCanvas`, `lib/zineSpreadLayout.ts` | Implemented for owner compose + read-only public render |
+| Zine artifact schema | `lib/zine/` schema, normalize/migrate, issue plan, grammars, proof diagnostics | Implemented contract v1 (`MIMI_ZINE_ARTIFACT_SCHEMA_VERSION = 1`); editorial intelligence planner still proposed |
+| Studio OS shell | `components/studio-os/` Map frame, family shells, dossier context; canon `family`/`phase`/`atmosphere` | Phase 1 live on Chamber Map; Hub/Worktable keep existing chrome owners |
+| Feedback / motion | `lib/feedback/` + `lib/motion/` via `useFeedback()` semantic events | Implemented; confirmation-required haptics gated on successful mutation |
 | Studio cover export | `lib/studioCoverExport.ts`, `coverImageUrl`, `content.meta.studioCoverOverlays` | Implemented; overlay rasterization into export image remains open |
 | Gateway-funded AI | Entitlement checks, Stripe verification, no BYOK nag on funded path | Implemented and security-hardened |
 | Export | `ThePressChamber`, `exportManifestService`, structured PDF via `lib/structuredZinePdf.ts` (`pdfMode: "structured"`) | Implemented in part; universal artifact manifests remain open |
 | Personal universe projection | `services/dollEngine` (shell staple, procedural aesthetic, identity pack, masks, companion) | Implemented; remote-only image-ref attachment into zine media still open |
 | Public social stage | `ProsceniumView` Stage / Correspondents / Cliques; legacy `/connections` + `/cliques` redirect | Implemented; demo vs live specimen labeling is a hard integrity rule |
+| Forecast culture | `TheForecast` Cultural vector from MMM offline baselines; anonymous = no live synthesis | Implemented; collective contribution still consent-gated via Proscenium |
 | Firestore quota resilience | Capped reads, ghost Pocket, listener suppression | Implemented |
 | Serverless module boundary | Lazy/dynamic import of Admin, Apify, SQLite, heavy graphs | Implemented for known crash paths; CI enforced via `verify:api-lazy-graphs` |
 
@@ -532,12 +537,16 @@ These are implementation examples of the Platform Services and Shared Intelligen
 | Funded gateway | Authorize and account for platform-funded AI use | `lib/mimiFundedGateway.ts` |
 | Used Context bus | Stage and approve task-specific client context | `services/usedContextService.ts` |
 | Export and privacy | Build manifests and sanitize exported snapshots | `services/exportManifestService.ts`, `lib/privacyUtils.ts` |
+| Zine artifact contract | Schema, normalize/migrate, issue plan, reading order, proof diagnostics | `lib/zine/` (`zineArtifactSchema.ts`, `normalizeZineArtifact.ts`, …) |
 | Structured PDF | Archival A4 PDF from zine metadata (custom layouts when present) | `lib/structuredZinePdf.ts` |
 | Doll engine | Shell staple, procedural aesthetic, identity refs, Studio/Scribe injection | `services/dollEngine/` |
 | Residue adapters | Cultural/emotional residue → product output adapters | `services/residue/` |
+| Feedback + motion | Semantic event → motion/haptic recipes; no raw `navigator.vibrate` | `lib/feedback/`, `lib/motion/`, `hooks/useFeedback.ts` |
 | Canon registry | Define and validate module routes | `lib/productCanon.ts`, `scripts/validateCanonRoutes.ts` |
+| Studio OS | Map orientation shell, family frames, dossier context, visual packets | `components/studio-os/`, `lib/design-system.ts` |
 | Public showcase | Publish profile-backed public cards | `services/publicShowcaseService.ts` |
 | Host / share routing | Detect public skins and fish share/shelf paths | `lib/siteHost.ts`, `lib/publicBaseUrl.ts` |
+| Legal documents | Privacy Policy + Terms of Service special routes | `lib/legalContent.ts`, `/privacy`, `/tos` |
 | Stale chunk recovery | Clear caches + SW and reload once after post-deploy MIME/chunk errors | `lib/staleChunkRecovery.ts`, `components/ErrorBoundary.tsx`, `public/sw.js` |
 
 ### Current interfaces
@@ -574,7 +583,9 @@ The current creator-facing interfaces are projections onto the architecture, not
 | The Proscenium | `/proscenium` (+ `/correspondents`, `/cliques` wings) | `ProsceniumView` |
 | mimi.rip | `/rip` | `RipChamber` |
 
-`/chamber-map` is the registry inspector. `/u/:handle`, `/showcase`, `/zine/:id`, `/s/:id` (fish share), and `/api/*` are infrastructure or published-artifact routes rather than chambers.
+`/chamber-map` is the registry inspector and the primary consumer of Studio OS Map chrome (`StudioShell` + Map · seal · Find anchors). `/u/:handle`, `/showcase`, `/zine/:id`, `/s/:id` (fish share), `/privacy`, `/tos` (plus `/terms` alias), and `/api/*` are infrastructure, legal, or published-artifact routes rather than chambers.
+
+Studio Hub / Worktable remain under `StudioChrome` / worktable owners — Studio OS Phase 1 does not wrap every chamber. Canon `family` / `phase` / `atmosphere` metadata on `CanonModule` is the taxonomy source; see the [Chamber Implementation Audit — Studio OS](./mimi-chamber-implementation-audit.md#studio-os-phase-1-shell).
 
 ### Accepted architecture decisions (Updates 20–21)
 

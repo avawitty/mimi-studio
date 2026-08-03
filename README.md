@@ -163,6 +163,9 @@ npm run verify:used-context         # Verify the Used Context flow
 npm run verify:zine-visual-policy   # Verify zine visual-policy rules
 npm run verify:zine-spread-compose  # Verify customLayout spread compose
 npm run verify:structured-zine-pdf  # Verify archival structured PDF export
+npm run verify:zine-artifact-schema # Verify canonical Mimi zine artifact schema
+npm run verify:zine-issue-plan      # Verify issue planner / page prep
+npm run verify:zine-proof-diagnostics # Verify proof diagnostics
 npm run verify:doll-engine          # Verify Doll Engine projection helpers
 npm run verify:doll-staple          # Verify Mimi Shell staple prompt lock
 npm run verify:fish                 # Verify mimi.fish share/shelf URL rules
@@ -215,6 +218,30 @@ Recovery path (`lib/staleChunkRecovery.ts`, wired from `index.tsx` + `ErrorBound
 3. Hard-reload once with `?recovered=1` (45s cooldown to avoid loops).
 
 `public/sw.js` intentionally avoids caching `/assets/*` and rejects HTML-as-asset responses. If a user is stuck after a ship, a hard refresh or clearing site data recovers; the automated path should fire first.
+
+### Studio OS chrome
+
+Chamber Map uses Studio OS orientation chrome (`components/studio-os/`): bottom anchors are **Map · Mimi seal · Find** only — no permanent multi-chamber tab bar. Canon modules declare `family` / `phase` / `atmosphere` in `lib/productCanon.ts`; shell helpers live in `lib/design-system.ts` and `lib/chamberChrome.ts`.
+
+Do **not** wrap Studio Hub / Worktable in `StudioShell` — those keep `StudioChrome` / worktable owners. Developer map: [`docs/mimi-chamber-implementation-audit.md`](docs/mimi-chamber-implementation-audit.md#studio-os-phase-1-shell).
+
+### Feedback and haptics
+
+Use `useFeedback()` with semantic events (`lib/feedback/`). Never call `navigator.vibrate` from components. No hover haptics. Success/commit haptics (`proposal.approved`, `artifact.saved`, …) require `confirmed: true` only after the mutation succeeds. Wired via `FeedbackProvider` + `MotionProvider` in `index.tsx`.
+
+### Legal pages
+
+| Path | Document |
+| --- | --- |
+| `/privacy` | Privacy Policy |
+| `/tos` | Terms of Service |
+| `/terms` | Alias → Terms |
+
+Copy lives in `lib/legalContent.ts` (`LegalDocumentPage`). These are special routes, not chambers.
+
+### Canonical zine artifact
+
+Durable zine object contract: `lib/zine/` (schema, normalize/migrate, issue plan, reading order, proof). Page grammars under `components/zine/grammars/`. Prefer `normalizeZineArtifact` over ad-hoc shapes. See the chamber audit section and `npm run verify:zine-artifact-schema`.
 
 ### Mobile UX review
 
