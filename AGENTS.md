@@ -64,6 +64,26 @@ starts everything on one port.
 - Recurring setup (Cursor Automation + optional GitHub Action):
   `docs/automations/fix-bot-pr-comments.md`.
 - Manual / CI launch: `npm run cursor:fix-bot-comments` (needs `CURSOR_API_KEY`).
+
+### Product / UX preferences (durable)
+Full skill: `.cursor/skills/mimi-product-preferences/SKILL.md`. Short form:
+
+- Prefer shared Studio OS shells (`components/studio-os/`) + `lib/productCanon.ts` /
+  `lib/design-system.ts`. Do not invent a parallel chamber visual system.
+- Studio OS bottom anchors: Map · Mimi seal · Find only — no permanent multi-chamber
+  tab bar. One precise motif; handled evidence over decorative chrome.
+- Brand is **Mimi** (not “Mimi Zine”). Never readable `MIMI` via CSS `uppercase`.
+- If a UI lands too clean / dashboard-like, pull back to a middle ground — do not
+  full-reverse product intent or migrate every chamber in one pass.
+- Motion/haptics: `useFeedback()` semantic events only (`lib/feedback/`). Never
+  `navigator.vibrate` or per-component haptic constants. No hover haptics; success
+  haptics only after confirmed mutations.
+- Honest empty/failure states (empty ≠ done; storage error ≠ delete). Collective /
+  Observatory need explicit consent — public ≠ consented.
+- Shipping: fix simple merge conflicts; stop and report conflicting product intents.
+  CI/Bugbot → verify finding, fix root cause. Do not merge to `main`/production or
+  change Vercel env/domains unless asked.
+
 ### Frequent UX review (do this often)
 After any UI/chrome/public-face change — and at least once per agent session that
 touches the product surface — run a short mobile review before calling work done:
@@ -78,5 +98,6 @@ touches the product surface — run a short mobile review before calling work do
    - Chamber shells: no duplicate mastheads over self-branded plates; padded motifs
    - Stand Floor fully tappable; no clipped tabs
    - Studio: Tools opens; sheets above nav; dismissible; safe-area padding
+   - Studio OS: Map · seal · Find anchors only; no permanent chamber tab bar
    - No app-owned circular right-edge FAB (preview chrome FABs are external)
 4. Fix P0/P1 findings in the same PR when cheap; defer the rest with a note.

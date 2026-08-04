@@ -9,20 +9,21 @@ import {
 } from "../lib/chamberChrome";
 
 describe("chamberChrome", () => {
-  it("classifies create / reflect / refine / signature / observe families", () => {
-    expect(getChamberFamily("studio")).toBe("create");
-    expect(getChamberFamily("oracle")).toBe("reflect");
-    expect(getChamberFamily("scry")).toBe("reflect");
-    expect(getChamberFamily("tailor")).toBe("refine");
-    expect(getChamberFamily("signature")).toBe("signature");
-    expect(getChamberFamily("mimi-rip")).toBe("signature");
-    expect(getChamberFamily("observatory")).toBe("observe");
-    expect(getChamberFamily("unknown-mode")).toBe("system");
+  it("classifies routes with the eight Studio OS families", () => {
+    expect(getChamberFamily("chamber-map")).toBe("orientation");
+    expect(getChamberFamily("studio")).toBe("production");
+    expect(getChamberFamily("oracle")).toBe("intelligence");
+    expect(getChamberFamily("scry")).toBe("capture");
+    expect(getChamberFamily("pocket")).toBe("library");
+    expect(getChamberFamily("tailor")).toBe("identity");
+    expect(getChamberFamily("the-press")).toBe("publishing");
+    expect(getChamberFamily("private-studio")).toBe("services");
+    expect(getChamberFamily("unknown-mode")).toBe("orientation");
   });
 
-  it("does not double-map residue into signature after reflect", () => {
-    expect(getChamberFamily("residue")).toBe("reflect");
-    expect(getChamberFamily("intel-hub")).toBe("reflect");
+  it("keeps evidence-led reports in intelligence", () => {
+    expect(getChamberFamily("residue")).toBe("intelligence");
+    expect(getChamberFamily("intel-hub")).toBe("intelligence");
   });
 
   it("marks public and dark plates for quiet chrome", () => {
@@ -41,8 +42,10 @@ describe("chamberChrome", () => {
     expect(getFaceKind("scry")).toBe("public-dark");
     expect(getFaceKind("oracle")).toBe("void");
     expect(getFaceKind("studio")).toBe("worktable");
+    expect(getFaceKind("tailor")).toBe("worktable");
 
     expect(mainShellClassName("studio")).toContain("overflow-hidden");
+    expect(mainShellClassName("tailor")).toContain("overflow-hidden");
     expect(mainShellClassName("mimi-rip")).toContain("bg-[#050506]");
     expect(mainShellClassName("editorial-home")).toContain("mimi-page-pad--public");
     expect(mainShellClassName("pocket")).toContain("mimi-page-pad");

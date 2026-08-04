@@ -1,6 +1,8 @@
 import React from "react";
 import { motion, useReducedMotion } from "motion/react";
 
+import { motionTokens } from "@/lib/motion";
+
 type GraphSettleProps = {
   children: React.ReactNode;
   className?: string;
@@ -20,11 +22,15 @@ export const GraphSettle: React.FC<GraphSettleProps> = ({
   index = 0,
   as = "div",
 }) => {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = Boolean(useReducedMotion());
   const transition = {
-    duration: reduceMotion ? 0.01 : 0.42,
-    delay: reduceMotion ? 0 : Math.min(index * 0.04, 0.24),
-    ease: [0.22, 1, 0.36, 1] as const,
+    duration: reduceMotion
+      ? motionTokens.duration.instant
+      : motionTokens.duration.editorial - 0.14,
+    delay: reduceMotion
+      ? 0
+      : Math.min(index * 0.04, motionTokens.duration.standard),
+    ease: [...motionTokens.ease.enter] as [number, number, number, number],
   };
 
   if (as === "g") {
@@ -34,7 +40,7 @@ export const GraphSettle: React.FC<GraphSettleProps> = ({
     return (
       <motion.g
         className={className}
-        initial={{ opacity: 0, scale: 0.85 }}
+        initial={{ opacity: 0, scale: motionTokens.scale.arrival }}
         animate={{ opacity: 1, scale: 1 }}
         transition={transition}
         style={{ transformOrigin: "center", transformBox: "fill-box" }}
@@ -51,7 +57,11 @@ export const GraphSettle: React.FC<GraphSettleProps> = ({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: -12, scale: 0.92 }}
+      initial={{
+        opacity: 0,
+        y: -motionTokens.distance.small * 2,
+        scale: 0.92,
+      }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={transition}
     >

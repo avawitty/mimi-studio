@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 import { ZineMetadata, PocketItem, LineageEntry, NarrativeThread, MemoryAtom, AtelierObject, SemioticSignal } from '../types';
 import { generateAudio, animateShardWithVeo, transcribeAudio } from '../services/geminiService';
 import { subscribeToPocketItems, fetchLineageEntry, saveNarrativeThread, saveTask } from '../services/firebaseUtils';
-import { Loader2, X, Volume2, Orbit, Eye, Target, Layers, Moon, Sparkles, Terminal, Quote, ArrowDown, Grid3X3, Bookmark, Check, Play, Pause, ExternalLink, Download, Share2, Star, FileText, Map, Compass, Zap, RefreshCw, PenTool, Save, Mic, Square, AlertCircle, StickyNote, History, MessageSquareQuote, Radar, Maximize2, Activity, Archive, FolderPlus, Compass as RoadmapIcon, Stars as CelestialIcon, ArrowRight, CornerDownRight, Image as ImageIcon, Film, MousePointer2, Briefcase, BookOpen, ChevronDown, Hash, Search, Menu, Plus, Radio, Heart, MessageSquare, Scissors, Pin } from 'lucide-react';
+import { Loader2, X, Volume2, Orbit, Eye, Target, Layers, Moon, Sparkles, Terminal, Quote, ArrowDown, Grid3X3, Bookmark, Check, Play, Pause, ExternalLink, Download, Share2, Star, FileText, Map, Compass, Zap, RefreshCw, PenTool, Save, Mic, Square, AlertCircle, StickyNote, History, MessageSquareQuote, Radar, Maximize2, Activity, Archive, FolderPlus, Compass as RoadmapIcon, Stars as CelestialIcon, ArrowRight, CornerDownRight, Image as ImageIcon, Film, MousePointer2, Briefcase, BookOpen, ChevronDown, Hash, Search, Menu, Plus, Radio, Heart, MessageSquare, Scissors, Pin, ShieldCheck } from 'lucide-react';
 import { ExecutionBlock } from './ExecutionBlock';
 import { VisualLanguageReflection } from './VisualLanguageReflection';
 import { Visualizer } from './Visualizer';
@@ -50,6 +50,13 @@ import {
   toEditableZinePage,
 } from '../lib/zineSpreadLayout';
 import type { EditorElement } from '../types';
+import { normalizeZineArtifact } from '../lib/zine/normalizeZineArtifact';
+import {
+  artifactRequiresRevision,
+  createArtifactRevision,
+  withCanonicalZinePages,
+} from '../lib/zine/zineMigrations';
+import { ZineProofMode } from './zine/ZineProofMode';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -199,6 +206,7 @@ export const AnalysisDisplay: React.FC<{
  const [isVoiceLoading, setIsVoiceLoading] = useState(false);
  const [showExport, setShowExport] = useState(false);
  const [showShare, setShowShare] = useState(false);
+ const [showProof, setShowProof] = useState(false);
  const [showComments, setShowComments] = useState(false);
  const [showNotes, setShowNotes] = useState(false);
  const [showReflection, setShowReflection] = useState(true);
@@ -214,6 +222,10 @@ export const AnalysisDisplay: React.FC<{
  const [isDedicatedReadingMode, setIsDedicatedReadingMode] = useState(false);
  const [composingPageIndex, setComposingPageIndex] = useState<number | null>(null);
  const [isSavingSpread, setIsSavingSpread] = useState(false);
+ const normalizedArtifact = useMemo(
+   () => normalizeZineArtifact(metadata),
+   [metadata],
+ );
 
  useEffect(() => {
    const handleKeyDown = (e: KeyboardEvent) => {
@@ -873,22 +885,42 @@ export const AnalysisDisplay: React.FC<{
    if (composingPageIndex == null || !metadata.content.pages) return;
    setIsSavingSpread(true);
    try {
-     const updatedPages = [...metadata.content.pages];
+     const revisionRequired = artifactRequiresRevision(normalizedArtifact.status);
+     const revisedArtifact = revisionRequired
+       ? createArtifactRevision(normalizedArtifact, {
+           reason: `Spread ${composingPageIndex + 1} revised after approval`,
+           changedPageIds: [
+             normalizedArtifact.pages[composingPageIndex]?.id ||
+               `${metadata.id}:page:${composingPageIndex + 1}`,
+           ],
+         })
+       : normalizedArtifact;
+     const updatedPages = [...revisedArtifact.pages];
      const current = updatedPages[composingPageIndex];
      updatedPages[composingPageIndex] = {
        ...current,
+       revision: revisedArtifact.revision,
+       layoutRevision: (current.layoutRevision || 0) + 1,
        customLayout: {
          elements,
+         readingOrder:
+           current.customLayout?.readingOrder ||
+           elements.map((element) => element.id),
          editTrace: trace || current.customLayout?.editTrace || [],
        },
      };
-     onUpdateMetadata({
-       ...metadata,
-       content: {
-         ...metadata.content,
-         pages: updatedPages,
-       },
-     });
+     onUpdateMetadata(
+       withCanonicalZinePages(
+         {
+           ...metadata,
+           artifactSchemaVersion: revisedArtifact.schemaVersion,
+           lifecycleStatus: revisedArtifact.status,
+           revision: revisedArtifact.revision,
+           revisions: revisedArtifact.revisions,
+         },
+         updatedPages,
+       ),
+     );
      setComposingPageIndex(null);
      window.dispatchEvent(
        new CustomEvent('mimi:registry_alert', {
@@ -898,6 +930,41 @@ export const AnalysisDisplay: React.FC<{
    } finally {
      setIsSavingSpread(false);
    }
+ };
+
+ const handleApproveProof = () => {
+   const now = Date.now();
+   const approved = withCanonicalZinePages(
+     {
+       ...metadata,
+       artifactSchemaVersion: normalizedArtifact.schemaVersion,
+       artifactAuthorship: normalizedArtifact.authorship,
+       lifecycleStatus: 'approved',
+       sourcePacket: normalizedArtifact.sourcePacket,
+       reading: normalizedArtifact.reading,
+       editorialDirection: normalizedArtifact.direction,
+       issueStructure: normalizedArtifact.issueStructure,
+       coverSpec: normalizedArtifact.cover,
+       colophon: normalizedArtifact.colophon,
+       publication: {
+         ...normalizedArtifact.publication,
+         revision: normalizedArtifact.revision,
+       },
+       exportState: normalizedArtifact.exportState,
+       revision: normalizedArtifact.revision,
+       revisions: normalizedArtifact.revisions,
+       updatedAt: now,
+     },
+     normalizedArtifact.pages,
+     now,
+   );
+   onUpdateMetadata(approved);
+   setShowProof(false);
+   window.dispatchEvent(
+     new CustomEvent('mimi:registry_alert', {
+       detail: { message: 'Issue proof approved and frozen at this revision.' },
+     }),
+   );
  };
 
  const handleHypothesisImageGenerated = async (base64: string) => {
@@ -1298,6 +1365,15 @@ export const AnalysisDisplay: React.FC<{
 
   <div className="fixed top-8 right-8 z-[10000] flex items-center gap-2">
     <button
+      type="button"
+      onClick={() => setShowProof(true)}
+      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/90 dark:bg-stone-900/90 backdrop-blur-md px-4 md:px-5 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer"
+      title="Open issue proof and diagnostics"
+    >
+      <ShieldCheck size={13} />
+      <span className="hidden sm:inline">[ PROOF ]</span>
+    </button>
+    <button
       onClick={() => setIsDedicatedReadingMode(true)}
       className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/90 dark:bg-stone-900/90 backdrop-blur-md px-4 md:px-5 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer"
       title="Enter dedicated Reading Mode with expanded line height, increased margins, and zero distraction chrome"
@@ -1378,6 +1454,13 @@ export const AnalysisDisplay: React.FC<{
  )}
  {showExport && <ExportChamber metadata={metadata} onClose={() => setShowExport(false)} />}
  {showShare && <SocialShareModal metadata={metadata} onClose={() => setShowShare(false)} />}
+ {showProof && (
+   <ZineProofMode
+     artifact={normalizedArtifact}
+     onClose={() => setShowProof(false)}
+     onApprove={isOwner ? handleApproveProof : undefined}
+   />
+ )}
  <ProsceniumPublishConsentModal
  open={showBroadcastConsent}
  artifactTitle={metadata.content?.headlines?.[0] || metadata.title || 'Untitled'}

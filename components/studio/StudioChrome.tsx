@@ -61,13 +61,19 @@ export const StudioChrome: React.FC<{
     };
   }, []);
 
-  const creatorPath = CREATOR_PATH.map((step) => ({
+  const creatorPath = CREATOR_PATH.map((step, index) => ({
+    index,
     label: step.label,
     modes: [...step.modes],
   }));
   const activePathIndex = Math.max(
     0,
     creatorPath.findIndex((step) => step.modes.includes(viewMode)),
+  );
+  const visibleCreatorPath = creatorPath.filter(
+    (step) =>
+      step.index >= activePathIndex - 1 &&
+      step.index <= activePathIndex + 1,
   );
 
   const [timeString, setTimeString] = React.useState("");
@@ -230,7 +236,8 @@ export const StudioChrome: React.FC<{
         </div>
       ) : (
         <nav aria-label="Creator path" className="hidden lg:flex items-center gap-1.5">
-          {creatorPath.map((step, index) => {
+          {visibleCreatorPath.map((step) => {
+            const index = step.index;
             const isActiveStep = index === activePathIndex;
             const isComplete = index < activePathIndex;
             return (
@@ -274,13 +281,14 @@ export const StudioChrome: React.FC<{
           </button>
         ) : null}
 
-        {!isPublicFace && timeString && (
+        {/* Studio mobile keeps Menu + identity (+ theme on sm+); pocket/oracle live in the instrument rail */}
+        {!(isPublicFace || (viewMode === "studio" && isMobile)) && timeString && (
           <span className="font-mono text-[9px] uppercase tracking-widest studio-text-muted hidden sm:inline-block border studio-border px-2.5 py-1.5 select-none bg-black/[0.02] dark:bg-white/[0.02] font-semibold transition-all hover:bg-black/[0.04] dark:hover:bg-white/[0.04]">
             {timeString}
           </span>
         )}
 
-        {!isPublicFace && (
+        {!(isPublicFace || (viewMode === "studio" && isMobile)) && (
           <button
             type="button"
             aria-label={stashOpen ? "Close pocket stash" : "Open pocket stash"}
@@ -302,7 +310,7 @@ export const StudioChrome: React.FC<{
           </button>
         )}
 
-        {!isPublicFace && (
+        {!(isPublicFace || (viewMode === "studio" && isMobile)) && (
           <button
             type="button"
             aria-label="Commune with the Oracle"
@@ -327,7 +335,9 @@ export const StudioChrome: React.FC<{
           title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           onClick={onToggleTheme}
           className={`${
-            isPublicFace ? "hidden sm:flex" : "flex"
+            isPublicFace || (viewMode === "studio" && isMobile)
+              ? "hidden sm:flex"
+              : "flex"
           } min-w-12 min-h-12 w-12 h-12 md:w-9 md:h-9 md:min-w-9 md:min-h-9 border items-center justify-center touch-manipulation active:scale-90 transition-all hover:scale-105 duration-300 ${chromeBtn}`}
         >
           {isDark ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />}
