@@ -24,7 +24,7 @@ export const PromptCycle: React.FC<PromptCycleProps> = ({
   question,
   value,
   onChange,
-  placeholder = "It started when…",
+  placeholder = "Begin here…",
   phaseLabel = "INTAKE",
   onNext,
   selected = true,
