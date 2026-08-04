@@ -19,6 +19,11 @@ interface PinterestBoardRecord {
   owner?: { username?: string };
 }
 
+type PinterestImageSizeMap = Record<
+  string,
+  { url?: string; width?: number; height?: number }
+>;
+
 interface PinterestPinRecord {
   id?: string;
   title?: string;
@@ -27,7 +32,8 @@ interface PinterestPinRecord {
   link?: string;
   media?: {
     media_type?: string;
-    images?: Record<string, { url?: string; width?: number; height?: number }>;
+    images?: PinterestImageSizeMap;
+    items?: Array<{ images?: PinterestImageSizeMap }>;
   };
 }
 
@@ -138,6 +144,7 @@ async function listAllBoards(token: string): Promise<PinterestBoardRecord[]> {
       {
         page_size: 100,
         bookmark,
+        privacy: "PUBLIC",
       },
     );
     boards.push(...(page.items || []));
@@ -175,14 +182,25 @@ async function resolveBoardForPath(
   );
 }
 
-function pickPinImageUrl(pin: PinterestPinRecord): string | undefined {
-  const images = pin.media?.images;
+function pickBestImageUrl(images?: PinterestImageSizeMap): string | undefined {
   if (!images) return undefined;
 
   const ranked = Object.values(images)
     .filter((image) => image?.url)
     .sort((a, b) => (b.width || 0) - (a.width || 0));
   return ranked[0]?.url;
+}
+
+function pickPinImageUrl(pin: PinterestPinRecord): string | undefined {
+  const direct = pickBestImageUrl(pin.media?.images);
+  if (direct) return direct;
+
+  for (const item of pin.media?.items || []) {
+    const fromItem = pickBestImageUrl(item.images);
+    if (fromItem) return fromItem;
+  }
+
+  return undefined;
 }
 
 async function listBoardPins(

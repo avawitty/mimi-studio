@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { config as loadEnv } from "dotenv";
 import { parsePinterestBoardPath } from "../lib/pinterestApi.js";
 import { parsePinterestBoardUrl } from "../lib/pinterestBoardPreview.js";
+
+loadEnv({ path: ".env.local", override: false, quiet: true });
+loadEnv({ path: ".env", override: false, quiet: true });
 
 assert.equal(
   parsePinterestBoardPath("https://www.pinterest.com/mimi/editorial-reference/")?.boardSlug,
