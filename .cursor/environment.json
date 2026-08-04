@@ -1,5 +1,5 @@
 {
-  "install": "npm install",
+  "install": "npm install && npm run sync:cloud-env",
   "terminals": [
     {
       "name": "Dev server",
