@@ -135,3 +135,15 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Cloud agents and contributors need accurate, grep-friendly status between sessions.
 
 **Ref:** This change set.
+
+---
+
+## 2026-08-04 — `/studio` primary route is orientation intake (not archival desk)
+
+**Decision:** Mount `StudioOrientationEntry` at `/studio`. Keep `StudioWorktable` only at `/studio/worktable-legacy`, explicitly labeled legacy/experimental. Route-level tests forbid `FIG. 01`, `Spark · Generate`, and the six-folder DESK/SCRY rail on the primary entry.
+
+**Alternatives rejected:** (1) Continue polishing the archival worktable on `/studio` (PR #201 scope). (2) Removing the worktable entirely before migration completes.
+
+**Why:** Product intent is calm orientation + multimodal intake on the primary Studio route; the archival desk remains available for migration without blocking the intake ship. Worktable UX fixes from #201 stay scoped to the legacy route and full console.
+
+**Ref:** PR #191 merged after rebase onto main (#190 Neon spine, #199 docs); PR #201 merged earlier but superseded for `/studio` primary surface.

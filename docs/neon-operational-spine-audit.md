@@ -73,3 +73,51 @@ No destructive cleanup is part of this audit.
   and cost reconciliation jobs.
 - Add dashboards and alerts.
 - Disable legacy writes only after shadow comparison and rollback validation.
+
+## Post-merge verification (2026-08-04)
+
+Executed on `main` after #190 (Neon operational spine), #199 (project memory),
+#201 (worktable legacy polish), and #191 (`/studio` orientation intake).
+
+### Application CI-equivalent checks
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Typecheck | `npm run lint` | **pass** |
+| Vercel client build | `npm run build:vercel` | **pass** |
+| Canon routes | `npm run validate:canon` | **pass** (33 modules) |
+| Unit tests | `npm run test:unit` | **pass** (233 tests) |
+| Studio forbidden strings | `npx vitest run __tests__/studioOrientationRoute.test.tsx` | **pass** (4 tests) |
+| Full E2E | `npm run test:e2e` | **pass** (chromium + ios-pwa webkit projects) |
+
+PR #191 was rebased onto current `main`, retested, then merged before any further
+worktable polish on the primary `/studio` route.
+
+### Neon schema and offline spine checks
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Drizzle migration metadata | `npm run db:check` | **pass** |
+| Migration SQL snapshot | `vitest run __tests__/neonOperationalSchema.test.ts` | **pass** |
+| Credit invariants (pure) | `vitest run __tests__/creditInvariants.test.ts` | **pass** |
+| Operational spine registry | `npm run verify:operational-spine` | **pass** |
+
+### Disposable Neon branch — migration + concurrent credit transactions
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Apply migrations to disposable branch | `npm run db:migrate` with `DATABASE_URL` | **not run** — no `TEST_NEON_DATABASE_URL` / disposable branch URL in this agent environment |
+| Concurrent credit repository suite | `TEST_NEON_DATABASE_URL=… npm run test:neon` | **skipped** (vitest `describe.skip` when env unset) |
+
+**Manual follow-up:** Create a disposable Neon branch from production, run
+`DATABASE_URL=<branch-url> npm run db:migrate`, then
+`TEST_NEON_DATABASE_URL=<branch-url> npm run test:neon`. Tests use rollback-only
+transactions (`ROLLBACK_NEON_INTEGRATION_TEST`) and do not persist data.
+
+### PR #201 scope after #191
+
+PR #201 (`fix(worktable): …`) merged before #191 and targeted the primary `/studio`
+worktable. After #191, those component changes apply only to
+`/studio/worktable-legacy` and the legacy full-console path (`InputStudio`).
+The primary `/studio` surface is `StudioOrientationEntry` — #201 is **superseded**
+for that route, not for the legacy desk.

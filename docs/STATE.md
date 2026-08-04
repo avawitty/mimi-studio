@@ -19,7 +19,7 @@
 | --- | --- | --- | --- | --- |
 | **Scribe** | `/scribe` | shipped | ResearchMemory nested in Atomize tab | Mobile density pass on long capture sessions |
 | **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
-| **Studio / Worktable** | `/studio` | shipped | Provider routing complexity | Keep Used Context visible on all generations |
+| **Studio (orientation intake)** | `/studio` | shipped | Archival `StudioWorktable` migration-only at `/studio/worktable-legacy` | Keep Used Context visible on generations; do not remount desk at `/studio` |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
 | **The Press** | `/the-press` | shipped | PublisherDashboard vs per-artifact ExportChamber split | Unify export entry copy in chamber shell |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
