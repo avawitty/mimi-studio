@@ -158,8 +158,8 @@ await page.goto(`${base}/studio`, { waitUntil: "domcontentloaded" });
 await dismiss(page);
 const studioBody = await page.locator("body").innerText().catch(() => "");
 const hasOrientation =
-  /Start with a thought/i.test(studioBody) &&
-  /Begin with this/i.test(studioBody);
+  /What are we making\?/i.test(studioBody) &&
+  /Issue Manifest/i.test(studioBody);
 const hasArchivalChrome =
   /FIG\.\s*01/i.test(studioBody) ||
   /SPARK\s*·\s*GENERATE/i.test(studioBody) ||

@@ -110,7 +110,7 @@ test.describe('Mimi E2E Experience', () => {
     await page.goto('/studio');
     await waitForStableUI(page);
     await expect(
-      page.getByText(/Start with a thought, image, or fragment/i),
+      page.getByText(/What are we making\?/i),
     ).toBeVisible({ timeout: 15000 });
 
     await expect(page).toHaveScreenshot('studio-orientation-entry.png', {
