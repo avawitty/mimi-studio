@@ -256,6 +256,44 @@ export const mimiZineArtifactSchema = z.object({
     navigationStyle: z.enum(["continuous", "sectioned"]),
     totalPages: z.number().int().nonnegative(),
   }),
+  issuePlan: z
+    .object({
+      schemaVersion: z.literal(1),
+      artifactId: z.string(),
+      revision: z.number().int().positive(),
+      editorialThesis: z.string(),
+      unresolvedQuestion: z.string().optional(),
+      pages: z.array(z.any()),
+      rhythm: z.any(),
+      evaluation: z.object({
+        result: z.enum(["pass", "warning", "blocked"]),
+        findings: z.array(
+          z.object({
+            id: z.string(),
+            severity: z.enum(["blocking", "warning"]),
+            message: z.string(),
+            pageId: z.string().optional(),
+            correction: z.string().optional(),
+          }),
+        ),
+      }),
+      createdAt: z.number(),
+      compression: z
+        .object({
+          decisions: z.array(
+            z.object({
+              action: z.enum(["removed", "merged", "converted", "kept"]),
+              pageId: z.string(),
+              rationale: z.string(),
+              mergedIntoPageId: z.string().optional(),
+            }),
+          ),
+          removedPageIds: z.array(z.string()),
+          mergedPageIds: z.array(z.string()),
+        })
+        .optional(),
+    })
+    .optional(),
   pages: z.array(zinePageSpecSchema),
   cover: z.object({
     imageUrl: z.string().optional(),

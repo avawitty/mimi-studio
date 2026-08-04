@@ -635,8 +635,15 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
     try {
       console.info("MIMI // saveZineToProfile: Saving zine to Firestore...");
       
-      // 2. Save Zine without threadData and artifacts
-      await setDoc(doc(db, "zines", targetId), sanitizeFirestoreData(meta));
+      // 2. Save Zine without threadData and artifacts — keep pages serialized only.
+      const firestoreMeta: ZineMetadata = {
+        ...meta,
+        content: {
+          ...meta.content,
+          pages: [],
+        },
+      };
+      await setDoc(doc(db, "zines", targetId), sanitizeFirestoreData(firestoreMeta));
       
       // 3. Save threadData in subcollection
       for (const [pageNumber, threadData] of threadDataMap) {

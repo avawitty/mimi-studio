@@ -2078,6 +2078,7 @@ export const App: React.FC = () => {
               isQuickPreview: opts.isQuickPreview,
               existingCoverUrl: coverUrl,
               ownerUid: targetUidForBake === "ghost" ? undefined : targetUidForBake,
+              issuePlan: result.issuePlan,
             });
             result.content = baked.content;
             if (baked.coverUrl) coverUrl = baked.coverUrl;

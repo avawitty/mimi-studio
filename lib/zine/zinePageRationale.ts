@@ -2,19 +2,9 @@ import type {
   MimiZineArtifact,
   ZinePageSpec,
   ZineSectionType,
+  ZineNarrativeFunction,
 } from "../../types";
-
-export type ZineNarrativeFunction =
-  | "invitation"
-  | "orientation"
-  | "revelation"
-  | "evidence"
-  | "complication"
-  | "contrast"
-  | "intensification"
-  | "application"
-  | "release"
-  | "residue";
+import { planPageById } from "./applyZineIssuePlan";
 
 export interface ZinePageRationale {
   sectionType: ZineSectionType;
@@ -146,8 +136,13 @@ function sequenceNoteCopy(
   }
 }
 
-export function isDerivedProofPage(page: ZinePageSpec): boolean {
-  return Boolean(page.id?.includes(":derived:"));
+export function isDerivedProofPage(
+  page: ZinePageSpec,
+  artifact?: MimiZineArtifact,
+): boolean {
+  if (page.id?.includes(":derived:")) return true;
+  const planned = artifact ? planPageById(artifact.issuePlan, page.id) : undefined;
+  return planned?.derived ?? false;
 }
 
 export function describeZinePageRationale(
@@ -159,21 +154,37 @@ export function describeZinePageRationale(
     totalPages?: number;
   },
 ): ZinePageRationale {
-  const derived = options?.derived ?? isDerivedProofPage(page);
-  const sectionType = page.sectionType || "visual-plate";
-  const narrativeFunction = narrativeFunctionForSection(sectionType, derived);
+  const derived = options?.derived ?? isDerivedProofPage(page, artifact);
+  const plannedPage = planPageById(artifact.issuePlan, page.id);
+  const sectionType =
+    plannedPage?.sectionType || page.sectionType || "visual-plate";
+  const narrativeFunction =
+    plannedPage?.narrativeFunction ||
+    narrativeFunctionForSection(sectionType, derived);
   const pageNumber = options?.pageNumber ?? page.pageNumber;
-  const totalPages = options?.totalPages ?? artifact.issueStructure.totalPages;
+  const totalPages =
+    options?.totalPages ??
+    artifact.issuePlan?.pages.length ??
+    artifact.issueStructure.totalPages;
 
   return {
     sectionType,
     narrativeFunction,
     label: SECTION_LABELS[sectionType],
-    whyExists: whyExistsCopy(sectionType, artifact, derived),
-    sequenceNote: sequenceNoteCopy(sectionType, pageNumber, totalPages),
-    derived,
+    whyExists: plannedPage?.earnsExistenceBy[0]?.rationale || whyExistsCopy(
+      sectionType,
+      artifact,
+      derived,
+    ),
+    sequenceNote:
+      plannedPage?.transitionFromPrevious ||
+      plannedPage?.purpose ||
+      sequenceNoteCopy(sectionType, pageNumber, totalPages),
+    derived: plannedPage?.derived ?? derived,
   };
 }
+
+export type { ZineNarrativeFunction };
 
 export function sectionAbbreviation(sectionType: ZineSectionType): string {
   switch (sectionType) {
