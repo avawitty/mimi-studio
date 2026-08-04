@@ -83,6 +83,7 @@ import { MENU_STRUCTURE } from "./components/navigationConfig";
 import { canonicalizeMimiRoute } from "./lib/productCanon";
 import { LegalDocumentPage } from "./components/LegalDocumentPage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import { ResearchNoteWidget } from "./components/ResearchNoteWidget";
 import { legalTypeFromPath } from "./lib/legalContent";
 import { useTactileAudio } from "./hooks/useTactileAudio";
 import { useChamber } from "./hooks/useChamber";
@@ -1060,6 +1061,7 @@ const useAppRouter = (authReady: boolean) => {
         params.has("checkout") ||
         params.has("plan") ||
         params.has("tier") ||
+        params.has("research") ||
         params.has("mode") ||
         params.has("oobCode") ||
         params.has("apiKey") ||
@@ -2407,6 +2409,7 @@ export const App: React.FC = () => {
       <ApiKeyShield isOpen={!memoizedHasApiKey} onClose={() => {}} />
 
       <RegistryAlert />
+      <ResearchNoteWidget />
       {isSimulatedMode && (
         <div className="px-4 py-2 border-b border-amber-400/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-center">
           Automatic Fallback to Simulated Mode active due to billing/limit. Limiting functions in the Tailor.

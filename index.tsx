@@ -99,7 +99,10 @@ import { AgentProvider } from './contexts/AgentContext';
 import { DossierProvider } from './components/studio-os/DossierContext';
 import { FeedbackProvider } from './contexts/FeedbackProvider';
 import { installStaleAssetListeners } from './lib/staleChunkRecovery';
+import { bootstrapResearchMode } from './lib/researchMode';
+import { ResearchInstrumentationProvider } from './contexts/ResearchInstrumentationContext';
 
+bootstrapResearchMode();
 installStaleAssetListeners();
 
 const rootElement = document.getElementById('root');
@@ -112,9 +115,11 @@ if (rootElement) {
             <UserProvider>
               <AgentProvider>
                 <FeedbackProvider>
-                  <DossierProvider>
-                    <App />
-                  </DossierProvider>
+                  <ResearchInstrumentationProvider>
+                    <DossierProvider>
+                      <App />
+                    </DossierProvider>
+                  </ResearchInstrumentationProvider>
                 </FeedbackProvider>
               </AgentProvider>
             </UserProvider>
