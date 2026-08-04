@@ -153,7 +153,7 @@ export function exportResearchSession(): ResearchSessionExport {
     taskName: getResearchTaskName(),
     startedAt: getStartedAt(),
     exportedAt: Date.now(),
-    events: getResearchEvents(),
+    events: [...getResearchEvents()],
   };
 }
 
