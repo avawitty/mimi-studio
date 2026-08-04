@@ -20,7 +20,7 @@ import { CANON_MODULES } from "../lib/productCanon";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 
-const SITE_ORIGIN = "https://www.mimi.you";
+const SITE_ORIGIN = "https://mimi.you";
 
 const routes = Array.from(
   new Set(
