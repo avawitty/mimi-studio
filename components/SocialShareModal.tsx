@@ -16,7 +16,7 @@ export const SocialShareModal: React.FC<SocialShareModalProps> = ({ metadata, on
  const imperialUrl = getFishShareUrl(metadata.id);
  
  // NARRATIVE POSITIONING
- const shareText = `Manifested a new refraction:"${metadata.title}". Audited by Mimi. Witness the aesthetic superintelligence:`;
+ const shareText = `Published from Mimi — provenance intact: "${metadata.title}".`;
 
  const handleCopy = () => {
  navigator.clipboard.writeText(imperialUrl).catch(e => console.error("MIMI // Clipboard error", e));

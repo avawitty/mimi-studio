@@ -123,7 +123,7 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
             ? `Filed ${formatIssueDate(featured.publishedAt || featured.timestamp || featured.createdAt)}`
             : "Status: open"
         }
-        manifesto="Taste made inspectable — not averaged. A quiet public archive for original expression and evidence you can audit."
+        manifesto="Taste made inspectable — not averaged. A quiet public archive for original expression and evidence you captured, approved, and can audit."
         links={deskLinks}
         actionLabel={featured ? "Read latest issue" : "Enter the archive"}
         onBrandAction={() => {

@@ -118,7 +118,7 @@ export const ImperialPatronageModal: React.FC<{
             <div className="space-y-2">
               <h3 className="font-mono text-[10px] uppercase tracking-[0.4em] text-nous-subtle">Maison Mimi Patronage</h3>
               <h2 className="font-serif text-4xl md:text-5xl italic tracking-tight leading-none text-balance">
-                Choose your atelier.
+                Choose your studio tier.
               </h2>
             </div>
             {isLimitReached && (

@@ -28,7 +28,7 @@ const STEPS: LoopStep[] = [
     id: "approve",
     label: "02 · Approve",
     title: "Approve Used Context in Studio",
-    body: "Send atoms to Studio, then approve what may shape the issue. Evidence and inference stay separate.",
+    body: "Send atoms to Tailor or Studio, then approve what may shape the issue. Evidence and inference stay separate.",
     cta: "Open Studio Context",
     route: "studio",
     icon: <Check size={18} strokeWidth={1.6} />,

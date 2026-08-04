@@ -260,7 +260,7 @@ export const CANON_MODULES: CanonModule[] = [
     inputs: ["prompt text", "media references", "Tailor logic", "Pocket/Mood Board/Darkroom artifacts", "zine options"],
     generations: ["provider routing", "prompt optimization", "Tailor-aware context synthesis", "asset injection"],
     outputs: ["mini zines", "creative roadmaps", "image prompts", "content briefs", "instruction packets"],
-    userFlow: "Start in Studio, combine fragments and references, and receive a structured creative artifact you can save or export.",
+    userFlow: "Compose from approved Used Context and references into traceable artifacts you can refine in The Edit and export from The Press.",
     family: "production",
     phase: "compose",
     visibility: "primary",
@@ -590,7 +590,7 @@ export const CANON_MODULES: CanonModule[] = [
     inputs: ["published zines", "local archive", "community floor", "Sovereign archive projections"],
     generations: ["cover grid", "issue filtering", "comment threads", "hybrid Floor search"],
     outputs: ["personal showcase", "floor feed", "profile seed"],
-    userFlow: "Browse your published issues and the community Floor without leaving the Stand.",
+    userFlow: "Browse your published archive and the consented public Floor — discovery after Press, not a recommendation feed.",
     notes:
       "When Sovereign is ready, Floor/Mine prefer owned archive + SSE over Firestore listeners. Stand vs Floor vs Mine vs Press ownership distinction remains an open canon question.",
     family: "publishing",
@@ -695,8 +695,8 @@ export const CANON_MODULES: CanonModule[] = [
     },
     suggestedNext: {
       mode: "forecast",
-      label: "Project the directional drift",
-      reason: "Geographic context can qualify, not replace, a forecast.",
+      label: "Hand off labeled geographic signals",
+      reason: "Geographic variation travels with evidence — no invented drift scores.",
     },
     visualPacket: "geographic-plate",
   },
@@ -1071,7 +1071,7 @@ export const CANON_MODULES: CanonModule[] = [
       "absorb / refract handoffs to Studio",
     ],
     userFlow:
-      "Enter the Stage to witness transmissions, open Correspondents for follows and connections, or manage invite-only Cliques — all under one arch.",
+      "Witness published transmissions, open Correspondents for follows and connections, or manage invite-only Cliques — circulation after The Press, with explicit consent.",
     notes:
       "Legacy /connections and /cliques redirect to /proscenium/correspondents and /proscenium/cliques. Local Echoes are demonstration specimens only.",
     family: "publishing",
