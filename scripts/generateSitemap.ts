@@ -17,11 +17,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CANON_MODULES } from "../lib/productCanon";
 import { getPublicBaseUrl } from "../lib/publicBaseUrl";
+import { canonicalYouOrigin } from "../lib/siteHost";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 
-const SITE_ORIGIN = getPublicBaseUrl();
+// Honor an explicit MIMI_PUBLIC_BASE_URL override, but otherwise fall back to
+// the apex canonical origin (https://mimi.you) so the generated <loc> host
+// matches the Sitemap directive in public/robots.txt. getPublicBaseUrl()'s own
+// fallback is the www host, which would put sitemap URLs on a different host
+// than robots.txt advertises (violating the sitemaps single-host rule).
+const SITE_ORIGIN = String(process.env.MIMI_PUBLIC_BASE_URL || "").trim()
+  ? getPublicBaseUrl()
+  : canonicalYouOrigin();
 
 const routes = Array.from(
   new Set(
