@@ -248,7 +248,7 @@ export const SignatureView: React.FC = () => {
  }
 
  return (
- <PublicField className="flex-1 overflow-y-auto font-serif selection:bg-black/5 pb-16 md:pb-24 custom-scrollbar">
+    <PublicField className="min-h-full font-serif selection:bg-black/5 pb-16 md:pb-24">
  <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-12 md:space-y-16">
  
  <PressReveal>
