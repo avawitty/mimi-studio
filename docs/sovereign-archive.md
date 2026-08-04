@@ -1,17 +1,24 @@
-# Sovereign archive
+# Legacy Sovereign archive
 
-Owned Stand data plane behind Express. Prefer this over Firestore free-tier reads for Floor, feeds, OG, and Mine.
+Compatibility publication/read plane behind Express. New relational
+operational state belongs in the canonical Neon/Drizzle repositories described
+by [`adr-001-neon-operational-database.md`](./adr-001-neon-operational-database.md).
+Keep this plane available for Floor, feeds, OG, and Mine until mapped records
+have been reconciled.
 
-## Ownership map (Architecture Update 21)
+## Ownership map (ADR 001)
 
 | Plane | Owns |
 | --- | --- |
 | Firebase Auth | Identity (UID, `__session`) |
-| Firestore | Memory Atoms, Context Runs, Tailor/Shadow sources, billing mirrors, private prefs, transmissions |
-| Sovereign | Public Floor/Mine projections, feeds, OG, hybrid search vectors, Pocket **mirrors** |
-| IndexedDB | Ghost/anonymous working set; registered local merge buffer |
+| Canonical Neon/Drizzle | Memberships, credits, workflows, AI runs, proposals, atoms, provenance, Stripe event state |
+| Object storage | Images, uploads, generated plates, video, large exports |
+| Firestore | Legacy migration reads and compatibility projections |
+| Sovereign | Legacy public Floor/Mine projections, feeds, OG, hybrid search vectors, Pocket mirrors |
+| IndexedDB | Ghost/anonymous cache and merge buffer; never authorization truth |
 
-Sovereign is a gradually expanding **hybrid** — today primarily publication/discovery/resilience, not a complete private application store. Memory Atoms stay on Firestore until a private Sovereign auth model exists.
+Do not add new billing, credit, workflow, AI-run, proposal, or atom writes to
+this legacy store. Those writes use the canonical repository interfaces.
 
 **Surface names:** The Stand = browse chamber shell · Floor = community shelf · Mine = creator’s issues · The Press = export/publish packaging (not a shelf).
 
@@ -62,18 +69,20 @@ Feed (`/api/feed`) and OG (`/api/og/zine`) read sovereign first when ready.
 | **Neon / Postgres RLS** | DB-enforced policies with JWT claims | Direct client→DB (not current architecture) | Would bypass Express slim/cache/SSE; more ops surface |
 | **Clerk / Auth.js / Supabase Auth** | Replace Firebase identity | Greenfield apps | High migration cost; billing + existing `__session` already Firebase |
 
-### Recommendation
+### Authentication decision
 
-**Keep Firebase Auth as the identity source of truth.** Wire sovereign as a dual-verifier:
+**Keep Firebase Auth as the identity source of truth.** Legacy Sovereign writers
+remain dual-verifiers during migration:
 
 1. Prefer ID token on mutating `fetch` calls (current client).
 2. Always accept `__session` for SSE / cookie-only channels (now implemented).
 3. Use ingest key only for migration/import jobs.
 4. Never enable soft `x-user-id` on Vercel/production.
 
-**Neon Auth** is enabled on mimineon (`NEON_AUTH_BASE_URL`) and is fine to leave provisioned, but **do not adopt it as Mimi’s login** until Firebase (and Stripe customer linkage) is intentionally migrated. Status / health expose `neonAuthConfigured`, `neonAuthReady` (needs `NEON_AUTH_COOKIE_SECRET`), `neonAuthLegacyStack`, and `neonAuthHost` (`lib/sovereign/neonAuth.ts`). Ignore legacy Stack Auth vars.
-
-Do **not** move to Neon RLS or a second auth vendor until Firestore is fully demoted and identity is a deliberate rewrite. For scale, stay with Express/API ownership + Neon pooled Postgres; add a long-lived Express host (Fly) when SSE fan-out matters more than serverless.
+Do not adopt Neon Auth, Supabase Auth, or another identity vendor. Postgres RLS
+is optional defense in depth; authenticated server APIs remain the primary
+authorization boundary. Existing Neon Auth status probes are archival and must
+not become a login path.
 
 Writers accept (in order): ingest key → Firebase ID token → `__session` cookie → soft `x-user-id` (dev only). Production defaults to strict token/key/cookie auth. Mutating routes also apply a per-uid in-process rate limit (~40/min).
 
