@@ -289,6 +289,19 @@ service cloud.firestore {
       allow create: if isOwner(request.resource.data.userId);
       allow update, delete: if false;
     }
+
+    // UX RESEARCH SESSIONS (?research=1 instrumentation — immutable append-only)
+    match /research_sessions/{eventId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() &&
+        hasRequiredFields(['sessionId', 'taskName', 'event', 'elementId', 'ts']) &&
+        request.resource.data.sessionId is string &&
+        request.resource.data.taskName is string &&
+        request.resource.data.event is string &&
+        request.resource.data.elementId is string &&
+        request.resource.data.ts is number;
+      allow update, delete: if false;
+    }
     
     // PRODUCT INTERACTIONS (Owner only)
     match /product_interactions/{interactionId} {

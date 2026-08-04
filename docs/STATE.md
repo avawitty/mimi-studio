@@ -21,7 +21,7 @@
 | **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
 | **Studio (orientation intake)** | `/studio` | shipped | Archival `StudioWorktable` migration-only at `/studio/worktable-legacy` | Keep Used Context visible on generations; do not remount desk at `/studio` |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
-| **The Press** | `/the-press` | shipped | PublisherDashboard vs per-artifact ExportChamber split | Unify export entry copy in chamber shell |
+| **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
@@ -123,6 +123,7 @@
 2. **Identity loop handoffs** — Dolls ↔ Rip ↔ Tailor CTAs incomplete; Rip reads first doll only.
 3. **Demonstration labeling** — Collective modules label demos; commerce mock catalog does not yet say "demonstration".
 4. **Font stack drift** — Shell uses Geist Variable; house style names DM Sans — converge on tokens in new UI.
+5. **Research instrumentation** — `?research=1` + optional `?task=` enables session event logger (`research_sessions` Firestore + local JSON export); no dashboard.
 5. **Server-visible HTML** — Only `/s/:zineId` has rich injection today; new public routes must follow the same Express pattern (see `.cursor/rules/mimi-context.mdc`).
 
 ---

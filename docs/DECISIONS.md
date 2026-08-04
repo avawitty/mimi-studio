@@ -6,6 +6,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-04 — Publisher Console artifact-first release desk
+
+**Decision:** Restructure The Press around **Release** (artifact readiness, destinations, approvals) and **Performance** (post-publication metrics only when connected). Derive readiness deterministically from proof diagnostics, export manifest, Intel handoff, and Shopify pack inspection — no simulated reach/revenue/deliverability cards.
+
+**Alternatives rejected:** (1) Retain aggregate analytics dashboard as first viewport. (2) AI-generated release recommendations without explicit check rules. (3) Toast-only sponsor approvals.
+
+**Why:** Mimi is a private editorial OS for taste, evidence, and approval — not a generic creator analytics product. Creators need to know if an artifact is safe to release before seeing performance data.
+
+**Ref:** `lib/publisher/releaseReadiness.ts`, `components/PublisherDashboard.tsx`
+
+---
+
 ## 2026-08-04 — Taste Corpus embedding explorer (offline CLIP + UMAP)
 
 **Decision:** Ship a public `/taste-corpus` route that loads precomputed 2D coordinates from `public/data/embeddings.json`. CLIP inference and UMAP (`n_neighbors=15`, `min_dist=0.1`) run only in `scripts/embed.ts` (dev/CI). Client renders SVG for ≤1500 points, canvas above that. Server injects an `sr-only` `<ul>` of specimen titles/links into HTML for crawlers; canvas is `aria-hidden`.
@@ -18,7 +32,7 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-**Decision:** Firebase Auth owns identity. Firestore owns private canonical state (Memory Atoms, Context Runs, Tailor/Shadow records, billing mirrors). Sovereign owns **public publication projections** (Floor, Mine shelf, feeds, OG, hybrid search, Pocket mirrors). IndexedDB holds ghost/anonymous working sets.
+## 2026-08-02 — Data plane ownership (Firebase vs Sovereign vs IndexedDB)
 
 **Alternatives rejected:** (1) Sovereign as full application store replacing Firestore. (2) Firestore for all public Floor reads indefinitely.
 
@@ -169,3 +183,15 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Product intent is calm orientation + multimodal intake on the primary Studio route; the archival desk remains available for migration without blocking the intake ship. Worktable UX fixes from #201 stay scoped to the legacy route and full console.
 
 **Ref:** PR #191 merged after rebase onto main (#190 Neon spine, #199 docs); PR #201 merged earlier but superseded for `/studio` primary surface.
+
+---
+
+## 2026-08-04 — Lightweight UX research instrumentation (`?research=1`)
+
+**Decision:** Add opt-in session telemetry behind `?research=1` (sticky via `sessionStorage`). Events use schema `{sessionId, taskName, event, elementId, ts}`; capture task start, first meaningful click, dead clicks, time-to-first-action, abandonment, and observer notes. Persist to Firestore `research_sessions` when authenticated; always buffer locally with raw JSON export. Dismissible in-app note widget — no dashboard.
+
+**Alternatives rejected:** (1) Reuse Firebase Analytics / taste_events (consent-gated, wrong schema). (2) Build an admin review dashboard in-app.
+
+**Why:** Facilitates moderated usability studies without polluting production analytics or requiring a separate tool chain.
+
+**Ref:** `lib/researchMode.ts`, `services/researchInstrumentation.ts`, `components/ResearchNoteWidget.tsx`
