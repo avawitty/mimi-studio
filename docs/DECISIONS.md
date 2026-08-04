@@ -8,6 +8,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-04 — Responsive editorial card-state primitives (Phase 2)
+
+**Decision:** Introduce shared card-state primitives under `components/studio-os/card-states/` with a behavioral contract (`lib/cardStateTypes.ts`) rather than one universal visual `Card`. Add cold-cream editorial neutral aliases (`--mimi-porcelain`, `--mimi-cold-cream`, etc.) that extend — not replace — existing `MIMI_TOKENS` in `lib/design-system.ts`. Pilot on `/studio` orientation entry using `InvocationPlate`, `InvocationComposer`, `RitualButton`, and `ArtifactDossier`.
+
+**Alternatives rejected:** (1) Port early Mimi Zine components wholesale. (2) Create a parallel global shell or second token system. (3) Restore archival Worktable density as the primary `/studio` viewport. (4) One rounded card component for every chamber.
+
+**Why:** Early Mimi's card-state conviction (one proposition, one ritual action, artifact-first fields) must join current Studio OS architecture, provenance contracts, and mobile composition rules without reintroducing dashboard density, prompt mismatch, or fake completeness.
+
+**Ref:** `components/studio-os/card-states/`, `lib/cardStateTypes.ts`, `components/studio/StudioOrientationEntry.tsx`
+
+---
+
 ## 2026-08-04 — Publisher Console artifact-first release desk
 
 **Decision:** Restructure The Press around **Release** (artifact readiness, destinations, approvals) and **Performance** (post-publication metrics only when connected). Derive readiness deterministically from proof diagnostics, export manifest, Intel handoff, and Shopify pack inspection — no simulated reach/revenue/deliverability cards.

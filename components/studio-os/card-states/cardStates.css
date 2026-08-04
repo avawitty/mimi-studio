@@ -1,0 +1,403 @@
+/* Editorial card-state primitives — cold cream / porcelain surfaces */
+
+.mimi-state-frame {
+  --frame-surface: color-mix(
+    in srgb,
+    var(--mimi-cold-cream, #f2f0eb) 92%,
+    white
+  );
+
+  position: relative;
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.75rem);
+  width: min(100%, 72rem);
+  padding: clamp(1.25rem, 3vw, 3rem);
+  color: var(--mimi-ink, #17181b);
+  background:
+    linear-gradient(rgb(255 255 255 / 20%), transparent),
+    var(--frame-surface);
+  border: 1px solid var(--mimi-hairline, rgb(23 24 27 / 9%));
+  border-radius: clamp(1.25rem, 2.5vw, 2.5rem);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 55%) inset,
+    0 18px 50px rgb(10 12 16 / 7%);
+}
+
+.mimi-state-frame[data-state="selected"] {
+  border-color: color-mix(
+    in srgb,
+    var(--mimi-accent, #6e708f) 46%,
+    transparent
+  );
+  box-shadow:
+    0 0 0 3px var(--mimi-accent-soft, color-mix(in srgb, var(--mimi-accent, #6e708f) 14%, transparent)),
+    0 20px 60px rgb(10 12 16 / 9%);
+}
+
+.mimi-state-frame[data-state="loading"] {
+  cursor: progress;
+}
+
+.mimi-state-frame[data-state="error"] {
+  border-color: color-mix(in srgb, var(--mimi-red, #a43843) 48%, transparent);
+}
+
+.mimi-state-frame__header {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.mimi-state-frame__eyebrow {
+  font: 600 0.72rem/1.2 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+.mimi-state-frame__title {
+  max-width: 18ch;
+  margin: 0;
+  font: italic 500 clamp(2rem, 6vw, 5.75rem) / 0.96 var(--era-font-serif, "Cormorant Garamond", serif);
+  letter-spacing: -0.035em;
+}
+
+.mimi-state-frame__description {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+.mimi-state-frame__body {
+  min-width: 0;
+}
+
+.mimi-state-frame__footer {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* Ritual primary action */
+.mimi-ritual-button {
+  min-height: 3.5rem;
+  padding: 0.9rem 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--mimi-graphite, #1b1d21);
+  color: white;
+  font: 650 0.76rem/1 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  box-shadow: 0 12px 30px rgb(10 12 16 / 18%);
+  transition:
+    transform 140ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+  cursor: pointer;
+}
+
+.mimi-ritual-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 38px rgb(10 12 16 / 22%);
+}
+
+.mimi-ritual-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: 0 7px 18px rgb(10 12 16 / 16%);
+}
+
+.mimi-ritual-button:focus-visible {
+  outline: 3px solid var(--mimi-accent-soft, color-mix(in srgb, var(--mimi-accent, #6e708f) 14%, transparent));
+  outline-offset: 3px;
+}
+
+.mimi-ritual-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  box-shadow: none;
+}
+
+.mimi-ritual-button[data-state="success"] {
+  background: var(--mimi-accent, #6e708f);
+  color: var(--mimi-accent-ink, white);
+}
+
+/* Artifact dossier */
+.artifact-dossier {
+  position: relative;
+  border: 1px solid var(--mimi-hairline, rgb(23 24 27 / 9%));
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--mimi-porcelain, #f8f7f5) 88%, white);
+  overflow: hidden;
+}
+
+.artifact-dossier[data-status="archived"] {
+  opacity: 0.72;
+}
+
+.artifact-dossier__open {
+  display: grid;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.artifact-dossier__preview {
+  aspect-ratio: 4 / 3;
+  background: var(--mimi-mist, #e8eaed);
+  overflow: hidden;
+}
+
+.artifact-dossier__copy {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.1rem 1.15rem;
+}
+
+.artifact-dossier__type {
+  font: 600 0.65rem/1 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+.artifact-dossier__copy h3 {
+  margin: 0;
+  font: 500 1.05rem/1.25 var(--era-font-serif, "Cormorant Garamond", serif);
+}
+
+.artifact-dossier__status {
+  font: 500 0.68rem/1 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+/* Responsive artifact field */
+.mimi-card-field {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+}
+
+.mimi-card-field--featured .artifact-dossier:first-child {
+  grid-column: span 2;
+}
+
+@media (max-width: 48rem) {
+  .mimi-state-frame {
+    width: 100%;
+    border-radius: 1.5rem;
+  }
+
+  .mimi-state-frame__title {
+    max-width: 12ch;
+  }
+
+  .mimi-ritual-button {
+    width: 100%;
+    min-height: 3.75rem;
+  }
+
+  .mimi-card-field {
+    grid-template-columns: 1fr;
+  }
+
+  .mimi-card-field--featured .artifact-dossier:first-child {
+    grid-column: span 1;
+  }
+}
+
+/* Mobile action dock */
+.mimi-mobile-action-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--mimi-porcelain, #f8f7f5) 92%, transparent);
+  border-top: 1px solid var(--mimi-hairline, rgb(23 24 27 / 9%));
+  backdrop-filter: blur(8px);
+}
+
+/* Provenance tray */
+.mimi-provenance-tray {
+  border-left: 2px solid var(--mimi-accent, #6e708f);
+  padding-left: 0.85rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mimi-provenance-tray__label {
+  font: 600 0.65rem/1 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+/* Reading / calibration / proposal plates */
+.mimi-reading-plate,
+.mimi-calibration-plate,
+.mimi-proposal-slip,
+.mimi-action-plate,
+.mimi-status-receipt {
+  display: grid;
+  gap: 1rem;
+}
+
+.mimi-status-receipt[data-coverage="demonstration"]::before {
+  content: "Demonstration";
+  font: 600 0.62rem/1 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+/* Invocation scene */
+.mimi-invocation-plate__actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mimi-invocation-plate__secondary {
+  font: 500 0.75rem/1.4 var(--era-font-sans, "Geist Variable", sans-serif);
+  color: var(--mimi-quiet-ink, #666870);
+  text-align: center;
+}
+
+.mimi-invocation-composer {
+  display: grid;
+  gap: 1rem;
+}
+
+.mimi-invocation-composer__field {
+  min-height: 10rem;
+  width: 100%;
+  resize: none;
+  padding: 1rem;
+  border: 1px solid var(--mimi-hairline, rgb(23 24 27 / 9%));
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--mimi-porcelain, #f8f7f5) 70%, white);
+  font: italic 400 1.05rem/1.45 var(--era-font-serif, "Cormorant Garamond", serif);
+  color: var(--mimi-ink, #17181b);
+}
+
+.mimi-invocation-composer__field::placeholder {
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+.mimi-invocation-composer__field:focus-visible {
+  outline: 2px solid var(--mimi-accent-soft, color-mix(in srgb, var(--mimi-accent, #6e708f) 14%, transparent));
+  outline-offset: 2px;
+}
+
+.mimi-invocation-composer__helper {
+  margin: 0;
+  font: 400 0.8rem/1.4 var(--era-font-sans, "Geist Variable", sans-serif);
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+.mimi-reading-plate__signal,
+.mimi-reading-plate__interpretation,
+.mimi-reading-plate__evidence,
+.mimi-reading-plate__coverage {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.mimi-calibration-plate__layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 48rem) {
+  .mimi-calibration-plate__layout {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.mimi-proposal-slip__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.mimi-proposal-slip__secondary,
+.mimi-proposal-slip__tertiary {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--mimi-hairline, rgb(23 24 27 / 9%));
+  border-radius: 999px;
+  background: transparent;
+  font: 600 0.7rem/1 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mimi-ink, #17181b);
+  cursor: pointer;
+}
+
+.mimi-proposal-slip__tertiary {
+  border-color: transparent;
+  color: var(--mimi-quiet-ink, #666870);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.mimi-used-context__state {
+  margin: 0;
+  font: 400 0.85rem/1.45 var(--era-font-serif, "Cormorant Garamond", serif);
+  font-style: italic;
+}
+
+.mimi-used-context__list {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mimi-used-context__source {
+  display: block;
+  font: 500 0.65rem/1 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+.mimi-used-context__inspect {
+  margin-top: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font: 600 0.68rem/1 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mimi-accent, #6e708f);
+  cursor: pointer;
+  text-align: left;
+}
+
+.mimi-status-receipt__time {
+  font: 500 0.65rem/1 var(--era-font-sans, "Geist Variable", sans-serif);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mimi-quiet-ink, #666870);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mimi-state-frame,
+  .mimi-ritual-button {
+    transition: none;
+  }
+}

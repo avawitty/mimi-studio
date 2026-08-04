@@ -186,6 +186,17 @@ export const MIMI_TOKENS = {
   manilaSheet: "--mimi-manila-sheet",
   manilaInk: "--mimi-manila-ink",
   grainOpacity: "--mimi-grain-opacity",
+  porcelain: "--mimi-porcelain",
+  coldCream: "--mimi-cold-cream",
+  parchment: "--mimi-parchment",
+  powderBlush: "--mimi-powder-blush",
+  mist: "--mimi-mist",
+  graphite: "--mimi-graphite",
+  blueBlack: "--mimi-blue-black",
+  quietInk: "--mimi-quiet-ink",
+  accent: "--mimi-accent",
+  accentInk: "--mimi-accent-ink",
+  accentSoft: "--mimi-accent-soft",
 } as const;
 
 export type MimiTokenKey = keyof typeof MIMI_TOKENS;

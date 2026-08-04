@@ -53,6 +53,19 @@
     --mimi-blush: #ead9d5;
     --mimi-ink-soft: #111110;
 
+    /* Editorial card-state neutrals — aliases resolve to cold cream palette */
+    --mimi-porcelain: #f8f7f5;
+    --mimi-cold-cream: #f2f0eb;
+    --mimi-parchment: #e8e3da;
+    --mimi-powder-blush: #eadfe3;
+    --mimi-mist: #e8eaed;
+    --mimi-graphite: #1b1d21;
+    --mimi-blue-black: #0b0e13;
+    --mimi-quiet-ink: #666870;
+    --mimi-accent: #6e708f;
+    --mimi-accent-ink: #ffffff;
+    --mimi-accent-soft: color-mix(in srgb, var(--mimi-accent) 14%, transparent);
+
     /* Era Variables */
     --era-font-sans: "Geist Variable", sans-serif;
     --era-font-serif: "Cormorant Garamond", serif;

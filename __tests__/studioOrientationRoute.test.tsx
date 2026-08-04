@@ -79,10 +79,10 @@ describe("/studio orientation entry route", () => {
 
     expect(screen.getByRole("heading", { name: "Mimi" })).toBeInTheDocument();
     expect(
-      screen.getByText(/Start with a thought, image, or fragment/i),
+      screen.getByText(/What are we making\?/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Begin with this/i }),
+      screen.getByRole("button", { name: /Issue Manifest/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Legacy worktable \(experimental\)/i }),
@@ -102,10 +102,13 @@ describe("/studio orientation entry route", () => {
     const onRefine = vi.fn();
     render(<StudioOrientationEntry onRefine={onRefine} />);
 
-    fireEvent.change(screen.getByPlaceholderText(/Write freely/i), {
-      target: { value: "A soft cobalt wash over archival grain" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /Begin with this/i }));
+    fireEvent.change(
+      screen.getByPlaceholderText(/Describe the artifact you want Mimi to compose/i),
+      {
+        target: { value: "A soft cobalt wash over archival grain" },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Issue Manifest/i }));
 
     expect(onRefine).toHaveBeenCalledTimes(1);
     const [, , tone, opts] = onRefine.mock.calls[0];

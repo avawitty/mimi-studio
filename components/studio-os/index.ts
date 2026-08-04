@@ -15,6 +15,7 @@ export * from "./artifacts/DossierFolder";
 export * from "./artifacts/EvidenceSlip";
 export * from "./artifacts/IndexTab";
 export * from "./artifacts/SpecimenPlate";
+export * from "./card-states";
 export * from "./families/CaptureShell";
 export * from "./families/IdentityShell";
 export * from "./families/IntelligenceShell";

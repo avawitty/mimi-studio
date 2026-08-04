@@ -1,14 +1,29 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { MediaFile, ZineGenerationOptions, ZineMetadata } from "../../types";
+import type { PromptContract } from "../../lib/cardStateTypes";
 import { useOptionalUser } from "../../contexts/UserContext";
 import { fetchUserZines } from "../../services/firebaseUtils";
+import {
+  ArtifactDossier,
+  InvocationComposer,
+  InvocationPlate,
+  ResponsiveCardField,
+} from "../studio-os/card-states";
 import { MimiWordmark } from "../public-face/MimiWordmark";
+import "../studio-os/card-states/cardStates.css";
 
 const EMPTY_ZINE_OPTIONS: ZineGenerationOptions = {
   style: "balanced",
   theme: "organic",
   contentFocus: "balanced",
   goals: "",
+};
+
+const STUDIO_PROMPT: PromptContract = {
+  mode: "assignment",
+  displayPrompt: "What are we making?",
+  fieldPlaceholder: "Describe the artifact you want Mimi to compose…",
+  submitLabel: "Issue Manifest",
 };
 
 const SUGGESTED_NEXT: Array<{
@@ -151,116 +166,93 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
   return (
     <div
       data-studio-entry="orientation"
-      className="relative flex h-full min-h-[100dvh] flex-col overflow-hidden bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)]"
+      className="relative flex h-full min-h-[100dvh] flex-col overflow-hidden bg-[var(--mimi-porcelain,#f8f7f5)] text-[var(--mimi-ink,#17181b)]"
     >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.55]"
         style={{
           backgroundImage:
-            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(155,184,206,0.18), transparent 55%), linear-gradient(180deg, #fafafa 0%, #ffffff 42%, #f7f7f5 100%)",
+            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(110,112,143,0.12), transparent 55%), linear-gradient(180deg, var(--mimi-cold-cream,#f2f0eb) 0%, var(--mimi-porcelain,#f8f7f5) 42%, #ffffff 100%)",
         }}
       />
 
       <div className="relative z-[1] flex min-h-0 flex-1 flex-col overflow-y-auto">
         <header className="shrink-0 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-2 md:px-8">
-          <div className="mx-auto flex w-full max-w-xl items-baseline justify-between gap-4">
+          <div className="mx-auto flex w-full max-w-3xl items-baseline justify-between gap-4">
             <MimiWordmark as="h1" size="sm" />
-            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-stone,#78716c)]">
+            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-quiet-ink,#666870)]">
               Studio
             </p>
           </div>
         </header>
 
-        <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-5 pb-8 pt-6 md:px-8 md:pt-10">
-          <p className="max-w-[22rem] font-serif text-[1.65rem] leading-[1.2] tracking-tight text-[var(--mimi-ink,#0a0a0a)] md:text-[2rem]">
-            Start with a thought, image, or fragment.
-          </p>
-          <p className="mt-3 max-w-md font-mono text-[11px] leading-relaxed tracking-[0.02em] text-[var(--mimi-stone,#78716c)]">
-            Mimi shapes work from what you bring — and from approved context
-            only.
-          </p>
-
-          <section
-            aria-label="Compose"
-            className="mt-8 flex min-h-[14rem] flex-col border border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-field,#ffffff)]/90"
+        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 pb-8 pt-4 md:px-8 md:pt-8">
+          <InvocationPlate
+            eyebrow="Compose"
+            title={STUDIO_PROMPT.displayPrompt}
+            description="Mimi shapes work from what you bring — and from approved context only."
+            state={isThinking ? "loading" : "idle"}
+            className="!w-full !max-w-none"
           >
-            <textarea
+            <InvocationComposer
+              prompt={STUDIO_PROMPT}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Write freely, or drop a reference beside your note…"
-              rows={6}
-              className="min-h-[10rem] w-full flex-1 resize-none bg-transparent px-4 pt-4 font-serif text-[18px] italic font-light leading-snug text-[var(--mimi-ink,#0a0a0a)] placeholder:text-[var(--mimi-stone,#78716c)] focus:outline-none"
-              style={{ fontSize: "16px" }}
-            />
-
-            {mediaFiles.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto px-4 pb-3">
-                {mediaFiles.map((m, i) => (
-                  <div
-                    key={`${m.name}-${i}`}
-                    className="relative h-16 w-14 shrink-0 overflow-hidden border border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-worktable,#fafafa)]"
-                  >
-                    {m.type === "image" && (m.url || m.data) && (
-                      <img
-                        src={m.url || m.data}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                    <button
-                      type="button"
-                      aria-label={`Remove ${m.name || "reference"}`}
-                      className="absolute right-0 top-0 flex h-6 w-6 items-center justify-center bg-[var(--mimi-ink,#0a0a0a)] font-mono text-[10px] text-white"
-                      onClick={() =>
-                        setMediaFiles((prev) => prev.filter((_, j) => j !== i))
-                      }
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-3 border-t border-[var(--mimi-hairline,#d4d4d4)] px-3 py-2">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="min-h-11 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-stone,#78716c)] hover:text-[var(--mimi-ink,#0a0a0a)]"
-              >
-                Attach reference
-              </button>
-              <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)]">
-                Text · image · note
-              </span>
-            </div>
-          </section>
-
-          {contextSummary && (
-            <p
-              role="status"
-              className="mt-4 border-l-2 border-[var(--mimi-cobalt,#9bb8ce)] pl-3 font-serif text-[15px] italic text-[var(--mimi-ink,#0a0a0a)]"
+              onChange={setInput}
+              onSubmit={handlePrimary}
+              isBusy={isThinking}
+              canSubmit={canSubmit}
+              helperText={contextSummary ?? undefined}
             >
-              {contextSummary}
-            </p>
-          )}
-
-          <button
-            type="button"
-            onClick={handlePrimary}
-            disabled={!canSubmit || isThinking}
-            className="mt-6 inline-flex min-h-12 w-full items-center justify-center bg-[var(--mimi-ink,#0a0a0a)] px-5 font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--mimi-field,#ffffff)] disabled:opacity-40 sm:w-auto"
-          >
-            {isThinking ? "Developing…" : "Begin with this"}
-          </button>
+              {mediaFiles.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {mediaFiles.map((m, i) => (
+                    <div
+                      key={`${m.name}-${i}`}
+                      className="relative h-16 w-14 shrink-0 overflow-hidden border border-[var(--mimi-hairline)] bg-[var(--mimi-mist,#e8eaed)]"
+                    >
+                      {m.type === "image" && (m.url || m.data) ? (
+                        <img
+                          src={m.url || m.data}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${m.name || "reference"}`}
+                        className="absolute right-0 top-0 flex h-6 w-6 items-center justify-center bg-[var(--mimi-graphite,#1b1d21)] font-mono text-[10px] text-white"
+                        onClick={() =>
+                          setMediaFiles((prev) => prev.filter((_, j) => j !== i))
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="min-h-11 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-quiet-ink,#666870)] hover:text-[var(--mimi-ink,#17181b)]"
+                >
+                  Attach reference
+                </button>
+                <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--mimi-quiet-ink,#666870)]">
+                  Text · image · note
+                </span>
+              </div>
+            </InvocationComposer>
+          </InvocationPlate>
 
           {/* Below the fold — recent work + suggested next */}
           <section
             aria-labelledby="studio-recent-heading"
-            className="mt-16 border-t border-[var(--mimi-hairline,#d4d4d4)] pt-8"
+            className="mt-16 border-t border-[var(--mimi-hairline)] pt-8"
           >
-            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-stone,#78716c)]">
+            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-quiet-ink,#666870)]">
               Continue
             </p>
             <h2
@@ -269,41 +261,57 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
             >
               Recent projects
             </h2>
-            <ul className="mt-4 divide-y divide-[var(--mimi-hairline,#d4d4d4)]">
-              {recentLoading && (
-                <li className="py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)]">
-                  Loading…
-                </li>
-              )}
-              {!recentLoading && recentZines.length === 0 && (
-                <li className="py-3 font-serif text-[15px] italic text-[var(--mimi-stone,#78716c)]">
-                  Nothing saved yet. Your first piece will land here.
-                </li>
-              )}
-              {recentZines.map((zine) => (
-                <li key={zine.id}>
-                  <button
-                    type="button"
-                    onClick={() => onNavigatePath?.(`/zine/${zine.id}`)}
-                    className="flex min-h-12 w-full items-baseline justify-between gap-3 py-3 text-left"
-                  >
-                    <span className="truncate font-serif text-[16px]">
-                      {zine.title || "Untitled issue"}
-                    </span>
-                    <span className="shrink-0 font-mono text-[8px] uppercase tracking-[0.16em] text-[var(--mimi-stone,#78716c)]">
-                      Open
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+
+            {recentLoading ? (
+              <p className="mt-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--mimi-quiet-ink,#666870)]">
+                Loading…
+              </p>
+            ) : null}
+
+            {!recentLoading && recentZines.length === 0 ? (
+              <p className="mt-4 py-3 font-serif text-[15px] italic text-[var(--mimi-quiet-ink,#666870)]">
+                Nothing saved yet. Your first piece will land here.
+              </p>
+            ) : null}
+
+            {recentZines.length > 0 ? (
+              <ResponsiveCardField
+                featured={recentZines.length > 1}
+                aria-label="Recent projects"
+                className="mt-4"
+              >
+                {recentZines.map((zine, index) => (
+                  <ArtifactDossier
+                    key={zine.id}
+                    title={zine.title || "Untitled issue"}
+                    type="Issue"
+                    status={index === 0 ? "active" : "published"}
+                    provenance={zine.createdAt ? "Saved in your archive" : undefined}
+                    preview={
+                      zine.coverImageUrl ? (
+                        <img
+                          src={zine.coverImageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center font-serif text-lg italic text-[var(--mimi-quiet-ink,#666870)]">
+                          {zine.title?.slice(0, 1) || "?"}
+                        </div>
+                      )
+                    }
+                    onOpen={() => onNavigatePath?.(`/zine/${zine.id}`)}
+                  />
+                ))}
+              </ResponsiveCardField>
+            ) : null}
           </section>
 
           <section
             aria-labelledby="studio-next-heading"
-            className="mt-10 border-t border-[var(--mimi-hairline,#d4d4d4)] pt-8 pb-[max(2rem,env(safe-area-inset-bottom))]"
+            className="mt-10 border-t border-[var(--mimi-hairline)] pt-8 pb-[max(2rem,env(safe-area-inset-bottom))]"
           >
-            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-stone,#78716c)]">
+            <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-quiet-ink,#666870)]">
               Or
             </p>
             <h2
@@ -318,9 +326,9 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigate?.(item.mode)}
-                    className="flex min-h-12 w-full flex-col items-start border border-[var(--mimi-hairline,#d4d4d4)] px-4 py-3 text-left hover:border-[var(--mimi-ink,#0a0a0a)]"
+                    className="flex min-h-12 w-full flex-col items-start border border-[var(--mimi-hairline)] bg-[color-mix(in_srgb,var(--mimi-cold-cream,#f2f0eb)_60%,white)] px-4 py-3 text-left hover:border-[var(--mimi-graphite,#1b1d21)]"
                   >
-                    <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
+                    <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-[var(--mimi-quiet-ink,#666870)]">
                       {item.label}
                     </span>
                     <span className="mt-1 font-serif text-[15px] leading-snug">
@@ -344,7 +352,7 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
                       }),
                     );
                   }}
-                  className="flex min-h-11 w-full items-center justify-between gap-3 px-1 py-2 text-left font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)] underline decoration-dotted underline-offset-4 hover:text-[var(--mimi-ink,#0a0a0a)]"
+                  className="flex min-h-11 w-full items-center justify-between gap-3 px-1 py-2 text-left font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--mimi-quiet-ink,#666870)] underline decoration-dotted underline-offset-4 hover:text-[var(--mimi-ink,#17181b)]"
                 >
                   <span>Legacy worktable (experimental)</span>
                   <span aria-hidden>→</span>
