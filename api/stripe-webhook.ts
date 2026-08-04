@@ -40,6 +40,9 @@ export default async function handler(req: any, res: any) {
     );
     const neonStripeEnabled =
       process.env.MIMI_NEON_STRIPE_RECONCILIATION === "1";
+    let neonReconciliationResult:
+      | { duplicate?: boolean; ignored?: boolean }
+      | null = null;
     if (neonStripeEnabled) {
       if (!isNeonOperationalDatabaseConfigured()) {
         sendJson(res, 503, {
@@ -59,15 +62,12 @@ export default async function handler(req: any, res: any) {
           ]);
         const normalized = await normalizeStripeMembershipEvent(stripe, event);
         if (!normalized) {
-          sendJson(res, 200, { received: true, ignored: true });
-          return;
+          neonReconciliationResult = { ignored: true };
+        } else {
+          const result =
+            await getNeonMembershipReconciliationService().process(normalized);
+          neonReconciliationResult = { duplicate: result.duplicate };
         }
-        const result =
-          await getNeonMembershipReconciliationService().process(normalized);
-        sendJson(res, 200, {
-          received: true,
-          duplicate: result.duplicate,
-        });
       } catch (error) {
         // Signature is already verified, but membership/credit persistence is
         // essential. Return 5xx so Stripe retries; the failed event state is
@@ -77,8 +77,10 @@ export default async function handler(req: any, res: any) {
           received: false,
           reconciliation: "failed",
         });
+        return;
       }
-      return;
+      // Fall through to the legacy Firestore projection until chamber readers
+      // migrate off Firestore membership and credit fields.
     }
 
     const { db } = getServerFirebaseAdmin();
@@ -123,7 +125,13 @@ export default async function handler(req: any, res: any) {
     });
 
     if (!shouldProcess) {
-      sendJson(res, 200, { received: true, duplicate: true });
+      sendJson(res, 200, {
+        received: true,
+        duplicate: true,
+        ...(neonReconciliationResult
+          ? { neonReconciliation: neonReconciliationResult }
+          : {}),
+      });
       return;
     }
 
@@ -133,7 +141,12 @@ export default async function handler(req: any, res: any) {
         { status: "completed", completedAt: Date.now() },
         { merge: true },
       );
-      sendJson(res, 200, { received: true });
+      sendJson(res, 200, {
+        received: true,
+        ...(neonReconciliationResult
+          ? { neonReconciliation: neonReconciliationResult }
+          : {}),
+      });
     } catch (error) {
       await eventRef.delete().catch((): undefined => undefined);
       throw error;
