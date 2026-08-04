@@ -6,12 +6,19 @@ import type {
 } from "../../types";
 
 function planFingerprint(page: ZinePagePlan): string {
-  return [
+  const parts = [
     page.sectionType,
     page.headline.trim().toLowerCase(),
     [...page.sourceIds].sort().join(","),
     page.grammar,
-  ].join("|");
+  ];
+  if (page.sectionType === "visual-plate") {
+    parts.push(
+      page.purpose.trim().toLowerCase(),
+      page.requiresGeneratedMedia ? "generated" : "static",
+    );
+  }
+  return parts.join("|");
 }
 
 function renumberPlanPages(pages: ZinePagePlan[]): ZinePagePlan[] {
