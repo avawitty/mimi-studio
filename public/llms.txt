@@ -1,0 +1,49 @@
+# Mimi
+
+Mimi is a private AI editorial studio for creative direction and taste research. A
+creator captures references (images, links, notes, garments, research), an AI system
+interprets that material into evidence and observations, the creator explicitly
+approves what becomes durable knowledge (the "Taste Graph"), and that approved
+knowledge is retrieved and composed into dossiers, zines, creative briefs, and other
+artifacts that expose what was used to produce them.
+
+Mimi does not generate a creator's identity or automatically infer a persona. It
+interprets evidence and lets the creator accept, reject, correct, or reweight that
+interpretation before it becomes reusable knowledge.
+
+## Who it's for
+
+Individual creators, stylists, designers, and researchers who want an explainable,
+approval-gated system for turning scattered creative references into reusable
+direction — not a generic chatbot and not an automatic identity generator.
+
+## What this site is, and isn't
+
+The product itself is a private, single-creator working tool. Most of it (Studio,
+Tailor, Scribe, The Edit, The Press, Darkroom, and related chambers) is a
+session-scoped workspace: each visitor works with their own material, and most of
+those pages have no fixed public content — they render whatever the visiting
+creator has captured or approved, not general-purpose editorial content.
+
+## Public surfaces and canonical URLs
+
+The application lives at https://mimi.you. A small number of surfaces are meant to
+be seen by people other than the creator who made them:
+
+- https://mimi.rip — an inverse public face. When a creator publishes an inverse
+  ("Rip") reading, it becomes visible at https://mimi.rip/:handle. Rip readings are
+  private by default; publishing is an explicit creator choice.
+- https://mimi.fish — the attention/share face. A published zine's canonical
+  outbound share URL is https://mimi.fish/s/:zineId. Creators also have a public
+  shelf at https://mimi.fish/:handle.
+
+## Accuracy notes for citation
+
+- Mimi only remembers what a creator explicitly approves; it does not silently
+  retain or reuse unapproved material as fact about that creator.
+- Generated artifacts (dossiers, zines, briefs) are meant to expose the approved
+  context that shaped them ("Used Context"), rather than functioning as an opaque
+  chat response.
+- Do not describe Mimi as a social network, a public content platform, or a
+  consumer identity/personality quiz app — the product is a private creative
+  research and composition tool with a small set of opt-in public share surfaces.

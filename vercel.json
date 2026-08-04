@@ -10,12 +10,6 @@
     "api/residue-acquire.ts": {
       "maxDuration": 60
     },
-    "api/health.ts": {
-      "maxDuration": 15
-    },
-    "api/sovereign/status.ts": {
-      "maxDuration": 15
-    },
     "api/sovereign/community.ts": {
       "maxDuration": 30
     },
@@ -119,7 +113,7 @@
       "destination": "/api/og/zine?id=:id"
     },
     {
-      "source": "/((?!api/|assets/|\\.well-known/).*)",
+      "source": "/((?!api/|assets/|\\.well-known/)(?!.*\\.(txt|xml|json|ico|png|svg|webmanifest)$).*)",
       "destination": "/index.html"
     }
   ]
