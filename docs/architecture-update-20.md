@@ -7,6 +7,10 @@
 **Parent living document:** [Mimi System Architecture](./mimi-system-architecture.md)  
 **Operational detail:** [Sovereign archive](./sovereign-archive.md)
 
+> Historical implementation snapshot: ADR 001 supersedes the database
+> ownership conclusions in this update. See
+> [`adr-001-neon-operational-database.md`](./adr-001-neon-operational-database.md).
+
 Today’s code moved several parts of Mimi from architectural proposal into verified implementation. The strongest development is that Mimi now has the beginnings of an owned operational substrate beneath its intelligence chambers:
 
 ```text

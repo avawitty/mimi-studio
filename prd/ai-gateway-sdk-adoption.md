@@ -25,7 +25,9 @@ Creators and operators need a single, env-overridable catalog of gateway `provid
 
 - Porting the v0 Next.js playground (`V0_RUNTIME_URL`, `V0_CALLBACK_URL`).
 - Migrating every call site to `generateText` in one PR.
-- Replacing Firebase auth or credit billing (`lib/mimiFundedGateway.ts`).
+- Replacing Firebase auth. Credit billing is now migrating from
+  `lib/mimiFundedGateway.ts` to the Neon reservation/ledger spine defined in
+  `prd/neon-operational-spine.md`.
 - Adopting `@cursor/sdk` (Cursor Agent SDK) — separate product surface; out of scope unless explicitly requested.
 
 ## User stories

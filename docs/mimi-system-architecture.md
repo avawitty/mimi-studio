@@ -10,7 +10,14 @@ This document defines Mimi's durable product architecture. It is intentionally n
 
 For the current chamber-to-route implementation, see the [Mimi Chamber Implementation Audit](./mimi-chamber-implementation-audit.md). For current infrastructure and Used Context verification, see the [Functions Admin Proxy Audit](./wo-1-functions-admin-proxy-audit.md) and [Used Context end-to-end test](./wo-2-used-context-test.md).
 
-**Latest reconciliation:** [Architecture Update 20](./architecture-update-20.md) (implementation status) + [Architecture Update 21](./architecture-update-21.md) (decisions closing Update 20 open questions). Operational sovereign store detail: [Sovereign archive](./sovereign-archive.md). The editorial compiler between approved direction and generated zine pages is defined in the [Zine Editorial Intelligence Specification](./zine-editorial-intelligence-spec.md).
+**Latest reconciliation:** [ADR 001](./adr-001-neon-operational-database.md)
+supersedes prior Firestore/Sovereign ownership for relational state. Historical
+context remains in [Architecture Update 20](./architecture-update-20.md) (implementation status) and
+[Architecture Update 21](./architecture-update-21.md) (decisions closing Update 20 open questions).
+Migration inventory: [Neon operational spine audit](./neon-operational-spine-audit.md).
+Operational sovereign store detail: [Sovereign archive](./sovereign-archive.md). The editorial
+compiler between approved direction and generated zine pages is defined in the
+[Zine Editorial Intelligence Specification](./zine-editorial-intelligence-spec.md).
 
 ## 1. Product Philosophy
 
@@ -98,7 +105,7 @@ This is the practical bridge from research and taste to production. Collection d
 | Capabilities | Provide reusable user-facing operations shared across workflows | Capture, Interpretation, Highlight, Approval, Retrieval, Composition, Export, Consent |
 | Knowledge Objects | Hold durable, typed, versioned product state | Source Object, Evidence, Approval, Memory Atom, Context Packet, Build Brief, CentralTendencyProfile |
 | Shared Intelligence Infrastructure | Route models, embeddings, entitlements, and provenance across chambers | AI Gateway, Gateway embeddings, provider adapters, entitlement verification, model provenance |
-| Platform Services | Persist, index, authorize, relate, validate, and synchronize objects | Object registry, identity, Sovereign Data Plane, Firestore, IndexedDB, search, SSE, permissions, event log |
+| Platform Services | Persist, index, authorize, relate, validate, and synchronize objects | Neon Postgres repositories, Firebase identity, object storage, legacy migration adapters, IndexedDB cache, search, permissions, event log |
 | Generation / Composition | Assemble explicit context and produce or arrange candidates | Prompt assembly, model generation, layout composition, hi-fi plate baking, rendering |
 | Published Artifacts | Represent validated outputs and their handoff or publication state | Zine, Report, export bundle, provenance manifest |
 
@@ -435,9 +442,9 @@ These decisions remain unresolved and should be settled through architecture dec
 | Should object relationships become first-class? | First-class typed relationships enable graph retrieval and impact analysis but require governance and migrations. | Query value, relationship ownership, validation complexity |
 | Should workflow sessions support branching? | Branching enables creative alternatives without overwriting a path but complicates merge and approval semantics. | Creator mental model, comparison UX, ownership of merged outputs |
 | Should every exported artifact include a machine-readable provenance manifest? | A manifest improves portability and verification but may expose sensitive context or increase package complexity. | Privacy, interoperability, destination support, minimum manifest schema |
-| ~~Firestore vs Sovereign ownership~~ | **Decided (Update 21):** Firebase Auth = identity; Firestore = private canonical state (atoms, Tailor, Shadow, billing); Sovereign = public publication/discovery + Pocket mirrors; IndexedDB = ghost buffer. |
-| ~~Sovereign store kind~~ | **Decided:** gradually expanding hybrid (publication/discovery first). |
-| ~~Atoms on Sovereign Postgres~~ | **Decided for now: no** — revisit with private-read auth. |
+| ~~Canonical relational database~~ | **Superseded by ADR 001:** Neon Postgres owns relational operational state; Firebase remains identity; object storage owns binaries; Firestore/Sovereign are migration sources. |
+| ~~Sovereign store kind~~ | **Superseded by ADR 001:** legacy publication reads may remain temporarily, but new relational writes use Neon repositories. |
+| ~~Atoms on Postgres~~ | **Decided by ADR 001:** proposals and approved atoms are canonical Neon records behind server authorization. |
 | ~~Scry archive source~~ | **Decided:** Sovereign-first for public archive lane; personal lanes stay local/Firestore/Shadow; unified service later. |
 | ~~Shared embedding contract~~ | **Decided + encoded:** `schemas/embeddingContracts.ts`. |
 | ~~The Edit Signal vs Issue~~ | **Decided + encoded:** one `/the-edit` with Signal / Issue / Forecast panels. |
@@ -470,10 +477,10 @@ Practical loop still demonstrated as:
 | Evidence-lane research | `ScryView` archive / web / reading / shadow lanes + Gateway synthesis | Implemented with honest coverage states |
 | Residue analysis | `ResidueChamber` Cultural/Emotional modes, offline engine, optional Apify acquire | Implemented vertical slice |
 | Collective intelligence | `ObservatoryChamber` / Mean Median Mode + Proscenium consent | Implemented vertical slice |
-| Atom persistence | `memoryService` and Firestore `memory_atoms` | Implemented; explicit approval-before-memory remains the canonical target |
+| Atom persistence | Neon `memory_proposals` → approval command → `memory_atoms`; Firestore reads remain during migration | First Scribe vertical slice implemented; broad backfill pending |
 | Shadow Memory migration | Dimension/model audit + authenticated reindex | Implemented |
 | Registry mirror | `mirrorAtomToPocket`, Pocket archive, ghost local path | Partial; delete/identity races hardened; dual-plane ownership still open |
-| Sovereign publication plane | SQLite / Postgres / Neon drivers, search, SSE, import/export | Implemented; production hardening ongoing |
+| Legacy Sovereign publication plane | SQLite / Postgres drivers, search, SSE, import/export | Compatibility read plane; migrate into canonical Neon repositories deliberately |
 | Context approval | `UsedContextTray`, `setUsedContextApproved` | Implemented for Studio and The Edit queues |
 | Context application | `InputStudio`, `zineGenerator`, `fragmentsUsed`; active Doll prompt/media injection via `dollEngine` | Implemented for the Studio generation path |
 | Context provenance | `UsedContextSnapshot`, reveal Used Context, export manifest snapshots | Implemented in the current zine/export path |
@@ -481,7 +488,7 @@ Practical loop still demonstrated as:
 | Zine editorial intelligence | [Zine Editorial Intelligence Specification](./zine-editorial-intelligence-spec.md) | Product contract v1 complete; typed issue planner, rhythm engine, compression pass, composition critic, and approval integration remain proposed |
 | Spread composition | `customLayout` on `ZinePageSpec`, `ZineLayoutEditor` / `ZineSpreadCanvas`, `lib/zineSpreadLayout.ts` | Implemented for owner compose + read-only public render |
 | Studio cover export | `lib/studioCoverExport.ts`, `coverImageUrl`, `content.meta.studioCoverOverlays` | Implemented; overlay rasterization into export image remains open |
-| Gateway-funded AI | Entitlement checks, Stripe verification, no BYOK nag on funded path | Implemented and security-hardened |
+| Gateway-funded AI | Registered operation → entitlement → Neon reservation → Gateway → validated persist → commit/release | Scribe vertical slice implemented; remaining chambers pending |
 | Export | `ThePressChamber`, `exportManifestService`, structured PDF via `lib/structuredZinePdf.ts` (`pdfMode: "structured"`) | Implemented in part; universal artifact manifests remain open |
 | Personal universe projection | `services/dollEngine` (shell staple, procedural aesthetic, identity pack, masks, companion) | Implemented; remote-only image-ref attachment into zine media still open |
 | Public social stage | `ProsceniumView` Stage / Correspondents / Cliques; legacy `/connections` + `/cliques` redirect | Implemented; demo vs live specimen labeling is a hard integrity rule |
@@ -492,14 +499,20 @@ Preview E2E checklist: `docs/DEMO_SCRIPT.md`. Service verification: `npm run ver
 
 Current implementation uses `UsedContextEntry.approved` as the generation gate. Any path that saves a proposed atom directly as retrievable memory without a separate creator approval is architecture drift against Sections 2, 7, and 11 and should be migrated deliberately rather than normalized as canon.
 
-### Canonical data-plane rule (Update 20)
+### Canonical data-plane rule (ADR 001)
 
 ```text
-Firebase  = identity, selected canonical state, and compatibility
-Sovereign = owned publication, discovery, and resilience data plane
+Firebase Auth = authentication identity
+Neon Postgres = canonical relational operational state
+Object storage = images, uploads, generated plates, video, and large exports
+Firestore / Sovereign = read-only migration and compatibility sources
+IndexedDB = local cache and ghost working buffer, never authorization truth
 ```
 
-Firestore should not carry every public shelf interaction. Neon Postgres is the preferred Vercel sovereign path; SQLite remains for local and durable-host execution.
+All new credit, membership, workflow, AI-run, proposal, atom, provenance, and
+Stripe-reconciliation writes go through server-side repository methods. React
+chambers never connect to Neon directly. See
+[`adr-001-neon-operational-database.md`](./adr-001-neon-operational-database.md).
 
 ### Public host skins
 
@@ -520,16 +533,17 @@ These are implementation examples of the Platform Services and Shared Intelligen
 | Service | Current responsibility | Representative paths |
 | --- | --- | --- |
 | Auth and session | Firebase Auth and HTTP-only session handling | `api/sessionLogin.ts`, `UserContext` |
-| Firestore persistence | Users, atoms, selected zines/Pocket compatibility | `services/firebaseUtils.ts`, `memoryService` |
-| Sovereign Data Plane | Owned publication, Floor/Mine, search, SSE, import/export | `docs/sovereign-archive.md`, `/api/sovereign/*`, `services/sovereignClient.ts` |
+| Canonical relational persistence | Drizzle schema, Neon HTTP reads, pooled serializable transactions, database-neutral repositories | `domain/`, `infrastructure/database/neon/` |
+| Legacy Firestore persistence | Migration reads for users, atoms, selected zines/Pocket compatibility | `services/firebaseUtils.ts`, `memoryService` |
+| Legacy Sovereign Data Plane | Publication/Floor/Mine compatibility reads, search, SSE, import/export | `docs/sovereign-archive.md`, `/api/sovereign/*`, `services/sovereignClient.ts` |
 | Local / ghost archive | Offline or guest references and drafts (IndexedDB) | `services/localArchive.ts`, Pocket ghost path |
 | AI Gateway + embeddings | Funded model routing, shared embeddings, provenance metadata | `lib/ai/generate.ts`, `services/modelConfig.ts`, `lib/models.ts` |
 | AI SDK → Gateway text | Production text generation via AI SDK + Gateway model roles | `POST /api/mimi/generate-text`, `lib/ai/generate.ts`, `lib/mimiGenerateTextRoute.ts` |
 | AI provider routing | Select funded Gateway, personal-key, or simulated paths | `lib/mimiProvider.ts`, `services/geminiClient.ts` |
-| Entitlement verification | Trusted server-side plan/credit checks (incl. Stripe) | membership / Stripe verification routes |
+| Entitlement and credits | Canonical plans, server authorization, reserve/commit/release, immutable ledger | `application/credits/`, `domain/credits/`, Neon repositories |
 | Image generation | Server-side cover and visual generation | `/api/mimi-image`, `lib/serverMimiImage.ts` |
 | Functions admin proxy | Keep Firebase Admin operations out of Vercel where needed | `lib/proxyToFunctions.ts`, `functions/src/index.ts` |
-| Funded gateway | Authorize and account for platform-funded AI use | `lib/mimiFundedGateway.ts` |
+| Operational AI gateway | Stable operation registry, structured validation, bounded routing, run/attempt persistence | `application/operations/`, `infrastructure/ai-gateway/` |
 | Used Context bus | Stage and approve task-specific client context | `services/usedContextService.ts` |
 | Export and privacy | Build manifests and sanitize exported snapshots | `services/exportManifestService.ts`, `lib/privacyUtils.ts` |
 | Structured PDF | Archival A4 PDF from zine metadata (custom layouts when present) | `lib/structuredZinePdf.ts` |
@@ -580,7 +594,9 @@ The current creator-facing interfaces are projections onto the architecture, not
 
 See [architecture-update-20.md §15](./architecture-update-20.md#15-architecture-decisions) and [architecture-update-21.md](./architecture-update-21.md). Highlights now treated as canon:
 
-- Sovereign archive is a first-class owned data plane; Firestore remains for identity and private canonical state; Sovereign owns public publication/discovery projections.
+- ADR 001 supersedes the prior dual-database ownership decision: Firebase Auth
+  remains identity, Neon Postgres is canonical relational storage, binaries stay
+  in object storage, and Firestore/Sovereign are migration sources.
 - Scry lanes must report empty/failed/unavailable honestly; no padded “complete” coverage.
 - Shadow Memory reindex requires a real Firebase UID; ghost identities cannot bulk-operate embeddings.
 - AI Gateway embeddings are shared infrastructure with executed-model provenance (`EmbeddingSpaceId`).
