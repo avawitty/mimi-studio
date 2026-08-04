@@ -10,9 +10,9 @@ describe("Zine issue planner", () => {
     const artifact = normalizeZineArtifact(makeLegacyZineMetadata());
     const plan = artifact.issuePlan!;
 
-    expect(plan.schemaVersion).toBe(1);
-    expect(plan.pages[0].sectionType).toBe("cover");
-    expect(plan.pages.at(-1)?.sectionType).toBe("colophon");
+    expect(artifact.issuePlan!.pages.length).toBeLessThanOrEqual(6);
+    expect(artifact.issuePlan!.pages[0].sectionType).toBe("cover");
+    expect(artifact.issuePlan!.pages.at(-1)?.sectionType).toBe("colophon");
     expect(plan.pages.every((page) => page.earnsExistenceBy.length > 0)).toBe(
       true,
     );

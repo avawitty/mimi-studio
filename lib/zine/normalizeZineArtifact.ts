@@ -297,8 +297,9 @@ export function normalizeZineArtifact(
       revision,
     };
   const issuePlan =
-    hydrated.issuePlan ||
-    buildZineIssuePlan({
+    hydrated.issuePlan && hydrated.issuePlan.compression
+      ? hydrated.issuePlan
+      : buildZineIssuePlan({
       artifactId: hydrated.id,
       revision,
       title: hydrated.title || hydrated.content.title || "Untitled",

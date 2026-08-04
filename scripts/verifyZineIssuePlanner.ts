@@ -9,6 +9,9 @@ const artifact = normalizeZineArtifact(makeLegacyZineMetadata());
 const plan = artifact.issuePlan!;
 const proofSequence = buildZineProofSequence(artifact);
 
+assert.ok(plan.compression);
+assert.ok(plan.compression.removedPageIds.length > 0);
+assert.ok(plan.pages.length <= 6);
 assert.equal(plan.pages[0].sectionType, "cover");
 assert.equal(plan.pages.at(-1)?.sectionType, "colophon");
 assert.equal(proofSequence.length, plan.pages.length);

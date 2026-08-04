@@ -948,7 +948,27 @@ export interface ZineIssuePlan {
   pages: ZinePagePlan[];
   rhythm: IssueRhythm;
   evaluation: ZinePlanEvaluation;
+  compression?: ZinePlanCompressionResult;
   createdAt: number;
+}
+
+export type ZinePlanCompressionAction =
+  | "removed"
+  | "merged"
+  | "converted"
+  | "kept";
+
+export interface ZinePlanCompressionDecision {
+  action: ZinePlanCompressionAction;
+  pageId: string;
+  rationale: string;
+  mergedIntoPageId?: string;
+}
+
+export interface ZinePlanCompressionResult {
+  decisions: ZinePlanCompressionDecision[];
+  removedPageIds: string[];
+  mergedPageIds: string[];
 }
 
 export interface ZinePageSpec {

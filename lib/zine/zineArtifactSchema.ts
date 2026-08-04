@@ -278,6 +278,20 @@ export const mimiZineArtifactSchema = z.object({
         ),
       }),
       createdAt: z.number(),
+      compression: z
+        .object({
+          decisions: z.array(
+            z.object({
+              action: z.enum(["removed", "merged", "converted", "kept"]),
+              pageId: z.string(),
+              rationale: z.string(),
+              mergedIntoPageId: z.string().optional(),
+            }),
+          ),
+          removedPageIds: z.array(z.string()),
+          mergedPageIds: z.array(z.string()),
+        })
+        .optional(),
     })
     .optional(),
   pages: z.array(zinePageSpecSchema),

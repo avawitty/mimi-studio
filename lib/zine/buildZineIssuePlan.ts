@@ -14,6 +14,7 @@ import type {
   ZineSourcePacket,
 } from "../../types";
 import { grammarForSection, stableZinePageId } from "./zineIssuePlanner";
+import { compressZineIssuePlan } from "./compressZineIssuePlan";
 import { evaluateZineIssuePlan } from "./evaluateZineIssuePlan";
 
 export const ZINE_ISSUE_PLAN_SCHEMA_VERSION = 1 as const;
@@ -94,8 +95,8 @@ function assignAuthoredSection(
   if (page.sectionType) return page.sectionType;
   if (page.pageType === "thread_timeline") return "evidence";
   if (page.sourceIds?.length && index % 2 === 1) return "evidence";
-  if (index === total - 1 && total > 2) return "interlude";
-  if (index === Math.floor(total / 2) && total >= 4) return "essay";
+  if (index === total - 1 && total > 4) return "interlude";
+  if (index === Math.floor(total / 2) && total >= 6) return "essay";
   return "visual-plate";
 }
 
@@ -461,8 +462,10 @@ export function buildZineIssuePlan(input: BuildZineIssuePlanInput): ZineIssuePla
     createdAt: input.createdAt || Date.now(),
   };
 
-  draft.evaluation = evaluateZineIssuePlan(draft);
-  return draft;
+  const compressed = compressZineIssuePlan(draft);
+  compressed.rhythm = rhythmFromPages(compressed.pages);
+  compressed.evaluation = evaluateZineIssuePlan(compressed);
+  return compressed;
 }
 
 export function buildZineIssuePlanFromArtifact(

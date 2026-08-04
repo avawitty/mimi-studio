@@ -261,6 +261,17 @@ export function ZineProofMode({
                     Open: {artifact.issuePlan.unresolvedQuestion}
                   </p>
                 ) : null}
+                {artifact.issuePlan.compression ? (
+                  <p className="mt-2 font-sans text-[10px] leading-relaxed text-[var(--mimi-stone,#78716c)]">
+                    Compression removed {artifact.issuePlan.compression.removedPageIds.length}{" "}
+                    beat
+                    {artifact.issuePlan.compression.removedPageIds.length === 1 ? "" : "s"}
+                    {artifact.issuePlan.compression.mergedPageIds.length > 0
+                      ? ` and merged ${artifact.issuePlan.compression.mergedPageIds.length}`
+                      : ""}
+                    .
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
