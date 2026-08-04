@@ -131,7 +131,7 @@
 ```bash
 npm run validate:canon
 npm run verify:used-context
-npm run verify:collective-intelligence   # if present in package.json
+npm run verify:collective
 npm run verify:residue
 npm run review:mobile                    # dev server on :3000
 npm run build
