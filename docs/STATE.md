@@ -122,6 +122,7 @@
 2. **Identity loop handoffs** — Dolls ↔ Rip ↔ Tailor CTAs incomplete; Rip reads first doll only.
 3. **Demonstration labeling** — Collective modules label demos; commerce mock catalog does not yet say "demonstration".
 4. **Font stack drift** — Shell uses Geist Variable; house style names DM Sans — converge on tokens in new UI.
+5. **Research instrumentation** — `?research=1` + optional `?task=` enables session event logger (`research_sessions` Firestore + local JSON export); no dashboard.
 5. **Server-visible HTML** — Only `/s/:zineId` has rich injection today; new public routes must follow the same Express pattern (see `.cursor/rules/mimi-context.mdc`).
 
 ---
