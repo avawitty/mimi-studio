@@ -1,7 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { deriveArtifactReleaseReadiness } from "../lib/publisher/releaseReadiness";
 import { makeLegacyZineMetadata } from "./fixtures/zineMetadata";
-import type { ShopifyPackInspection } from "../services/shopifyExportService";
+import type { ShopifyPackInspection, ShopifyProductDraft } from "../services/shopifyExportService";
+
+function minimalShopifyProduct(): ShopifyProductDraft {
+  return {
+    handle: "test-product",
+    title: "Test Product",
+    bodyHtml: "<p>Test</p>",
+    vendor: "Mimi",
+    productType: "Editorial",
+    tags: [],
+    imageUrls: [],
+    seoTitle: "Test Product",
+    seoDescription: "Test",
+    price: "10",
+    requiresShipping: false,
+    taxable: false,
+    status: "draft",
+    jsonLd: {},
+    provenance: {
+      source: "mimi-zine",
+      artifactId: "zine_legacy_1",
+      fragmentsUsed: [],
+      usedContextSnapshots: [],
+    },
+  };
+}
 
 describe("release readiness derivation", () => {
   it("puts artifact identity and readiness in the first-class result", () => {
@@ -81,17 +106,7 @@ describe("release readiness derivation", () => {
           detail: "Second image missing alt text",
         },
       ],
-      product: {
-        title: "Test Product",
-        price: "10",
-        imageUrls: [],
-        provenance: {
-          source: "mimi-zine",
-          artifactId: "zine_legacy_1",
-          fragmentsUsed: [],
-          usedContextSnapshots: [],
-        },
-      },
+      product: minimalShopifyProduct(),
     };
 
     const readiness = deriveArtifactReleaseReadiness(makeLegacyZineMetadata(), {
