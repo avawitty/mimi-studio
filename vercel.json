@@ -113,7 +113,7 @@
       "destination": "/api/og/zine?id=:id"
     },
     {
-      "source": "/((?!api/|assets/|\\.well-known/)(?!.*\\.(txt|xml|json|ico|png|svg|webmanifest)$).*)",
+      "source": "/((?!api/|assets/|\\.well-known/).*)",
       "destination": "/index.html"
     }
   ]
