@@ -7,7 +7,7 @@
     "dev": "tsx server.ts",
     "mcp": "tsx mcp/server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "build:vercel": "vite build",
+    "build:vercel": "tsx scripts/generateSitemap.ts && vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "validate:canon": "tsx scripts/validateCanonRoutes.ts",

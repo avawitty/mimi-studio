@@ -11,10 +11,10 @@
       "maxDuration": 60
     },
     "api/health.ts": {
-      "maxDuration": 15
+      "maxDuration": 30
     },
     "api/sovereign/status.ts": {
-      "maxDuration": 15
+      "maxDuration": 30
     },
     "api/sovereign/community.ts": {
       "maxDuration": 30
@@ -31,14 +31,8 @@
     "api/sovereign/events.ts": {
       "maxDuration": 60
     },
-    "api/sovereign/status.ts": {
-      "maxDuration": 30
-    },
     "api/sovereign/ping.ts": {
       "maxDuration": 10
-    },
-    "api/health.ts": {
-      "maxDuration": 30
     }
   },
   "redirects": [
@@ -119,7 +113,7 @@
       "destination": "/api/og/zine?id=:id"
     },
     {
-      "source": "/((?!api/|assets/|\\.well-known/).*)",
+      "source": "/((?!api/|assets/|\\.well-known/|.*\\.(?:txt|xml|json|ico|png|svg|webmanifest)$).*)",
       "destination": "/index.html"
     }
   ]
