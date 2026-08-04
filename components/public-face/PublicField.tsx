@@ -24,7 +24,7 @@ export const PublicField: React.FC<PublicFieldProps> = ({
           className="pointer-events-none absolute inset-0 mimi-public-grain opacity-[0.08] mix-blend-multiply"
         />
       )}
-      <div className="relative z-[1] h-full">{children}</div>
+      <div className="relative z-[1] min-h-full">{children}</div>
     </div>
   );
 };

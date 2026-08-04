@@ -15,7 +15,7 @@ import { PressReveal } from './motion/PressReveal';
 import { getApprovedUsedContext } from '../services/usedContextService';
 
 const SignatureSkeleton = () => (
- <div className="flex-1 overflow-y-auto bg dark:bg text-nous-text font-serif pb-20 md:pb-28 custom-scrollbar">
+ <div className="w-full min-h-full bg dark:bg text-nous-text font-serif pb-20 md:pb-28">
  <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-16 animate-pulse">
  
  {/* Header Skeleton */}
@@ -248,7 +248,7 @@ export const SignatureView: React.FC = () => {
  }
 
  return (
- <PublicField className="flex-1 overflow-y-auto font-serif selection:bg-black/5 pb-16 md:pb-24 custom-scrollbar">
+ <PublicField className="w-full min-h-full font-serif selection:bg-black/5 pb-16 md:pb-24">
  <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-12 md:space-y-16">
  
  <PressReveal>

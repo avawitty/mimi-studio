@@ -5,6 +5,7 @@ import {
   getFaceKind,
   isDarkPlateMode,
   isPublicFaceMode,
+  isPublicEditorialFlowMode,
   mainShellClassName,
 } from "../lib/chamberChrome";
 
@@ -30,6 +31,9 @@ describe("chamberChrome", () => {
     expect(isPublicFaceMode("editorial-home")).toBe(true);
     expect(isPublicFaceMode("scry")).toBe(true);
     expect(isPublicFaceMode("studio")).toBe(false);
+    expect(isPublicEditorialFlowMode("stand")).toBe(true);
+    expect(isPublicEditorialFlowMode("proscenium")).toBe(true);
+    expect(isPublicEditorialFlowMode("studio")).toBe(false);
     expect(isDarkPlateMode("mimi-rip")).toBe(true);
     expect(isDarkPlateMode("stand")).toBe(false);
     expect(chromeDataAttr("scry")).toBe("public-face-dark");

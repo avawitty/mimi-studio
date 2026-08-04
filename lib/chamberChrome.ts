@@ -19,6 +19,19 @@ export type FaceKind = "public" | "public-dark" | "worktable" | "void";
 /** Quiet public plates — Menu + identity only (no pocket/oracle chrome) */
 export const PUBLIC_FACE_MODES = [...DESIGN_PUBLIC_FACE_MODES] as const;
 
+/**
+ * Public editorial plates whose scroll is owned by `<main>` — child routes must
+ * flow at natural height (no nested overflow-y-auto on PublicField shells).
+ */
+export const PUBLIC_EDITORIAL_FLOW_MODES = [
+  "editorial-home",
+  "stand",
+  "signature",
+  "proscenium",
+  "showcase",
+  "archival",
+] as const;
+
 /** Forced-dark public plates — chrome must match (no light-over-dark seam) */
 export const DARK_PLATE_MODES = [...DESIGN_DARK_PLATE_MODES] as const;
 
@@ -26,6 +39,7 @@ export const DARK_PLATE_MODES = [...DESIGN_DARK_PLATE_MODES] as const;
 export const WORKTABLE_OVERFLOW_MODES = [...WORKTABLE_MODES] as const;
 
 const PUBLIC_FACE_SET = new Set<string>(PUBLIC_FACE_MODES);
+const PUBLIC_EDITORIAL_FLOW_SET = new Set<string>(PUBLIC_EDITORIAL_FLOW_MODES);
 const DARK_PLATE_SET = new Set<string>(DARK_PLATE_MODES);
 const WORKTABLE_OVERFLOW_SET = new Set<string>(WORKTABLE_OVERFLOW_MODES);
 
@@ -35,6 +49,10 @@ export function getChamberFamily(mode: string): ChamberFamily {
 
 export function isPublicFaceMode(mode: string): boolean {
   return PUBLIC_FACE_SET.has(mode);
+}
+
+export function isPublicEditorialFlowMode(mode: string): boolean {
+  return PUBLIC_EDITORIAL_FLOW_SET.has(mode);
 }
 
 export function isDarkPlateMode(mode: string): boolean {
