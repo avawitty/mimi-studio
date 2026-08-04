@@ -135,13 +135,13 @@ export const TailorHub: React.FC<TailorHubProps> = ({
             onOverridesConsumed={onOverridesConsumed}
           />
         )}
-        {mode === 'dossier' && (
+        {!isSimulatedMode && mode === 'dossier' && (
           <EvidenceDossierFlow
             onExit={() => selectPanel('blueprint')}
             navigate={navigate}
           />
         )}
-        {mode === 'intake' && (
+        {!isSimulatedMode && mode === 'intake' && (
           isSignedIn ? (
             <TailorProjectFlow
               initialProject={resumeProject ?? undefined}
@@ -187,8 +187,8 @@ export const TailorHub: React.FC<TailorHubProps> = ({
             </div>
           )
         )}
-        {mode === 'style-lab' && <ArtStyleChamber />}
-        {mode === 'diagnostics' && <AestheticIntelligenceChamber />}
+        {!isSimulatedMode && mode === 'style-lab' && <ArtStyleChamber />}
+        {!isSimulatedMode && mode === 'diagnostics' && <AestheticIntelligenceChamber />}
         {isSimulatedMode && mode !== 'blueprint' && (
           <div className="flex h-full min-h-0 items-center justify-center px-6 py-12">
             <div className="w-full max-w-xl text-center">
