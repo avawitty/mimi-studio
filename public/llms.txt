@@ -57,6 +57,9 @@ by default; content is only public when a creator explicitly publishes it.
 - https://www.mimi.you/zine/:id — canonical URL for a single published piece
   when accessed on the main domain; the same content mirrors at the mimi.fish
   share URL above.
+- https://www.mimi.you/taste-corpus — a two-dimensional map of taste specimens
+  (CLIP embeddings projected offline); includes a crawlable index of specimen
+  titles and links for search engines.
 - https://www.mimi.you/privacy and https://www.mimi.you/tos — privacy policy
   and terms of service.
 
