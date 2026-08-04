@@ -6,6 +6,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
 ## 2026-08-04 — Publisher Console artifact-first release desk
 
 **Decision:** Restructure The Press around **Release** (artifact readiness, destinations, approvals) and **Performance** (post-publication metrics only when connected). Derive readiness deterministically from proof diagnostics, export manifest, Intel handoff, and Shopify pack inspection — no simulated reach/revenue/deliverability cards.
@@ -18,7 +20,19 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-**Decision:** Firebase Auth owns identity. Firestore owns private canonical state (Memory Atoms, Context Runs, Tailor/Shadow records, billing mirrors). Sovereign owns **public publication projections** (Floor, Mine shelf, feeds, OG, hybrid search, Pocket mirrors). IndexedDB holds ghost/anonymous working sets.
+## 2026-08-04 — Taste Corpus embedding explorer (offline CLIP + UMAP)
+
+**Decision:** Ship a public `/taste-corpus` route that loads precomputed 2D coordinates from `public/data/embeddings.json`. CLIP inference and UMAP (`n_neighbors=15`, `min_dist=0.1`) run only in `scripts/embed.ts` (dev/CI). Client renders SVG for ≤1500 points, canvas above that. Server injects an `sr-only` `<ul>` of specimen titles/links into HTML for crawlers; canvas is `aria-hidden`.
+
+**Alternatives rejected:** (1) Client-side CLIP/UMAP in the browser. (2) Canvas-only with no crawlable fallback. (3) Per-user shadow-memory map as v1 (requires auth + Firestore reads).
+
+**Why:** Keeps inference off the client and off request path; preserves indexability despite canvas; separates vector-free public artifact from title/href index for SEO and click-through.
+
+**Ref:** `scripts/embed.ts`, `components/taste-corpus/`, `lib/taste-corpus/serverInject.ts`
+
+---
+
+## 2026-08-02 — Data plane ownership (Firebase vs Sovereign vs IndexedDB)
 
 **Alternatives rejected:** (1) Sovereign as full application store replacing Firestore. (2) Firestore for all public Floor reads indefinitely.
 

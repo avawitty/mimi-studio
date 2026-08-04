@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "specimen-brutalist-concrete",
+      "title": "Industrial raw concrete",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-lab-telemetry",
+      "title": "Sterile lab telemetry",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-silk-motion",
+      "title": "Ethereal silk motion",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-parchment-colophon",
+      "title": "Antiquated parchment colophon",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-neon-glitch",
+      "title": "High-frequency neon glitch",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-editorial-fold",
+      "title": "Editorial fold and grain",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-olive-stone",
+      "title": "Olive stone still life",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-darkroom-tray",
+      "title": "Darkroom tray chemistry",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-manila-tab",
+      "title": "Manila dossier tab",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1586281380349-632531db7ed4?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-vinyl-texture",
+      "title": "Gloss vinyl texture",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-lace-veil",
+      "title": "Chantilly lace veil",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-porcelain-sheen",
+      "title": "Porcelain skin sheen",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1581044777550-4cfa60707c03?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-cobalt-mist",
+      "title": "Cobalt mist atmosphere",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-newsprint-stack",
+      "title": "Newsprint stack",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-specimen-pin",
+      "title": "Specimen pin board",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-thread-spool",
+      "title": "Thread spool archive",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-type-case",
+      "title": "Letterpress type case",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-wax-seal",
+      "title": "Wax seal correspondence",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1578662996442-48f60103fc96?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-film-strip",
+      "title": "35mm film strip",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=400&auto=format&fit=crop",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-terra-cotta",
+      "title": "Terracotta vessel study",
+      "thumbnailUrl": "https://picsum.photos/seed/terracotta-vessel/400/400",
+      "href": "/showcase"
+    }
+  ]
+}

@@ -21,6 +21,7 @@ import createCheckoutSessionHandler from "./api/create-checkout-session";
 import createBillingPortalSessionHandler from "./api/create-billing-portal-session";
 import applyPromoHandler from "./api/apply-promo";
 import stripeWebhookHandler from "./api/stripe-webhook";
+import { injectTasteCorpusPageHtml } from "./lib/taste-corpus/serverInject.js";
 import {
   embedGeminiContentViaGateway,
   generateGeminiContentViaGateway,
@@ -1949,6 +1950,38 @@ async function startServer() {
         res.sendFile(path.join(process.cwd(), 'index.html'));
       } else {
         res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+      }
+    }
+  });
+
+  app.get("/taste-corpus", async (req, res) => {
+    try {
+      let htmlPath = "";
+      if (process.env.NODE_ENV !== "production" && viteAvailable) {
+        htmlPath = path.join(process.cwd(), "index.html");
+      } else {
+        htmlPath = path.join(process.cwd(), "dist", "index.html");
+      }
+
+      if (!fs.existsSync(htmlPath)) {
+        return res.status(404).send("Index template not found");
+      }
+
+      let html = fs.readFileSync(htmlPath, "utf8");
+      const pageUrl = `https://${req.get("host")}/taste-corpus`;
+      html = injectTasteCorpusPageHtml(html, pageUrl, process.cwd());
+
+      if (process.env.NODE_ENV !== "production" && viteInstance) {
+        html = await viteInstance.transformIndexHtml(req.originalUrl, html);
+      }
+
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    } catch (err: unknown) {
+      console.error("MIMI // Error generating taste corpus SEO:", err);
+      if (process.env.NODE_ENV !== "production" && viteAvailable) {
+        res.sendFile(path.join(process.cwd(), "index.html"));
+      } else {
+        res.sendFile(path.join(process.cwd(), "dist", "index.html"));
       }
     }
   });

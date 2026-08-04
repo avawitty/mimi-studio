@@ -10,12 +10,6 @@
     "api/residue-acquire.ts": {
       "maxDuration": 60
     },
-    "api/health.ts": {
-      "maxDuration": 30
-    },
-    "api/sovereign/status.ts": {
-      "maxDuration": 30
-    },
     "api/sovereign/community.ts": {
       "maxDuration": 30
     },
@@ -31,8 +25,14 @@
     "api/sovereign/events.ts": {
       "maxDuration": 60
     },
+    "api/sovereign/status.ts": {
+      "maxDuration": 30
+    },
     "api/sovereign/ping.ts": {
       "maxDuration": 10
+    },
+    "api/health.ts": {
+      "maxDuration": 30
     },
     "api/maintenance/credit-reservations.ts": {
       "maxDuration": 30

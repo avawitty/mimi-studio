@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "specimen-brutalist-concrete",
+      "title": "Industrial raw concrete",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-lab-telemetry",
+      "title": "Sterile lab telemetry",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-silk-motion",
+      "title": "Ethereal silk motion",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-parchment-colophon",
+      "title": "Antiquated parchment colophon",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-neon-glitch",
+      "title": "High-frequency neon glitch",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-editorial-fold",
+      "title": "Editorial fold and grain",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-olive-stone",
+      "title": "Olive stone still life",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-darkroom-tray",
+      "title": "Darkroom tray chemistry",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-manila-tab",
+      "title": "Manila dossier tab",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-vinyl-texture",
+      "title": "Gloss vinyl texture",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-lace-veil",
+      "title": "Chantilly lace veil",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-porcelain-sheen",
+      "title": "Porcelain skin sheen",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-cobalt-mist",
+      "title": "Cobalt mist atmosphere",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-newsprint-stack",
+      "title": "Newsprint stack",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-specimen-pin",
+      "title": "Specimen pin board",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-thread-spool",
+      "title": "Thread spool archive",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-type-case",
+      "title": "Letterpress type case",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-wax-seal",
+      "title": "Wax seal correspondence",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-film-strip",
+      "title": "35mm film strip",
+      "href": "/showcase"
+    },
+    {
+      "id": "specimen-terra-cotta",
+      "title": "Terracotta vessel study",
+      "href": "/showcase"
+    }
+  ]
+}

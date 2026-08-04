@@ -85,6 +85,7 @@
 | **Gateway entitlements** | shipped | Stripe + promo paths | — |
 | **Serverless lazy graphs** | shipped | CI: `verify:api-lazy-graphs` | — |
 | **Data plane ownership map** | shipped | Stand vs Floor vs Mine distinctions still debated | Document in sovereign-archive when resolved |
+| **Taste Corpus explorer** | `/taste-corpus` | shipped | Demonstration seed manifest (20 specimens) | Wire `--from-sovereign` export; expand corpus from Floor covers |
 
 ---
 
