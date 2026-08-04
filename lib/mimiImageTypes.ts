@@ -33,7 +33,17 @@ export interface MimiImageRequest {
   styleGuide?: string;
   negativePrompt?: string;
   allowFaces?: boolean;
+  /** Batch contact-sheet generation (e.g. 4 variants in one API call). */
+  variantCount?: number;
   metadata?: Record<string, unknown>;
+}
+
+export interface MimiImageVariantResult {
+  imageUrl: string;
+  seed: string;
+  prompt: string;
+  mimeType: string;
+  base64?: string;
 }
 
 export interface MimiImageResponse {
@@ -46,6 +56,8 @@ export interface MimiImageResponse {
   compiledPrompt: string;
   warnings: string[];
   metadata?: Record<string, unknown>;
+  /** Present when variantCount > 1 — contact-sheet batch. */
+  variants?: MimiImageVariantResult[];
 }
 
 export const DEFAULT_MIMI_IMAGE_MODEL = "imagen-3.0-generate-002";

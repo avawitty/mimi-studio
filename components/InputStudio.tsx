@@ -91,7 +91,7 @@ import type { StudioCoverOverlayLayer } from "./studio/studioCoverTypes";
 import { ShapeBriefReview } from "./studio/ShapeBriefReview";
 import type { ShapedBriefResult } from "./studio/ShapeBriefReview";
 import {
-  generateStudioCover,
+  generateStudioCoverContactSheet,
   mediaFileToImageReference,
 } from "../services/studioCoverService";
 import type { StudioCoverProvider } from "../services/studioCoverService";
@@ -120,6 +120,18 @@ import { StudioDollToggle } from "./StudioDollToggle";
 import { PearlButton } from "./ui/PearlButton";
 import { dispatchStudioAlert } from "../lib/studioAlert";
 import { UsedContextColophon } from "./provenance/UsedContextColophon";
+import { CoverContactStrip } from "./studio/CoverContactStrip";
+import {
+  compileCoverPromptFromSignals,
+  mergeContactSheetBatch,
+  parseStoredCoverVariants,
+  persistCoverVariants,
+  promoteCoverVariant,
+  selectedCoverVariant,
+  stripVariants,
+  STUDIO_COVER_DRAFT_KEY,
+} from "../lib/studioCoverVariants";
+import type { ZineCoverVariant } from "../types";
 import { useUrlIngest } from "../hooks/useUrlIngest";
 import { useMediaUpload } from "../hooks/useMediaUpload";
 
@@ -562,6 +574,9 @@ export const InputStudio: React.FC<{
   const [isDraggingOverSlot, setIsDraggingOverSlot] = useState<boolean>(false);
   const [isComposingCover, setIsComposingCover] = useState(false);
   const [composeCoverError, setComposeCoverError] = useState<string | null>(null);
+  const [coverVariants, setCoverVariants] = useState<ZineCoverVariant[]>(() =>
+    parseStoredCoverVariants(localStorage.getItem(STUDIO_COVER_DRAFT_KEY)),
+  );
   const [showImageApiKeyInfo, setShowImageApiKeyInfo] = useState(false);
   const [coverProvider, setCoverProvider] = useState<StudioCoverProvider>(() => {
     const stored = localStorage.getItem("mimi_cover_provider");
@@ -1226,6 +1241,7 @@ ${finalInput}`;
       dollImageReferences: studioDoll.enabled ? studioDoll.imageReferences : [],
       studioCoverUrl: coverExport.coverImageUrl,
       studioCoverOverlays: coverExport.studioCoverOverlays,
+      studioCoverVariants: coverVariants.length > 0 ? coverVariants : undefined,
       lineage: linkedZineIds,
       zineOptions: {
         ...zineOptions,
@@ -1263,39 +1279,44 @@ ${finalInput}`;
     studioDoll.enabled,
     coverOverlay,
     coverOverlayLayers,
+    coverVariants,
     mediaFiles,
     linkedZineIds,
     recentZines,
   ]);
 
   const handleComposeCover = useCallback(async () => {
+    const approvedContext = getApprovedUsedContext("studio", currentUser?.uid);
+    if (approvedContext.length === 0) {
+      setComposeCoverError("No approved context — Mimi will not invent sources.");
+      return;
+    }
+
     setIsComposingCover(true);
     setComposeCoverError(null);
     playClick();
     try {
-      // Compile prompt from progressive fields if provided
-      let prompt = "";
-      const parts = [];
-      if (coverSubject) parts.push(`Subject: ${coverSubject}`);
-      if (coverComposition) parts.push(`Composition: ${coverComposition}`);
-      if (coverMood) parts.push(`Mood: ${coverMood}`);
-      if (coverAvoid) parts.push(`Avoid: ${coverAvoid}`);
+      const prompt = compileCoverPromptFromSignals({
+        title,
+        input,
+        leftPrompt,
+        coverSubject,
+        coverComposition,
+        coverMood,
+        coverAvoid,
+        activeTags,
+        treatmentLabel: getTreatmentLabel(activeTreatmentId, profile?.savedTreatments),
+        approvedContext,
+      });
 
-      if (parts.length > 0) {
-        prompt = parts.join(" ○ ");
-      } else {
-        prompt =
-          leftPrompt.trim() ||
-          title?.trim() ||
-          input.trim().slice(0, 320) ||
-          "Editorial zine cover plate with cinematic composition and title-safe negative space";
-      }
+      const userUploadedRef = mediaFiles.find(
+        (m) => m.name !== "composed-cover" && m.type === "image",
+      );
+      const reference = userUploadedRef
+        ? await mediaFileToImageReference(userUploadedRef)
+        : undefined;
 
-      // Find the first user-uploaded reference file (not the generated cover) to use as reference
-      const userUploadedRef = mediaFiles.find((m) => m.name !== "composed-cover" && m.type === "image");
-      const reference = userUploadedRef ? await mediaFileToImageReference(userUploadedRef) : undefined;
-      
-      const result = await generateStudioCover({
+      const result = await generateStudioCoverContactSheet({
         prompt,
         title: title || undefined,
         author: authorName || undefined,
@@ -1313,7 +1334,6 @@ ${finalInput}`;
         tailorContext: useTailorProfile ? profile?.tailorDraft : undefined,
       });
 
-      const imageUrl = result.imageUrl;
       if (result.provider === "simulated") {
         const providerWarning = result.warnings?.find((warning) =>
           warning.toLowerCase().includes("fallback"),
@@ -1323,20 +1343,24 @@ ${finalInput}`;
             "The configured image provider was unavailable, so Mimi created a simulated preview.",
         );
       }
-      
-      setMediaFiles((prev) => {
-        const cleanPrev = prev.filter((item) => item.name !== "composed-cover");
-        return [
-          {
-            type: "image",
-            url: imageUrl,
-            data: imageUrl.startsWith("data:") ? imageUrl : "",
-            mimeType: result.mimeType || "image/png",
-            name: "composed-cover",
-          },
-          ...cleanPrev,
-        ];
-      });
+
+      const batch: ZineCoverVariant[] = (result.variants || []).map((variant) => ({
+        url: variant.imageUrl,
+        seed: variant.seed,
+        prompt: variant.prompt,
+        selected: false,
+      }));
+
+      if (batch.length === 0 && result.imageUrl) {
+        batch.push({
+          url: result.imageUrl,
+          seed: `cov-${Date.now()}-0`,
+          prompt: result.compiledPrompt,
+          selected: false,
+        });
+      }
+
+      setCoverVariants((prev) => mergeContactSheetBatch(prev, batch));
 
       if (leftPrompt.trim()) {
         setLeftPrompt("");
@@ -1350,6 +1374,7 @@ ${finalInput}`;
       setIsComposingCover(false);
     }
   }, [
+    currentUser?.uid,
     activeTreatmentId,
     apiKeys,
     authorName,
@@ -1359,12 +1384,14 @@ ${finalInput}`;
     mediaFiles,
     playClick,
     profile?.tailorDraft,
+    profile?.savedTreatments,
     title,
     useTailorProfile,
     coverSubject,
     coverComposition,
     coverMood,
     coverAvoid,
+    activeTags,
   ]);
 
   const handleBatchDeleteTreatments = async () => {
@@ -1948,6 +1975,74 @@ ${finalInput}`;
       }
     });
   }, [currentUser?.uid]);
+
+  const approvedStudioContext = getApprovedUsedContext("studio", currentUser?.uid);
+
+  const syncComposedCoverMedia = useCallback((url: string) => {
+    setMediaFiles((prev) => {
+      const cleanPrev = prev.filter((item) => item.name !== "composed-cover");
+      return [
+        {
+          type: "image",
+          url,
+          data: url.startsWith("data:") ? url : "",
+          mimeType: "image/png",
+          name: "composed-cover",
+        },
+        ...cleanPrev,
+      ];
+    });
+  }, []);
+
+  useEffect(() => {
+    persistCoverVariants(coverVariants);
+  }, [coverVariants]);
+
+  const coverDraftHydrated = useRef(false);
+  useEffect(() => {
+    if (coverDraftHydrated.current) return;
+    coverDraftHydrated.current = true;
+    const selected = selectedCoverVariant(coverVariants);
+    if (selected?.url) {
+      syncComposedCoverMedia(selected.url);
+    }
+  }, [coverVariants, syncComposedCoverMedia]);
+
+  const handlePromoteCoverVariant = useCallback(
+    (seed: string) => {
+      const mainUrl =
+        mediaFiles.find((m) => m.type === "image" && m.name === "composed-cover")?.url ||
+        mediaFiles.find((m) => m.type === "image")?.url;
+
+      setCoverVariants((prev) => {
+        let working = [...prev];
+        const currentSelected = selectedCoverVariant(working);
+        if (
+          mainUrl &&
+          currentSelected?.url !== mainUrl &&
+          !working.some((c) => c.url === mainUrl)
+        ) {
+          working = [
+            ...working,
+            {
+              url: mainUrl,
+              seed: `retained-${Date.now()}`,
+              prompt: "Previous main frame",
+              selected: false,
+            },
+          ];
+        }
+        const next = promoteCoverVariant(working, seed);
+        const selected = selectedCoverVariant(next);
+        if (selected?.url) {
+          syncComposedCoverMedia(selected.url);
+        }
+        return next;
+      });
+      playClick();
+    },
+    [mediaFiles, playClick, syncComposedCoverMedia],
+  );
 
   useEffect(() => {
     const openUsedContext = () => setActivePanel("orchestrator");
@@ -2856,6 +2951,9 @@ ${finalInput}`;
             <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col p-6 pb-8 md:pr-10">
             <div className="space-y-6">
               {renderStudioPager()}
+              <p className="font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
+                Dev · Darkroom
+              </p>
               {/* Zine Title Input Header */}
               <div>
                 <input
@@ -3199,6 +3297,12 @@ ${finalInput}`;
                       }
                       return (
                         <div className="flex flex-col items-center justify-center text-center p-4 w-full h-full gap-5">
+                          {approvedStudioContext.length === 0 ? (
+                            <p className="font-serif italic text-[11px] text-[var(--mimi-stone,#78716c)] leading-relaxed px-2">
+                              No approved context — Mimi will not invent sources.
+                            </p>
+                          ) : (
+                            <>
                           {/* Upload Cover group */}
                           <div className="flex flex-col items-center justify-center cursor-pointer group/upload">
                             <div className="w-10 h-10 border border-[#FAF9F6]/20 flex items-center justify-center rounded-none group-hover/upload:border-[#FAF9F6]/60 transition-colors mb-2">
@@ -3223,10 +3327,18 @@ ${finalInput}`;
                             <Sparkles size={10} />
                             <span>Generate Preview</span>
                           </button>
+                            </>
+                          )}
                         </div>
                       );
                     })()}
                   </div>
+
+                  <CoverContactStrip
+                    variants={stripVariants(coverVariants)}
+                    onPromote={handlePromoteCoverVariant}
+                    disabled={isComposingCover}
+                  />
 
                   {/* Author / Bottom corner signature */}
                   <div className="mt-3 flex justify-end">
@@ -3477,7 +3589,7 @@ ${finalInput}`;
                   <button
                     id="studio-cover-compose-button"
                     type="button"
-                    disabled={isComposingCover}
+                    disabled={isComposingCover || approvedStudioContext.length === 0}
                     onClick={() => void handleComposeCover()}
                     className="px-4 py-2 bg-stone-950 dark:bg-stone-100 hover:bg-stone-850 dark:hover:bg-white text-stone-100 dark:text-stone-950 hover:text-white dark:hover:text-black font-mono text-[8px] font-extrabold uppercase tracking-widest transition-all shrink-0 disabled:opacity-50 inline-flex items-center gap-1.5 rounded-sm shadow-sm"
                   >

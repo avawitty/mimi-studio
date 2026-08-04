@@ -1,6 +1,6 @@
 import { cors, providerKey, readJsonBody, requireMethod, sendJson } from "../lib/apiUtils.js";
 import { MimiProvider } from "../lib/mimiProvider.js";
-import { generateMimiImageServer } from "../lib/serverMimiImage.js";
+import { generateMimiImageBatchServer, generateMimiImageServer } from "../lib/serverMimiImage.js";
 import { MimiImageProvider } from "../lib/mimiImageTypes.js";
 import { getServerAiGatewayKey } from "../lib/aiGatewayCompat.js";
 
@@ -62,7 +62,13 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const result = await generateMimiImageServer(body, { apiKey, provider });
+    const variantCount = Number(body.variantCount) || 1;
+    const generate =
+      variantCount > 1 ? generateMimiImageBatchServer : generateMimiImageServer;
+    const result = await generate(
+      variantCount > 1 ? { ...body, variantCount } : body,
+      { apiKey, provider },
+    );
     return sendJson(res, 200, result);
   } catch (error: any) {
     const raw = error?.message || String(error);
