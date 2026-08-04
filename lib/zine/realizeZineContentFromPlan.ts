@@ -108,7 +108,7 @@ export function buildPlanInputFromZineContent(
     content.vocal_summary_blurb ||
     "";
   const sourcePacket: ZineSourcePacket = {
-    originalInput: originalInput || content.meta?.originalInput,
+    originalInput,
     fragmentIds: [...new Set(fragmentIds || [])],
     usedContextSnapshots: usedContextSnapshots || [],
     attachedAssets: input.attachedAssets || [],
@@ -166,6 +166,7 @@ export function buildPlanInputFromZineContent(
     title: content.title || "Untitled",
     overlays: [],
     treatment: coverTreatment(content),
+    overlayBaked: false,
   };
 
   return {
