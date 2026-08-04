@@ -22,6 +22,11 @@ starts everything on one port.
   vars include `GEMINI_API_KEY` / `AI_GATEWAY_API_KEY` / `OPENAI_API_KEY` (enable server
   AI), `STRIPE_SECRET_KEY`, and the `FIREBASE_*` client vars (inlined at build time via
   `vite.config.ts` `define`). Never commit secrets.
+- **Cursor Cloud Agents:** add `AI_GATEWAY_API_KEY` in the [Cloud Agents → Secrets](https://cursor.com/dashboard/cloud-agents)
+  tab (not in `environment.json` — that file is committed). The install script runs
+  `npm run sync:cloud-env`, which copies injected secrets into git-ignored `.env.local`
+  so `npm run dev` and verify scripts see the same keys. Alias `AI_GATEWAY_KEY` is also
+  accepted. Re-run `npm run sync:cloud-env` after rotating secrets.
 
 ### AI Gateway models
 - When calling Vercel AI Gateway for **text, image, audio (TTS), video, or embeddings**,
@@ -34,6 +39,22 @@ starts everything on one port.
   Gemini proxy also remaps `embedContent` through `embedGeminiContentViaGateway`.
 - Re-verify IDs against `https://ai-gateway.vercel.sh/v1/models` when bumping
   `GATEWAY_DEFAULT_MODELS`.
+
+### Canonical database
+- Neon Postgres is the canonical relational database. Firebase remains the Mimi
+  authentication provider; do not add Neon Auth or Supabase Auth.
+- Use Drizzle schema/migrations and `@neondatabase/serverless`. Ordinary
+  serverless reads use HTTP; interactive transactions and row locks use the
+  pooled WebSocket client.
+- Database-neutral repository interfaces live under `domain/`. Neon/Drizzle
+  implementations belong only under `infrastructure/database/neon/`.
+- Credits, grants, reservations, commits, releases, memberships, Stripe event
+  reconciliation, and memory approvals are server-only transactional
+  repository operations.
+- React chambers must never connect to Neon directly. Images, uploads,
+  generated plates, video, and large exports use separate object storage.
+- Do not introduce Supabase SDKs, RPCs, Storage, service-role assumptions, or
+  client-authoritative billing state.
 
 ### Tests
 - E2E is Playwright (`npm run test:e2e`). The Playwright config auto-starts `npm run dev`

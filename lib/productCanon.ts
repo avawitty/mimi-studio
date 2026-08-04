@@ -248,25 +248,30 @@ export const CANON_MODULES: CanonModule[] = [
   },
   {
     id: "studio",
-    name: "Studio / Worktable",
+    name: "Studio",
     layer: "chamber",
     engine: "Orchestration Engine",
     priority: 8,
     status: "live",
     canonicalRoute: "/studio",
     implementedMode: "studio",
-    component: "StudioWorktable",
-    aliases: ["Worktable", "Studio"],
-    inputs: ["prompt text", "media references", "Tailor logic", "Pocket/Mood Board/Darkroom artifacts", "zine options"],
+    component: "StudioOrientationEntry",
+    aliases: ["Orientation", "Intake", "Studio"],
+    inputs: ["prompt text", "media references", "approved context when present"],
     generations: ["provider routing", "prompt optimization", "Tailor-aware context synthesis", "asset injection"],
     outputs: ["mini zines", "creative roadmaps", "image prompts", "content briefs", "instruction packets"],
-    userFlow: "Start in Studio, combine fragments and references, and receive a structured creative artifact you can save or export.",
-    family: "production",
+    userFlow:
+      "Land on a calm orientation screen, compose in one multimodal field, begin with a single primary action. The archival StudioWorktable desk is migration-only at /studio/worktable-legacy.",
+    notes:
+      "Do not mount StudioWorktable at /studio. Legacy desk: /studio/worktable-legacy.",
+    family: "orientation",
     phase: "compose",
     visibility: "primary",
+    // Keep worktable atmosphere so the App main shell stays full-bleed;
+    // the archival desk itself is not mounted at /studio.
     atmosphere: ["paper", "worktable"],
     primaryAction: {
-      label: "Compose on the Worktable",
+      label: "Begin with this",
       intent: { type: "compose" },
     },
     suggestedNext: {
@@ -590,7 +595,7 @@ export const CANON_MODULES: CanonModule[] = [
     inputs: ["published zines", "local archive", "community floor", "Sovereign archive projections"],
     generations: ["cover grid", "issue filtering", "comment threads", "hybrid Floor search"],
     outputs: ["personal showcase", "floor feed", "profile seed"],
-    userFlow: "Browse your published issues and the community Floor without leaving the Stand.",
+    userFlow: "Browse your published archive and the consented public Floor — discovery after Press, not a recommendation feed.",
     notes:
       "When Sovereign is ready, Floor/Mine prefer owned archive + SSE over Firestore listeners. Stand vs Floor vs Mine vs Press ownership distinction remains an open canon question.",
     family: "publishing",
@@ -695,8 +700,8 @@ export const CANON_MODULES: CanonModule[] = [
     },
     suggestedNext: {
       mode: "forecast",
-      label: "Project the directional drift",
-      reason: "Geographic context can qualify, not replace, a forecast.",
+      label: "Hand off labeled geographic signals",
+      reason: "Geographic variation travels with evidence — no invented drift scores.",
     },
     visualPacket: "geographic-plate",
   },
@@ -1071,7 +1076,7 @@ export const CANON_MODULES: CanonModule[] = [
       "absorb / refract handoffs to Studio",
     ],
     userFlow:
-      "Enter the Stage to witness transmissions, open Correspondents for follows and connections, or manage invite-only Cliques — all under one arch.",
+      "Witness published transmissions, open Correspondents for follows and connections, or manage invite-only Cliques — circulation after The Press, with explicit consent.",
     notes:
       "Legacy /connections and /cliques redirect to /proscenium/correspondents and /proscenium/cliques. Local Echoes are demonstration specimens only.",
     family: "publishing",
@@ -1329,11 +1334,27 @@ export interface CanonInfrastructure {
 export const CANON_INFRASTRUCTURE: CanonInfrastructure[] = [
   {
     id: "sovereign-data-plane",
-    name: "Sovereign Data Plane",
+    name: "Legacy Sovereign Data Plane",
     status: "hardening",
-    purpose: "Owned publication, discovery, and resilience persistence independent of Firestore quota",
+    purpose: "Compatibility publication/discovery reads while records migrate to canonical Neon repositories",
     owns: ["public zines", "profiles", "Pocket mirrors", "search projections", "SSE sync", "import/export"],
-    notes: "SQLite local/durable-host; Neon Postgres preferred on Vercel. Firebase remains identity + selected compatibility state.",
+    notes: "No new billing, credit, workflow, AI-run, proposal, or atom writes. See ADR 001.",
+  },
+  {
+    id: "neon-operational-database",
+    name: "Neon Operational Database",
+    status: "hardening",
+    purpose: "Canonical relational state behind database-neutral server repositories",
+    owns: [
+      "memberships",
+      "entitlements",
+      "credit ledger and reservations",
+      "workflow and AI runs",
+      "memory proposals and atoms",
+      "provenance",
+      "Stripe reconciliation",
+    ],
+    notes: "Drizzle + @neondatabase/serverless; Firebase Auth remains identity; binaries stay in object storage.",
   },
   {
     id: "sovereign-search",
@@ -1361,9 +1382,9 @@ export const CANON_INFRASTRUCTURE: CanonInfrastructure[] = [
   {
     id: "gateway-entitlements",
     name: "Gateway Entitlement Boundary",
-    status: "live",
-    purpose: "Funded Mimi plans use server-verified Gateway access rather than BYOK recovery prompts",
-    owns: ["Stripe verification", "credit grants", "promo redemption", "provider adapters"],
+    status: "hardening",
+    purpose: "Registered AI operations use server entitlements plus Neon reserve/commit/release",
+    owns: ["operation registry", "Stripe reconciliation", "credit policies", "provider adapters"],
   },
   {
     id: "serverless-lazy-graphs",
@@ -1377,9 +1398,9 @@ export const CANON_INFRASTRUCTURE: CanonInfrastructure[] = [
     id: "data-plane-ownership",
     name: "Data Plane Ownership Map",
     status: "live",
-    purpose: "Firebase identity/private state; Sovereign public publication/discovery; IndexedDB ghost buffer",
+    purpose: "Firebase identity; Neon relational state; object storage binaries; legacy migration sources; IndexedDB cache",
     owns: ["ownership rules", "Stand/Floor/Mine/Press distinctions", "anon migrate policy"],
-    notes: "See docs/architecture-update-21.md and docs/sovereign-archive.md.",
+    notes: "See docs/adr-001-neon-operational-database.md.",
   },
 ];
 

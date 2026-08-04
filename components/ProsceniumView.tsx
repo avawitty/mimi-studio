@@ -461,8 +461,8 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
                 The Proscenium.
               </h1>
               <p className="font-serif italic text-lg md:text-xl text-[var(--mimi-stone,#78716c)] leading-relaxed border-l border-[var(--mimi-olive,#5A5A40)] pl-5 max-w-xl">
-                The arch framing the performance — public transmissions,
-                correspondents, and named cliques in one stage.
+                Published encounters under one arch — transmissions, correspondents,
+                and cliques after The Press. Not a feed.
               </p>
               {!entered && (
                 <div className="flex flex-wrap items-center gap-3 pt-2">

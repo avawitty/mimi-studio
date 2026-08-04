@@ -83,8 +83,10 @@ The canonical architecture is documented in [`docs/mimi-system-architecture.md`]
 - TypeScript
 - Vite
 - Express
-- Firebase Authentication, Firestore, Admin SDK, and Functions
-- Sovereign archive (SQLite / Postgres) for owned Floor + Mine reads
+- Firebase Authentication for Mimi identity
+- Neon Postgres + Drizzle ORM for canonical relational operational state
+- Firestore and Sovereign archive compatibility reads during migration
+- Separate object storage for media and large exports
 - OpenAI and Google GenAI integrations
 - Vercel AI Gateway compatibility
 - Model Context Protocol (MCP)
@@ -95,12 +97,42 @@ The canonical architecture is documented in [`docs/mimi-system-architecture.md`]
 - Playwright
 - PDF, image, ZIP, and export tooling
 
-## Sovereign archive
+## Operational database
 
-The **sovereign archive** is Mimi’s owned data plane for Stand Floor, Keep Tabs feeds, and Mine sync — so public reads do not depend on Firestore free-tier quotas.
+Neon Postgres is the canonical relational database for memberships,
+entitlements, credits, workflows, AI runs, memory proposals/atoms, provenance,
+and Stripe reconciliation. Drizzle schema and migrations live under
+`infrastructure/database/neon/`; database-neutral contracts live under
+`domain/`.
+
+- `DATABASE_URL`: canonical Neon connection (pooled URL preferred).
+- `NEON_DATABASE_URL`: optional HTTP-query URL override.
+- `NEON_POOLED_DATABASE_URL`: optional WebSocket transaction-pool override.
+- `npm run db:generate`: generate a migration from the typed schema.
+- `npm run db:check`: validate migration metadata.
+- `npm run db:migrate`: apply migrations to the configured Neon branch.
+- `npm run credits:sweep`: release expired reservations without valid results.
+- Vercel invokes the same sweep every five minutes at
+  `/api/maintenance/credit-reservations`; configure `CRON_SECRET`.
+- `TEST_NEON_DATABASE_URL=... npm run test:neon`: run rollback-only repository
+  transaction tests against a migrated disposable Neon branch.
+
+Operational APIs authenticate with the existing Firebase session. No browser or
+React chamber connects to Neon. Images, uploads, generated plates, video, and
+large exports stay in object storage; Postgres stores references.
+
+See [`docs/adr-001-neon-operational-database.md`](docs/adr-001-neon-operational-database.md)
+and [`prd/neon-operational-spine.md`](prd/neon-operational-spine.md).
+
+## Legacy Sovereign archive
+
+The **sovereign archive** remains a compatibility read plane for Stand Floor,
+Keep Tabs feeds, and Mine sync while those records are mapped into the
+canonical Neon schema.
 
 - **Local / Fly / Docker:** enabled by default with SQLite at `.data/sovereign.sqlite` (override with `MIMI_SOVEREIGN_DB`).
-- **Postgres / Neon:** set `MIMI_SOVEREIGN_DATABASE_URL`, or a `neon.tech` `DATABASE_URL` (auto). TLS cert verification is enforced.
+- **Postgres / Neon:** the legacy archive can reuse `DATABASE_URL` or
+  `MIMI_SOVEREIGN_DATABASE_URL` during migration.
 - **Vercel:** off unless a durable Postgres URL or explicit DB path is configured (serverless disk is ephemeral).
 - **Auth:** Firebase ID token + `__session` cookie (for SSE); ingest key for imports. Soft `x-user-id` is local-only.
 - **AI Gateway:** Floor `q=` search is hybrid keyword + Gateway embeddings (`openai/text-embedding-3-small` via `modelFor`). Reindex with `npm run sovereign:reindex`.
@@ -138,6 +170,11 @@ See `.env.example` for gateway model overrides. Gateway model IDs live in `lib/m
 
 Firebase, Stripe, Shopify, and other integrations require their own credentials. Keep service-account files and secrets outside the repository.
 
+To exercise the operational spine locally, set a Neon `DATABASE_URL`, apply
+`npm run db:migrate`, and configure Firebase Admin plus AI Gateway credentials.
+Without those variables the app remains navigable, but operational endpoints
+fail closed.
+
 Start the development server:
 
 ```bash
@@ -157,12 +194,19 @@ npm run preview                     # Preview the production client build
 npm run lint                        # Type-check the project
 npm run test:e2e                    # Run Playwright end-to-end tests
 npm run test:unit                   # Run Vitest unit tests
+npm run verify:operational-spine   # Offline operation/credit contract
+npm run db:check                    # Validate Drizzle migration metadata
+npm run db:migrate                  # Apply migrations to configured Neon branch
+npm run credits:sweep               # Release stale active reservations
 npm run validate:canon              # Validate canonical routes
 npm run verify:tailor-contract      # Verify Tailor profile contracts
 npm run verify:used-context         # Verify the Used Context flow
 npm run verify:zine-visual-policy   # Verify zine visual-policy rules
 npm run verify:zine-spread-compose  # Verify customLayout spread compose
 npm run verify:structured-zine-pdf  # Verify archival structured PDF export
+npm run verify:zine-artifact-schema # Verify canonical Mimi zine artifact schema
+npm run verify:zine-issue-plan      # Verify issue planner / page prep
+npm run verify:zine-proof-diagnostics # Verify proof diagnostics
 npm run verify:doll-engine          # Verify Doll Engine projection helpers
 npm run verify:doll-staple          # Verify Mimi Shell staple prompt lock
 npm run verify:fish                 # Verify mimi.fish share/shelf URL rules
@@ -215,6 +259,30 @@ Recovery path (`lib/staleChunkRecovery.ts`, wired from `index.tsx` + `ErrorBound
 3. Hard-reload once with `?recovered=1` (45s cooldown to avoid loops).
 
 `public/sw.js` intentionally avoids caching `/assets/*` and rejects HTML-as-asset responses. If a user is stuck after a ship, a hard refresh or clearing site data recovers; the automated path should fire first.
+
+### Studio OS chrome
+
+Chamber Map uses Studio OS orientation chrome (`components/studio-os/`): bottom anchors are **Map · Mimi seal · Find** only — no permanent multi-chamber tab bar. Canon modules declare `family` / `phase` / `atmosphere` in `lib/productCanon.ts`; shell helpers live in `lib/design-system.ts` and `lib/chamberChrome.ts`.
+
+Do **not** wrap Studio Hub / Worktable in `StudioShell` — those keep `StudioChrome` / worktable owners. Developer map: [`docs/mimi-chamber-implementation-audit.md`](docs/mimi-chamber-implementation-audit.md#studio-os-phase-1-shell).
+
+### Feedback and haptics
+
+Use `useFeedback()` with semantic events (`lib/feedback/`). Never call `navigator.vibrate` from components. No hover haptics. Success/commit haptics (`proposal.approved`, `artifact.saved`, …) require `confirmed: true` only after the mutation succeeds. Wired via `FeedbackProvider` + `MotionProvider` in `index.tsx`.
+
+### Legal pages
+
+| Path | Document |
+| --- | --- |
+| `/privacy` | Privacy Policy |
+| `/tos` | Terms of Service |
+| `/terms` | Alias → Terms |
+
+Copy lives in `lib/legalContent.ts` (`LegalDocumentPage`). These are special routes, not chambers.
+
+### Canonical zine artifact
+
+Durable zine object contract: `lib/zine/` (schema, normalize/migrate, issue plan, reading order, proof). Page grammars under `components/zine/grammars/`. Prefer `normalizeZineArtifact` over ad-hoc shapes. See the chamber audit section and `npm run verify:zine-artifact-schema`.
 
 ### Mobile UX review
 

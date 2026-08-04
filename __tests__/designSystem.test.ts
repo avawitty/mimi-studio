@@ -19,7 +19,7 @@ describe("design-system chamber helpers", () => {
 
   it("assigns chamber families consistently", () => {
     expect(chamberFamilyForMode("oracle")).toBe("intelligence");
-    expect(chamberFamilyForMode("studio")).toBe("production");
+    expect(chamberFamilyForMode("studio")).toBe("orientation");
     expect(chamberFamilyForMode("scribe")).toBe("capture");
     expect(chamberFamilyForMode("tailor")).toBe("identity");
     expect(chamberFamilyForMode("signature")).toBe("identity");

@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Menu } from "lucide-react";
 import type { MediaFile, ZineGenerationOptions } from "../../types";
 import { useOptionalUser } from "../../contexts/UserContext";
 import { useFeedback } from "../../hooks/useFeedback";
@@ -21,13 +22,15 @@ import { RandomIntake } from "./RandomIntake";
 import { ChamberExplore } from "./ChamberExplore";
 import { HubActionBar } from "./HubActionBar";
 
+/** Opener fragments — invitation matches the field, not interrogative cards */
 const PROMPT_WHISPERS = [
-  "What is the defining texture or material that anchors your mood?",
-  "The light fell across the room, reminding me of…",
   "Right now, the material anchoring me is…",
-  "Recall a specific light, dynamic, or shadow that shifted your mood.",
-  "Which sensory fragment are you actively trying to preserve?",
+  "The light fell across the room, reminding me of…",
+  "The defining texture or material anchoring my mood is…",
+  "A light, dynamic, or shadow that shifted my mood was…",
+  "The sensory fragment I'm trying to preserve is…",
   "Lately, I keep returning to the idea of…",
+  "It started when…",
 ];
 
 const FOLDERS: DossierFolder[] = [
@@ -61,6 +64,8 @@ export type StudioWorktableProps = {
   initialHighFidelity?: boolean;
   /** Escape hatch to the dense InputStudio console */
   onOpenConsole?: () => void;
+  /** Open the global full chambers menu (NavigationDrawer) */
+  onOpenMenu?: () => void;
   /** Navigate to another chamber */
   onNavigate?: (mode: string) => void;
 };
@@ -80,6 +85,7 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
   setZineOptions: setZineOptionsProp,
   initialHighFidelity,
   onOpenConsole,
+  onOpenMenu,
   onNavigate,
 }) => {
   const userCtx = useOptionalUser();
@@ -269,6 +275,10 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
       ? `${mediaFiles.length} media artifact${mediaFiles.length === 1 ? "" : "s"} on the desk`
       : "No approved context — Mimi will not invent sources";
 
+  const activeWhisper = whisperOpen ? PROMPT_WHISPERS[whisperIndex] : null;
+  const intakePlaceholder =
+    activeWhisper ?? "Write anything. A thought, image, mood, reference, fragment…";
+
   return (
     <WorkSurface className="h-full min-h-[100dvh]">
       <div className="flex flex-col h-full min-h-[100dvh] lg:flex-row lg:gap-4 lg:px-4 lg:pt-4 lg:pb-4">
@@ -291,6 +301,16 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {onOpenMenu && (
+                <button
+                  type="button"
+                  onClick={onOpenMenu}
+                  className="min-h-12 min-w-12 border border-[var(--wt-line,#d8d3c6)] flex items-center justify-center text-[var(--wt-ink,#1b1b19)] hover:bg-[var(--wt-paper-2,#f0ede6)]"
+                  aria-label="Open full chambers menu"
+                >
+                  <Menu size={18} strokeWidth={1.5} />
+                </button>
+              )}
               {onOpenConsole && (
                 <button
                   type="button"
@@ -328,7 +348,8 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
               onChange={setInput}
               onSend={handleGenerate}
               sending={isThinking}
-              whisper={whisperOpen ? PROMPT_WHISPERS[whisperIndex] : null}
+              placeholder={intakePlaceholder}
+              whisper={activeWhisper}
               onWhisperNext={advanceWhisper}
               onWhisperDismiss={() => setWhisperOpen(false)}
             />
