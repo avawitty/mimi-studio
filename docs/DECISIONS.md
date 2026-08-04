@@ -8,6 +8,26 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-04 — Reject component-library interpretation of card-state system (PR #209 closed)
+
+**Decision:** Close PR #209 (`mecard-state-primitives-9875`) and PR #210 (Stand scroll fix stacked on that branch). Do **not** merge or extend the Studio pilot as the visual template for Mimi. The next pass must begin with **approved responsive screen-family prototypes** (Studio invocation, Stand/Archive, Tailor or Signature, zine reader, one signal-dense reading surface) at 390×844 and 1440px — then extract shared behavior from what those screens actually share.
+
+**Alternatives rejected:** (1) Route-by-route rollout using `MimiStateFrame` as a visible universal rounded wrapper. (2) One reusable card silhouette for invocation, artifact, reading, calibration, and document scenes. (3) Studio-only pilot as proof of a product-wide visual transformation. (4) Incremental chamber fixes (e.g. Stand nested scroll) on top of the wrong visual premise.
+
+**Why:** “Card-state system” was misread as “put content inside a rounded card component.” The intended system is a **family of distinct editorial scene types** sharing behavioral contracts (accessibility, loading/coverage state, focus, feedback, slots, responsive semantics) — **not** identical visible containers. The Phase 2 pilot produced component literalism: nested form-in-form, generic disabled pill CTA, no artifact/atmosphere/personalization, and no relationship to early Mimi archive, identity, Mirror, issue, or provocation states.
+
+**Corrective requirements:**
+- `MimiStateFrame` must become **semantic or headless** — not a visually opinionated universal wrapper.
+- Nine visual families own their grammar: Invocation Stage, Artifact Dossier, Editorial Reading Plate, Calibration Instrument, Contact Sheet, Archive Field, Worktable, Zine Spread, Release Desk.
+- Studio correction: page-as-stage (no giant enclosing rounded card), open composition field, tactile source objects, continuation rail for recent work, rich enabled primary action, no right-edge FAB.
+- Acceptance gate: five prototype screens must visibly belong to one system **without** sharing the same card silhouette.
+
+**Ref:** Closed PR #209, PR #210; branch `mecard-state-primitives-9875` retained as reference only.
+
+---
+
 ## 2026-08-04 — Publisher Console artifact-first release desk
 
 **Decision:** Restructure The Press around **Release** (artifact readiness, destinations, approvals) and **Performance** (post-publication metrics only when connected). Derive readiness deterministically from proof diagnostics, export manifest, Intel handoff, and Shopify pack inspection — no simulated reach/revenue/deliverability cards.
