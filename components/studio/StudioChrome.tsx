@@ -4,17 +4,10 @@ import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
 import {
-<<<<<<< HEAD
-  chromeDataAttr,
+  CREATOR_PATH,
   isDarkPlateMode,
   isPublicFaceMode,
-} from "../../lib/chamberChrome";
-=======
-  CREATOR_PATH,
-  DARK_PLATE_MODES,
-  PUBLIC_FACE_MODES,
 } from "../../lib/design-system";
->>>>>>> origin/main
 
 export const StudioChrome: React.FC<{
   theme: StudioTheme;
@@ -172,7 +165,9 @@ export const StudioChrome: React.FC<{
           : "studio-border"
       }`}
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.875rem)" }}
-      data-chrome={chromeDataAttr(viewMode)}
+      data-chrome={
+        isDarkPlate ? "public-face-dark" : isPublicFace ? "public-face" : "worktable"
+      }
     >
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (

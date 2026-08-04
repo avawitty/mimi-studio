@@ -59,7 +59,6 @@ import { ApiKeyShield } from "./components/ApiKeyShield";
 import { ZineGenerationOptions } from "./types";
 import { InputStudio } from "./components/InputStudio";
 import { StudioChrome } from "./components/studio/StudioChrome";
-import { SurveillanceOverlay } from "./components/chrome/SurveillanceOverlay";
 import {
   MessyPocketStash,
   POCKET_STASH_CLOSE_EVENT,
@@ -67,12 +66,6 @@ import {
   POCKET_STASH_TOGGLE_EVENT,
 } from "./components/pocket/MessyPocketStash";
 import { injectJSONLD } from "./utils/seoHelper";
-import {
-  getChamberFamily,
-  getFaceKind,
-  mainShellClassName,
-} from "./lib/chamberChrome";
-
 import { archiveManager } from "./services/archiveManager";
 import { SUPERINTELLIGENCE_PROMPTS } from "./constants";
 import { AnalysisDisplay } from "./components/AnalysisDisplay";
@@ -2320,13 +2313,7 @@ export const App: React.FC = () => {
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
-<<<<<<< HEAD
-
-  const chamber = getChamberFamily(viewMode);
-  const faceKind = getFaceKind(viewMode);
-=======
   const chamber = useChamber(viewMode);
->>>>>>> origin/main
 
   return (
     <IntelligenceGateContext.Provider value={gateValue}>
@@ -2447,56 +2434,6 @@ export const App: React.FC = () => {
         onOpenRegistry={() => setViewMode("pocket")}
       />
 
-<<<<<<< HEAD
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Binder spine sidebar */}
-        {appState !== AppState.REVEALED && (
-          <button
-            type="button"
-            onClick={() => setIsNavOpen(!isNavOpen)}
-            aria-expanded={isNavOpen}
-            aria-label="Toggle Mimi Canon Menu"
-            title="Toggle Mimi Canon Menu"
-            className="w-16 bg-black flex flex-col items-center py-6 border-r border-stone-900 relative z-20 hidden md:flex cursor-pointer hover:bg-stone-950 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/80 text-left"
-          >
-            <div className="flex flex-col items-center justify-between h-full select-none w-full relative z-10 text-stone-300 pointer-events-none">
-              <div className="flex flex-col items-center gap-1.5 mt-2">
-                <div className="w-8 h-8 rounded-full border border-stone-700 flex items-center justify-center bg-[#1c1c1a]/50 text-[#f3f1ea]">
-                  <LayoutGrid size={14} strokeWidth={1.5} />
-                </div>
-                <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400 font-black">MENU</span>
-              </div>
-
-              <div className="flex-1 flex items-center justify-center py-8 relative w-full">
-                <div className="binder-spine-rod absolute left-1/2 -translate-x-1/2" aria-hidden>
-                  <span className="binder-spine-stud" style={{ top: "18%" }} />
-                  <span className="binder-spine-stud" style={{ bottom: "18%" }} />
-                </div>
-                <div
-                  className="absolute left-2 top-[18%] bottom-[18%] w-0.5 opacity-50"
-                  style={{
-                    background:
-                      "repeating-linear-gradient(to bottom, #fff 0 2px, transparent 2px 12px)",
-                  }}
-                  aria-hidden
-                />
-              </div>
-
-              <div className="flex flex-col items-center gap-1 font-mono text-[7px] text-stone-500 mb-2">
-                <span>FOLIO</span>
-                <span className="text-[9px] text-[#f3f1ea]">◎</span>
-              </div>
-            </div>
-          </button>
-        )}
-
-        {/* Main Content Area — chamber-aware shell */}
-        <main
-          className={mainShellClassName(viewMode)}
-          data-chamber={chamber}
-          data-face={faceKind}
-        >
-=======
       <AppShell
         viewMode={viewMode}
         hideBinder={appState === AppState.REVEALED}
@@ -2516,7 +2453,6 @@ export const App: React.FC = () => {
           ) : null
         }
       >
->>>>>>> origin/main
           {profile?.geoProfile?.driftAlert && !isDriftDismissed && (
             <div className="w-full bg-[#1A1A1A] text-[#F5F5F0] border-b border-[#333333] px-6 py-3 flex items-center justify-between z-40 relative">
               <div className="flex items-center gap-3">
@@ -2563,19 +2499,11 @@ export const App: React.FC = () => {
               transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
               <SurveillanceOverlay
-<<<<<<< HEAD
-                chamber={chamber}
-                face={faceKind}
-                disabled={isCRTEnabled}
-              />
-              <div className="relative z-[1] h-full min-h-0 flex flex-col">
-=======
                 family={chamber.family}
                 quiet={chamber.quietChrome}
                 voidPlate={chamber.isDarkPlate}
                 signalDense={chamber.signalDense}
               />
->>>>>>> origin/main
               <AnimatePresence>
                 {appState === AppState.THINKING && (
                   <ElevatorLoader
@@ -2806,7 +2734,6 @@ export const App: React.FC = () => {
                   </>
                 )}
               </Suspense>
-              </div>
             </motion.div>
           </AnimatePresence>
           <SelectionMemoryCapture />
