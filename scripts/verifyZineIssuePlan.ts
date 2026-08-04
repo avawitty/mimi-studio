@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { normalizeZineArtifact } from "../lib/zine/normalizeZineArtifact";
+import { buildZineProofSequence } from "../lib/zine/zineIssuePlanner";
 import { zinePageGrammarSchema } from "../lib/zine/zineArtifactSchema";
 import { makeLegacyZineMetadata } from "./fixtures/zineArtifactFixture";
 
 const artifact = normalizeZineArtifact(makeLegacyZineMetadata());
+const proofSequence = buildZineProofSequence(artifact);
 const sectionTypes = artifact.issueStructure.sections.map(
   (section) => section.type,
 );
@@ -32,8 +34,12 @@ assert.equal(
 artifact.pages.forEach((page) => {
   assert.equal(zinePageGrammarSchema.safeParse(page.grammar).success, true);
 });
+assert.equal(proofSequence.length, artifact.issueStructure.totalPages);
+assert.equal(proofSequence[0].sectionType, "cover");
+assert.equal(proofSequence.at(-1)?.sectionType, "colophon");
 assert.ok(artifact.issueStructure.totalPages >= artifact.pages.length);
 
 console.log("✓ Mimi zine issue plan verified");
 console.log("  - complete section vocabulary and stable page IDs");
 console.log("  - valid six-grammar assignment");
+console.log("  - proof sequence matches issue totalPages");

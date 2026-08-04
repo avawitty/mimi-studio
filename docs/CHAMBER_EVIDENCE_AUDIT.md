@@ -177,7 +177,7 @@ Runtime verification for all rows: **Static only**.
 | `/zine/:id` | Special-route | Forces studio + `AnalysisDisplay` when revealed | Firestore zines | High | |
 | `/s/:id`, `/@…`, `/stacks/:id` | Special-route | Public/share/stack pages | Varies | Medium | |
 | `/auth/action` | Special-route | `AuthAction` | Firebase email actions | Medium | |
-| `/privacy`, `/terms` | Special-route | Inline in `App.tsx` | None | High | |
+| `/privacy`, `/tos` (`/terms` alias) | Special-route | `LegalDocumentPage` + `lib/legalContent.ts` via `App.tsx` | None | High | Canonical Terms path is `/tos` |
 | SelectionMemoryCapture | Overlay | Global selection → memory | Memory atoms path | Medium | Separate from Scribe |
 
 ---

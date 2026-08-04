@@ -18,6 +18,12 @@ import {
   type DollImageReference,
 } from "./dollEngine";
 import { celestialTimingForGeneration } from "../lib/celestial/compileCelestialReadout";
+import {
+    buildAttachedAssetsFromMedia,
+    draftZineArtifactId,
+    realizeZineContentFromPlan,
+} from "../lib/zine/realizeZineContentFromPlan";
+import type { ZineIssuePlan } from "../types";
 
 function groundAcquisitionSignal(
   currentSignal: Record<string, unknown>,
@@ -83,6 +89,42 @@ function cleanAndParse(text: string | undefined): any {
         console.error("MIMI // JSON Parse Error:", e);
         return null;
     }
+}
+
+async function realizeGeneratedZineContent(
+    content: any,
+    text: string,
+    opts: any,
+    media: any[],
+): Promise<{ content: any; issuePlan?: ZineIssuePlan }> {
+    const usedContext = opts?.usedContext || [];
+    const realized = realizeZineContentFromPlan({
+        content,
+        artifactId: draftZineArtifactId(),
+        originalInput: text,
+        fragmentIds: usedContext.map((entry: { atomId: string }) => entry.atomId),
+        usedContextSnapshots: usedContext.map(
+            (entry: {
+                atomId: string;
+                title: string;
+                content: string;
+                source?: string;
+            }) => ({
+                atomId: entry.atomId,
+                title: entry.title,
+                content: entry.content,
+                source: entry.source,
+            }),
+        ),
+        attachedAssets: buildAttachedAssetsFromMedia(media),
+        existingCoverUrl:
+            opts?.studioCoverUrl ||
+            media.find((file: { type: string; url?: string; data?: string }) => file.type === "image")
+                ?.url ||
+            media.find((file: { type: string; url?: string; data?: string }) => file.type === "image")
+                ?.data,
+    });
+    return { content: realized.content, issuePlan: realized.issuePlan };
 }
 
 export const createZine = async (text: string, media: any[], tone: ToneTag, profile: any, opts: any, apiKey?: string, transmissions?: any[], stackIds?: string[], selectedComponents?: any[], zineOptions?: ZineGenerationOptions): Promise<any> => {
@@ -612,15 +654,15 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             } catch (e) {
                 console.warn("MIMI // Failed to generate execution layer or GEO block", e);
             }
-            
-            return { content };
+
+            return await realizeGeneratedZineContent(content, text, opts, effectiveMedia);
         });
     } catch (error: any) {
         console.error("MIMI // Zine Generation Error:", error);
         
         triggerAlert(`Aesthetic Refraction Active. Initializing Semantic Mirror Fallback: ${error.message || 'Model Timeout'}.`, "error");
         const simulated = generateSimulatedZine(text, zineOptions || {}, opts?.bypassTailor ? null : profile);
-        return { content: simulated };
+        return await realizeGeneratedZineContent(simulated, text, opts, media || []);
     }
 };
 

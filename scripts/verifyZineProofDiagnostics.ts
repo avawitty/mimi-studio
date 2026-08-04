@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { normalizeZineArtifact } from "../lib/zine/normalizeZineArtifact";
+import { buildZineProofSequence } from "../lib/zine/zineIssuePlanner";
 import {
   buildZineProofDiagnostics,
   summarizeZineProof,
@@ -27,7 +28,8 @@ artifact.pages[1] = {
 artifact.publication.visibility = "public";
 artifact.colophon.publicSourceIds = ["atom-private"];
 
-const diagnostics = buildZineProofDiagnostics(artifact);
+const proofSequence = buildZineProofSequence(artifact);
+const diagnostics = buildZineProofDiagnostics(artifact, proofSequence);
 const ids = new Set(diagnostics.map((diagnostic) => diagnostic.id));
 
 assert.ok(ids.has("duplicate-page-number"));
@@ -36,7 +38,9 @@ assert.ok(ids.has("invalid-reading-order"));
 assert.ok(ids.has("absent-provenance"));
 assert.ok(ids.has("private-context-exposure"));
 assert.equal(summarizeZineProof(diagnostics).canApprove, false);
+assert.equal(proofSequence.length, artifact.issueStructure.totalPages);
 
 console.log("✓ Mimi zine proof diagnostics verified");
 console.log("  - geometry, numbering, provenance, privacy, and reading order");
+console.log("  - canonical and derived proof pages are validated together");
 console.log("  - blocking diagnostics prevent approval");

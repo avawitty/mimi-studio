@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Loader2,
   Save,
@@ -49,6 +49,71 @@ const SUGGESTED_PROMPTS: { label: string; hint: string; query: string; icon: Rea
 ];
 
 type AnswerSection = "evidence" | "inferences" | "maneuvers" | "sources";
+const PENDING_OPERATION_KEYS = "mimi_scribe_pending_operations_v1";
+
+function loadPendingOperationKeys(): Map<string, string> {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(PENDING_OPERATION_KEYS) || "[]");
+    if (!Array.isArray(parsed)) return new Map();
+    return new Map(
+      parsed.filter(
+        (entry): entry is [string, string] =>
+          Array.isArray(entry) &&
+          typeof entry[0] === "string" &&
+          typeof entry[1] === "string",
+      ),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+function persistPendingOperationKeys(keys: Map<string, string>): void {
+  try {
+    sessionStorage.setItem(
+      PENDING_OPERATION_KEYS,
+      JSON.stringify([...keys.entries()].slice(-5)),
+    );
+  } catch {
+    // Session storage is a retry aid, never an authorization dependency.
+  }
+}
+
+function rememberOperationKey(
+  keys: Map<string, string>,
+  fingerprint: string,
+  idempotencyKey: string,
+): void {
+  keys.set(fingerprint, idempotencyKey);
+  persistPendingOperationKeys(keys);
+}
+
+function forgetOperationKey(
+  keys: Map<string, string>,
+  fingerprint: string,
+): void {
+  keys.delete(fingerprint);
+  persistPendingOperationKeys(keys);
+}
+
+function shouldRetainIdempotencyKey(error: unknown): boolean {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code || "")
+      : "";
+  const terminal =
+    typeof error === "object" &&
+    error !== null &&
+    "terminal" in error &&
+    (error as { terminal?: unknown }).terminal === true;
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : Number.NaN;
+  if (terminal || code === "IDEMPOTENCY_KEY_REUSED") return false;
+  if (!Number.isFinite(status) || status >= 500) return true;
+  return status === 409;
+}
 
 export const ScribeAskPanel: React.FC = () => {
   const { user, pocket } = useUser();
@@ -59,6 +124,15 @@ export const ScribeAskPanel: React.FC = () => {
   const [isRetrieving, setIsRetrieving] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
   const [isSaving, setIsSaving] = useState<Record<string, boolean>>({});
+  const [approvedInferenceIds, setApprovedInferenceIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const operationKeysRef = useRef<Map<string, string> | null>(null);
+  if (!operationKeysRef.current) {
+    operationKeysRef.current = loadPendingOperationKeys();
+  }
+  const operationKeys = operationKeysRef.current;
+  const approvalKeysRef = useRef(new Map<string, string>());
   const [notification, setNotification] = useState<{
     message: string;
     type: "success" | "error";
@@ -103,7 +177,9 @@ export const ScribeAskPanel: React.FC = () => {
 
     setIsRetrieving(true);
     setAnswer(null);
+    setApprovedInferenceIds(new Set());
     setOpenSections({ evidence: true, inferences: true, maneuvers: true, sources: false });
+    let fingerprint: string | null = null;
     try {
       const context = await retrieveScribeContext(
         user.uid,
@@ -115,16 +191,38 @@ export const ScribeAskPanel: React.FC = () => {
 
       setIsAsking(true);
       setIsRetrieving(false);
+      fingerprint = JSON.stringify({
+        workspaceId: null,
+        input: {
+          question: query.trim(),
+          projectId: selectedProjectId || undefined,
+          contextItems: context,
+        },
+        sourceIds: context.map((item) => item.id),
+      });
+      const idempotencyKey =
+        operationKeys.get(fingerprint) || crypto.randomUUID();
+      rememberOperationKey(operationKeys, fingerprint, idempotencyKey);
       const res = await askScribeExplainable(
         user.uid,
         query.trim(),
         context,
         selectedProjectId || undefined,
+        idempotencyKey,
       );
+      forgetOperationKey(operationKeys, fingerprint);
       setAnswer(res);
     } catch (err) {
+      if (fingerprint && !shouldRetainIdempotencyKey(err)) {
+        forgetOperationKey(operationKeys, fingerprint);
+      }
       console.error("MIMI // Scribe Explainable Ask failed:", err);
-      triggerNotification("Scribe failed to synthesize memory. Check connection.", "error");
+      triggerNotification(
+        err instanceof Error
+          ? err.message
+          : "Scribe could not produce a reliable proposal. Your input is preserved.",
+        "error",
+      );
     } finally {
       setIsRetrieving(false);
       setIsAsking(false);
@@ -134,18 +232,42 @@ export const ScribeAskPanel: React.FC = () => {
   const handleRegenerateWithRemainingContext = async (remaining: ScribeContextItem[]) => {
     if (!user?.uid || !query.trim()) return;
     setIsAsking(true);
+    setApprovedInferenceIds(new Set());
+    let fingerprint: string | null = null;
     try {
+      fingerprint = JSON.stringify({
+        workspaceId: null,
+        input: {
+          question: query.trim(),
+          projectId: selectedProjectId || undefined,
+          contextItems: remaining,
+        },
+        sourceIds: remaining.map((item) => item.id),
+      });
+      const idempotencyKey =
+        operationKeys.get(fingerprint) || crypto.randomUUID();
+      rememberOperationKey(operationKeys, fingerprint, idempotencyKey);
       const res = await askScribeExplainable(
         user.uid,
         query.trim(),
         remaining,
         selectedProjectId || undefined,
+        idempotencyKey,
       );
+      forgetOperationKey(operationKeys, fingerprint);
       setAnswer(res);
       triggerNotification("Answer recalculated using remaining context.");
     } catch (err) {
+      if (fingerprint && !shouldRetainIdempotencyKey(err)) {
+        forgetOperationKey(operationKeys, fingerprint);
+      }
       console.error("MIMI // Scribe Recalculation failed:", err);
-      triggerNotification("Failed to recalculate response.", "error");
+      triggerNotification(
+        err instanceof Error
+          ? err.message
+          : "Scribe could not recalculate this proposal. Your input is preserved.",
+        "error",
+      );
     } finally {
       setIsAsking(false);
     }
@@ -163,32 +285,86 @@ export const ScribeAskPanel: React.FC = () => {
     handleRegenerateWithRemainingContext(updated);
   };
 
-  const handleApproveInference = async (inferenceId: string, statement: string) => {
+  const handleApproveInference = async (
+    inferenceId: string,
+    statement: string,
+    proposalId?: string,
+  ) => {
     if (!user?.uid) return;
+    const approvalTarget = proposalId || inferenceId;
     setIsSaving((prev) => ({ ...prev, [inferenceId]: true }));
     try {
-      await approveScribeInference(user.uid, selectedProjectId || "global", statement);
+      const approvalKey =
+        approvalKeysRef.current.get(approvalTarget) ||
+        crypto.randomUUID();
+      approvalKeysRef.current.set(approvalTarget, approvalKey);
+      await approveScribeInference(
+        user.uid,
+        selectedProjectId || "global",
+        statement,
+        proposalId,
+        approvalKey,
+      );
+      approvalKeysRef.current.delete(approvalTarget);
+      setApprovedInferenceIds((previous) => {
+        const next = new Set(previous);
+        next.add(inferenceId);
+        return next;
+      });
       triggerNotification("Inference validated & stored as Memory Atom.");
     } catch (err) {
+      if (!shouldRetainIdempotencyKey(err)) {
+        approvalKeysRef.current.delete(approvalTarget);
+      }
       console.error("MIMI // Approve inference failed:", err);
-      triggerNotification("Failed to save memory atom.", "error");
+      triggerNotification(
+        err instanceof Error ? err.message : "Failed to save memory atom.",
+        "error",
+      );
     } finally {
       setIsSaving((prev) => ({ ...prev, [inferenceId]: false }));
     }
   };
 
-  const handleSaveDecision = async (recId: string, action: string, rationale: string) => {
-    if (!user?.uid || !selectedProjectId) {
-      triggerNotification("Please select a project scope to save strategic decisions.", "error");
-      return;
-    }
+  const handleSaveDecision = async (
+    recId: string,
+    action: string,
+    rationale: string,
+    proposalId?: string,
+  ) => {
+    if (!user?.uid) return;
+    const approvalTarget = proposalId || recId;
     setIsSaving((prev) => ({ ...prev, [recId]: true }));
     try {
-      await saveScribeDecision(user.uid, selectedProjectId, "Scribe Recommendation", action, rationale);
-      triggerNotification("Strategic Recommendation saved as Approved Creative Law.");
+      const approvalKey =
+        approvalKeysRef.current.get(approvalTarget) ||
+        crypto.randomUUID();
+      approvalKeysRef.current.set(approvalTarget, approvalKey);
+      await saveScribeDecision(
+        user.uid,
+        selectedProjectId || "global",
+        "Scribe Recommendation",
+        action,
+        rationale,
+        proposalId,
+        approvalKey,
+      );
+      approvalKeysRef.current.delete(approvalTarget);
+      setApprovedInferenceIds((previous) => {
+        const next = new Set(previous);
+        next.add(recId);
+        return next;
+      });
+      triggerNotification("Recommendation approved as decision memory with provenance.");
     } catch (err) {
+      if (!shouldRetainIdempotencyKey(err)) {
+        approvalKeysRef.current.delete(approvalTarget);
+      }
       console.error("MIMI // Save strategic decision failed:", err);
-      triggerNotification("Failed to save strategic decision.", "error");
+      triggerNotification(
+        err instanceof Error ? err.message : "Failed to save strategic decision.",
+        "error",
+      );
     } finally {
       setIsSaving((prev) => ({ ...prev, [recId]: false }));
     }
@@ -249,7 +425,7 @@ export const ScribeAskPanel: React.FC = () => {
               </div>
               <span className="font-mono text-[8px] tracking-wide text-stone-400 dark:text-stone-600">
                 {selectedProjectId
-                  ? "Answers draw only from this project's saved context."
+                  ? "Prioritizes this project plus approved global taste memory."
                   : "Answers draw from your whole taste + project history."}
               </span>
             </div>
@@ -286,6 +462,9 @@ export const ScribeAskPanel: React.FC = () => {
                 </>
               )}
             </button>
+            <p className="font-mono text-[8px] text-stone-400">
+              Up to 3 credits reserved · charged only after a valid proposal is persisted
+            </p>
           </div>
 
           {!answer && !busy && (
@@ -339,6 +518,18 @@ export const ScribeAskPanel: React.FC = () => {
 
                 {answer && !busy && (
                   <div className="space-y-3 md:space-y-6">
+                    {answer.execution && (
+                      <div className="border border-stone-200 dark:border-stone-800 bg-stone-100/60 dark:bg-stone-900/40 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono text-[8px] uppercase tracking-widest text-stone-600 dark:text-stone-300">
+                          Proposed · Gateway verified · Awaiting your approval
+                        </span>
+                        <span className="font-mono text-[8px] text-stone-500 dark:text-stone-400">
+                          {answer.execution.credits.charged} charged ·{" "}
+                          {answer.execution.credits.released} released ·{" "}
+                          {answer.execution.credits.remaining} remaining
+                        </span>
+                      </div>
+                    )}
                     {/* Layer I */}
                     <section className="border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950">
                       <button
@@ -442,8 +633,18 @@ export const ScribeAskPanel: React.FC = () => {
                               </p>
                               <button
                                 type="button"
-                                disabled={isSaving[inf.id]}
-                                onClick={() => handleApproveInference(inf.id, inf.statement)}
+                                disabled={
+                                  isSaving[inf.id] ||
+                                  approvedInferenceIds.has(inf.id) ||
+                                  !inf.proposalId
+                                }
+                                onClick={() =>
+                                  handleApproveInference(
+                                    inf.id,
+                                    inf.statement,
+                                    inf.proposalId,
+                                  )
+                                }
                                 className="w-full md:w-auto font-mono text-[8px] uppercase tracking-widest px-3 py-2.5 min-h-[44px] md:min-h-0 md:py-1.5 border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-300 flex items-center justify-center gap-1"
                               >
                                 {isSaving[inf.id] ? (
@@ -451,7 +652,11 @@ export const ScribeAskPanel: React.FC = () => {
                                 ) : (
                                   <Check size={10} />
                                 )}
-                                Approve as Memory
+                                {approvedInferenceIds.has(inf.id)
+                                  ? "Approved as Memory"
+                                  : inf.proposalId
+                                    ? "Approve as Memory"
+                                    : "Proposal unavailable"}
                               </button>
                             </div>
                           ))}
@@ -495,8 +700,19 @@ export const ScribeAskPanel: React.FC = () => {
                               </p>
                               <button
                                 type="button"
-                                disabled={isSaving[rec.id]}
-                                onClick={() => handleSaveDecision(rec.id, rec.action, rec.rationale)}
+                                disabled={
+                                  isSaving[rec.id] ||
+                                  approvedInferenceIds.has(rec.id) ||
+                                  !rec.proposalId
+                                }
+                                onClick={() =>
+                                  handleSaveDecision(
+                                    rec.id,
+                                    rec.action,
+                                    rec.rationale,
+                                    rec.proposalId,
+                                  )
+                                }
                                 className="w-full md:w-auto font-mono text-[8px] uppercase tracking-widest bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-3 py-2.5 min-h-[44px] md:min-h-0 md:py-1.5 flex items-center justify-center gap-1"
                               >
                                 {isSaving[rec.id] ? (
@@ -504,7 +720,11 @@ export const ScribeAskPanel: React.FC = () => {
                                 ) : (
                                   <Save size={10} />
                                 )}
-                                Save Decision
+                                {approvedInferenceIds.has(rec.id)
+                                  ? "Decision Approved"
+                                  : rec.proposalId
+                                    ? "Approve Decision"
+                                    : "Proposal unavailable"}
                               </button>
                             </div>
                           ))}
@@ -607,6 +827,9 @@ export const ScribeAskPanel: React.FC = () => {
             </>
           )}
         </button>
+        <p className="font-mono text-[8px] text-center text-stone-400">
+          Up to 3 credits · charged after a valid proposal
+        </p>
       </div>
     </div>
   );

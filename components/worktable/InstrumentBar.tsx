@@ -29,8 +29,8 @@ const DEFAULT_INSTRUMENTS: Instrument[] = [
   { id: "archive", icon: "◫", label: "Archive" },
   { id: "voice", icon: "◐", label: "Voice" },
   { id: "spark", icon: "⚡", label: "Spark" },
-  { id: "brain", icon: "✦", label: "Brain" },
-  { id: "globe", icon: "◯", label: "Globe" },
+  { id: "brain", icon: "✦", label: "Deep think" },
+  { id: "globe", icon: "◯", label: "Web search" },
 ];
 
 /**

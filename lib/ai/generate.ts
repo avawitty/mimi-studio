@@ -41,6 +41,7 @@ export async function generateGatewayText(options: {
   role?: GatewayTextRole;
   temperature?: number;
   apiKey?: string;
+  abortSignal?: AbortSignal;
 }) {
   const modelId = resolveModel(options.model, options.role ?? "textFast");
   const result = await generateText({
@@ -48,6 +49,7 @@ export async function generateGatewayText(options: {
     prompt: options.prompt,
     system: options.system,
     temperature: options.temperature,
+    abortSignal: options.abortSignal,
   });
   return {
     text: result.text,
@@ -67,6 +69,7 @@ export async function generateGatewayObject<T>(options: {
   role?: GatewayTextRole;
   temperature?: number;
   apiKey?: string;
+  abortSignal?: AbortSignal;
 }) {
   const modelId = resolveModel(options.model, options.role ?? "textDeep");
   const result = await generateText({
@@ -75,6 +78,7 @@ export async function generateGatewayObject<T>(options: {
     system: options.system,
     temperature: options.temperature,
     output: Output.object({ schema: options.schema }),
+    abortSignal: options.abortSignal,
   });
   return {
     object: result.output as T,

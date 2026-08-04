@@ -1,8 +1,12 @@
-import type { MediaFile, ZineContent } from "../types";
+import type { MediaFile, ZineContent, ZineIssuePlan } from "../types";
 import { generateZineImage } from "../services/geminiService";
 import { archiveManager } from "../services/archiveManager";
 import { shouldAutoDevelopPlates } from "./zineSpreadLayout";
 import { resolvePlateConcurrency } from "./zine/zinePerformance";
+import {
+  planAuthoredPageIdsRequiringMedia,
+  planCoverRequiresGeneratedMedia,
+} from "./zine/realizeZineContentFromPlan";
 
 export interface BakeZinePlatesOptions {
   content: ZineContent;
@@ -20,6 +24,8 @@ export interface BakeZinePlatesOptions {
   concurrency?: number;
   /** Allows the queue to apply the lower mobile concurrency budget. */
   isMobile?: boolean;
+  /** When set, only develop cover/plates the issue plan marks as requiring media. */
+  issuePlan?: ZineIssuePlan;
 }
 
 export interface BakeZinePlatesResult {
@@ -84,6 +90,7 @@ export async function bakeZineVisualPlates(
     existingCoverUrl,
     ownerUid,
     concurrency,
+    issuePlan,
   } = options;
 
   if (
@@ -116,7 +123,12 @@ export async function bakeZineVisualPlates(
     next.headlines?.[0] ||
     next.title;
 
-  if (!coverUrl && heroPrompt) {
+  const shouldBakeCover =
+    !coverUrl &&
+    Boolean(heroPrompt) &&
+    (!issuePlan || planCoverRequiresGeneratedMedia(issuePlan, coverUrl));
+
+  if (shouldBakeCover) {
     try {
       const raw = await generateZineImage(
         heroPrompt,
@@ -144,7 +156,15 @@ export async function bakeZineVisualPlates(
   if (pages.length > MAX_BAKE_PLATES) {
     failures.push(`plates: baking first ${MAX_BAKE_PLATES} of ${pages.length} pages`);
   }
-  const bakeJobs = pages.slice(0, MAX_BAKE_PLATES).map((page, index) => ({ page, index }));
+  const mediaPageIds = issuePlan ? planAuthoredPageIdsRequiringMedia(issuePlan) : null;
+  const bakeJobs = pages
+    .slice(0, MAX_BAKE_PLATES)
+    .map((page, index) => ({ page, index }))
+    .filter(({ page }) => {
+      if (page.image_url) return false;
+      if (!mediaPageIds) return true;
+      return Boolean(page.id && mediaPageIds.has(page.id));
+    });
   const isMobile =
     options.isMobile ??
     (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);

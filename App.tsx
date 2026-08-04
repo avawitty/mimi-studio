@@ -58,6 +58,7 @@ import { ZineConfiguration } from "./components/ZineConfiguration";
 import { ApiKeyShield } from "./components/ApiKeyShield";
 import { ZineGenerationOptions } from "./types";
 import { InputStudio } from "./components/InputStudio";
+import { StudioOrientationEntry } from "./components/studio/StudioOrientationEntry";
 import { StudioWorktable } from "./components/worktable/StudioWorktable";
 import { StudioChrome } from "./components/studio/StudioChrome";
 import {
@@ -82,6 +83,7 @@ import { MENU_STRUCTURE } from "./components/navigationConfig";
 import { canonicalizeMimiRoute } from "./lib/productCanon";
 import { LegalDocumentPage } from "./components/LegalDocumentPage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import { ResearchNoteWidget } from "./components/ResearchNoteWidget";
 import { legalTypeFromPath } from "./lib/legalContent";
 import { useTactileAudio } from "./hooks/useTactileAudio";
 import { useChamber } from "./hooks/useChamber";
@@ -977,6 +979,14 @@ const getRestorableRoute = (candidate: string): string | null => {
       : null;
   }
 
+  if (firstSegment === "studio") {
+    if (segments.length === 1) return "/studio";
+    if (segments.length === 2 && secondSegment === "worktable-legacy") {
+      return "/studio/worktable-legacy";
+    }
+    return null;
+  }
+
   if (segments.length !== 1) return null;
 
   const canonical = canonicalizeMimiRoute(firstSegment);
@@ -1051,6 +1061,7 @@ const useAppRouter = (authReady: boolean) => {
         params.has("checkout") ||
         params.has("plan") ||
         params.has("tier") ||
+        params.has("research") ||
         params.has("mode") ||
         params.has("oobCode") ||
         params.has("apiKey") ||
@@ -1308,6 +1319,9 @@ export const App: React.FC = () => {
       : null;
   const rawViewMode = pathParts[0] || "studio";
   const viewMode = isZineRoute ? "studio" : canonicalizeMimiRoute(rawViewMode);
+  /** Explicit migration surface — archival desk is not the /studio entry. */
+  const isStudioWorktableLegacy =
+    viewMode === "studio" && pathParts[1] === "worktable-legacy";
   const isLegacyStyleLabRoute = [
     "art-style",
     "scryer",
@@ -1497,12 +1511,12 @@ export const App: React.FC = () => {
   const [threadValue, setThreadValue] = useState<string>("");
   const [threadMedia, setThreadMedia] = useState<MediaFile[]>([]);
   const [threadHighFidelity, setThreadHighFidelity] = useState(false);
-  /** Escape hatch: dense InputStudio console under Hub worktable */
+  /** Escape hatch: dense InputStudio console under legacy worktable only */
   const [studioConsoleOpen, setStudioConsoleOpen] = useState(false);
 
   useEffect(() => {
-    if (viewMode !== "studio") setStudioConsoleOpen(false);
-  }, [viewMode]);
+    if (!isStudioWorktableLegacy) setStudioConsoleOpen(false);
+  }, [isStudioWorktableLegacy]);
   const [showCaptiveSentinel, setShowCaptiveSentinel] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isHeaderTranslucent, setIsHeaderTranslucent] = useState(false);
@@ -2034,6 +2048,11 @@ export const App: React.FC = () => {
           result.content.meta.studioCoverOverlays = opts.studioCoverOverlays;
         }
 
+        if (opts.studioCoverVariants?.length) {
+          result.content.meta = result.content.meta || {};
+          result.content.meta.studioCoverVariants = opts.studioCoverVariants;
+        }
+
         if (coverUrl && opts.studioCoverOverlays?.length) {
           const { resolveExportCoverUrl } = await import("./lib/studioCoverExport");
           coverUrl =
@@ -2061,6 +2080,7 @@ export const App: React.FC = () => {
               isQuickPreview: opts.isQuickPreview,
               existingCoverUrl: coverUrl,
               ownerUid: targetUidForBake === "ghost" ? undefined : targetUidForBake,
+              issuePlan: result.issuePlan,
             });
             result.content = baked.content;
             if (baked.coverUrl) coverUrl = baked.coverUrl;
@@ -2389,6 +2409,7 @@ export const App: React.FC = () => {
       <ApiKeyShield isOpen={!memoizedHasApiKey} onClose={() => {}} />
 
       <RegistryAlert />
+      <ResearchNoteWidget />
       {isSimulatedMode && (
         <div className="px-4 py-2 border-b border-amber-400/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-center">
           Automatic Fallback to Simulated Mode active due to billing/limit. Limiting functions in the Tailor.
@@ -2565,34 +2586,65 @@ export const App: React.FC = () => {
                 ) : (
                   <>
                     {viewMode === "studio" &&
-                      (studioConsoleOpen ? (
-                        <div className="relative h-full min-h-0 flex flex-col">
-                          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-worktable,#fafafa)]">
-                            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
-                              Full console
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setStudioConsoleOpen(false)}
-                              className="min-h-10 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-ink,#0a0a0a)] border border-[var(--mimi-hairline,#d4d4d4)]"
-                            >
-                              Back to desk
-                            </button>
+                      (isStudioWorktableLegacy ? (
+                        studioConsoleOpen ? (
+                          <div className="relative h-full min-h-0 flex flex-col">
+                            <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-worktable,#fafafa)]">
+                              <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
+                                Full console · legacy
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setStudioConsoleOpen(false)}
+                                className="min-h-10 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-ink,#0a0a0a)] border border-[var(--mimi-hairline,#d4d4d4)]"
+                              >
+                                Back to legacy desk
+                              </button>
+                            </div>
+                            <div className="flex-1 min-h-0">
+                              <InputStudio
+                                onRefine={handleRefine}
+                                isThinking={appState === AppState.THINKING}
+                                initialValue={threadValue}
+                                initialMedia={threadMedia}
+                                initialHighFidelity={threadHighFidelity}
+                                zineOptions={zineOptions}
+                                setZineOptions={setZineOptions}
+                              />
+                            </div>
                           </div>
-                          <div className="flex-1 min-h-0">
-                            <InputStudio
-                              onRefine={handleRefine}
-                              isThinking={appState === AppState.THINKING}
-                              initialValue={threadValue}
-                              initialMedia={threadMedia}
-                              initialHighFidelity={threadHighFidelity}
-                              zineOptions={zineOptions}
-                              setZineOptions={setZineOptions}
-                            />
+                        ) : (
+                          <div className="relative h-full min-h-0 flex flex-col">
+                            <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-worktable,#fafafa)]">
+                              <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
+                                Legacy worktable · experimental
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => navigate("/studio")}
+                                className="min-h-10 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-ink,#0a0a0a)] border border-[var(--mimi-hairline,#d4d4d4)]"
+                              >
+                                Back to Studio
+                              </button>
+                            </div>
+                            <div className="flex-1 min-h-0">
+                              <StudioWorktable
+                                onRefine={handleRefine}
+                                isThinking={appState === AppState.THINKING}
+                                initialValue={threadValue}
+                                initialMedia={threadMedia}
+                                initialHighFidelity={threadHighFidelity}
+                                zineOptions={zineOptions}
+                                setZineOptions={setZineOptions}
+                                onOpenConsole={() => setStudioConsoleOpen(true)}
+                                onOpenMenu={() => setIsNavOpen(true)}
+                                onNavigate={setViewMode}
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )
                       ) : (
-                        <StudioWorktable
+                        <StudioOrientationEntry
                           onRefine={handleRefine}
                           isThinking={appState === AppState.THINKING}
                           initialValue={threadValue}
@@ -2600,8 +2652,8 @@ export const App: React.FC = () => {
                           initialHighFidelity={threadHighFidelity}
                           zineOptions={zineOptions}
                           setZineOptions={setZineOptions}
-                          onOpenConsole={() => setStudioConsoleOpen(true)}
                           onNavigate={setViewMode}
+                          onNavigatePath={navigate}
                         />
                       ))}
                     {viewMode !== "studio" && (

@@ -1,0 +1,10 @@
+{
+  "install": "npm install && npm run sync:cloud-env",
+  "terminals": [
+    {
+      "name": "Dev server",
+      "command": "npm run dev",
+      "description": "Express + Vite dev server on http://localhost:3000"
+    }
+  ]
+}

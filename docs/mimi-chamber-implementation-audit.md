@@ -1,6 +1,6 @@
 # Mimi Chamber Implementation Audit
 
-Date: 2026-08-02 (Architecture Update 20 reconciliation; Milestones 2–3 complete; recent maps below)
+Date: 2026-08-03 (Architecture Update 20 reconciliation; Milestones 2–3 complete; Studio OS + feedback + zine artifact maps below)
 
 Source of truth: product canon + `lib/productCanon.ts` (+ `CANON_INFRASTRUCTURE`). Every canonical chamber has a dedicated route mode, chamber shell (where applicable), and `CanonModule` registry. Living architecture: [mimi-system-architecture.md](./mimi-system-architecture.md), [architecture-update-20.md](./architecture-update-20.md).
 
@@ -67,6 +67,10 @@ npm run verify:doll-engine
 npm run verify:doll-staple
 npm run verify:zine-spread-compose
 npm run verify:structured-zine-pdf
+npm run verify:zine-artifact-schema
+npm run verify:zine-issue-plan
+npm run verify:zine-reading-order
+npm run verify:zine-proof-diagnostics
 npm run verify:fish
 npm run verify:residue
 npm run review:mobile          # needs dev server on :3000 (or pass a base URL)
@@ -138,6 +142,107 @@ Ask → Atomize → Retrieve → Show Used Context
 ## Current developer map (2026-08)
 
 Scan-friendly notes for subsystems that landed after the July milestones. Prefer this section over digging through PRDs when onboarding or debugging.
+
+### Studio OS (Phase 1 shell)
+
+Shared chamber chrome for orientation surfaces — not a parallel design system. Canon modules carry `family`, `phase`, `atmosphere`, `visibility`, and `visualPacket`; Studio OS turns those into shells and artifacts.
+
+| Concern | Path |
+| --- | --- |
+| Canon taxonomy (`StudioFamily`, `StudioPhase`, atmospheres) | `lib/productCanon.ts` |
+| Shell flags / public-face / dark-plate sets | `lib/design-system.ts`, `lib/chamberChrome.ts` |
+| Map-only frame (Map · Mimi seal · Find) | `components/studio-os/StudioShell.tsx`, `StudioNavigation.tsx` |
+| Family frames | `components/studio-os/families/*` |
+| Artifact primitives (slip, seal, specimen, dossier…) | `components/studio-os/artifacts/*` |
+| Chamber manifests + visual packets | `components/studio-os/manifests/` |
+| Active dossier context | `components/studio-os/DossierContext.tsx` (wired in `index.tsx`) |
+| Chamber Map consumer | `components/chambers/ChamberMapView.tsx` |
+
+**Bottom anchors:** Map · Mimi seal (active dossier / Studio) · Find only. Do not add a permanent multi-chamber tab bar.
+
+**Pitfalls**
+
+- `StudioShell` is Map-only orientation chrome. Studio Hub / Worktable keep `StudioChrome` / worktable owners — do not wrap every chamber in `StudioShell`.
+- Family/atmosphere decisions belong on `CanonModule` metadata; chrome helpers read them. Do not hardcode parallel family maps in UI.
+- Public faces stay quiet (Menu + identity); dark plates need dark chrome (no light-over-dark seam). See `AGENTS.md` + `npm run review:mobile`.
+
+### Feedback + motion grammar
+
+Centralized semantic feedback — components must not call `navigator.vibrate` or invent per-widget haptic constants.
+
+| Concern | Path |
+| --- | --- |
+| Event catalog + confirmation-required set | `lib/feedback/feedback.events.ts` |
+| Event → motion/haptic recipes | `lib/feedback/feedback.recipes.ts` |
+| Orchestrator | `lib/feedback/feedback.service.ts` |
+| Web / noop haptic adapters | `lib/feedback/haptics/` |
+| React hook + provider | `hooks/useFeedback.ts`, `contexts/FeedbackProvider.tsx` |
+| Motion recipes / tokens / variants | `lib/motion/`, `components/motion/` |
+
+Usage:
+
+```ts
+const feedback = useFeedback();
+feedback.trigger("proposal.approved", { confirmed: true }); // only after mutation succeeds
+```
+
+**Rules**
+
+- Prefer semantic events (`source.captured`, `proposal.approved`, `artifact.saved`, …).
+- No hover haptics. Loading / `proposal.created` omit haptics by design.
+- Confirmation-required events (`CONFIRMATION_REQUIRED_EVENTS`) need `confirmed: true` only after the write succeeds.
+- Outside `FeedbackProvider`, `useFeedback()` falls back to a noop-haptic service (safe for tests).
+
+### Canonical Mimi zine artifact
+
+Typed artifact contract for issue structure, page grammars, lifecycle, and proof — layered on top of legacy `ZineMetadata`.
+
+| Concern | Path |
+| --- | --- |
+| Zod schema + `MIMI_ZINE_ARTIFACT_SCHEMA_VERSION` | `lib/zine/zineArtifactSchema.ts` |
+| Normalize / hydrate legacy metadata | `lib/zine/normalizeZineArtifact.ts`, `zineMigrations.ts` |
+| Issue planner + page prep | `lib/zine/zineIssuePlanner.ts` |
+| Reading order / proof / performance | `lib/zine/zineReadingOrder.ts`, `zineProofDiagnostics.ts`, `zinePerformance.ts` |
+| Page grammars (specimen, reading, evidence-ledger, …) | `components/zine/grammars/` |
+| Proof UI | `components/zine/ZineProofMode.tsx`, `ZinePageRenderer.tsx` |
+| Editorial compiler (direction → pages) | [zine-editorial-intelligence-spec.md](./zine-editorial-intelligence-spec.md) |
+
+Lifecycle statuses include `draft` → `reading` → `direction-proposed` → `direction-approved` → `composing` → `proof` → `approved` → `published` → `archived`. Issue modes: `editorial` \| `research` \| `seasonal` \| `oracle`.
+
+Verify:
+
+```bash
+npm run verify:zine-artifact-schema
+npm run verify:zine-issue-plan
+npm run verify:zine-reading-order
+npm run verify:zine-revision-history
+npm run verify:zine-proof-diagnostics
+npm run verify:zine-export-equivalence
+npm run verify:zine-private-context
+npm run verify:zine-performance-budget
+```
+
+**Pitfalls**
+
+- Prefer `normalizeZineArtifact` / schema parsers over ad-hoc page shape assumptions.
+- Context visibility (`working` / `export` / `public`) must stay honest — private working context must not leak into public/export packs (`verify:zine-private-context`).
+- Spread compose + structured PDF (below) remain the layout/export path; the artifact schema is the durable object contract.
+
+### Legal documents (`/privacy`, `/tos`)
+
+Special routes (not chambers). Content in `lib/legalContent.ts`; renderer `components/LegalDocumentPage.tsx`.
+
+| Path | Document |
+| --- | --- |
+| `/privacy` | Privacy Policy |
+| `/tos` | Terms of Service (canonical) |
+| `/terms` | Alias → Terms |
+
+Resolved via `legalTypeFromPath` early in `App.tsx` (before chamber routing). Footer links in `MimiZineLayout`. Contact: `privacy@mimi.you`. Brand casing: never CSS `uppercase` on the Mimi wordmark in the legal masthead.
+
+### Forecast culture vector (anonymous-safe)
+
+`TheForecast` Cultural tab composes from Mean Median Mode offline baselines first so the view never hangs on research fetch. Signed-out users are limited to the culture vector; live gateway synthesis is skipped for anonymous culture views (MMM-only report). Key file: `components/TheForecast.tsx`. Collective contribution still requires Proscenium consent — public ≠ consented.
 
 ### Scribe mobile workbench (Ask / Library / Capture)
 
@@ -256,3 +361,8 @@ Cultural → product adapters live under `services/residue/` (Phases 3–7). Sta
 | Shadow Memory migration | Shadow Memory flows | Live — UID-gated reindex |
 | Firestore quota / ghost Pocket | Pocket / Floor | Live — listener suppression + identity cancel |
 | Gateway entitlements | funded AI path | Live — server Stripe verification; no BYOK nag |
+| Studio OS Phase 1 | `/chamber-map` (+ shared shells) | Live — Map · seal · Find; Hub/Worktable keep prior chrome |
+| Feedback / motion | app-wide | Live — `useFeedback()` semantic events; confirmation-gated haptics |
+| Zine artifact schema | Press / Edit / export | Live contract v1 — `lib/zine/` + verify scripts |
+| Legal documents | `/privacy`, `/tos` | Live — `/terms` aliases to Terms |
+| Forecast culture | Forecast Cultural vector | Live — MMM-first offline; anonymous skips live synthesis |

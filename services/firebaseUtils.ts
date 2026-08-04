@@ -11,6 +11,7 @@ export const isFullyAuthenticated = () => {
 };
 
 import { ZineContent, ZineMetadata, ToneTag, PocketItem, UserProfile, DossierFolder, DossierArtifact, Treatment, UserPreferences, MediaFile, Proposal, ContextEntry, LineageEntry, UsedContextSnapshot } from "../types";
+import { stampZineArtifactMetadata } from "../lib/zine/stampZineArtifactMetadata";
 import { saveZineLocally, savePocketItemLocally, getLocalProfile, getLocalPocket, getLocalZines, deleteLocalPocketItem, saveFolderLocally, getLocalFolders, saveArtifactLocally, getLocalArtifacts } from "./localArchive";
 import { syncToShadowMemory, deleteFromShadowMemory } from "./vectorSearch";
 import { StrategyAudit, Task } from "../types";
@@ -567,7 +568,7 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
     }
   }
 
-  const meta: ZineMetadata = {
+  let meta: ZineMetadata = {
     id: targetId, userId: uid, userHandle: handle, userAvatar: avatar || null,
     title: zine.title, tone, coverImageUrl: coverUrl || null, timestamp: Date.now(), likes: 0,
     content: zineWithoutThreadData, isDeepThinking: !!deep, isPublic: stagedPublic, isLite: !!isLite, isHighFidelity: !!isHighFidelity,
@@ -600,6 +601,8 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
     lineage: lineage && lineage.length > 0 ? lineage : undefined,
     tags: tags && tags.length > 0 ? tags : await (await import("./geminiService")).generateTagsFromMedia(JSON.stringify(zine), artifacts || [])
   };
+
+  meta = stampZineArtifactMetadata(meta, pagesWithoutThreadData);
   
   devLog.info("MIMI // saveZineToProfile: Starting zine save");
   await saveZineLocally(meta);
@@ -632,8 +635,15 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
     try {
       console.info("MIMI // saveZineToProfile: Saving zine to Firestore...");
       
-      // 2. Save Zine without threadData and artifacts
-      await setDoc(doc(db, "zines", targetId), sanitizeFirestoreData(meta));
+      // 2. Save Zine without threadData and artifacts — keep pages serialized only.
+      const firestoreMeta: ZineMetadata = {
+        ...meta,
+        content: {
+          ...meta.content,
+          pages: [],
+        },
+      };
+      await setDoc(doc(db, "zines", targetId), sanitizeFirestoreData(firestoreMeta));
       
       // 3. Save threadData in subcollection
       for (const [pageNumber, threadData] of threadDataMap) {

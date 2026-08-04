@@ -11,7 +11,13 @@ import {
   buildZineProofDiagnostics,
   summarizeZineProof,
 } from "../../lib/zine/zineProofDiagnostics";
+import { summarizeZinePlanEvaluation } from "../../lib/zine/evaluateZineIssuePlan";
+import { buildZineProofSequence } from "../../lib/zine/zineIssuePlanner";
 import { fullFidelityPageIndexes } from "../../lib/zine/zinePerformance";
+import {
+  describeZinePageRationale,
+  sectionAbbreviation,
+} from "../../lib/zine/zinePageRationale";
 import type { MimiZineArtifact } from "../../types";
 import { ZinePageRenderer } from "./ZinePageRenderer";
 
@@ -28,17 +34,29 @@ export function ZineProofMode({
 }: ZineProofModeProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(true);
-  const diagnostics = useMemo(
-    () => buildZineProofDiagnostics(artifact),
+  const proofPages = useMemo(
+    () => buildZineProofSequence(artifact),
     [artifact],
+  );
+  const diagnostics = useMemo(
+    () => buildZineProofDiagnostics(artifact, proofPages),
+    [artifact, proofPages],
   );
   const summary = useMemo(
     () => summarizeZineProof(diagnostics),
     [diagnostics],
   );
+  const planSummary = useMemo(
+    () =>
+      artifact.issuePlan
+        ? summarizeZinePlanEvaluation(artifact.issuePlan.evaluation)
+        : { canRealize: true, blocking: 0, warnings: 0 },
+    [artifact.issuePlan],
+  );
+  const canApprove = summary.canApprove && planSummary.canRealize;
   const fullFidelityIndexes = useMemo(
-    () => fullFidelityPageIndexes(activeIndex, artifact.pages.length),
-    [activeIndex, artifact.pages.length],
+    () => fullFidelityPageIndexes(activeIndex, proofPages.length),
+    [activeIndex, proofPages.length],
   );
 
   useEffect(() => {
@@ -51,17 +69,24 @@ export function ZineProofMode({
         setActiveIndex((index) => Math.max(0, index - 1));
       }
       if (event.key === "ArrowRight") {
-        if (artifact.pages.length === 0) return;
+        if (proofPages.length === 0) return;
         setActiveIndex((index) =>
-          Math.min(artifact.pages.length - 1, index + 1),
+          Math.min(proofPages.length - 1, index + 1),
         );
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [artifact.pages.length, onClose]);
+  }, [proofPages.length, onClose]);
 
-  const activePage = artifact.pages[activeIndex];
+  const activePage = proofPages[activeIndex];
+  const activeRationale = useMemo(() => {
+    if (!activePage) return null;
+    return describeZinePageRationale(activePage, artifact, {
+      pageNumber: activePage.pageNumber,
+      totalPages: proofPages.length,
+    });
+  }, [activePage, artifact, proofPages.length]);
 
   return (
     <div
@@ -77,7 +102,8 @@ export function ZineProofMode({
             {artifact.identity.title}
           </p>
           <p className="font-mono text-[7px] uppercase tracking-[0.24em] text-[var(--mimi-stone,#78716c)]">
-            Proof / revision {String(artifact.revision).padStart(2, "0")}
+            Proof / revision {String(artifact.revision).padStart(2, "0")} /{" "}
+            {artifact.status.replaceAll("-", " ")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -89,13 +115,15 @@ export function ZineProofMode({
           >
             {summary.blocking > 0
               ? `${summary.blocking} blocking`
-              : `${summary.warnings} warnings`}
+              : planSummary.blocking > 0
+                ? `${planSummary.blocking} plan`
+                : `${summary.warnings + planSummary.warnings} warnings`}
           </button>
           {onApprove ? (
             <button
               type="button"
               onClick={onApprove}
-              disabled={!summary.canApprove}
+              disabled={!canApprove}
               className="min-h-11 bg-[var(--mimi-ink,#0a0a0a)] px-4 font-mono text-[8px] uppercase tracking-[0.18em] text-white disabled:cursor-not-allowed disabled:opacity-35"
             >
               <span className="inline-flex items-center gap-2">
@@ -115,11 +143,33 @@ export function ZineProofMode({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <main className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-4 md:p-8">
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          {activeRationale ? (
+            <div className="shrink-0 border-b border-[var(--mimi-hairline,#d4d4d4)] bg-white/90 px-4 py-3 md:px-8">
+              <div className="mx-auto flex max-w-4xl flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0 space-y-1">
+                  <p className="font-mono text-[7px] uppercase tracking-[0.24em] text-[var(--mimi-stone,#78716c)]">
+                    {activeRationale.label}
+                    {activeRationale.derived ? " / derived" : " / authored"}
+                    {" · "}
+                    {activeRationale.narrativeFunction.replaceAll("-", " ")}
+                  </p>
+                  <p className="font-serif text-sm italic leading-snug">
+                    {activeRationale.whyExists}
+                  </p>
+                </div>
+                <p className="max-w-sm font-sans text-[10px] leading-relaxed text-[var(--mimi-stone,#78716c)] md:text-right">
+                  {activeRationale.sequenceNote}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 md:p-8">
           {activePage ? (
             <div className="relative h-full max-h-[calc(100dvh-10rem)] w-full max-w-[min(72vw,70vh)]">
               {[...fullFidelityIndexes].map((index) => {
-                const page = artifact.pages[index];
+                const page = proofPages[index];
                 const active = index === activeIndex;
                 return (
                   <div
@@ -150,7 +200,7 @@ export function ZineProofMode({
             </div>
           )}
 
-          {artifact.pages.length > 1 ? (
+          {proofPages.length > 1 ? (
             <>
               <button
                 type="button"
@@ -165,10 +215,10 @@ export function ZineProofMode({
                 type="button"
                 onClick={() =>
                   setActiveIndex((index) =>
-                    Math.min(artifact.pages.length - 1, index + 1),
+                    Math.min(proofPages.length - 1, index + 1),
                   )
                 }
-                disabled={activeIndex === artifact.pages.length - 1}
+                disabled={activeIndex === proofPages.length - 1}
                 className="absolute right-3 flex min-h-11 min-w-11 items-center justify-center border border-[var(--mimi-hairline,#d4d4d4)] bg-white disabled:opacity-25 md:right-6"
                 aria-label="Next proof page"
               >
@@ -176,6 +226,7 @@ export function ZineProofMode({
               </button>
             </>
           ) : null}
+          </div>
         </main>
 
         {diagnosticsOpen ? (
@@ -197,6 +248,61 @@ export function ZineProofMode({
               </button>
             </div>
 
+            {artifact.issuePlan ? (
+              <div className="mb-4 border border-[var(--mimi-hairline,#d4d4d4)] p-3">
+                <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
+                  Issue plan / {artifact.issuePlan.evaluation.result}
+                </p>
+                <p className="mt-2 font-serif text-sm italic leading-snug">
+                  {artifact.issuePlan.editorialThesis}
+                </p>
+                {artifact.issuePlan.unresolvedQuestion ? (
+                  <p className="mt-2 font-sans text-[10px] leading-relaxed text-[var(--mimi-stone,#78716c)]">
+                    Open: {artifact.issuePlan.unresolvedQuestion}
+                  </p>
+                ) : null}
+                {artifact.issuePlan.compression ? (
+                  <p className="mt-2 font-sans text-[10px] leading-relaxed text-[var(--mimi-stone,#78716c)]">
+                    Compression removed {artifact.issuePlan.compression.removedPageIds.length}{" "}
+                    beat
+                    {artifact.issuePlan.compression.removedPageIds.length === 1 ? "" : "s"}
+                    {artifact.issuePlan.compression.mergedPageIds.length > 0
+                      ? ` and merged ${artifact.issuePlan.compression.mergedPageIds.length}`
+                      : ""}
+                    .
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {artifact.issuePlan?.evaluation.findings.length ? (
+              <ul className="mb-4 space-y-2">
+                {artifact.issuePlan.evaluation.findings.map((finding) => (
+                  <li key={finding.id}>
+                    <div className="border border-[var(--mimi-hairline,#d4d4d4)] p-3">
+                      <span
+                        className={`font-mono text-[7px] uppercase tracking-[0.2em] ${
+                          finding.severity === "blocking"
+                            ? "text-[#a33a2b]"
+                            : "text-[var(--mimi-stone,#78716c)]"
+                        }`}
+                      >
+                        plan / {finding.id.replaceAll("-", " ")}
+                      </span>
+                      <span className="mt-2 block font-serif text-sm italic leading-snug">
+                        {finding.message}
+                      </span>
+                      {finding.correction ? (
+                        <span className="mt-2 block font-sans text-[9px] leading-relaxed text-[var(--mimi-stone,#78716c)]">
+                          {finding.correction}
+                        </span>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
             {diagnostics.length > 0 ? (
               <ul className="space-y-2">
                 {diagnostics.map((diagnostic, index) => (
@@ -205,7 +311,7 @@ export function ZineProofMode({
                       type="button"
                       onClick={() => {
                         if (!diagnostic.pageId) return;
-                        const pageIndex = artifact.pages.findIndex(
+                        const pageIndex = proofPages.findIndex(
                           (page) => page.id === diagnostic.pageId,
                         );
                         if (pageIndex >= 0) setActiveIndex(pageIndex);
@@ -246,7 +352,7 @@ export function ZineProofMode({
         className="flex h-20 shrink-0 items-center gap-2 overflow-x-auto border-t border-[var(--mimi-hairline,#d4d4d4)] bg-white px-4"
         aria-label="Proof pages"
       >
-        {artifact.pages.map((page, index) => (
+        {proofPages.map((page, index) => (
           <button
             key={page.id || `${page.pageNumber}-${index}`}
             type="button"
@@ -259,7 +365,14 @@ export function ZineProofMode({
             aria-current={index === activeIndex ? "page" : undefined}
             aria-label={`Open page ${page.pageNumber}: ${page.headline}`}
           >
-            {String(page.pageNumber).padStart(2, "0")}
+            <span className="block leading-none">
+              {String(page.pageNumber).padStart(2, "0")}
+            </span>
+            {page.sectionType ? (
+              <span className="mt-1 block text-[6px] tracking-[0.14em] opacity-70">
+                {sectionAbbreviation(page.sectionType)}
+              </span>
+            ) : null}
           </button>
         ))}
       </nav>

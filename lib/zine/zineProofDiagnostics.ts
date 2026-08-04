@@ -192,8 +192,10 @@ function pushPageDiagnostics(
 
 export function buildZineProofDiagnostics(
   artifact: MimiZineArtifact,
+  proofPages?: ZinePageSpec[],
 ): ZineProofDiagnostic[] {
   const diagnostics: ZineProofDiagnostic[] = [];
+  const pages = proofPages ?? artifact.pages;
 
   if (!artifact.identity.title.trim()) {
     diagnostics.push({
@@ -221,13 +223,13 @@ export function buildZineProofDiagnostics(
   }
   if (
     !artifact.reading.centralObservation.trim() ||
-    artifact.pages.length === 0
+    pages.length === 0
   ) {
     diagnostics.push({
       id: "unresolved-generation",
       severity: "blocking",
       message:
-        artifact.pages.length === 0
+        pages.length === 0
           ? "The issue has no drafted pages."
           : "The issue has no central observation.",
       correction: "Complete the reading and draft unresolved pages.",
@@ -236,7 +238,10 @@ export function buildZineProofDiagnostics(
 
   const pageNumbers = new Map<number, number>();
   artifact.pages.forEach((page) => {
-    pageNumbers.set(page.pageNumber, (pageNumbers.get(page.pageNumber) || 0) + 1);
+    pageNumbers.set(
+      page.pageNumber,
+      (pageNumbers.get(page.pageNumber) || 0) + 1,
+    );
   });
   [...pageNumbers.entries()]
     .filter(([, count]) => count > 1)
@@ -244,8 +249,26 @@ export function buildZineProofDiagnostics(
       diagnostics.push({
         id: "duplicate-page-number",
         severity: "blocking",
-        message: `Page number ${pageNumber} appears more than once.`,
+        message: `Page number ${pageNumber} appears more than once in authored pages.`,
         correction: "Renumber the issue sequence before approval.",
+      });
+    });
+
+  const proofPageNumbers = new Map<number, number>();
+  pages.forEach((page) => {
+    proofPageNumbers.set(
+      page.pageNumber,
+      (proofPageNumbers.get(page.pageNumber) || 0) + 1,
+    );
+  });
+  [...proofPageNumbers.entries()]
+    .filter(([, count]) => count > 1)
+    .forEach(([pageNumber]) => {
+      diagnostics.push({
+        id: "duplicate-page-number",
+        severity: "blocking",
+        message: `Proof page number ${pageNumber} appears more than once.`,
+        correction: "Repair the proof sequence before approval.",
       });
     });
 
@@ -271,7 +294,7 @@ export function buildZineProofDiagnostics(
     });
   }
 
-  artifact.pages.forEach((page, index) => {
+  pages.forEach((page, index) => {
     pushPageDiagnostics(diagnostics, page, index);
   });
 
