@@ -52,8 +52,16 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           output: {
             manualChunks: {
+              // three has no dependency on react, so isolating it here is safe.
+              // @react-three/fiber and @react-three/drei are intentionally left
+              // out of manualChunks: both depend on react/react-dom, and forcing
+              // them into a named chunk drags react itself into that chunk too
+              // (Rollup then has to statically import react from it for the
+              // entry, which defeats the dynamic-import code-splitting below and
+              // makes the browser modulepreload the whole three/fiber/drei
+              // stack on every page load). Rollup's automatic chunking already
+              // isolates them correctly as a lazy-loaded-only chunk.
               'three-core': ['three'],
-              'three-fiber': ['@react-three/fiber', '@react-three/drei'],
             },
           },
         },

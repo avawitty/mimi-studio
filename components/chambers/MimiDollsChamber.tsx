@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { ExternalLink, Sparkles, Wand2, Compass, ArrowRight } from "lucide-react";
+import React, { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { ExternalLink, Sparkles, Wand2, Compass, ArrowRight, Loader2 } from "lucide-react";
 import { ChamberShell } from "./ChamberShell";
 import { MimiYouHub } from "../tailor/MimiYouHub";
 import { DollProfileScreen } from "../tailor/DollProfileScreen";
 import { DollPortraitStage } from "../tailor/DollPortraitStage";
 import { useUser } from "../../contexts/UserContext";
-import { ProceduralDollStudio } from "./ProceduralDollStudio";
 import type { Doll } from "../../types";
 import { listDolls, updateDoll } from "../../services/tailorService";
 import {
@@ -20,6 +19,10 @@ import {
   mimiYouTabPath,
   type MimiYouTab,
 } from "../../lib/mimiYouRoutes";
+
+const ProceduralDollStudio = lazy(() =>
+  import("./ProceduralDollStudio").then((m) => ({ default: m.ProceduralDollStudio })),
+);
 
 interface MimiDollsChamberProps {
   navigate: (path: string) => void;
@@ -366,11 +369,19 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
               Back to shell
             </button>
           </div>
-          <ProceduralDollStudio
-            boundDoll={boundDoll}
-            onAestheticCommit={user?.uid && boundDoll ? handleAestheticCommit : undefined}
-            headerLabel={boundDoll?.name}
-          />
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center p-12">
+                <Loader2 size={16} className="animate-spin text-stone-600" />
+              </div>
+            }
+          >
+            <ProceduralDollStudio
+              boundDoll={boundDoll}
+              onAestheticCommit={user?.uid && boundDoll ? handleAestheticCommit : undefined}
+              headerLabel={boundDoll?.name}
+            />
+          </Suspense>
         </div>
       ) : !user?.uid ? (
         <div className="flex flex-col items-center justify-center p-12 text-center gap-4">
