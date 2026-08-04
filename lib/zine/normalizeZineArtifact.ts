@@ -215,6 +215,10 @@ function normalizeCover(metadata: ZineMetadata): ZineCoverSpec {
     treatment: coverTreatment(metadata),
     bakedImageUrl: overlayBaked ? imageUrl : undefined,
     overlayBaked,
+    covers:
+      metadata.coverSpec?.covers ||
+      metadata.content.meta.studioCoverVariants ||
+      undefined,
   };
 }
 

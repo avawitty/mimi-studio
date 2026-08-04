@@ -35,6 +35,22 @@ starts everything on one port.
 - Re-verify IDs against `https://ai-gateway.vercel.sh/v1/models` when bumping
   `GATEWAY_DEFAULT_MODELS`.
 
+### Canonical database
+- Neon Postgres is the canonical relational database. Firebase remains the Mimi
+  authentication provider; do not add Neon Auth or Supabase Auth.
+- Use Drizzle schema/migrations and `@neondatabase/serverless`. Ordinary
+  serverless reads use HTTP; interactive transactions and row locks use the
+  pooled WebSocket client.
+- Database-neutral repository interfaces live under `domain/`. Neon/Drizzle
+  implementations belong only under `infrastructure/database/neon/`.
+- Credits, grants, reservations, commits, releases, memberships, Stripe event
+  reconciliation, and memory approvals are server-only transactional
+  repository operations.
+- React chambers must never connect to Neon directly. Images, uploads,
+  generated plates, video, and large exports use separate object storage.
+- Do not introduce Supabase SDKs, RPCs, Storage, service-role assumptions, or
+  client-authoritative billing state.
+
 ### Tests
 - E2E is Playwright (`npm run test:e2e`). The Playwright config auto-starts `npm run dev`
   and reuses an already-running server on port 3000, so no manual server start is needed.

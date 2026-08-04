@@ -6,6 +6,7 @@ import {
   MimiImageReference,
   MimiImageRequest,
   MimiImageResponse,
+  MimiImageVariantResult,
 } from "./mimiImageTypes.js";
 import { modelFor } from "../services/modelConfig.js";
 import { generateGatewayImageBytesForModel } from "./aiGatewayCompat.js";
@@ -549,4 +550,85 @@ Rules:
       finishReason: response?.candidates?.[0]?.finishReason,
     },
   );
+};
+
+const CONTACT_SHEET_VARIANT_DIRECTIVES = [
+  "Variant A: hero-forward composition, strongest negative space for title overlay.",
+  "Variant B: asymmetrical crop with edge tension and off-center focal mass.",
+  "Variant C: lower horizon, environmental depth, tactile material emphasis.",
+  "Variant D: tighter portrait crop with restrained palette and archival grain.",
+];
+
+/** One API request → up to four distinct cover variants for the contact strip. */
+export const generateMimiImageBatchServer = async (
+  request: MimiImageRequest,
+  options: { apiKey: string; provider?: MimiImageProvider },
+): Promise<MimiImageResponse> => {
+  const count = Math.min(4, Math.max(2, request.variantCount ?? 4));
+  const batchId = `cov-${Date.now()}`;
+  const warnings: string[] = [];
+
+  const variants: MimiImageVariantResult[] = [];
+  let provider: MimiImageProvider = options.provider || request.provider || "gemini";
+  let model = request.model || DEFAULT_MIMI_IMAGE_MODEL;
+  let compiledPrompt = compileMimiImagePrompt(request);
+
+  for (let i = 0; i < count; i += 1) {
+    const seed = `${batchId}-${i}`;
+    const directive =
+      CONTACT_SHEET_VARIANT_DIRECTIVES[i % CONTACT_SHEET_VARIANT_DIRECTIVES.length];
+    const variantRequest: MimiImageRequest = {
+      ...request,
+      variantCount: 1,
+      prompt: `${request.prompt}\n\nCONTACT SHEET VARIANT ${i + 1}/${count}: ${directive} Distinct from siblings in this sheet. Seed ${seed}.`,
+      metadata: {
+        ...(request.metadata || {}),
+        contactSheetIndex: i,
+        contactSheetSeed: seed,
+      },
+    };
+
+    try {
+      const result = await generateMimiImageServer(variantRequest, options);
+      provider = result.provider;
+      model = result.model;
+      compiledPrompt = result.compiledPrompt;
+      if (result.warnings?.length) warnings.push(...result.warnings);
+      variants.push({
+        imageUrl: result.imageUrl,
+        seed,
+        prompt: result.compiledPrompt,
+        mimeType: result.mimeType,
+        base64: result.base64,
+      });
+    } catch (error) {
+      console.warn(`MIMI // Contact sheet variant ${i + 1} failed`, error);
+      warnings.push(`Variant ${i + 1} failed`);
+    }
+  }
+
+  if (variants.length === 0) {
+    throw Object.assign(new Error("Contact sheet generation produced no variants."), {
+      status: 502,
+      code: "NO_IMAGE_RETURNED",
+    });
+  }
+
+  const primary = variants[0];
+  return {
+    ok: true,
+    provider,
+    model,
+    imageUrl: primary.imageUrl,
+    mimeType: primary.mimeType,
+    base64: primary.base64,
+    compiledPrompt,
+    warnings,
+    variants,
+    metadata: {
+      ...(request.metadata || {}),
+      variantCount: variants.length,
+      contactSheet: true,
+    },
+  };
 };

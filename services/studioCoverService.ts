@@ -121,3 +121,36 @@ export const generateStudioCover = async (
     return postMimiImage({ ...baseBody, provider: "simulated" }, headers);
   }
 };
+
+/** Dev · Darkroom contact sheet — four variants in one API call. */
+export const generateStudioCoverContactSheet = async (
+  input: GenerateStudioCoverInput,
+): Promise<MimiImageResponse> => {
+  const prompt = compileCoverPrompt(input);
+  const references = input.reference ? [input.reference] : undefined;
+  const baseBody = {
+    prompt,
+    userPrompt: prompt,
+    mode: "zine-plate",
+    aspectRatio: "3:4",
+    variantCount: 4,
+    references,
+    tailorContext: input.tailorContext,
+    metadata: { source: "studio-cover-contact-sheet" },
+  };
+
+  const headers: Record<string, string> = {};
+  const provider = input.provider || (input.openaiKey ? "openai" : "gemini");
+  if (provider === "openai" && input.openaiKey) {
+    headers["Authorization"] = `Bearer ${input.openaiKey}`;
+  } else if (input.apiKey) {
+    headers["x-api-key"] = input.apiKey;
+  }
+
+  try {
+    return await postMimiImage({ ...baseBody, provider }, headers);
+  } catch (primaryError) {
+    console.warn("MIMI // Studio cover sheet: primary path failed, trying simulated.", primaryError);
+    return postMimiImage({ ...baseBody, provider: "simulated", variantCount: 4 }, headers);
+  }
+};

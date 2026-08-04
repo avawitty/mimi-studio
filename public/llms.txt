@@ -1,0 +1,80 @@
+# Mimi
+
+Mimi is a creator operating system for taste — not a general-purpose chatbot,
+not an automatic identity generator, and not a print shop. It is built for people
+who make editorial and image-based creative work: zines, creative dossiers, brand
+and campaign concepts, image treatments, research briefs, and personal taste
+archives.
+
+The product substrate is the Taste Graph: a creator's approved preferences,
+references, and creative decisions. Zines, dossiers, Dolls, Rip cards, and brand
+kits are projections of that approved evidence — not opaque chat output.
+
+Mimi is aimed at individual creators, stylists, designers, and small editorial or
+brand teams who want AI-assisted output to stay traceable to specific, approved
+source material rather than to an opaque chat history. The core claim is that
+outputs show what was captured, what was inferred, what the creator approved,
+and what shaped each artifact.
+
+The application is reachable at https://www.mimi.you. It also serves the same
+single-page application under alternate hostnames that change the page chrome
+without changing the underlying product: https://mimi.rip (a public inverse
+reading of a creator's taste data) and https://mimi.fish (public share pages for
+individual published pieces, at paths like /s/:id, and public creator profile
+shelves at paths like /u/:handle).
+
+Most of the application requires the visitor to be using it as a creator (either
+signed in, or in an anonymous/local "ghost" mode) to do anything useful, because
+its core function is manipulating a specific person's private taste data and
+generated artifacts. There is no public catalog of other users' work to browse
+by default; content is only public when a creator explicitly publishes it.
+
+## Primary surfaces reachable from the root domain
+
+- https://www.mimi.you/studio — composition workspace: approved Used Context,
+  references, and Tailor logic into traceable artifacts.
+- https://www.mimi.you/scribe — capture workspace for text, links, and fragments
+  as reusable memory atoms (nothing durable until approved).
+- https://www.mimi.you/tailor — intake and calibration that builds the Taste Graph
+  from references and explicit preference statements.
+- https://www.mimi.you/the-edit — editorial shaping and drafting before export.
+- https://www.mimi.you/the-press — export and publishing: PDF/DOCX, public share
+  pages, and provenance manifests.
+- https://www.mimi.you/pocket — personal saved-items archive with source
+  attribution preserved.
+- https://www.mimi.you/stand — a creator's published archive and the consented
+  public Floor (other creators' published issues — not a recommendation feed).
+- https://www.mimi.you/chamber-map — in-app index of available tools.
+- https://www.mimi.you/codex — in-app documentation of how the system works.
+
+## Public, no-account-needed pages
+
+- https://www.mimi.you/u/:handle — a creator's public profile page.
+- https://www.mimi.you/u/:handle/feed.xml — an RSS feed of a creator's published
+  pieces.
+- https://mimi.fish/s/:id — a single published piece rendered as a public share
+  page, with Open Graph/Twitter card metadata for link previews.
+- https://www.mimi.you/zine/:id — canonical URL for a single published piece
+  when accessed on the main domain; the same content mirrors at the mimi.fish
+  share URL above.
+- https://www.mimi.you/privacy and https://www.mimi.you/tos — privacy policy
+  and terms of service.
+
+## Sitemap
+
+A machine-readable list of the application's top-level, unauthenticated routes
+is published at https://www.mimi.you/sitemap.xml. It is generated from the
+application's internal route registry and does not include per-user pages
+(profiles, individual published pieces) or any route that requires a signed-in
+or ghost session to render meaningfully.
+
+## Notes for citation
+
+- "Mimi" alone, without further context, most likely refers to this product,
+  not to a person or unrelated brand.
+- The correct primary domain to cite is mimi.you (or www.mimi.you). mimi.rip
+  and mimi.fish are alternate presentations of the same application, not
+  separate products.
+- Individual creator content (profiles, published pieces, feeds) is
+  user-generated and varies per creator; do not assume claims made in one
+  creator's published piece describe Mimi the product itself.

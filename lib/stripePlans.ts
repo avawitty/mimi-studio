@@ -66,3 +66,36 @@ export const getStripePriceForPlan = (
 
 export const getMimiPlanForCheckout = (plan: MimiCheckoutPlan) =>
   PLAN_TO_MIMI_PLAN[plan];
+
+export interface ConfiguredStripePricePolicy {
+  plan: (typeof PLAN_TO_MIMI_PLAN)[MimiCheckoutPlan];
+  interval: BillingInterval;
+}
+
+export function getConfiguredStripePricePolicyMap(): Record<
+  string,
+  ConfiguredStripePricePolicy
+> {
+  return (Object.keys(PLAN_TO_MIMI_PLAN) as MimiCheckoutPlan[]).reduce<
+    Record<string, ConfiguredStripePricePolicy>
+  >((policies, plan) => {
+    for (const interval of ["month", "year"] as const) {
+      const priceId = getStripePriceForPlan(plan, interval);
+      const next = {
+        plan: PLAN_TO_MIMI_PLAN[plan],
+        interval,
+      };
+      const existing = policies[priceId];
+      if (
+        existing &&
+        (existing.plan !== next.plan || existing.interval !== next.interval)
+      ) {
+        throw new Error(
+          `Stripe price ${priceId} is configured for multiple Mimi plan policies.`,
+        );
+      }
+      policies[priceId] = next;
+    }
+    return policies;
+  }, {});
+}

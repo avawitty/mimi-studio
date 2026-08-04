@@ -108,7 +108,9 @@ export function rollForwardMembershipGrant(
   };
 }
 
-const require = createRequire(import.meta.url);
+const require = createRequire(
+  typeof __filename === "string" ? __filename : import.meta.url,
+);
 
 async function loadAdmin(): Promise<{ auth: any | null; db: any | null }> {
   try {

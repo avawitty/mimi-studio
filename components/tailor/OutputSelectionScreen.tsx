@@ -12,14 +12,14 @@ export type TailorOutputChoice =
   | 'mimi_rip';
 
 const OUTPUTS: { id: TailorOutputChoice; label: string; description: string }[] = [
-  { id: 'doll', label: 'Generate Doll', description: 'Symbolic embodiment of your taste graph' },
+  { id: 'doll', label: 'Generate Doll', description: 'Symbolic Taste Graph projection — after approved evidence' },
   { id: 'brand_kit', label: 'Brand Kit', description: 'Positioning, palette, and voice directives' },
   { id: 'art_style', label: 'Art Style Container', description: 'Visual grammar for illustration' },
   { id: 'writing_voice', label: 'Writing Voice', description: 'Editorial tone and language grammar' },
   { id: 'art_history', label: 'Art History Mirror', description: 'Thematic comparisons across art history' },
   { id: 'marketing_asset', label: 'Marketing Asset', description: 'Campaign-ready derived copy' },
   { id: 'field_notes', label: 'Save to Field Notes', description: 'Add to your research notebook' },
-  { id: 'mimi_you', label: 'Reveal mimi.you', description: 'Your personal creative universe' },
+  { id: 'mimi_you', label: 'Reveal mimi.you', description: 'Public projection of approved taste — not automatic identity' },
   { id: 'mimi_rip', label: 'Open mimi.rip', description: 'Inverse reading — refusals, blind spots, dark mirror' },
 ];
 

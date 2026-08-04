@@ -39,8 +39,17 @@
     },
     "api/health.ts": {
       "maxDuration": 30
+    },
+    "api/maintenance/credit-reservations.ts": {
+      "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/maintenance/credit-reservations",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "redirects": [
     {
       "source": "/creative-loop",

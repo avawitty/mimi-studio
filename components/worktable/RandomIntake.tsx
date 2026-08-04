@@ -9,6 +9,8 @@ type RandomIntakeProps = {
   onWhisperNext?: () => void;
   onWhisperDismiss?: () => void;
   sending?: boolean;
+  /** Invitation line — should match whisper when both are shown */
+  placeholder?: string;
   className?: string;
 };
 
@@ -24,6 +26,7 @@ export const RandomIntake: React.FC<RandomIntakeProps> = ({
   onWhisperNext,
   onWhisperDismiss,
   sending = false,
+  placeholder = "Write anything. A thought, image, mood, reference, fragment…",
   className = "",
 }) => {
   return (
@@ -50,39 +53,33 @@ export const RandomIntake: React.FC<RandomIntakeProps> = ({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Write anything. A thought, image, mood, reference, fragment…"
+        placeholder={placeholder}
         rows={4}
         className="w-full resize-none bg-transparent border-0 focus:outline-none font-serif italic font-light text-[18px] leading-snug text-[var(--wt-ink,#1b1b19)] placeholder:text-[var(--wt-ink-2,#6b6a66)] min-h-[5rem]"
         style={{ fontSize: "16px" }}
       />
 
       {whisper && (
-        <div className="mt-3 pt-3 border-t border-dotted border-[var(--wt-line,#d8d3c6)] flex items-start justify-between gap-3">
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--wt-ink-2,#6b6a66)] leading-relaxed">
-            <span className="text-[var(--wt-ink,#1b1b19)]">Whisper · </span>
-            {whisper}
-          </p>
-          <div className="shrink-0 flex items-center gap-1">
-            {onWhisperNext && (
-              <button
-                type="button"
-                onClick={onWhisperNext}
-                className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--wt-ink-2,#6b6a66)] min-h-10 px-1.5 hover:text-[var(--wt-ink,#1b1b19)]"
-              >
-                Next
-              </button>
-            )}
-            {onWhisperDismiss && (
-              <button
-                type="button"
-                onClick={onWhisperDismiss}
-                aria-label="Hide prompt whisper"
-                className="font-mono text-[10px] text-[var(--wt-ink-2,#6b6a66)] min-h-10 min-w-10 hover:text-[var(--wt-ink,#1b1b19)]"
-              >
-                ×
-              </button>
-            )}
-          </div>
+        <div className="mt-3 pt-3 border-t border-dotted border-[var(--wt-line,#d8d3c6)] flex items-center justify-end gap-1">
+          {onWhisperNext && (
+            <button
+              type="button"
+              onClick={onWhisperNext}
+              className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--wt-ink-2,#6b6a66)] min-h-10 px-1.5 hover:text-[var(--wt-ink,#1b1b19)]"
+            >
+              Next prompt →
+            </button>
+          )}
+          {onWhisperDismiss && (
+            <button
+              type="button"
+              onClick={onWhisperDismiss}
+              aria-label="Hide prompt whisper"
+              className="font-mono text-[10px] text-[var(--wt-ink-2,#6b6a66)] min-h-10 min-w-10 hover:text-[var(--wt-ink,#1b1b19)]"
+            >
+              ×
+            </button>
+          )}
         </div>
       )}
     </section>

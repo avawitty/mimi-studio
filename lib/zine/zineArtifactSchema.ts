@@ -311,6 +311,16 @@ export const mimiZineArtifactSchema = z.object({
     ]),
     bakedImageUrl: z.string().optional(),
     overlayBaked: z.boolean(),
+    covers: z
+      .array(
+        z.object({
+          url: z.string(),
+          seed: z.string(),
+          prompt: z.string(),
+          selected: z.boolean(),
+        }),
+      )
+      .optional(),
   }),
   colophon: z.object({
     creatorHandle: z.string(),
