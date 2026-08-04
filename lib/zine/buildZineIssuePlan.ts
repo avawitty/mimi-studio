@@ -152,7 +152,9 @@ function coverPlan(
     informationDensity: 0.35,
     visualIntensity: 0.55,
     textImageRatio: 0.4,
-    requiresGeneratedMedia: Boolean(input.cover.imageUrl || input.cover.bakedImageUrl),
+    requiresGeneratedMedia: Boolean(
+      !input.cover.imageUrl && !input.cover.bakedImageUrl,
+    ),
     derived: true,
   };
 }

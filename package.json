@@ -31,6 +31,7 @@
     "verify:zine-page-rationale": "tsx scripts/verifyZinePageRationale.ts",
     "verify:zine-issue-planner": "tsx scripts/verifyZineIssuePlanner.ts",
     "verify:zine-plan-compression": "tsx scripts/verifyZinePlanCompression.ts",
+    "verify:zine-generate-to-plan": "tsx scripts/verifyZineGenerateToPlan.ts",
     "verify:zine-export-equivalence": "tsx scripts/verifyZineExportEquivalence.ts",
     "verify:zine-private-context": "tsx scripts/verifyZinePrivateContext.ts",
     "verify:zine-performance-budget": "tsx scripts/verifyZinePerformanceBudget.ts",
