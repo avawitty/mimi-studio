@@ -1,0 +1,62 @@
+---
+description: Mimi Studio product context, stack, design constraints, routing rules, and living-doc maintenance
+alwaysApply: true
+---
+
+# Mimi Studio — project context
+
+## Product one-liner
+
+**Mimi** is a private AI editorial studio that turns scattered creative evidence into an approved **Taste Graph** — traceable direction for zines, dossiers, identity projections, and image-making. The creator approves what becomes memory; outputs show **Used Context**, not hidden chat history.
+
+Workflow grammar: **Capture → Interpret → Approve → Remember → Retrieve → Generate → Compose → Export**.
+
+## Stack
+
+| Layer | Technology |
+| --- | --- |
+| UI | React 19, TypeScript, Vite, Framer Motion |
+| Server | Express (`server.ts` + `tsx`), Vite middleware in dev, `/api/*` routes |
+| Auth & private state | Firebase Auth, Firestore, Firebase Admin |
+| Owned public plane | Sovereign archive (SQLite local / Postgres-Neon on Vercel) |
+| AI | Google Gemini, Vercel AI Gateway (`modelFor` / `services/modelConfig.ts`) |
+| Billing | Stripe |
+| Deploy | Netlify / Vercel-compatible Express host |
+| Tests | Playwright E2E, canon validation scripts |
+
+Single process: `npm run dev` serves SPA + API on one port (default `:3000`).
+
+## Design constraints
+
+- **Display type:** Cormorant Garamond (`font-display`, `font-serif`, `font-header`).
+- **UI sans:** DM Sans for humanist UI copy where specified; default shell sans is Geist Variable (migrate toward DM Sans on new surfaces when choosing fonts).
+- **Palette:** parchment / archival — use CSS variables and Tailwind `mimi.*` / `nous.*` tokens only (`--mimi-field`, `--mimi-ink`, `--mimi-olive`, `--mimi-stone`, `--mimi-hairline`, `--mimi-cobalt`, manila tokens). See `docs/house-style-v2.md` and `index.css`.
+- **No hardcoded hex in components** — theme tokens only. Tailwind `archival.*` literals are legacy; prefer `mimi.*` / CSS vars on new code.
+- **Brand:** readable **Mimi** (title case). Never render `MIMI` via CSS `uppercase` on brand strings.
+- **Shells:** shared Studio OS (`components/studio-os/`), `lib/productCanon.ts`, `lib/design-system.ts`. Bottom anchors: Map · Mimi seal · Find — no permanent multi-chamber tab bar.
+- **Motion / haptics:** `useFeedback()` semantic events only (`lib/feedback/`).
+- **Honest states:** empty ≠ done; storage error ≠ delete; demonstration data must be labeled.
+
+Full UX preferences: `.cursor/skills/mimi-product-preferences/SKILL.md`.
+
+## Routing — server-visible HTML
+
+All **new routes** (especially public faces, share cards, feeds, OG/Twitter previews) must return **server-visible HTML**:
+
+1. Register an Express `app.get` handler (or extend an existing one) that reads `index.html` / `dist/index.html`.
+2. Inject route-specific `<title>`, description, and Open Graph / Twitter meta before send (pattern: `/s/:zineId` in `server.ts` → `injectZineSEOMetadata`).
+3. In dev, run `viteInstance.transformIndexHtml` when Vite is available.
+4. Do not rely on client-only rendering for crawlable/share preview content.
+
+Infrastructure routes (`/u/:handle`, `/s/:id`, `/u/:handle/feed.xml`, `/api/feed`) already follow this contract.
+
+## Living documentation — mandatory updates
+
+At the end of any task that **changes architecture** or **ships / materially upgrades a module**:
+
+1. Update `docs/STATE.md` — module status (`stub` / `partial` / `shipped`), known debt, next action.
+2. Append to `docs/DECISIONS.md` — date, decision, alternatives rejected, rationale (ADR-lite).
+
+**Do not ask permission** to update these files when the above conditions apply.
+
+Reference docs: `docs/STRATEGY.md` (positioning & quarter scope), `docs/mimi-system-architecture.md` (canonical architecture), `lib/productCanon.ts` (chamber registry).

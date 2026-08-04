@@ -2034,6 +2034,11 @@ export const App: React.FC = () => {
           result.content.meta.studioCoverOverlays = opts.studioCoverOverlays;
         }
 
+        if (opts.studioCoverVariants?.length) {
+          result.content.meta = result.content.meta || {};
+          result.content.meta.studioCoverVariants = opts.studioCoverVariants;
+        }
+
         if (coverUrl && opts.studioCoverOverlays?.length) {
           const { resolveExportCoverUrl } = await import("./lib/studioCoverExport");
           coverUrl =
@@ -2602,6 +2607,7 @@ export const App: React.FC = () => {
                           zineOptions={zineOptions}
                           setZineOptions={setZineOptions}
                           onOpenConsole={() => setStudioConsoleOpen(true)}
+                          onOpenMenu={() => setIsNavOpen(true)}
                           onNavigate={setViewMode}
                         />
                       ))}

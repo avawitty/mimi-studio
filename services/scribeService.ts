@@ -1,7 +1,7 @@
-import { Type } from '@google/genai';
-import { withResilience } from './geminiClient';
+import { z } from 'zod';
 import type { MemoryAtom, PocketItem, TasteGraphNode, CreativeLaw, EvidenceNode, Observation, TailorProject } from '../types';
-import { fetchMemoryAtoms, saveMemoryAtom } from './memoryService';
+import { fetchMemoryAtoms } from './memoryService';
+import { auth } from './firebaseInit';
 import { getTasteGraph } from './tasteGraphService';
 import { 
   listTailorProjects, 
@@ -10,8 +10,7 @@ import {
   listEvidenceNodes, 
   listObservations, 
   listDolls,
-  listDollMasks,
-  saveCreativeLaws 
+  listDollMasks
 } from './tailorService';
 import {
   ACTIVE_DOLL_STORAGE_KEY,
@@ -40,9 +39,126 @@ export interface ScribeContextItem {
 
 export interface ScribeAnswer {
   evidence: Array<{ id: string; statement: string; contextIds: string[] }>;
-  inferences: Array<{ id: string; statement: string; confidence: number; evidenceIds: string[] }>;
-  recommendations: Array<{ id: string; action: string; rationale: string; inferenceIds: string[] }>;
+  inferences: Array<{
+    id: string;
+    statement: string;
+    confidence: number;
+    evidenceIds: string[];
+    proposalId?: string;
+  }>;
+  recommendations: Array<{
+    id: string;
+    action: string;
+    rationale: string;
+    inferenceIds: string[];
+    proposalId?: string;
+  }>;
   usedContext: ScribeContextItem[];
+  execution?: {
+    via: 'gateway';
+    workflowRunId: string;
+    aiRunId: string;
+    credits: {
+      reserved: number;
+      charged: number;
+      released: number;
+      remaining: number;
+    };
+  };
+}
+
+const scribeOperationResponseSchema = z.object({
+  workflowRunId: z.string().uuid(),
+  aiRunId: z.string().uuid(),
+  status: z.literal('succeeded'),
+  result: z.object({
+    evidence: z.array(z.object({
+      id: z.string(),
+      statement: z.string(),
+      contextIds: z.array(z.string()),
+    })),
+    inferences: z.array(z.object({
+      id: z.string(),
+      statement: z.string(),
+      confidence: z.number(),
+      evidenceIds: z.array(z.string()),
+      proposalId: z.string().uuid(),
+    })),
+    recommendations: z.array(z.object({
+      id: z.string(),
+      action: z.string(),
+      rationale: z.string(),
+      inferenceIds: z.array(z.string()),
+      proposalId: z.string().uuid(),
+    })),
+  }),
+  credits: z.object({
+    reserved: z.number().int().nonnegative(),
+    charged: z.number().int().nonnegative(),
+    released: z.number().int().nonnegative(),
+    remaining: z.number().int().nonnegative(),
+  }),
+});
+
+const memoryApprovalResponseSchema = z.object({
+  status: z.literal('approved'),
+  atoms: z.array(z.object({ id: z.string().uuid() })).min(1),
+});
+
+const operationalMemoryResponseSchema = z.object({
+  atoms: z.array(z.object({
+    id: z.string().uuid(),
+    projectId: z.string().nullable(),
+    atomType: z.string(),
+    content: z.record(z.string(), z.unknown()),
+    createdAt: z.string(),
+  })),
+});
+
+async function fetchOperationalMemoryAtoms(
+  userId: string,
+  projectId?: string,
+): Promise<MemoryAtom[]> {
+  const currentUser = auth.currentUser;
+  if (!currentUser || currentUser.uid !== userId) return [];
+  const token = await currentUser.getIdToken();
+  const params = new URLSearchParams();
+  if (projectId) params.set('projectId', projectId);
+  const response = await fetch(
+    `/api/memory/atoms${params.size ? `?${params.toString()}` : ''}`,
+    { headers: { 'x-user-token': `Bearer ${token}` } },
+  );
+  if (!response.ok) return [];
+  const parsed = operationalMemoryResponseSchema.safeParse(
+    await response.json().catch(() => ({})),
+  );
+  if (!parsed.success) return [];
+  return parsed.data.atoms.map((atom) => {
+    const text =
+      typeof atom.content.statement === 'string'
+        ? atom.content.statement
+        : typeof atom.content.action === 'string'
+          ? [
+              atom.content.action,
+              typeof atom.content.rationale === 'string'
+                ? atom.content.rationale
+                : '',
+            ].filter(Boolean).join('\n\n')
+          : JSON.stringify(atom.content);
+    return {
+      id: atom.id,
+      projectId: atom.projectId || 'global',
+      content: text,
+      title:
+        atom.atomType === 'scribe_recommendation'
+          ? 'Approved Scribe recommendation'
+          : 'Approved Scribe inference',
+      timestamp: Date.parse(atom.createdAt),
+      source: 'The Scribe · Neon',
+      tags: ['approved', 'scribe', atom.atomType],
+      kind: 'memory_atom',
+    };
+  });
 }
 
 // Word matcher for search score
@@ -87,7 +203,8 @@ export async function retrieveScribeContext(
   // Fetch from all sources in parallel (incl. Doll companion projections)
   const [
     projects,
-    atoms,
+    legacyAtoms,
+    operationalAtoms,
     graph,
     activeProject,
     creativeLaws,
@@ -97,6 +214,7 @@ export async function retrieveScribeContext(
   ] = await Promise.all([
     listTailorProjects(userId).catch(() => [] as TailorProject[]),
     fetchMemoryAtoms(userId).catch(() => [] as MemoryAtom[]),
+    fetchOperationalMemoryAtoms(userId, projectId).catch(() => [] as MemoryAtom[]),
     getTasteGraph(userId).catch(() => ({ nodes: [] as TasteGraphNode[], edges: [] as any[] })),
     projectId ? getTailorProject(userId, projectId).catch((): null => null) : Promise.resolve(null),
     projectId ? listCreativeLaws(userId, projectId).catch(() => [] as CreativeLaw[]) : Promise.resolve([] as CreativeLaw[]),
@@ -104,6 +222,9 @@ export async function retrieveScribeContext(
     projectId ? listObservations(userId, projectId).catch(() => [] as Observation[]) : Promise.resolve([] as Observation[]),
     listDolls(userId).catch((): Awaited<ReturnType<typeof listDolls>> => []),
   ]);
+  const atoms = [...new Map(
+    [...operationalAtoms, ...legacyAtoms].map((atom) => [atom.id, atom]),
+  ).values()];
 
   const candidates: ScribeContextItem[] = [];
 
@@ -263,10 +384,12 @@ export async function askScribeExplainable(
   userId: string,
   question: string,
   contextItems: ScribeContextItem[],
-  projectId?: string
+  projectId?: string,
+  idempotencyKey: string = crypto.randomUUID(),
 ): Promise<ScribeAnswer> {
-  if (contextItems.length === 0) {
-    contextItems.push({
+  const effectiveContext = contextItems.length > 0
+    ? contextItems
+    : [{
       id: 'current-question',
       kind: 'memory_atom',
       title: 'Current context',
@@ -274,184 +397,119 @@ export async function askScribeExplainable(
       approvalStatus: 'approved',
       relevance: 1.0,
       retrievalReason: 'Highest authority.'
-    });
+    } satisfies ScribeContextItem];
+
+  const currentUser = auth.currentUser;
+  if (!currentUser || currentUser.uid !== userId) {
+    throw new Error('Sign in again before asking Scribe.');
   }
 
-  const contextBlock = contextItems
-    .map(
-      (item) =>
-        `ID: ${item.id}\nKind: ${item.kind}\nTitle: ${item.title}\nExcerpt: ${item.excerpt}\nApproval: ${item.approvalStatus}\nRelevance: ${item.relevance}\nReason: ${item.retrievalReason}`
-    )
-    .join('\n\n---\n\n');
-
-  try {
-    return await withResilience(async (ai) => {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: `You are Mimi Scribe — the explainable temporal memory engine of Mimi.
-Your purpose is to answer the user's creative inquiries by synthesizing their historical archive, taste signals, design constraints, and visual specimens.
-
-You MUST structure your response into THREE distinct sections in a valid JSON format according to the schema:
-1. "evidence": Direct, grounded statements extracted from the retrieved context items. Each must point to the contextIds they are based on.
-2. "inferences": Cognitive bridges, pattern identifications, and semantic links drawn from the evidence. Each must point to the evidenceIds they are based on and have a confidence percentage.
-3. "recommendations": Concrete, actionable creative maneuvers or strategic moves for the brand. Each must point to the inferences or instructions they are based on.
-
-RETRIEVED CONTEXT:
-${contextBlock}
-
-USER QUESTION:
-"${question}"
-
-Tone/Style requirements:
-- Ethereal, classily provocative, highly sophisticated.
-- Use canonical Mimi vocabulary: "semantic density", "material tensions", "sovereign choices", "curatorial posture".
-- Ground your evidence and inferences strictly in the retrieved context. Never invent ungrounded facts.
-
-JSON Output Schema format:
-{
-  "evidence": [
-    { "id": "evidence-1", "statement": "Statement of fact from retrieved documents", "contextIds": ["retrieved-context-id"] }
-  ],
-  "inferences": [
-    { "id": "inference-1", "statement": "Inferred pattern or visual tension connecting evidence", "confidence": 90, "evidenceIds": ["evidence-1"] }
-  ],
-  "recommendations": [
-    { "id": "recommendation-1", "action": "Actionable creative maneuver", "rationale": "Why this aligns with taste identity", "inferenceIds": ["inference-1"] }
-  ]
-}
-
-Only return valid JSON matching this schema.`,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              evidence: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    statement: { type: Type.STRING },
-                    contextIds: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ['id', 'statement', 'contextIds']
-                }
-              },
-              inferences: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    statement: { type: Type.STRING },
-                    confidence: { type: Type.INTEGER },
-                    evidenceIds: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ['id', 'statement', 'confidence', 'evidenceIds']
-                }
-              },
-              recommendations: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    action: { type: Type.STRING },
-                    rationale: { type: Type.STRING },
-                    inferenceIds: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ['id', 'action', 'rationale', 'inferenceIds']
-                }
-              }
-            },
-            required: ['evidence', 'inferences', 'recommendations']
-          }
-        }
-      });
-
-      const text = response.text?.trim();
-      if (!text) {
-        throw new Error('Empty response from Gemini');
-      }
-
-      const parsed = JSON.parse(text);
-      return {
-        evidence: parsed.evidence || [],
-        inferences: parsed.inferences || [],
-        recommendations: parsed.recommendations || [],
-        usedContext: contextItems
-      };
+  const token = await currentUser.getIdToken();
+  const response = await fetch('/api/ai/operations/scribe.propose-atoms', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-token': `Bearer ${token}`,
+      'Idempotency-Key': idempotencyKey,
+    },
+    body: JSON.stringify({
+      workspaceId: null,
+      input: {
+        question,
+        projectId,
+        contextItems: effectiveContext,
+      },
+      sourceIds: effectiveContext.map((item) => item.id),
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      payload?.code === 'INSUFFICIENT_CREDITS'
+        ? `Scribe needs ${payload.required} credits; ${payload.available} are available.`
+        : payload?.message || payload?.error || 'Scribe could not complete this read.';
+    throw Object.assign(new Error(message), {
+      code: payload?.code,
+      status: response.status,
+      terminal: payload?.terminal === true,
+      workflowRunId: payload?.workflowRunId,
     });
-  } catch (err) {
-    console.error('MIMI // Scribe Explainable failed, returning fallback:', err);
-    return fallbackAnswer(question, contextItems);
   }
-}
+  const parsedPayload = scribeOperationResponseSchema.safeParse(payload);
+  if (!parsedPayload.success) {
+    throw new Error('Scribe returned an invalid operational response. No memory was approved.');
+  }
+  const operation = parsedPayload.data;
 
-function fallbackAnswer(question: string, contextItems: ScribeContextItem[]): ScribeAnswer {
-  const used = contextItems.length ? contextItems : [{
-    id: 'current-question', kind: 'memory_atom' as const, title: 'Current instruction', excerpt: question,
-    approvalStatus: 'approved' as const, relevance: 1, retrievalReason: 'Highest authority.'
-  }];
-  const evidence = used.slice(0, 4).map((item, index) => ({
-    id: `evidence-${index + 1}`,
-    statement: `${item.title}: ${item.excerpt}`,
-    contextIds: [item.id],
-  }));
-  const approved = used.filter((item) => item.approvalStatus === 'approved');
-  const inferences = [{
-    id: 'inference-1',
-    statement: approved.length
-      ? `The strongest current direction is the overlap between ${approved.slice(0, 3).map((item) => item.title).join(', ')}.`
-      : 'The archive suggests a direction, but it still needs explicit approval before becoming taste memory.',
-    confidence: Math.min(95, 55 + used.length * 5),
-    evidenceIds: evidence.map((item) => item.id),
-  }];
   return {
-    evidence,
-    inferences,
-    recommendations: [{
-      id: 'recommendation-1',
-      action: `Use the retrieved context to answer “${question}” as a project decision, then approve or revise the interpretation before applying it.`,
-      rationale: 'This preserves authorship and prevents passive references from silently becoming identity.',
-      inferenceIds: ['inference-1'],
-    }],
-    usedContext: used,
+    evidence: operation.result.evidence,
+    inferences: operation.result.inferences,
+    recommendations: operation.result.recommendations,
+    usedContext: effectiveContext,
+    execution: {
+      via: 'gateway',
+      workflowRunId: operation.workflowRunId,
+      aiRunId: operation.aiRunId,
+      credits: operation.credits,
+    },
   };
 }
 
-export async function approveScribeInference(userId: string, projectId: string, text: string) {
-  const id = `scribe_${Date.now()}`;
-  await saveMemoryAtom(userId, { 
-    id, 
-    projectId, 
-    content: text, 
-    title: 'Approved Scribe inference', 
-    timestamp: Date.now(), 
-    source: 'The Scribe', 
-    tags: ['approved', 'scribe'] 
+export async function approveScribeInference(
+  userId: string,
+  _projectId: string,
+  _text: string,
+  proposalId?: string,
+  idempotencyKey: string = crypto.randomUUID(),
+) {
+  if (!proposalId) {
+    throw new Error('This inference has no durable proposal to approve.');
+  }
+  const currentUser = auth.currentUser;
+  if (!currentUser || currentUser.uid !== userId) {
+    throw new Error('Sign in again before approving memory.');
+  }
+  const token = await currentUser.getIdToken();
+  const response = await fetch('/api/memory/proposals/approve', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-token': `Bearer ${token}`,
+      'Idempotency-Key': idempotencyKey,
+    },
+    body: JSON.stringify({ proposalIds: [proposalId] }),
   });
-  return id;
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw Object.assign(
+      new Error(payload?.message || payload?.error || 'Memory approval failed.'),
+      {
+        code: payload?.code,
+        status: response.status,
+      },
+    );
+  }
+  const parsedPayload = memoryApprovalResponseSchema.safeParse(payload);
+  if (!parsedPayload.success) {
+    throw new Error('Memory approval returned an invalid response.');
+  }
+  return parsedPayload.data.atoms[0].id;
 }
 
 export async function saveScribeDecision(
   userId: string,
   projectId: string,
-  title: string,
-  principle: string,
-  explanation: string
+  _title: string,
+  action: string,
+  rationale: string,
+  proposalId?: string,
+  idempotencyKey: string = crypto.randomUUID(),
 ) {
-  return await saveCreativeLaws(userId, projectId, [{
-    title,
-    principle,
-    explanation,
-    supportingPatternClusterIds: [],
-    supportingEvidenceNodeIds: [],
-    confidence: 100,
-    claimType: 'user_confirmed',
-    userStatus: 'accepted',
-    applications: [],
-    avoidances: [],
-  }]);
+  return approveScribeInference(
+    userId,
+    projectId,
+    `${action}\n\n${rationale}`,
+    proposalId,
+    idempotencyKey,
+  );
 }

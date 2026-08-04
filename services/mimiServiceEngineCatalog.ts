@@ -276,7 +276,7 @@ export const mimiServiceEngineSpecs: MimiServiceEngineSpec[] = [
     ["artifact", "metadata", "project id", "storage preference"],
     ["archive entry", "storage receipt", "retrievable artifact"],
     ["store artifacts", "support local-first persistence", "preserve provenance", "recover drafts"],
-    "Support Firestore, Supabase, Postgres, SQLite, IndexedDB, Drive, S3, Git, or future storage providers.",
+    "Use Neon Postgres for canonical relational records, separate object storage for binaries, and explicit legacy adapters during migration.",
   ),
   spec(
     "interpretation-engine",
@@ -406,7 +406,7 @@ export const mimiServiceEngineSpecs: MimiServiceEngineSpec[] = [
     ["session", "auth state", "profile", "organization", "relationship action"],
     ["identity state", "permissions", "profile data", "relationship update"],
     ["initialize backend access", "manage auth state", "resolve permissions", "support relationships"],
-    "Abstract Firebase behind a storage and identity provider interface that can later support Supabase, custom auth, or enterprise identity.",
+    "Keep Firebase as Mimi authentication while server repositories resolve Neon-backed profiles, memberships, and permissions.",
   ),
   spec(
     "membership-engine",
