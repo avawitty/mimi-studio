@@ -2360,7 +2360,13 @@ export const App: React.FC = () => {
 
   return (
     <IntelligenceGateContext.Provider value={gateValue}>
-      <div className="h-full w-full bg-nous-base text-nous-text transition-colors duration-500 flex flex-col relative overflow-hidden">
+      <div
+      className={`h-full w-full transition-colors duration-500 flex flex-col relative overflow-hidden ${
+        isPublicEditorialFlowMode(viewMode)
+          ? "bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)]"
+          : "bg-nous-base text-nous-text"
+      }`}
+      >
       <AnimatePresence>
         {(authLoading || isElevatorLoading) && (
           <ElevatorLoader

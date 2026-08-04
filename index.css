@@ -445,6 +445,16 @@
     background-color: var(--studio-chrome);
   }
 
+  /* Light public editorial — chrome and field are one continuous surface */
+  .studio-chrome[data-chrome="public-face"] {
+    background-color: var(--mimi-field, #ffffff);
+    border-bottom-color: var(--mimi-hairline, #d4d4d4);
+    color: var(--mimi-ink, #0a0a0a);
+    --studio-ink: var(--mimi-ink, #0a0a0a);
+    --studio-muted: var(--mimi-stone, #78716c);
+    --studio-border: var(--mimi-hairline, #d4d4d4);
+  }
+
   /* Cream binder chrome keeps dark ink even when workspace is black */
   .studio-worktable[data-studio-theme="dark"] .studio-chrome {
     color: #0a0a0a;

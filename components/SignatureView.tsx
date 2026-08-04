@@ -15,7 +15,7 @@ import { PressReveal } from './motion/PressReveal';
 import { getApprovedUsedContext } from '../services/usedContextService';
 
 const SignatureSkeleton = () => (
- <div className="w-full min-h-full bg dark:bg text-nous-text font-serif pb-20 md:pb-28">
+ <PublicField bleed className="w-full min-h-full font-serif pb-20 md:pb-28">
  <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-16 animate-pulse">
  
  {/* Header Skeleton */}
@@ -70,7 +70,7 @@ const SignatureSkeleton = () => (
  </div>
  </div>
  </div>
- </div>
+</PublicField>
 );
 
 export const SignatureView: React.FC = () => {
@@ -208,10 +208,10 @@ export const SignatureView: React.FC = () => {
 
  if (!signature) {
  return (
- <div className="flex-1 flex flex-col items-center justify-center p-12 text-center h-full bg dark:bg">
- <Fingerprint size={48} className="text-nous-subtle mb-6"/>
- <h2 className="font-serif italic text-3xl text-nous-text mb-2">No Signature Found</h2>
- <p className="text-nous-subtle max-w-md mb-6">Your archive is currently empty. Create more artifacts in the Studio to generate your aesthetic fingerprint.</p>
+ <PublicField bleed className="w-full min-h-full flex flex-col items-center justify-center p-12 text-center font-serif">
+ <Fingerprint size={48} className="text-[var(--mimi-stone)] mb-6"/>
+ <h2 className="font-serif italic text-3xl text-[var(--mimi-ink)] mb-2">No Signature Found</h2>
+ <p className="text-[var(--mimi-stone)] max-w-md mb-6">Your archive is currently empty. Create more artifacts in the Studio to generate your aesthetic fingerprint.</p>
  <button 
  onClick={async () => {
  if (!user) return;
@@ -243,12 +243,12 @@ export const SignatureView: React.FC = () => {
  >
  [ COMPILE DOSSIER ]
  </button>
- </div>
+ </PublicField>
  );
  }
 
  return (
- <PublicField className="w-full min-h-full font-serif selection:bg-black/5 pb-16 md:pb-24">
+ <PublicField bleed className="w-full min-h-full font-serif selection:bg-black/5 pb-16 md:pb-24">
  <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-12 md:space-y-16">
  
  <PressReveal>

@@ -76,14 +76,8 @@ export function mainShellClassName(mode: string): string {
   if (DARK_PLATE_SET.has(mode)) {
     return `${base} overflow-hidden min-h-0 pb-0 h-full bg-[#050506]`;
   }
-  if (
-    mode === "editorial-home" ||
-    mode === "stand" ||
-    mode === "signature" ||
-    mode === "showcase" ||
-    mode === "archival"
-  ) {
-    return `${base} overflow-y-auto bg-nous-base pb-8 md:pb-0 mimi-page-pad mimi-page-pad--public`;
+  if (isPublicEditorialFlowMode(mode)) {
+    return `${base} overflow-y-auto bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)] pb-8 md:pb-0 mimi-page-pad mimi-page-pad--public`;
   }
   return `${base} overflow-y-auto bg-nous-base pb-[max(1.25rem,env(safe-area-inset-bottom))] md:pb-0 mimi-page-pad`;
 }

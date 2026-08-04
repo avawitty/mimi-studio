@@ -261,7 +261,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
 
   return (
     <>
-      <PublicField className="w-full min-h-full flex flex-col relative pb-16 md:pb-24">
+      <PublicField bleed className="w-full min-h-full flex flex-col relative pb-16 md:pb-24">
         <div>
           <PressReveal>
             <header className="px-6 md:px-16 pt-6 md:pt-14 pb-6 md:pb-8 space-y-6 md:space-y-8">

@@ -52,6 +52,8 @@ describe("chamberChrome", () => {
     expect(mainShellClassName("tailor")).toContain("overflow-hidden");
     expect(mainShellClassName("mimi-rip")).toContain("bg-[#050506]");
     expect(mainShellClassName("editorial-home")).toContain("mimi-page-pad--public");
+    expect(mainShellClassName("editorial-home")).toContain("mimi-field");
+    expect(mainShellClassName("proscenium")).toContain("mimi-page-pad--public");
     expect(mainShellClassName("pocket")).toContain("mimi-page-pad");
     expect(mainShellClassName("pocket")).not.toContain("mimi-page-pad--public");
   });

@@ -10,7 +10,7 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ## 2026-08-04 — Public editorial surfaces: single scroll owner
 
-**Decision:** Public editorial plates (`editorial-home`, `stand`, `signature`, `proscenium`, `showcase`, `archival`) scroll only on `<main>` via `mainShellClassName`. Child `PublicField` shells use `min-h-full` and must not set `overflow-y-auto` or `h-full` height locks. `App.tsx` motion wrapper uses `isPublicEditorialFlowMode` to flow at natural height instead of creating a nested scroll viewport.
+**Decision:** Public editorial plates (`editorial-home`, `stand`, `signature`, `proscenium`, `showcase`, `archival`) scroll only on `<main>` via `mainShellClassName`. Child `PublicField` shells use `min-h-full`, `bleed` (no duplicate field fill), and must not set `overflow-y-auto` or `h-full` height locks. `<main>`, app root, and `studio-chrome[data-chrome="public-face"]` all paint `--mimi-field` so the surface reads as the page — not a white card inside a gray/dark shell.
 
 **Alternatives rejected:** (1) Per-surface internal scroll on `PublicField`. (2) Auditing all ~40 dark-plate chambers in the same pass.
 
