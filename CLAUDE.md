@@ -16,6 +16,19 @@ Full product architecture (domains, objects, engines, contracts) lives in
 `docs/mimi-system-architecture.md`. The current route/chamber/verify-script map lives in
 `docs/mimi-chamber-implementation-audit.md`. Product principles are in `README.md`.
 
+## Working constraints
+
+This repo is ~195,000 lines across 387 components and ~90 services. Scope discipline matters more than
+completeness.
+
+- Touch only files required by the current task. If a fix seems to require edits outside the stated scope,
+  stop and report rather than expanding.
+- Route declarations live in `lib/productCanon.ts`. Never create a second route list.
+- Cross-chamber navigation uses semantic intents (`lib/chamberIntents.ts`), not hardcoded route strings.
+- `npm run lint` is `tsc --noEmit`. It must pass before you report done.
+- Do not add dependencies without saying why in your summary.
+- Do not "improve" adjacent code you notice along the way. Report it instead.
+
 ## Commands
 
 ```bash
