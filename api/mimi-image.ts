@@ -56,7 +56,7 @@ export default async function handler(req: any, res: any) {
       return sendJson(res, 403, {
         error: {
           message:
-            "Mimi Image requires an AI_GATEWAY_API_KEY, VERCEL_OIDC_TOKEN, or a configured legacy image-provider key.",
+            "Mimi Image requires an AI_GATEWAY_API_KEY or a configured legacy image-provider key.",
           code: "MISSING_IMAGE_KEY",
         },
       });

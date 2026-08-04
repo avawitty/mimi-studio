@@ -462,7 +462,7 @@ export const resolveFundedGatewayApiKey = async (
   let access: FundedGatewayAccess | null = null;
 
   if (!apiKey) {
-    const fundedKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+    const fundedKey = process.env.AI_GATEWAY_API_KEY || "";
     if (!fundedKey) {
       return { apiKey: "", access: null, denialReason: "server_gateway_unconfigured" };
     }

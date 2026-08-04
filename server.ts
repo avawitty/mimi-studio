@@ -91,8 +91,7 @@ if (
     process.env.OPENROUTER_API_KEY ||
     process.env.REPLICATE_API_TOKEN ||
     process.env.REPLICATE_API_KEY ||
-    process.env.AI_GATEWAY_API_KEY ||
-    process.env.VERCEL_OIDC_TOKEN
+    process.env.AI_GATEWAY_API_KEY
   )
 ) {
   process.env.MIMI_ENABLE_SERVER_AI = "true";
@@ -1043,7 +1042,7 @@ async function startServer() {
         gemini: serverAiEnabled && Boolean(process.env.GEMINI_API_KEY || process.env.API_KEY),
         anthropic: serverAiEnabled && Boolean(process.env.ANTHROPIC_API_KEY),
         openrouter: serverAiEnabled && Boolean(process.env.OPENROUTER_API_KEY),
-        aiGateway: serverAiEnabled && Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
+        aiGateway: serverAiEnabled && Boolean(process.env.AI_GATEWAY_API_KEY),
         replicate: serverAiEnabled && Boolean(process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY),
       },
       sovereign: await sovereignStatus(),

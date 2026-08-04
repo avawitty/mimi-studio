@@ -566,7 +566,7 @@ export class GatewayImageAdapter implements MimiImageProviderAdapter {
 }
 
 export class MimiProvider {
-  static gateway(apiKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "", model?: string) {
+  static gateway(apiKey = process.env.AI_GATEWAY_API_KEY || "", model?: string) {
     if (!apiKey) {
       throw Object.assign(new Error("AI_GATEWAY_API_KEY is not configured server-side."), {
         status: 503,
@@ -635,7 +635,7 @@ export class MimiProvider {
     const openaiKey = userKey || process.env.OPENAI_API_KEY || "";
     const geminiKey = userKey || process.env.GEMINI_API_KEY || process.env.API_KEY || "";
     const replicateKey = userKey || process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY || "";
-    const gatewayKey = userKey || process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+    const gatewayKey = userKey || process.env.AI_GATEWAY_API_KEY || "";
 
     const defaultRole = (input.references && input.references.length > 0) ? 'imageEdit' : 'image';
 

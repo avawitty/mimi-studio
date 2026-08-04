@@ -31,7 +31,7 @@ export default async function handler(req: any, res: any) {
     return sendError(
       res,
       503,
-      "AI Gateway embeddings unavailable (set AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN).",
+      "AI Gateway embeddings unavailable (set AI_GATEWAY_API_KEY).",
       "GATEWAY_EMBED_DISABLED",
     );
   }

@@ -49,7 +49,7 @@ export default async function handler(req: any, res: any) {
     process.env.MIMI_ENABLE_SERVER_AI === "1";
 
   const aiGatewayAvailable = Boolean(
-    process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN,
+    process.env.AI_GATEWAY_API_KEY,
   );
 
   let sovereign: Record<string, unknown> = fallbackSovereignStatus();

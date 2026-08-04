@@ -141,7 +141,7 @@ const gatewayMessageText = (message: any): string => {
 };
 
 export const getServerAiGatewayKey = () =>
-  process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+  process.env.AI_GATEWAY_API_KEY || "";
 
 export const gatewayChatCompletion = async (
   apiKey: string,
@@ -149,7 +149,7 @@ export const gatewayChatCompletion = async (
   options: GatewayRequestOptions = {},
 ) => {
   if (!apiKey) {
-    throw Object.assign(new Error("AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN is required."), {
+    throw Object.assign(new Error("AI_GATEWAY_API_KEY is required."), {
       status: 403,
       code: "MISSING_AI_GATEWAY_KEY",
     });
@@ -413,7 +413,7 @@ export const generateGatewayImageBytesForModel = async (
   const aspectRatio = input.aspectRatio || "1:1";
 
   if (!apiKey) {
-    throw Object.assign(new Error("AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN is required."), {
+    throw Object.assign(new Error("AI_GATEWAY_API_KEY is required."), {
       status: 403,
       code: "MISSING_AI_GATEWAY_KEY",
     });

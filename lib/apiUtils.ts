@@ -99,7 +99,7 @@ export const providerKey = (req: any, provider: "gemini" | "anthropic" | "openai
   // server.ts auto-enable, and image routes that prefer the gateway would
   // otherwise silently fall into Simulated Mirror Mode.
   if (provider === "gateway") {
-    return process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+    return process.env.AI_GATEWAY_API_KEY || "";
   }
 
   if (!serverAiEnabled()) return "";

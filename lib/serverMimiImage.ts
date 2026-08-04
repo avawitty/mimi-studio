@@ -216,7 +216,7 @@ export const generateMimiImageServer = async (
 
   if (provider === "gateway") {
     if (!apiKey) {
-      throw Object.assign(new Error("Mimi Image requires AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN."), {
+      throw Object.assign(new Error("Mimi Image requires AI_GATEWAY_API_KEY."), {
         status: 403,
         code: "MISSING_IMAGE_KEY",
       });

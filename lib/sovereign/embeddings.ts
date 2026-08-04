@@ -18,7 +18,7 @@ export const isSovereignGatewayEmbedEnabled = (): boolean => {
   if (process.env.MIMI_SOVEREIGN_EMBED === "1" || process.env.MIMI_SOVEREIGN_EMBED === "true") {
     return true;
   }
-  return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
+  return Boolean(process.env.AI_GATEWAY_API_KEY);
 };
 
 export const resolveSovereignEmbedApiKey = (): string | undefined => {
