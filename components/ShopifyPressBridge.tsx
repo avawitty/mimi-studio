@@ -18,7 +18,17 @@ import {
   type ShopifyPackInspection,
 } from "../services/shopifyExportService";
 
-export const ShopifyPressBridge: React.FC = () => {
+interface ShopifyPressBridgeProps {
+  artifactId?: string;
+  artifactTitle?: string;
+  onInspectionChange?: (inspection: ShopifyPackInspection | null) => void;
+}
+
+export const ShopifyPressBridge: React.FC<ShopifyPressBridgeProps> = ({
+  artifactId,
+  artifactTitle,
+  onInspectionChange,
+}) => {
   const [connection, setConnection] = useState<ShopifyConnectionStatus | null>(null);
   const [connectionError, setConnectionError] = useState("");
   const [isCheckingConnection, setIsCheckingConnection] = useState(true);
@@ -43,6 +53,10 @@ export const ShopifyPressBridge: React.FC = () => {
   useEffect(() => {
     void refreshConnection();
   }, []);
+
+  useEffect(() => {
+    onInspectionChange?.(inspection);
+  }, [inspection, onInspectionChange]);
 
   const isConnected = connection?.configured === true;
   const adminUrl = connection?.shop ? `https://${connection.shop}/admin/products` : null;
@@ -75,11 +89,19 @@ export const ShopifyPressBridge: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <ShoppingBag size={14} className="text-[#95BF47]" />
-            <h3 className="font-serif text-lg font-bold text-white">Shopify Bridge</h3>
+            <h3 className="font-serif text-lg font-bold text-white">Shopify destination</h3>
           </div>
           <p className="font-mono text-[8px] uppercase tracking-wider text-stone-500 leading-relaxed">
             Inspect · approve · hand off a Shopify-ready product release
           </p>
+          {artifactTitle && (
+            <p className="font-sans text-[11px] text-stone-400 mt-2">
+              For artifact: <span className="text-stone-200">{artifactTitle}</span>
+              {artifactId ? (
+                <span className="font-mono text-stone-600"> · {artifactId}</span>
+              ) : null}
+            </p>
+          )}
         </div>
         {isConnected && (
           <span className="inline-flex items-center gap-1 px-2 py-1 border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono text-[8px] uppercase tracking-widest font-bold">
@@ -98,15 +120,15 @@ export const ShopifyPressBridge: React.FC = () => {
               </h4>
             </div>
             <p className="font-serif italic text-[11px] text-stone-500 mt-1 max-w-xl">
-              Review a Mimi Shopify ZIP before it reaches Shopify Admin. Inspection stays in this browser
-              and never requires a store token.
+              Review a Mimi Shopify ZIP before it reaches Shopify Admin. Inspection stays in this
+              browser and never requires a store token. Warnings affect overall release readiness.
             </p>
           </div>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isInspecting}
-            className="shrink-0 px-4 py-2 border border-[#95BF47]/50 text-[#b8d67b] font-mono text-[8px] uppercase tracking-widest font-black hover:bg-[#95BF47]/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="shrink-0 px-4 py-2 border border-[#95BF47]/50 text-[#b8d67b] font-mono text-[8px] uppercase tracking-widest font-black hover:bg-[#95BF47]/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2 min-h-11"
           >
             {isInspecting ? <Loader2 size={11} className="animate-spin" /> : <FileArchive size={11} />}
             {isInspecting ? "Inspecting" : "Inspect Product Pack"}
@@ -204,7 +226,8 @@ export const ShopifyPressBridge: React.FC = () => {
             Server-owned Direct Publish
           </h4>
           <p className="font-serif italic text-sm text-stone-300 mt-2 leading-relaxed">
-            Mimi can create drafts without placing a Shopify credential in this browser.
+            Mimi can create drafts without placing a Shopify credential in this browser. Draft-only
+            — human approval before handoff.
           </p>
         </div>
 
@@ -246,23 +269,14 @@ export const ShopifyPressBridge: React.FC = () => {
                 <p className="mt-1 font-mono text-xs leading-relaxed text-stone-300 break-words">
                   SHOPIFY_SHOP + SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET
                 </p>
-                <p className="mt-2 font-serif text-sm leading-relaxed text-stone-400">
-                  Keep these in the deployment environment without a <code className="font-mono">VITE_</code> prefix.
-                  They must never be sent to the browser.
-                </p>
               </div>
             )}
           </div>
         </div>
 
-        <p className="font-serif italic text-sm text-stone-300 leading-relaxed">
-          The app needs only <code className="font-mono text-xs not-italic text-stone-100">write_products</code>.
-          Every handoff is forced to draft status, and the creator still approves the release before
-          Mimi calls Shopify.
-        </p>
-
         <div className="flex flex-wrap gap-2 pt-1">
           <button
+            type="button"
             onClick={() => void refreshConnection()}
             disabled={isCheckingConnection}
             className="min-h-11 px-4 py-2 border border-stone-600 text-stone-100 font-mono text-xs uppercase tracking-widest font-bold hover:border-stone-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-all flex items-center gap-2 disabled:opacity-50"

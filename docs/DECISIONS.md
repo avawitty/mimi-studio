@@ -6,7 +6,17 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-02 — Data plane ownership (Firebase vs Sovereign vs IndexedDB)
+## 2026-08-04 — Publisher Console artifact-first release desk
+
+**Decision:** Restructure The Press around **Release** (artifact readiness, destinations, approvals) and **Performance** (post-publication metrics only when connected). Derive readiness deterministically from proof diagnostics, export manifest, Intel handoff, and Shopify pack inspection — no simulated reach/revenue/deliverability cards.
+
+**Alternatives rejected:** (1) Retain aggregate analytics dashboard as first viewport. (2) AI-generated release recommendations without explicit check rules. (3) Toast-only sponsor approvals.
+
+**Why:** Mimi is a private editorial OS for taste, evidence, and approval — not a generic creator analytics product. Creators need to know if an artifact is safe to release before seeing performance data.
+
+**Ref:** `lib/publisher/releaseReadiness.ts`, `components/PublisherDashboard.tsx`
+
+---
 
 **Decision:** Firebase Auth owns identity. Firestore owns private canonical state (Memory Atoms, Context Runs, Tailor/Shadow records, billing mirrors). Sovereign owns **public publication projections** (Floor, Mine shelf, feeds, OG, hybrid search, Pocket mirrors). IndexedDB holds ghost/anonymous working sets.
 
