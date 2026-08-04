@@ -8,7 +8,7 @@ interface MenuItem {
 
 const MENU_STRUCTURE: Record<string, MenuItem[]> = {
   Studio: [
-    { label: 'Work Table', viewMode: 'studio' },
+    { label: 'Studio', viewMode: 'studio' },
     { label: 'Project Builder', viewMode: 'moodboard' },
     { label: 'Narrative Pathing', viewMode: 'threads' },
   ],

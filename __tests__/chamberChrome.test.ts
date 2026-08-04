@@ -11,7 +11,7 @@ import {
 describe("chamberChrome", () => {
   it("classifies routes with the eight Studio OS families", () => {
     expect(getChamberFamily("chamber-map")).toBe("orientation");
-    expect(getChamberFamily("studio")).toBe("production");
+    expect(getChamberFamily("studio")).toBe("orientation");
     expect(getChamberFamily("oracle")).toBe("intelligence");
     expect(getChamberFamily("scry")).toBe("capture");
     expect(getChamberFamily("pocket")).toBe("library");

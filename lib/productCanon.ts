@@ -248,25 +248,30 @@ export const CANON_MODULES: CanonModule[] = [
   },
   {
     id: "studio",
-    name: "Studio / Worktable",
+    name: "Studio",
     layer: "chamber",
     engine: "Orchestration Engine",
     priority: 8,
     status: "live",
     canonicalRoute: "/studio",
     implementedMode: "studio",
-    component: "StudioWorktable",
-    aliases: ["Worktable", "Studio"],
-    inputs: ["prompt text", "media references", "Tailor logic", "Pocket/Mood Board/Darkroom artifacts", "zine options"],
+    component: "StudioOrientationEntry",
+    aliases: ["Orientation", "Intake", "Studio"],
+    inputs: ["prompt text", "media references", "approved context when present"],
     generations: ["provider routing", "prompt optimization", "Tailor-aware context synthesis", "asset injection"],
     outputs: ["mini zines", "creative roadmaps", "image prompts", "content briefs", "instruction packets"],
-    userFlow: "Compose from approved Used Context and references into traceable artifacts you can refine in The Edit and export from The Press.",
-    family: "production",
+    userFlow:
+      "Land on a calm orientation screen, compose in one multimodal field, begin with a single primary action. The archival StudioWorktable desk is migration-only at /studio/worktable-legacy.",
+    notes:
+      "Do not mount StudioWorktable at /studio. Legacy desk: /studio/worktable-legacy.",
+    family: "orientation",
     phase: "compose",
     visibility: "primary",
+    // Keep worktable atmosphere so the App main shell stays full-bleed;
+    // the archival desk itself is not mounted at /studio.
     atmosphere: ["paper", "worktable"],
     primaryAction: {
-      label: "Compose on the Worktable",
+      label: "Begin with this",
       intent: { type: "compose" },
     },
     suggestedNext: {
