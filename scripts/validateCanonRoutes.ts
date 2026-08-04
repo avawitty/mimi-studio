@@ -85,7 +85,6 @@ const CHAMBER_COMPONENT_FILES: Record<string, string> = {
   ChamberMapView: "components/chambers/ChamberMapView.tsx",
   ProsceniumView: "components/ProsceniumView.tsx",
   StudioOrientationEntry: "components/studio/StudioOrientationEntry.tsx",
-  StudioWorktable: "components/worktable/StudioWorktable.tsx",
   InputStudio: "components/InputStudio.tsx",
 };
 
