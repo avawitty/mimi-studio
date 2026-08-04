@@ -378,7 +378,7 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
                     ? 'No issues on your stand yet.'
                     : archive?.ready
                       ? 'The house shelf is waiting for a first public issue.'
-                      : 'No signal on this frequency.'}
+                      : 'No public issues on the Floor yet.'}
                 </p>
                 {mode === 'mine' && (
                   <PublicCTA

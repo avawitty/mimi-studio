@@ -79,15 +79,15 @@ export const MimiGateway: React.FC<MimiGatewayProps> = ({ isOpen, onClose }) => 
               <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 text-stone-300 rounded-sm mb-6">
                   <Shield size={10} className="text-stone-400" />
-                  <span className="text-[10px] uppercase tracking-widest font-bold">Aesthetic Sovereignty</span>
+                  <span className="text-[10px] uppercase tracking-widest font-bold">Your Taste Graph</span>
                 </div>
                 <h2 className="text-h1 text-nous-text mb-3">
-                  {user?.isAnonymous ? 'Claim Your Canonical Node' : 'Establish Your Vault'}
+                  {user?.isAnonymous ? 'Save your approved evidence' : 'Keep your studio across devices'}
                 </h2>
                 <p className="text-body text-nous-subtle max-w-[280px] mx-auto">
                   {user?.isAnonymous 
-                    ? 'Your local archive is ephemeral. Link an identity to anchor your aesthetic vision to a permanent sovereign domain.'
-                    : 'Your motifs are assets. Do not let them be trained away. Create a localized, defensible vault for your aesthetic commentary.'}
+                    ? 'Guest sessions stay on this device. Sign in to keep memory atoms, Tailor evidence, and exports tied to your account.'
+                    : 'Sign in so captured evidence, approved Used Context, and published artifacts stay with you — not scattered across sessions.'}
                 </p>
               </div>
 
