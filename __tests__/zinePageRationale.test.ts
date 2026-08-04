@@ -16,12 +16,12 @@ describe("zine page rationale", () => {
     const cover = sequence[0];
     const colophon = sequence.at(-1)!;
 
-    expect(isDerivedProofPage(cover)).toBe(true);
+    expect(isDerivedProofPage(cover, artifact)).toBe(true);
     expect(describeZinePageRationale(cover, artifact).narrativeFunction).toBe(
       "invitation",
     );
     expect(describeZinePageRationale(colophon, artifact).whyExists).toMatch(
-      /provenance/i,
+      /custody|provenance/i,
     );
   });
 

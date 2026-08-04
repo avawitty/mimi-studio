@@ -22,6 +22,11 @@ import {
   prepareArtifactPages,
 } from "./zineIssuePlanner";
 import {
+  applyIssuePlanToAuthoredPages,
+  issueStructureFromPlan,
+} from "./applyZineIssuePlan";
+import { buildZineIssuePlan } from "./buildZineIssuePlan";
+import {
   MIMI_ZINE_ARTIFACT_SCHEMA_VERSION,
   parseMimiZineArtifact,
 } from "./zineArtifactSchema";
@@ -237,22 +242,85 @@ export function normalizeZineArtifact(
     "";
   const directionApproved = lifecycleAtLeast(status, "direction-approved");
   const sourcePacket = normalizeSourcePacket(hydrated);
-  const issueStructure = buildDefaultIssueStructure({
-    artifactId: hydrated.id,
+  const revision = Math.max(1, hydrated.revision || 1);
+  const cover = normalizeCover(hydrated);
+  const reading =
+    hydrated.reading || {
+      oracularMirror:
+        hydrated.content.oracular_mirror ||
+        hydrated.content.poetic_interpretation,
+      centralObservation,
+      strategicHypothesis: hydrated.content.strategic_hypothesis,
+      signals,
+      exclusions: splitExclusions(
+        hydrated.content.visual_guidance?.negative_prompt,
+      ),
+      uncertainty: centralObservation
+        ? undefined
+        : [
+            {
+              statement: "No approved central observation is stored.",
+              reason: "Legacy artifact has no structured reading.",
+            },
+          ],
+      approvedAt: directionApproved ? updatedAt : undefined,
+      approvedBy: directionApproved ? hydrated.userId : undefined,
+    };
+  const direction =
+    hydrated.editorialDirection || {
+      thesis:
+        hydrated.content.roadmap?.strategicThesis ||
+        hydrated.content.strategic_hypothesis ||
+        centralObservation,
+      purpose:
+        hydrated.content.meta?.intent ||
+        hydrated.summary ||
+        "Compose the approved reading into an issue.",
+      visualPrinciples: [],
+      tonalPrinciples: hydrated.tone ? [hydrated.tone] : [],
+      exclusions: splitExclusions(
+        hydrated.content.visual_guidance?.negative_prompt,
+      ),
+      palette:
+        hydrated.content.visual_guidance?.strict_palette?.length > 0
+          ? [...hydrated.content.visual_guidance.strict_palette]
+          : [...(hydrated.content.taste_context?.active_palette || [])],
+      compositionDensity: clampUnit(
+        hydrated.content.visual_guidance?.composition_density,
+        0.5,
+      ),
+      entropyLevel: hydrated.content.roadmap
+        ? clampUnit(hydrated.content.roadmap.entropyLevel, 0)
+        : undefined,
+      intensity: hydrated.content.roadmap?.intensity,
+      approved: directionApproved,
+      revision,
+    };
+  const issuePlan =
+    hydrated.issuePlan ||
+    buildZineIssuePlan({
+      artifactId: hydrated.id,
+      revision,
+      title: hydrated.title || hydrated.content.title || "Untitled",
+      sourcePacket,
+      reading,
+      direction,
+      cover,
+      authoredPages: pages,
+      createdAt: updatedAt,
+    });
+  const plannedPages = applyIssuePlanToAuthoredPages(
+    hydrated.id,
     pages,
-    hasOpening: Boolean(hydrated.originalInput || hydrated.content.meta?.intent),
-    hasReading: Boolean(centralObservation),
-    hasSignals: signals.length > 0,
-    hasRoadmap: Boolean(
-      hydrated.content.roadmap || hydrated.content.the_roadmap,
-    ),
-    hasDebris: Boolean(hydrated.originalInput || hydrated.content.originalThought),
-    existing: hydrated.issueStructure,
-  });
+    issuePlan,
+  );
+  const issueStructure =
+    hydrated.issueStructure && hydrated.issueStructure.totalPages === issuePlan.pages.length
+      ? hydrated.issueStructure
+      : issueStructureFromPlan(issuePlan);
   const publicSourceIds = sourcePacket.usedContextSnapshots
     .filter((snapshot) => snapshot.visibility?.public)
     .map((snapshot) => snapshot.atomId);
-  const revision = Math.max(1, hydrated.revision || 1);
 
   const artifact: MimiZineArtifact = {
     schemaVersion: MIMI_ZINE_ARTIFACT_SCHEMA_VERSION,
@@ -277,61 +345,12 @@ export function normalizeZineArtifact(
       },
     status,
     sourcePacket,
-    reading:
-      hydrated.reading || {
-        oracularMirror:
-          hydrated.content.oracular_mirror ||
-          hydrated.content.poetic_interpretation,
-        centralObservation,
-        strategicHypothesis: hydrated.content.strategic_hypothesis,
-        signals,
-        exclusions: splitExclusions(
-          hydrated.content.visual_guidance?.negative_prompt,
-        ),
-        uncertainty: centralObservation
-          ? undefined
-          : [
-              {
-                statement: "No approved central observation is stored.",
-                reason: "Legacy artifact has no structured reading.",
-              },
-            ],
-        approvedAt: directionApproved ? updatedAt : undefined,
-        approvedBy: directionApproved ? hydrated.userId : undefined,
-      },
-    direction:
-      hydrated.editorialDirection || {
-        thesis:
-          hydrated.content.roadmap?.strategicThesis ||
-          hydrated.content.strategic_hypothesis ||
-          centralObservation,
-        purpose:
-          hydrated.content.meta?.intent ||
-          hydrated.summary ||
-          "Compose the approved reading into an issue.",
-        visualPrinciples: [],
-        tonalPrinciples: hydrated.tone ? [hydrated.tone] : [],
-        exclusions: splitExclusions(
-          hydrated.content.visual_guidance?.negative_prompt,
-        ),
-        palette:
-          hydrated.content.visual_guidance?.strict_palette?.length > 0
-            ? [...hydrated.content.visual_guidance.strict_palette]
-            : [...(hydrated.content.taste_context?.active_palette || [])],
-        compositionDensity: clampUnit(
-          hydrated.content.visual_guidance?.composition_density,
-          0.5,
-        ),
-        entropyLevel: hydrated.content.roadmap
-          ? clampUnit(hydrated.content.roadmap.entropyLevel, 0)
-          : undefined,
-        intensity: hydrated.content.roadmap?.intensity,
-        approved: directionApproved,
-        revision,
-      },
+    reading,
+    direction,
     issueStructure,
-    pages,
-    cover: normalizeCover(hydrated),
+    issuePlan,
+    pages: plannedPages,
+    cover,
     colophon:
       hydrated.colophon || {
         creatorHandle: hydrated.userHandle || "Ghost",

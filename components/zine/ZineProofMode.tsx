@@ -11,6 +11,7 @@ import {
   buildZineProofDiagnostics,
   summarizeZineProof,
 } from "../../lib/zine/zineProofDiagnostics";
+import { summarizeZinePlanEvaluation } from "../../lib/zine/evaluateZineIssuePlan";
 import { buildZineProofSequence } from "../../lib/zine/zineIssuePlanner";
 import { fullFidelityPageIndexes } from "../../lib/zine/zinePerformance";
 import {
@@ -45,6 +46,14 @@ export function ZineProofMode({
     () => summarizeZineProof(diagnostics),
     [diagnostics],
   );
+  const planSummary = useMemo(
+    () =>
+      artifact.issuePlan
+        ? summarizeZinePlanEvaluation(artifact.issuePlan.evaluation)
+        : { canRealize: true, blocking: 0, warnings: 0 },
+    [artifact.issuePlan],
+  );
+  const canApprove = summary.canApprove && planSummary.canRealize;
   const fullFidelityIndexes = useMemo(
     () => fullFidelityPageIndexes(activeIndex, proofPages.length),
     [activeIndex, proofPages.length],
@@ -106,13 +115,15 @@ export function ZineProofMode({
           >
             {summary.blocking > 0
               ? `${summary.blocking} blocking`
-              : `${summary.warnings} warnings`}
+              : planSummary.blocking > 0
+                ? `${planSummary.blocking} plan`
+                : `${summary.warnings + planSummary.warnings} warnings`}
           </button>
           {onApprove ? (
             <button
               type="button"
               onClick={onApprove}
-              disabled={!summary.canApprove}
+              disabled={!canApprove}
               className="min-h-11 bg-[var(--mimi-ink,#0a0a0a)] px-4 font-mono text-[8px] uppercase tracking-[0.18em] text-white disabled:cursor-not-allowed disabled:opacity-35"
             >
               <span className="inline-flex items-center gap-2">
@@ -236,6 +247,50 @@ export function ZineProofMode({
                 <X size={15} />
               </button>
             </div>
+
+            {artifact.issuePlan ? (
+              <div className="mb-4 border border-[var(--mimi-hairline,#d4d4d4)] p-3">
+                <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
+                  Issue plan / {artifact.issuePlan.evaluation.result}
+                </p>
+                <p className="mt-2 font-serif text-sm italic leading-snug">
+                  {artifact.issuePlan.editorialThesis}
+                </p>
+                {artifact.issuePlan.unresolvedQuestion ? (
+                  <p className="mt-2 font-sans text-[10px] leading-relaxed text-[var(--mimi-stone,#78716c)]">
+                    Open: {artifact.issuePlan.unresolvedQuestion}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {artifact.issuePlan?.evaluation.findings.length ? (
+              <ul className="mb-4 space-y-2">
+                {artifact.issuePlan.evaluation.findings.map((finding) => (
+                  <li key={finding.id}>
+                    <div className="border border-[var(--mimi-hairline,#d4d4d4)] p-3">
+                      <span
+                        className={`font-mono text-[7px] uppercase tracking-[0.2em] ${
+                          finding.severity === "blocking"
+                            ? "text-[#a33a2b]"
+                            : "text-[var(--mimi-stone,#78716c)]"
+                        }`}
+                      >
+                        plan / {finding.id.replaceAll("-", " ")}
+                      </span>
+                      <span className="mt-2 block font-serif text-sm italic leading-snug">
+                        {finding.message}
+                      </span>
+                      {finding.correction ? (
+                        <span className="mt-2 block font-sans text-[9px] leading-relaxed text-[var(--mimi-stone,#78716c)]">
+                          {finding.correction}
+                        </span>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
 
             {diagnostics.length > 0 ? (
               <ul className="space-y-2">

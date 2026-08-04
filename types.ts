@@ -840,6 +840,7 @@ export interface MimiZineArtifact {
   reading: ZineReading;
   direction: EditorialDirection;
   issueStructure: ZineIssueStructure;
+  issuePlan?: ZineIssuePlan;
   pages: ZinePageSpec[];
   cover: ZineCoverSpec;
   colophon: ZineColophon;
@@ -866,6 +867,88 @@ export interface ProposedPagePlan {
   headline?: string;
   sourceIds: string[];
   requiresGeneratedMedia: boolean;
+}
+
+export type ZineNarrativeFunction =
+  | "invitation"
+  | "orientation"
+  | "revelation"
+  | "evidence"
+  | "complication"
+  | "contrast"
+  | "intensification"
+  | "application"
+  | "release"
+  | "residue";
+
+export type PageContributionKind =
+  | "new-evidence"
+  | "new-interpretation"
+  | "visual-information"
+  | "emotional-movement"
+  | "application"
+  | "necessary-pause"
+  | "provenance";
+
+export interface PageContribution {
+  kind: PageContributionKind;
+  rationale: string;
+  sourceIds?: string[];
+  claimLabel?: string;
+}
+
+export interface ZinePagePlan {
+  id: string;
+  pageNumber: number;
+  kind: "cover" | "content" | "pause" | "colophon";
+  sectionType: ZineSectionType;
+  grammar: ZinePageGrammar;
+  narrativeFunction: ZineNarrativeFunction;
+  headline: string;
+  purpose: string;
+  earnsExistenceBy: PageContribution[];
+  sourceIds: string[];
+  transitionFromPrevious?: string;
+  informationDensity: number;
+  visualIntensity: number;
+  textImageRatio: number;
+  requiresGeneratedMedia: boolean;
+  realizedPageId?: string;
+  derived: boolean;
+}
+
+export interface IssueRhythm {
+  pageIds: string[];
+  densityCurve: number[];
+  visualIntensityCurve: number[];
+  textImageRatioCurve: number[];
+  darkPlatePageIds: string[];
+  pausePageIds: string[];
+}
+
+export interface ZinePlanFinding {
+  id: string;
+  severity: "blocking" | "warning";
+  message: string;
+  pageId?: string;
+  correction?: string;
+}
+
+export interface ZinePlanEvaluation {
+  result: "pass" | "warning" | "blocked";
+  findings: ZinePlanFinding[];
+}
+
+export interface ZineIssuePlan {
+  schemaVersion: 1;
+  artifactId: string;
+  revision: number;
+  editorialThesis: string;
+  unresolvedQuestion?: string;
+  pages: ZinePagePlan[];
+  rhythm: IssueRhythm;
+  evaluation: ZinePlanEvaluation;
+  createdAt: number;
 }
 
 export interface ZinePageSpec {
@@ -981,6 +1064,7 @@ export interface ZineMetadata {
   reading?: ZineReading;
   editorialDirection?: EditorialDirection;
   issueStructure?: ZineIssueStructure;
+  issuePlan?: ZineIssuePlan;
   coverSpec?: ZineCoverSpec;
   colophon?: ZineColophon;
   publication?: ZinePublicationState;

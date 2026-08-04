@@ -25,6 +25,7 @@ export function stampZineArtifactMetadata(
     reading: artifact.reading,
     editorialDirection: artifact.direction,
     issueStructure: artifact.issueStructure,
+    issuePlan: artifact.issuePlan,
     coverSpec: artifact.cover,
     colophon: artifact.colophon,
     publication: artifact.publication,

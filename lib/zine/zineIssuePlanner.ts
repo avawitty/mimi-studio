@@ -1,5 +1,7 @@
 import type {
   MimiZineArtifact,
+  ZineIssuePlan,
+  ZinePagePlan,
   ZineIssueStructure,
   ZinePageGrammar,
   ZinePageSpec,
@@ -423,9 +425,71 @@ function derivedProofPage(
   }
 }
 
+function proofPageFromPlan(
+  artifact: MimiZineArtifact,
+  plannedPage: ZinePagePlan,
+  authoredPage?: ZinePageSpec,
+): ZinePageSpec {
+  if (!plannedPage.derived && authoredPage) {
+    return {
+      ...authoredPage,
+      pageNumber: plannedPage.pageNumber,
+      sectionId: `${artifact.identity.id}:section:${plannedPage.sectionType}`,
+      sectionType: plannedPage.sectionType,
+      grammar: plannedPage.grammar,
+      headline: authoredPage.headline || plannedPage.headline,
+      sourceIds:
+        plannedPage.sourceIds.length > 0
+          ? [...plannedPage.sourceIds]
+          : authoredPage.sourceIds,
+    };
+  }
+
+  const section: ZineSectionSpec = {
+    id: `${artifact.identity.id}:section:${plannedPage.sectionType}`,
+    type: plannedPage.sectionType,
+    title: plannedPage.headline,
+    pageIds: [],
+    required: true,
+  };
+  const derived = derivedProofPage(artifact, section, plannedPage.pageNumber);
+  return {
+    ...derived,
+    id: plannedPage.id,
+    grammar: plannedPage.grammar,
+    headline: plannedPage.headline,
+    bodyCopy: plannedPage.purpose,
+  };
+}
+
+function buildZineProofSequenceFromPlan(
+  artifact: MimiZineArtifact,
+  plan: ZineIssuePlan,
+): ZinePageSpec[] {
+  const authoredById = new Map(
+    artifact.pages
+      .filter((page) => page.id)
+      .map((page) => [page.id as string, page]),
+  );
+
+  return plan.pages.map((plannedPage) =>
+    proofPageFromPlan(
+      artifact,
+      plannedPage,
+      plannedPage.realizedPageId
+        ? authoredById.get(plannedPage.realizedPageId)
+        : undefined,
+    ),
+  );
+}
+
 export function buildZineProofSequence(
   artifact: MimiZineArtifact,
 ): ZinePageSpec[] {
+  if (artifact.issuePlan?.pages.length) {
+    return buildZineProofSequenceFromPlan(artifact, artifact.issuePlan);
+  }
+
   const pagesById = new Map(
     artifact.pages
       .filter((page) => page.id)
