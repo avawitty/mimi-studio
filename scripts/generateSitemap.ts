@@ -16,11 +16,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CANON_MODULES } from "../lib/productCanon";
+import { getPublicBaseUrl } from "../lib/publicBaseUrl";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 
-const SITE_ORIGIN = "https://mimi.you";
+const SITE_ORIGIN = getPublicBaseUrl();
 
 const routes = Array.from(
   new Set(
