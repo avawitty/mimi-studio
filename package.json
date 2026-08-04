@@ -53,6 +53,7 @@
     "brand:icons": "node scripts/renderBrandIcons.mjs",
     "test:e2e": "playwright test",
     "start": "node dist/server.cjs",
+    "audit:crawl": "tsx scripts/auditCrawlability.ts",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "sovereign:seed": "tsx scripts/seedSovereignDemo.ts",
