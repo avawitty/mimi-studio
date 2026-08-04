@@ -2601,6 +2601,7 @@ export const App: React.FC = () => {
                           zineOptions={zineOptions}
                           setZineOptions={setZineOptions}
                           onOpenConsole={() => setStudioConsoleOpen(true)}
+                          onOpenMenu={() => setIsNavOpen(true)}
                           onNavigate={setViewMode}
                         />
                       ))}

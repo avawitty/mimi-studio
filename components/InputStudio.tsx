@@ -182,6 +182,14 @@ const PROVOCATIONS = [
   "Let the negative space dictate the narrative.",
 ];
 
+const openerFromCycleLabel = (label: string): string => {
+  const trimmed = label.trim();
+  const hasEllipsis = trimmed.endsWith("…") || trimmed.endsWith("...");
+  const core = trimmed.replace(/\.{3}$|…$/u, "");
+  const lower = core.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1) + (hasEllipsis ? "…" : "");
+};
+
 const noiseSvgUrl = "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E";
 
 const getTreatmentBackgroundStyle = (id: string | null, savedTreatments?: any[]): React.CSSProperties => {
@@ -913,12 +921,13 @@ export const InputStudio: React.FC<{
   const [typewriterText, setTypewriterText] = useState("");
 
   const promptList = [
-    "RIGHT NOW, THE MATERIAL ANCHORING ME IS...",
-    "THE LIGHT FELL ACROSS THE ROOM, REMINDING ME OF...",
-    "WHAT IS THE DEFINING TEXTURE OR MATERIAL THAT ANCHORS YOUR MOOD?",
-    "RECALL A SPECIFIC LIGHT, DYNAMIC, OR SHADOW THAT SHIFTED YOUR MOOD.",
-    "WHICH SENSORY FRAGMENT ARE YOU ACTIVELY TRYING TO PRESERVE?",
-    "LATELY, I KEEP RETURNING TO THE IDEA OF...",
+    "RIGHT NOW, THE MATERIAL ANCHORING ME IS…",
+    "THE LIGHT FELL ACROSS THE ROOM, REMINDING ME OF…",
+    "THE DEFINING TEXTURE OR MATERIAL ANCHORING MY MOOD IS…",
+    "A LIGHT, DYNAMIC, OR SHADOW THAT SHIFTED MY MOOD WAS…",
+    "THE SENSORY FRAGMENT I'M TRYING TO PRESERVE IS…",
+    "LATELY, I KEEP RETURNING TO THE IDEA OF…",
+    "IT STARTED WHEN…",
   ];
 
   useEffect(() => {
@@ -2328,7 +2337,7 @@ ${finalInput}`;
 
                 {isMobile && !activeThread ? (
                   <p className="font-sans text-[11px] uppercase tracking-[0.14em] studio-text-ink max-w-sm mt-3 leading-relaxed px-1">
-                    {promptList[typewriterIndex]}
+                    {openerFromCycleLabel(promptList[typewriterIndex])}
                   </p>
                 ) : (
                   <>
@@ -2486,7 +2495,7 @@ ${finalInput}`;
                     className="w-full bg-transparent border-none focus:ring-0 text-md md:text-xl font-serif italic text-center studio-prompt-input outline-none resize-none leading-relaxed no-scrollbar select-text focus:outline-none min-h-[120px]"
                     placeholder={
                       isMobile
-                        ? "Lately, I keep returning to the idea of…"
+                        ? openerFromCycleLabel(promptList[typewriterIndex])
                         : "Paste a fragment, reference, question, or unfinished idea..."
                     }
                   />

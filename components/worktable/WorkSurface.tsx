@@ -2,18 +2,18 @@ import React from "react";
 
 type WorkSurfaceProps = {
   children: React.ReactNode;
-  /** Show corner reticle marks (desktop) */
+  /** Show corner reticle marks (desktop) — off by default; atelier parchment, not drafting grid */
   reticles?: boolean;
   className?: string;
 };
 
 /**
- * WT-004 — Desk background: paper grain, pencil grid, corner brackets.
+ * WT-004 — Desk background: parchment grain and faint deckle edges.
  * Scoped archival field for the Studio worktable (not a public-face wash).
  */
 export const WorkSurface: React.FC<WorkSurfaceProps> = ({
   children,
-  reticles = true,
+  reticles = false,
   className = "",
 }) => {
   return (
@@ -33,16 +33,17 @@ export const WorkSurface: React.FC<WorkSurfaceProps> = ({
         } as React.CSSProperties
       }
     >
-      {/* Pencil grid — softer on parchment */}
+      {/* Faint deckle — irregular paper edge, not engineering grid */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.22]"
+        className="pointer-events-none absolute inset-0 opacity-[0.55]"
         style={{
-          backgroundImage: `
-            linear-gradient(var(--wt-line, #d8d3c6) 1px, transparent 1px),
-            linear-gradient(90deg, var(--wt-line, #d8d3c6) 1px, transparent 1px)
+          background: `
+            radial-gradient(ellipse 95% 70% at 0% 0%, transparent 58%, rgba(196, 186, 168, 0.14) 100%),
+            radial-gradient(ellipse 90% 75% at 100% 100%, transparent 52%, rgba(188, 178, 160, 0.12) 100%),
+            radial-gradient(ellipse 70% 55% at 100% 0%, transparent 62%, rgba(202, 192, 174, 0.09) 100%),
+            radial-gradient(ellipse 65% 50% at 0% 100%, transparent 64%, rgba(194, 184, 166, 0.08) 100%)
           `,
-          backgroundSize: "24px 24px",
         }}
       />
       {/* Paper grain */}
