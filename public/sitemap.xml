@@ -2,130 +2,26 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://mimi.you/</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/atelier</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/celestial-calibration</loc>
-    <lastmod>2026-08-04</lastmod>
   </url>
   <url>
     <loc>https://mimi.you/chamber-map</loc>
-    <lastmod>2026-08-04</lastmod>
   </url>
   <url>
     <loc>https://mimi.you/codex</loc>
-    <lastmod>2026-08-04</lastmod>
   </url>
   <url>
-    <loc>https://mimi.you/darkroom</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/forecast</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/geoengine</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/house</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/intelhub</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/mean-median-mode</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/mimi-dolls</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/moodboard</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/observatory</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/pocket</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/private-studio</loc>
-    <lastmod>2026-08-04</lastmod>
+    <loc>https://mimi.you/privacy</loc>
   </url>
   <url>
     <loc>https://mimi.you/proscenium</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/residue</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/rip</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/sanctuary</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/scribe</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/scry</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/signature</loc>
-    <lastmod>2026-08-04</lastmod>
   </url>
   <url>
     <loc>https://mimi.you/stand</loc>
-    <lastmod>2026-08-04</lastmod>
   </url>
   <url>
-    <loc>https://mimi.you/studio</loc>
-    <lastmod>2026-08-04</lastmod>
+    <loc>https://mimi.you/taste-corpus</loc>
   </url>
   <url>
-    <loc>https://mimi.you/tailor</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/taste-graph</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/the-edit</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/the-press</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/thimble</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/ward</loc>
-    <lastmod>2026-08-04</lastmod>
-  </url>
-  <url>
-    <loc>https://mimi.you/wardrobe</loc>
-    <lastmod>2026-08-04</lastmod>
+    <loc>https://mimi.you/tos</loc>
   </url>
 </urlset>
