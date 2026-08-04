@@ -518,6 +518,8 @@ export interface ZineSpec {
     artifactSchemaVersion?: number;
     originalCoverImageUrl?: string;
     studioCoverOverlays?: ZineCoverOverlayLayer[];
+    /** Dev · Darkroom contact-sheet variants (session + issue doc). */
+    studioCoverVariants?: ZineCoverVariant[];
   };
   taste_context: {
     active_archetype: string;
@@ -772,6 +774,14 @@ export type ZineCoverOverlayLayer =
       label?: string;
     };
 
+/** Contact-sheet variant on the in-progress issue cover (Dev · Darkroom). */
+export interface ZineCoverVariant {
+  url: string;
+  seed: string;
+  prompt: string;
+  selected: boolean;
+}
+
 export interface ZineCoverSpec {
   imageUrl?: string;
   originalImageUrl?: string;
@@ -782,6 +792,8 @@ export interface ZineCoverSpec {
   treatment: "specimen" | "editorial" | "dark-plate" | "dossier" | "minimal";
   bakedImageUrl?: string;
   overlayBaked: boolean;
+  /** Developed cover variants — contact strip below main frame. */
+  covers?: ZineCoverVariant[];
 }
 
 export interface ZineColophon {
