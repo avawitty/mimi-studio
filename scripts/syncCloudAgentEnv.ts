@@ -41,6 +41,7 @@ const SYNC_KEYS = [
   "FIREBASE_MEASUREMENT_ID",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
+  "PINTEREST_ACCESS_TOKEN",
 ] as const;
 
 /** When the canonical name is unset, try these aliases (Cursor secret naming). */

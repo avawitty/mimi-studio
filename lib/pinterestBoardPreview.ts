@@ -8,11 +8,13 @@ export interface PinterestPreviewPin {
   sourceUrl?: string;
 }
 
+export type PinterestPreviewSource = "pinterest_api" | "public_html";
+
 export interface PinterestPublicBoardPreview {
   title: string;
   url: string;
   pins: PinterestPreviewPin[];
-  source: "public_html";
+  source: PinterestPreviewSource;
   limited: boolean;
   warning?: string;
 }
@@ -219,7 +221,7 @@ export function extractPinterestBoardPreview(
     source: "public_html",
     limited,
     warning: limited
-      ? "Pinterest returned a limited public preview. Connect Pinterest with boards:read and pins:read for complete board access."
+      ? "Pinterest returned a limited public preview. Add PINTEREST_ACCESS_TOKEN for your own boards, or connect Pinterest OAuth (boards:read, pins:read) for complete access."
       : undefined,
   };
 }
@@ -227,6 +229,20 @@ export function extractPinterestBoardPreview(
 export async function fetchPinterestBoardPreview(
   rawUrl: string,
 ): Promise<PinterestPublicBoardPreview> {
+  const { fetchPinterestBoardViaApi, getPinterestAccessToken } = await import(
+    "./pinterestApi.js"
+  );
+
+  if (getPinterestAccessToken()) {
+    try {
+      const apiPreview = await fetchPinterestBoardViaApi(rawUrl);
+      if (apiPreview) return apiPreview;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn("MIMI // Pinterest API preview failed; falling back to public HTML:", message);
+    }
+  }
+
   const requested = parsePinterestBoardUrl(rawUrl);
   const response = await fetch(requested.toString(), {
     redirect: "follow",

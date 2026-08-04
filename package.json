@@ -38,6 +38,7 @@
     "verify:zine-private-context": "tsx scripts/verifyZinePrivateContext.ts",
     "verify:zine-performance-budget": "tsx scripts/verifyZinePerformanceBudget.ts",
     "verify:pinterest-preview": "tsx scripts/verifyPinterestBoardPreview.ts",
+    "verify:pinterest-api": "tsx scripts/verifyPinterestApi.ts",
     "verify:used-context": "tsx scripts/verifyUsedContextFlow.ts",
     "verify:atelier": "tsx scripts/verifyAtelierService.ts",
     "verify:gateway-generate-text": "tsx scripts/verifyGatewayGenerateText.ts",
