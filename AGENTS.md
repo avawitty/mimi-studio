@@ -22,6 +22,11 @@ starts everything on one port.
   vars include `GEMINI_API_KEY` / `AI_GATEWAY_API_KEY` / `OPENAI_API_KEY` (enable server
   AI), `STRIPE_SECRET_KEY`, and the `FIREBASE_*` client vars (inlined at build time via
   `vite.config.ts` `define`). Never commit secrets.
+- **Cursor Cloud Agents:** add `AI_GATEWAY_API_KEY` in the [Cloud Agents → Secrets](https://cursor.com/dashboard/cloud-agents)
+  tab (not in `environment.json` — that file is committed). The install script runs
+  `npm run sync:cloud-env`, which copies injected secrets into git-ignored `.env.local`
+  so `npm run dev` and verify scripts see the same keys. Alias `AI_GATEWAY_KEY` is also
+  accepted. Re-run `npm run sync:cloud-env` after rotating secrets.
 
 ### AI Gateway models
 - When calling Vercel AI Gateway for **text, image, audio (TTS), video, or embeddings**,
