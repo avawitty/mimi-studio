@@ -86,11 +86,13 @@ On Vercel, `build:vercel` builds only the static Vite client; `/api/*` requests 
 individual serverless functions under `api/**/*.ts` (see `vercel.json` `rewrites`/`functions`), one file per
 route.
 
-**These two entry points are not separate implementations.** Route logic for anything under `/api/mimi/*` and
-similar lives once in `lib/*Route.ts` (e.g. `lib/mimiGenerateTextRoute.ts`), and both `server.ts` and the
-matching `api/**/*.ts` file call the same exported handler. When adding or changing an API route that needs to
-work on both Fly/Docker and Vercel, put the logic in a `lib/*Route.ts` handler and wire it from both
-`server.ts` and a thin `api/*.ts` file — don't duplicate logic into one and not the other.
+**These two entry points are not separate implementations.** Most route logic under `/api/mimi/*` lives once in
+`lib/*Route.ts` (e.g. `lib/mimiGenerateTextRoute.ts`), and both `server.ts` and the matching thin
+`api/**/*.ts` file call the same exported handler. A few routes keep their logic directly in `api/**/*.ts` when
+shared extraction isn't worth it yet — e.g. `api/mimi/synthesize-dossier.ts`, which `server.ts` imports as
+`synthesizeDossierHandler`. When adding or changing an API route that needs to work on both Fly/Docker and
+Vercel, prefer a `lib/*Route.ts` handler wired from both `server.ts` and a thin `api/*.ts` file; if the route
+already lives in `api/**/*.ts`, edit that file rather than introducing a duplicate handler elsewhere.
 
 Deploy targets: `Dockerfile` + `fly.toml` (long-lived Express host, SQLite volume or Postgres URL for the
 sovereign archive) and `vercel.json` (serverless, static client). `functions/` is a separate Firebase Cloud
