@@ -261,6 +261,13 @@ export function buildDefaultIssueStructure(
     sections,
     navigationStyle: options.existing?.navigationStyle || "sectioned",
     totalPages: options.pages.length + derivedPageCount,
+    derivedEligibility: {
+      hasOpening: options.hasOpening,
+      hasReading: options.hasReading,
+      hasSignals: options.hasSignals,
+      hasRoadmap: options.hasRoadmap,
+      hasDebris: options.hasDebris,
+    },
   };
 }
 
@@ -431,7 +438,15 @@ export function buildZineProofSequence(
       .filter((page) => page.id)
       .map((page) => [page.id as string, page]),
   );
-  const options = buildIssueStructureOptions(artifact);
+  const eligibility = artifact.issueStructure.derivedEligibility;
+  const options: BuildIssueStructureOptions = eligibility
+    ? {
+        artifactId: artifact.identity.id,
+        pages: artifact.pages,
+        ...eligibility,
+        existing: artifact.issueStructure,
+      }
+    : buildIssueStructureOptions(artifact);
   const sequence: ZinePageSpec[] = [];
   let pageNumber = 1;
 

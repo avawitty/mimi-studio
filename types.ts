@@ -745,10 +745,20 @@ export interface ZineSectionSpec {
   required: boolean;
 }
 
+export type ZineDerivedPageEligibility = {
+  hasOpening: boolean;
+  hasReading: boolean;
+  hasSignals: boolean;
+  hasRoadmap: boolean;
+  hasDebris: boolean;
+};
+
 export interface ZineIssueStructure {
   sections: ZineSectionSpec[];
   navigationStyle: "continuous" | "sectioned";
   totalPages: number;
+  /** Snapshot of derived-page flags used when totalPages was computed. */
+  derivedEligibility?: ZineDerivedPageEligibility;
 }
 
 export type ZineCoverOverlayLayer =

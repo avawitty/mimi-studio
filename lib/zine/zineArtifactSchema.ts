@@ -255,6 +255,15 @@ export const mimiZineArtifactSchema = z.object({
     ),
     navigationStyle: z.enum(["continuous", "sectioned"]),
     totalPages: z.number().int().nonnegative(),
+    derivedEligibility: z
+      .object({
+        hasOpening: z.boolean(),
+        hasReading: z.boolean(),
+        hasSignals: z.boolean(),
+        hasRoadmap: z.boolean(),
+        hasDebris: z.boolean(),
+      })
+      .optional(),
   }),
   pages: z.array(zinePageSpecSchema),
   cover: z.object({
