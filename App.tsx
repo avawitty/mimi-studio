@@ -19,6 +19,7 @@ import { RipLandingPage } from "./components/RipLandingPage";
 import { FishLandingPage } from "./components/FishLandingPage";
 import { FishShelfPage } from "./components/FishShelfPage";
 import { MimiShowcaseDirectory } from "./components/MimiShowcaseDirectory";
+import { TasteCorpusExplorer } from "./components/taste-corpus/TasteCorpusExplorer";
 import {
   getSiteSkin,
   parseFishShelfHandle,
@@ -955,6 +956,7 @@ const getRestorableRoute = (candidate: string): string | null => {
     pathname.startsWith("/auth/") ||
     legalTypeFromPath(pathname) != null ||
     pathname === "/showcase" ||
+    pathname === "/taste-corpus" ||
     pathname === "/success" ||
     pathname === "/canceled"
   ) {
@@ -2207,6 +2209,10 @@ export const App: React.FC = () => {
 
   if (window.location.pathname === "/showcase") {
     return <MimiShowcaseDirectory navigate={navigate} />;
+  }
+
+  if (window.location.pathname === "/taste-corpus") {
+    return <TasteCorpusExplorer />;
   }
 
   // mimi.rip / mimi.fish host skins (or ?skin=rip|fish)

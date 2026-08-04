@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "model": "Xenova/clip-vit-base-patch32",
+    "umap": {
+      "n_neighbors": 15,
+      "min_dist": 0.1
+    },
+    "coordSpace": "[-1,1]",
+    "generatedAt": "2026-08-04T20:32:46.487Z",
+    "count": 20,
+    "manifestHash": "da0357b898425b52"
+  },
+  "points": [
+    {
+      "id": "specimen-brutalist-concrete",
+      "x": 1,
+      "y": 0.8359164102797099,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-lab-telemetry",
+      "x": 0.7991277927690446,
+      "y": 0.6458214355633705,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-silk-motion",
+      "x": -1,
+      "y": -0.6792293630309214,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-parchment-colophon",
+      "x": -0.6763484003444782,
+      "y": -0.3920836808355588,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-neon-glitch",
+      "x": -0.48566134427794194,
+      "y": 0.7223014105054588,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-editorial-fold",
+      "x": 0.008998190196797706,
+      "y": 1,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-olive-stone",
+      "x": 0.36553798533486037,
+      "y": 0.5758875068219382,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-darkroom-tray",
+      "x": -0.45624180526379654,
+      "y": 0.31031592762053517,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-manila-tab",
+      "x": -0.3359081227436168,
+      "y": -1,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1586281380349-632531db7ed4?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-vinyl-texture",
+      "x": 0.8242604150565309,
+      "y": 0.28585273105233333,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-lace-veil",
+      "x": 0.2516068344265465,
+      "y": 0.2709267762819596,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-porcelain-sheen",
+      "x": 0.011198203648920213,
+      "y": -0.276419174993609,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1581044777550-4cfa60707c03?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-cobalt-mist",
+      "x": -0.1959573895743726,
+      "y": -0.6187178090680521,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-newsprint-stack",
+      "x": 0.45263880793196765,
+      "y": 0.9977240928516447,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1507842217343-583bb7270b66?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-specimen-pin",
+      "x": 0.3946879852911711,
+      "y": -0.044476465563091816,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-thread-spool",
+      "x": -0.7338829765192876,
+      "y": -0.9557525634475954,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-type-case",
+      "x": -0.10762646138949117,
+      "y": 0.4183358807152524,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-wax-seal",
+      "x": -0.05245299311523044,
+      "y": 0.6509477641979617,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1578662996442-48f60103fc96?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-film-strip",
+      "x": 0.14081903998566148,
+      "y": -0.6189735645610801,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=400&auto=format&fit=crop"
+    },
+    {
+      "id": "specimen-terra-cotta",
+      "x": -0.6110003764655318,
+      "y": -0.6490818147973958,
+      "thumbnailUrl": "https://picsum.photos/seed/terracotta-vessel/400/400"
+    }
+  ]
+}
