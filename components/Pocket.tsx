@@ -239,10 +239,13 @@ const collectSavedShardText = (
  }
 
  if (typeof value === 'number' || typeof value === 'boolean') {
+ const lastKey = path[path.length - 1];
+ const isAspect = typeof lastKey === 'string' && lastKey.toLowerCase() === 'aspectratio';
+ const aspectLabel = isAspect ? formatAspectLabel(value) : null;
  fields.push({
  path: path.join('.'),
  label: path.map(humanizeShardField).join(' · ') || 'Saved value',
- value: String(value),
+ value: aspectLabel || String(value),
  });
  return fields;
  }
