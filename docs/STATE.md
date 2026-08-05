@@ -86,6 +86,7 @@
 | **Serverless lazy graphs** | shipped | CI: `verify:api-lazy-graphs` | — |
 | **Data plane ownership map** | shipped | Stand vs Floor vs Mine distinctions still debated | Document in sovereign-archive when resolved |
 | **Taste Corpus explorer** | `/taste-corpus` | shipped | Demonstration seed manifest (20 specimens) | Wire `--from-sovereign` export; expand corpus from Floor covers |
+| **Public face kit** | — | shipped | `PublicField` + `isPublicEditorialFlowMode` single-scroll contract | Audit remaining dark-plate chambers for nested scroll only if reported |
 
 ---
 

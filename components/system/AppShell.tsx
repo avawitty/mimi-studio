@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { LayoutGrid } from "lucide-react";
 import { useChamber } from "../../hooks/useChamber";
 import { useIsNarrow } from "../../hooks/useBreakpoint";
@@ -33,6 +33,11 @@ export const AppShell: React.FC<AppShellProps> = ({
 }) => {
   const chamber = useChamber(viewMode);
   const isNarrow = useIsNarrow();
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [viewMode]);
 
   return (
     <div
@@ -107,6 +112,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         )}
 
         <main
+          ref={mainRef}
           className={mainShellClassName(viewMode)}
         >
           {children}

@@ -397,7 +397,7 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
         : "Live Exhibition";
 
   return (
-    <PublicField className="flex-1 w-full h-full overflow-y-auto no-scrollbar">
+    <PublicField bleed className="w-full min-h-full">
       {/* Atmospheric arch field — grain + soft radial, not a cream wash */}
       <div
         aria-hidden

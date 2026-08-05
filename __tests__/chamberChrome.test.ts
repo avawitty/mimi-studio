@@ -5,6 +5,7 @@ import {
   getFaceKind,
   isDarkPlateMode,
   isPublicFaceMode,
+  isPublicEditorialFlowMode,
   mainShellClassName,
 } from "../lib/chamberChrome";
 
@@ -30,6 +31,10 @@ describe("chamberChrome", () => {
     expect(isPublicFaceMode("editorial-home")).toBe(true);
     expect(isPublicFaceMode("scry")).toBe(true);
     expect(isPublicFaceMode("studio")).toBe(false);
+    expect(isPublicEditorialFlowMode("stand")).toBe(true);
+    expect(isPublicEditorialFlowMode("proscenium")).toBe(true);
+    expect(isPublicEditorialFlowMode("archival")).toBe(false);
+    expect(isPublicEditorialFlowMode("studio")).toBe(false);
     expect(isDarkPlateMode("mimi-rip")).toBe(true);
     expect(isDarkPlateMode("stand")).toBe(false);
     expect(chromeDataAttr("scry")).toBe("public-face-dark");
@@ -48,6 +53,10 @@ describe("chamberChrome", () => {
     expect(mainShellClassName("tailor")).toContain("overflow-hidden");
     expect(mainShellClassName("mimi-rip")).toContain("bg-[#050506]");
     expect(mainShellClassName("editorial-home")).toContain("mimi-page-pad--public");
+    expect(mainShellClassName("editorial-home")).toContain("mimi-field");
+    expect(mainShellClassName("proscenium")).toContain("mimi-page-pad--public");
+    expect(mainShellClassName("archival")).not.toContain("mimi-field");
+    expect(mainShellClassName("archival")).toContain("bg-nous-base");
     expect(mainShellClassName("pocket")).toContain("mimi-page-pad");
     expect(mainShellClassName("pocket")).not.toContain("mimi-page-pad--public");
   });
