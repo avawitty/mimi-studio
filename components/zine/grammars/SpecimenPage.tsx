@@ -12,8 +12,9 @@ export function SpecimenPage({
   className,
 }: ZineGrammarPageProps) {
   const imageUrl = editorAssetUrl(page);
-  const sourceLabel =
-    page.sourceIds?.length
+  const sourceLabel = page.stockAttribution
+    ? page.stockAttribution
+    : page.sourceIds?.length
       ? `Source: ${page.sourceIds.slice(0, 2).join(" · ")}`
       : "Source awaiting attribution";
 

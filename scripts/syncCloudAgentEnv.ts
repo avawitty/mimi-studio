@@ -42,6 +42,7 @@ const SYNC_KEYS = [
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
   "PINTEREST_ACCESS_TOKEN",
+  "UNSPLASH_ACCESS_KEY",
 ] as const;
 
 /** When the canonical name is unset, try these aliases (Cursor secret naming). */

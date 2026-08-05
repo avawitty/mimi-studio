@@ -1642,6 +1642,16 @@ async function startServer() {
     }
   });
 
+  app.get("/api/inspo/search", async (req, res) => {
+    try {
+      const { handleInspoSearchRoute } = await import("./lib/inspoSearchRoute.js");
+      await handleInspoSearchRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Inspo search error:", error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
   app.get("/api/letterboxd", async (req, res) => {
     try {
       const url = req.query.url as string;

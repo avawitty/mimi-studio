@@ -114,8 +114,37 @@ describe("/studio orientation entry route", () => {
       zineOptions: expect.objectContaining({
         style: "balanced",
         theme: "organic",
+        plateMediaMode: "generated",
       }),
     });
     expect(opts).not.toHaveProperty("style");
+  });
+
+  it("exposes plate media mode and Darkroom in suggested next", () => {
+    render(<StudioOrientationEntry />);
+
+    expect(screen.getByRole("group", { name: /Plate media/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Photography first/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Generated plates/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: /^My references/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Darkroom/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Load a Pinterest board and read its aesthetic/i),
+    ).toBeInTheDocument();
+  });
+
+  it("passes plate media mode through zineOptions on submit", () => {
+    const onRefine = vi.fn();
+    render(<StudioOrientationEntry onRefine={onRefine} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Photography first/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Write freely/i), {
+      target: { value: "Slow fashion in Lisbon" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Begin with this/i }));
+
+    expect(onRefine).toHaveBeenCalledTimes(1);
+    const [, , , opts] = onRefine.mock.calls[0];
+    expect(opts.zineOptions.plateMediaMode).toBe("photography-first");
   });
 });

@@ -1,8 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { MediaFile, ZineGenerationOptions, ZineMetadata } from "../../types";
+import type {
+  MediaFile,
+  ZineGenerationOptions,
+  ZineMetadata,
+  ZinePlateMediaMode,
+} from "../../types";
 import { useOptionalUser } from "../../contexts/UserContext";
 import { fetchUserZines } from "../../services/firebaseUtils";
 import { MimiWordmark } from "../public-face/MimiWordmark";
+import { ZINE_PLATE_MEDIA_MODE_LABELS } from "../../lib/zinePlateMediaMode";
 
 const EMPTY_ZINE_OPTIONS: ZineGenerationOptions = {
   style: "balanced",
@@ -16,6 +22,11 @@ const SUGGESTED_NEXT: Array<{
   sentence: string;
   mode: string;
 }> = [
+  {
+    label: "Darkroom",
+    sentence: "Load a Pinterest board and read its aesthetic before you compose",
+    mode: "darkroom",
+  },
   {
     label: "Evidence",
     sentence: "Let Mimi read your references in Tailor",
@@ -75,6 +86,8 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>(initialMedia || []);
   const [recentZines, setRecentZines] = useState<ZineMetadata[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [plateMediaMode, setPlateMediaMode] =
+    useState<ZinePlateMediaMode>("generated");
 
   const zineOptions = zineOptionsProp ?? EMPTY_ZINE_OPTIONS;
 
@@ -125,7 +138,7 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
       isLite: false,
       isHighFidelity: initialHighFidelity,
       useSearch: false,
-      zineOptions: { ...zineOptions },
+      zineOptions: { ...zineOptions, plateMediaMode },
     });
   };
 
@@ -245,6 +258,41 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
               {contextSummary}
             </p>
           )}
+
+          <fieldset className="mt-6 border-0 p-0">
+            <legend className="font-mono text-[8px] uppercase tracking-[0.24em] text-[var(--mimi-stone,#78716c)]">
+              Plate media
+            </legend>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {(
+                Object.entries(ZINE_PLATE_MEDIA_MODE_LABELS) as Array<
+                  [ZinePlateMediaMode, { label: string; note: string }]
+                >
+              ).map(([mode, copy]) => {
+                const active = plateMediaMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setPlateMediaMode(mode)}
+                    className={`min-h-11 flex-1 border px-3 py-2 text-left transition-colors sm:min-w-[10rem] sm:flex-none ${
+                      active
+                        ? "border-[var(--mimi-ink,#0a0a0a)] bg-[var(--mimi-worktable,#fafafa)]"
+                        : "border-[var(--mimi-hairline,#d4d4d4)] hover:border-[var(--mimi-stone,#78716c)]"
+                    }`}
+                  >
+                    <span className="block font-mono text-[9px] uppercase tracking-[0.18em]">
+                      {copy.label}
+                    </span>
+                    <span className="mt-1 block font-serif text-[12px] leading-snug text-[var(--mimi-stone,#78716c)]">
+                      {copy.note}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
           <button
             type="button"
