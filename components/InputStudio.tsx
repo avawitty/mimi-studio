@@ -131,6 +131,13 @@ import {
   stripVariants,
   STUDIO_COVER_DRAFT_KEY,
 } from "../lib/studioCoverVariants";
+import {
+  coverSystemCodeFromIndex,
+  formatCoverIndex,
+  getOrAllocateCoverIssueIndex,
+  isLegacyDefaultCoverCode,
+  readSessionCoverIssueIndex,
+} from "../lib/studioCoverIndex";
 import type { ZineCoverVariant } from "../types";
 import { useUrlIngest } from "../hooks/useUrlIngest";
 import { useMediaUpload } from "../hooks/useMediaUpload";
@@ -553,9 +560,13 @@ export const InputStudio: React.FC<{
   );
 
   const [authorName, setAuthorName] = useState(() => profile?.handle || "Author");
-  const [coverSystemCode, setCoverSystemCode] = useState(
-    () => localStorage.getItem("mimi_cover_system_code") || "SYS // COV-INT.1",
-  );
+  const [coverIssueIndex] = useState(() => getOrAllocateCoverIssueIndex());
+  const [coverSystemCode, setCoverSystemCode] = useState(() => {
+    const stored = localStorage.getItem("mimi_cover_system_code");
+    if (stored && !isLegacyDefaultCoverCode(stored)) return stored;
+    const index = readSessionCoverIssueIndex() ?? 1;
+    return coverSystemCodeFromIndex(index);
+  });
   useEffect(() => {
     if (profile?.handle) {
       setAuthorName(profile.handle);
@@ -2966,7 +2977,15 @@ ${finalInput}`;
                   }}
                   className={`w-full bg-transparent border-none studio-text-ink placeholder:studio-text-muted outline-none p-0 focus:ring-0 leading-tight ${getTreatmentTitleFontClass(activeTreatmentId, profile?.savedTreatments)}`}
                 />
-                <p className="font-mono text-[7px] uppercase tracking-[0.25em] studio-text-muted mt-1">{getTreatmentLabel(activeTreatmentId, profile?.savedTreatments)}</p>
+                <div className="mt-1 flex items-baseline justify-between gap-3">
+                  <p className="font-mono text-[8px] uppercase tracking-[0.28em] studio-text-muted">
+                    Index {formatCoverIndex(coverIssueIndex)}
+                  </p>
+                  <p className="font-mono text-[7px] uppercase tracking-[0.22em] studio-text-muted truncate">
+                    {coverSystemCode}
+                  </p>
+                </div>
+                <p className="font-mono text-[7px] uppercase tracking-[0.25em] studio-text-muted mt-0.5">{getTreatmentLabel(activeTreatmentId, profile?.savedTreatments)}</p>
               </div>
 
               {/* Cover card — shorter min-height on mobile so UPLOAD COVER clears the pinned colophon */}
@@ -2981,6 +3000,12 @@ ${finalInput}`;
                       <span className="font-mono text-[6.5px] tracking-[0.15em] font-extrabold text-amber-500">SYSTEM FRAGMENT</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
+                      <div className="flex justify-between items-baseline gap-2">
+                        <span className="font-mono text-[6px] tracking-[0.2em] text-stone-400 uppercase">INDEX:</span>
+                        <span className="font-mono text-[6.5px] tracking-[0.18em] text-amber-500 font-bold">
+                          {formatCoverIndex(coverIssueIndex)}
+                        </span>
+                      </div>
                       <div className="flex justify-between items-baseline gap-2">
                         <span className="font-mono text-[6px] tracking-[0.2em] text-stone-400 uppercase">TITLE:</span>
                         <span className="font-sans text-[7.5px] tracking-tight font-bold text-stone-100 truncate max-w-[150px] uppercase">
