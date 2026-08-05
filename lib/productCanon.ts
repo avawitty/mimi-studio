@@ -93,6 +93,16 @@ export interface CanonModule {
   family: StudioFamily;
   phase: StudioPhase;
   visibility: CanonVisibility;
+  /**
+   * Explicit opt-in for public sitemap/SEO indexing. Defaults to false/absent —
+   * most Mimi chambers operate on a signed-in or ghost creator's own private
+   * taste data, so being unauthenticated-reachable is not the same as being
+   * generically public content worth indexing. Only set true on modules whose
+   * output is inherently public regardless of who is viewing (e.g. a published
+   * community feed), not based on `status` or the `public-face` atmosphere tag
+   * (which is a visual-styling token, not a publicity signal).
+   */
+  seoIndexable?: boolean;
   atmosphere: ChamberAtmosphere[];
   primaryAction: {
     label: string;
@@ -202,6 +212,7 @@ export const CANON_MODULES: CanonModule[] = [
     family: "orientation",
     phase: "collect",
     visibility: "primary",
+    seoIndexable: true,
     atmosphere: ["paper", "registry"],
     primaryAction: {
       label: "Capture a fragment",
@@ -234,6 +245,7 @@ export const CANON_MODULES: CanonModule[] = [
     family: "orientation",
     phase: "understand",
     visibility: "registry",
+    seoIndexable: true,
     atmosphere: ["paper", "registry"],
     primaryAction: {
       label: "Research the system",
@@ -601,6 +613,7 @@ export const CANON_MODULES: CanonModule[] = [
     family: "publishing",
     phase: "preserve",
     visibility: "primary",
+    seoIndexable: true,
     atmosphere: ["paper", "public-face", "registry"],
     primaryAction: {
       label: "Open the published archive",
@@ -1082,6 +1095,7 @@ export const CANON_MODULES: CanonModule[] = [
     family: "publishing",
     phase: "publish",
     visibility: "contextual",
+    seoIndexable: true,
     atmosphere: ["paper", "public-face"],
     primaryAction: {
       label: "Stage the public encounter",
