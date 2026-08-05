@@ -1,8 +1,14 @@
-import type { MediaFile, ZineContent, ZineIssuePlan } from "../types";
+import type { MediaFile, ZineContent, ZineIssuePlan, ZinePlateMediaMode } from "../types";
 import { generateZineImage } from "../services/geminiService";
 import { archiveManager } from "../services/archiveManager";
 import { shouldAutoDevelopPlates } from "./zineSpreadLayout";
 import { resolvePlateConcurrency } from "./zine/zinePerformance";
+import { resolveZinePlateStock } from "./resolveZinePlateStock";
+import {
+  normalizePlateMediaMode,
+  shouldAiGeneratePlates,
+  shouldResolveStockPlates,
+} from "./zinePlateMediaMode";
 import {
   planAuthoredPageIdsRequiringMedia,
   planCoverRequiresGeneratedMedia,
@@ -26,6 +32,8 @@ export interface BakeZinePlatesOptions {
   isMobile?: boolean;
   /** When set, only develop cover/plates the issue plan marks as requiring media. */
   issuePlan?: ZineIssuePlan;
+  /** Stock vs AI plate resolution for hi-fi bakes. */
+  plateMediaMode?: ZinePlateMediaMode;
 }
 
 export interface BakeZinePlatesResult {
@@ -93,6 +101,10 @@ export async function bakeZineVisualPlates(
     issuePlan,
   } = options;
 
+  const plateMediaMode = normalizePlateMediaMode(options.plateMediaMode);
+  const useStock = shouldResolveStockPlates(plateMediaMode);
+  const useAi = shouldAiGeneratePlates(plateMediaMode);
+
   if (
     !shouldAutoDevelopPlates({
       isHighFidelity: options.isHighFidelity,
@@ -129,26 +141,50 @@ export async function bakeZineVisualPlates(
     (!issuePlan || planCoverRequiresGeneratedMedia(issuePlan, coverUrl));
 
   if (shouldBakeCover) {
-    try {
-      const raw = await generateZineImage(
-        heroPrompt,
-        "16:9",
-        "2K",
-        profile,
-        Boolean(isLite),
-        apiKey,
-        artifacts,
-        treatmentId,
-      );
-      coverUrl = (await persistImage(ownerUid, raw, "zines/hi-fi/hero")) || undefined;
-      if (coverUrl) {
-        next.hero_image_url = coverUrl;
-        bakedCover = true;
-      } else {
-        failures.push("cover: storage upload failed (data URLs are not written to Firestore)");
+    if (plateMediaMode === "references-only") {
+      // Honest skip — no synthetic cover without a user reference.
+    } else if (useStock) {
+      try {
+        const stock = await resolveZinePlateStock(heroPrompt);
+        if (stock?.imageUrl) {
+          coverUrl = stock.imageUrl;
+          next.hero_image_url = stock.imageUrl;
+          next.meta = {
+            ...next.meta,
+            heroStockAttribution: stock.attribution,
+            heroStockSourceUrl: stock.sourceUrl,
+          };
+          bakedCover = true;
+        } else {
+          failures.push("cover: no stock photo matched (photography-first)");
+        }
+      } catch (error) {
+        failures.push(
+          `cover: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
-    } catch (error) {
-      failures.push(`cover: ${error instanceof Error ? error.message : String(error)}`);
+    } else if (useAi) {
+      try {
+        const raw = await generateZineImage(
+          heroPrompt,
+          "16:9",
+          "2K",
+          profile,
+          Boolean(isLite),
+          apiKey,
+          artifacts,
+          treatmentId,
+        );
+        coverUrl = (await persistImage(ownerUid, raw, "zines/hi-fi/hero")) || undefined;
+        if (coverUrl) {
+          next.hero_image_url = coverUrl;
+          bakedCover = true;
+        } else {
+          failures.push("cover: storage upload failed (data URLs are not written to Firestore)");
+        }
+      } catch (error) {
+        failures.push(`cover: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
   }
 
@@ -176,6 +212,35 @@ export async function bakeZineVisualPlates(
       failures.push(`plate ${index + 1}: missing prompt`);
       return;
     }
+    if (plateMediaMode === "references-only") {
+      return;
+    }
+    if (useStock) {
+      try {
+        const stock = await resolveZinePlateStock(prompt);
+        if (!stock?.imageUrl) {
+          failures.push(`plate ${index + 1}: no stock photo matched`);
+          return;
+        }
+        pages[index] = {
+          ...page,
+          image_url: stock.imageUrl,
+          originalMediaUrl: stock.imageUrl,
+          plateMediaOrigin: "unsplash",
+          stockAttribution: stock.attribution,
+          stockPhotographer: stock.photographer,
+          stockSourceUrl: stock.sourceUrl,
+          altText: page.altText || page.headline,
+        };
+        return;
+      } catch (error) {
+        failures.push(
+          `plate ${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return;
+      }
+    }
+    if (!useAi) return;
     try {
       const raw = await generateZineImage(
         prompt,
@@ -196,6 +261,7 @@ export async function bakeZineVisualPlates(
         ...page,
         image_url: url,
         originalMediaUrl: page.originalMediaUrl || url,
+        plateMediaOrigin: "generated",
       };
     } catch (error) {
       failures.push(`plate ${index + 1}: ${error instanceof Error ? error.message : String(error)}`);

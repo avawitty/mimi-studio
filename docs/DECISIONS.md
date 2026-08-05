@@ -6,6 +6,42 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-05 — Studio plate media mode + Unsplash stock resolver (v1)
+
+**Decision:** Add `plateMediaMode` on Studio orientation intake (`photography-first` | `generated` | `references-only`). Hi-fi `bakeZineVisualPlates` resolves Unsplash stock via server `/api/inspo/search` when mode is photography-first; skips AI generation for `references-only`. Stock attribution lands on `ZinePageSpec` and `SpecimenPage` footer.
+
+**Alternatives rejected:** (1) Client-side Unsplash keys. (2) Silent AI fallback when stock misses (honest empty/failure instead). (3) Remounting full InputStudio on `/studio` for the toggle.
+
+**Why:** Serves AI-averse blog/article ideation with attributed real photography while preserving generated plates as explicit opt-in; connects Studio entry to the zine passport concept without forking the calm orientation shell.
+
+**Ref:** `lib/bakeZinePlates.ts`, `lib/unsplashClient.ts`, `components/studio/StudioOrientationEntry.tsx`, `api/inspo/search.ts`
+
+---
+
+## 2026-08-05 — Proof-mode stock plate swap + Studio Pinterest board import
+
+**Decision:** (1) Add `swapZinePlateStock` and a **Swap stock plate** control in `ZineProofMode` (owner-only) so draft issues can cycle Unsplash alternates without full regen. (2) Add optional Pinterest board URL import on Studio orientation intake (public scrape / API path via `/api/pinterest`), capping at 8 reference thumbnails.
+
+**Alternatives rejected:** (1) Full issue regen for every plate dissatisfaction. (2) Client-side Pinterest token handling on Studio. (3) Remounting Scribe Pinterest desk without routing work.
+
+**Why:** Closes the ideation loop for photography-first and board-curated workflows on the calm Studio shell; keeps attribution honest on swap via existing `ZinePageSpec` passport fields.
+
+**Ref:** `lib/swapZinePlateStock.ts`, `components/zine/ZineProofMode.tsx`, `components/studio/StudioOrientationEntry.tsx`
+
+---
+
+## 2026-08-05 — Imagen-first Studio toolbar + inspo carousel
+
+**Decision:** Default `/studio` plate path is **Imagen** (`generated`). Stock and References are compact toolbar toggles, not equal-weight cards. Add an **Inspos** carousel (attached references + Unsplash previews from prompt) with **Publish my rendition →** — always routes through Imagen, seeding from the selected inspo.
+
+**Alternatives rejected:** (1) Photography-first as co-equal default beside Imagen. (2) Full InputStudio inspo panel remount on `/studio`. (3) “Publish” meaning literal stock republish without AI rendition.
+
+**Why:** Matches product intent: AI-developed plates first; stock/references are explicit opt-ins; inspo browsing supports ideation without leaving the calm orientation shell.
+
+**Ref:** `components/studio/StudioPlateMediaToolbar.tsx`, `components/studio/StudioInspoCarousel.tsx`, `lib/fetchStudioInspos.ts`
+
+---
+
 ## 2026-08-04 — Pinterest board preview: API-first for token owner, HTML fallback
 
 **Decision:** When `PINTEREST_ACCESS_TOKEN` is set (Production Limited / Standard), resolve board previews via Pinterest API v5 (`boards` + `boards/{id}/pins`) for boards owned by the token account; fall back to existing public HTML scrape for other users' boards or when API resolution fails.

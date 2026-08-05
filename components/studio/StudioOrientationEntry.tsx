@@ -1,8 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { MediaFile, ZineGenerationOptions, ZineMetadata } from "../../types";
+import type {
+  MediaFile,
+  ZineGenerationOptions,
+  ZineMetadata,
+  ZinePlateMediaMode,
+} from "../../types";
 import { useOptionalUser } from "../../contexts/UserContext";
 import { fetchUserZines } from "../../services/firebaseUtils";
 import { MimiWordmark } from "../public-face/MimiWordmark";
+import { StudioPlateMediaToolbar } from "./StudioPlateMediaToolbar";
+import { StudioInspoCarousel } from "./StudioInspoCarousel";
+import type { StudioInspoSlide } from "../../lib/studioInspoTypes";
 
 const EMPTY_ZINE_OPTIONS: ZineGenerationOptions = {
   style: "balanced",
@@ -11,11 +19,18 @@ const EMPTY_ZINE_OPTIONS: ZineGenerationOptions = {
   goals: "",
 };
 
+const MAX_BOARD_REFERENCES = 8;
+
 const SUGGESTED_NEXT: Array<{
   label: string;
   sentence: string;
   mode: string;
 }> = [
+  {
+    label: "Darkroom",
+    sentence: "Load a Pinterest board and read its aesthetic before you compose",
+    mode: "darkroom",
+  },
   {
     label: "Evidence",
     sentence: "Let Mimi read your references in Tailor",
@@ -75,6 +90,14 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>(initialMedia || []);
   const [recentZines, setRecentZines] = useState<ZineMetadata[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [plateMediaMode, setPlateMediaMode] =
+    useState<ZinePlateMediaMode>("generated");
+  const [boardUrl, setBoardUrl] = useState("");
+  const [isFetchingBoard, setIsFetchingBoard] = useState(false);
+  const [boardWarning, setBoardWarning] = useState<string | null>(null);
+  const [selectedInspo, setSelectedInspo] = useState<StudioInspoSlide | null>(
+    null,
+  );
 
   const zineOptions = zineOptionsProp ?? EMPTY_ZINE_OPTIONS;
 
@@ -125,7 +148,44 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
       isLite: false,
       isHighFidelity: initialHighFidelity,
       useSearch: false,
-      zineOptions: { ...zineOptions },
+      zineOptions: { ...zineOptions, plateMediaMode },
+    });
+  };
+
+  const handlePublishRendition = (slide: StudioInspoSlide | null) => {
+    if (isThinking) return;
+
+    const payload =
+      input.trim() ||
+      (slide?.label
+        ? `Publish my rendition of “${slide.label.slice(0, 80)}”.`
+        : "Publish my rendition from this inspo.");
+
+    let media = mediaFiles;
+    if (
+      slide &&
+      slide.source !== "reference" &&
+      !media.some((file) => (file.url || file.data) === slide.imageUrl)
+    ) {
+      media = [
+        {
+          type: "image",
+          url: slide.imageUrl,
+          data: slide.imageUrl,
+          mimeType: "image/jpeg",
+          name: slide.label.slice(0, 80) || "inspo-reference",
+        },
+        ...media,
+      ];
+    }
+
+    onRefine?.(payload, media, "editorial", {
+      deepThinking: false,
+      isPublic: false,
+      isLite: false,
+      isHighFidelity: initialHighFidelity,
+      useSearch: false,
+      zineOptions: { ...zineOptions, plateMediaMode: "generated" },
     });
   };
 
@@ -146,6 +206,54 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
     };
     reader.readAsDataURL(file);
     e.target.value = "";
+  };
+
+  const handleFetchBoard = async () => {
+    const url = boardUrl.trim();
+    if (!url || isFetchingBoard) return;
+    setIsFetchingBoard(true);
+    setBoardWarning(null);
+    try {
+      const res = await fetch(`/api/pinterest?url=${encodeURIComponent(url)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          (typeof data?.error === "string" && data.error) ||
+            "Could not load that Pinterest board.",
+        );
+      }
+      const pins = Array.isArray(data?.pins) ? data.pins : [];
+      if (pins.length === 0) {
+        throw new Error("No public thumbnails were found on that board URL.");
+      }
+
+      const imported: MediaFile[] = pins.slice(0, MAX_BOARD_REFERENCES).map(
+        (pin: { src?: string; alt?: string; id?: string }, i: number) => ({
+          type: "image" as const,
+          url: String(pin.src || ""),
+          data: String(pin.src || ""),
+          mimeType: "image/jpeg",
+          name: pin.alt?.trim() || `pinterest-${pin.id || i + 1}`,
+        }),
+      );
+
+      setMediaFiles((prev) => {
+        const merged = [...imported, ...prev];
+        return merged.slice(0, MAX_BOARD_REFERENCES);
+      });
+      setBoardWarning(
+        typeof data?.warning === "string" && data.warning ? data.warning : null,
+      );
+      if (!input.trim() && data?.title) {
+        setInput(`Compose from the mood of “${String(data.title).slice(0, 120)}”.`);
+      }
+    } catch (error) {
+      setBoardWarning(
+        error instanceof Error ? error.message : "Board import failed.",
+      );
+    } finally {
+      setIsFetchingBoard(false);
+    }
   };
 
   return (
@@ -223,19 +331,69 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3 border-t border-[var(--mimi-hairline,#d4d4d4)] px-3 py-2">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="min-h-11 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-stone,#78716c)] hover:text-[var(--mimi-ink,#0a0a0a)]"
-              >
-                Attach reference
-              </button>
+            <div className="flex flex-col gap-3 border-t border-[var(--mimi-hairline,#d4d4d4)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="min-h-11 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-stone,#78716c)] hover:text-[var(--mimi-ink,#0a0a0a)]"
+                >
+                  Attach reference
+                </button>
+                <StudioPlateMediaToolbar
+                  value={plateMediaMode}
+                  onChange={setPlateMediaMode}
+                />
+              </div>
               <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)]">
-                Text · image · note
+                Imagen default
               </span>
             </div>
           </section>
+
+          <fieldset className="mt-4 border-0 p-0">
+            <legend className="font-mono text-[8px] uppercase tracking-[0.24em] text-[var(--mimi-stone,#78716c)]">
+              Import board
+            </legend>
+            <p className="mt-2 max-w-md font-serif text-[13px] italic leading-snug text-[var(--mimi-stone,#78716c)]">
+              Paste a public Pinterest board URL to attach thumbnails as references
+              — or open Darkroom for full board analysis.
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="url"
+                value={boardUrl}
+                onChange={(e) => setBoardUrl(e.target.value)}
+                placeholder="https://pinterest.com/…/board-name/"
+                className="min-h-11 flex-1 border border-[var(--mimi-hairline,#d4d4d4)] bg-transparent px-3 font-mono text-[11px] text-[var(--mimi-ink,#0a0a0a)] placeholder:text-[var(--mimi-stone,#78716c)] focus:outline-none focus:border-[var(--mimi-ink,#0a0a0a)]"
+              />
+              <button
+                type="button"
+                onClick={() => void handleFetchBoard()}
+                disabled={!boardUrl.trim() || isFetchingBoard}
+                className="min-h-11 border border-[var(--mimi-ink,#0a0a0a)] px-4 font-mono text-[9px] uppercase tracking-[0.18em] disabled:opacity-40"
+              >
+                {isFetchingBoard ? "Loading…" : "Load board"}
+              </button>
+            </div>
+            {boardWarning ? (
+              <p
+                role="status"
+                className="mt-2 font-mono text-[10px] leading-relaxed text-[var(--mimi-stone,#78716c)]"
+              >
+                {boardWarning}
+              </p>
+            ) : null}
+          </fieldset>
+
+          <StudioInspoCarousel
+            query={input}
+            references={mediaFiles}
+            selectedId={selectedInspo?.id ?? null}
+            onSelect={setSelectedInspo}
+            onPublishRendition={handlePublishRendition}
+            isPublishing={isThinking}
+          />
 
           {contextSummary && (
             <p

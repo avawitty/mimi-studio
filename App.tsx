@@ -2084,6 +2084,7 @@ export const App: React.FC = () => {
               existingCoverUrl: coverUrl,
               ownerUid: targetUidForBake === "ghost" ? undefined : targetUidForBake,
               issuePlan: result.issuePlan,
+              plateMediaMode: opts.zineOptions?.plateMediaMode,
             });
             result.content = baked.content;
             if (baked.coverUrl) coverUrl = baked.coverUrl;

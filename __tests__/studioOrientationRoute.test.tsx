@@ -114,8 +114,56 @@ describe("/studio orientation entry route", () => {
       zineOptions: expect.objectContaining({
         style: "balanced",
         theme: "organic",
+        plateMediaMode: "generated",
       }),
     });
     expect(opts).not.toHaveProperty("style");
+  });
+
+  it("defaults to Imagen toolbar and exposes stock / references toggles", () => {
+    render(<StudioOrientationEntry />);
+
+    expect(screen.getByRole("toolbar", { name: /Plate media/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /^Imagen$/i })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("radio", { name: /^Stock$/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /^References$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Darkroom/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Load a Pinterest board and read its aesthetic/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows inspo carousel after typing and publishes Imagen rendition", () => {
+    const onRefine = vi.fn();
+    render(<StudioOrientationEntry onRefine={onRefine} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Write freely/i), {
+      target: { value: "Slow fashion in Lisbon" },
+    });
+
+    expect(screen.getByLabelText(/Inspos/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Publish my rendition/i }));
+
+    expect(onRefine).toHaveBeenCalledTimes(1);
+    const [, , , opts] = onRefine.mock.calls[0];
+    expect(opts.zineOptions.plateMediaMode).toBe("generated");
+  });
+
+  it("passes plate media mode through zineOptions on submit", () => {
+    const onRefine = vi.fn();
+    render(<StudioOrientationEntry onRefine={onRefine} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /^Stock$/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Write freely/i), {
+      target: { value: "Slow fashion in Lisbon" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Begin with this/i }));
+
+    expect(onRefine).toHaveBeenCalledTimes(1);
+    const [, , , opts] = onRefine.mock.calls[0];
+    expect(opts.zineOptions.plateMediaMode).toBe("photography-first");
   });
 });

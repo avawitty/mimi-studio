@@ -109,7 +109,14 @@ export interface ZineGenerationOptions {
   temperature?: number;
   imageEnhancement?: boolean;
   imageFilter?: 'none' | 'upscale' | 'grain' | 'duotone' | 'vivid' | 'vintage';
+  /** How hi-fi zine plates resolve: stock photography, AI generation, or references only. */
+  plateMediaMode?: ZinePlateMediaMode;
 }
+
+export type ZinePlateMediaMode =
+  | 'photography-first'
+  | 'generated'
+  | 'references-only';
 
 export type ZodiacSign = 'aries' | 'taurus' | 'gemini' | 'cancer' | 'leo' | 'virgo' | 'libra' | 'scorpio' | 'sagittarius' | 'capricorn' | 'aquarius' | 'pisces';
 
@@ -520,6 +527,9 @@ export interface ZineSpec {
     studioCoverOverlays?: ZineCoverOverlayLayer[];
     /** Dev · Darkroom contact-sheet variants (session + issue doc). */
     studioCoverVariants?: ZineCoverVariant[];
+    /** Unsplash attribution when hero resolved via photography-first bake. */
+    heroStockAttribution?: string;
+    heroStockSourceUrl?: string;
   };
   taste_context: {
     active_archetype: string;
@@ -994,6 +1004,11 @@ export interface ZinePageSpec {
   /** Media seed for the freeform spread editor (often mirrors image_url). */
   originalMediaUrl?: string;
   altText?: string;
+  /** Stock / passport metadata when plate resolved from Unsplash. */
+  plateMediaOrigin?: "unsplash" | "generated" | "upload";
+  stockAttribution?: string;
+  stockPhotographer?: string;
+  stockSourceUrl?: string;
   assetVariants?: ZineAssetVariants;
   sectionId?: string;
   sectionType?: ZineSectionType;
