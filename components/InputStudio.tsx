@@ -122,6 +122,11 @@ import { dispatchStudioAlert } from "../lib/studioAlert";
 import { UsedContextColophon } from "./provenance/UsedContextColophon";
 import { CoverContactStrip } from "./studio/CoverContactStrip";
 import {
+  StudioInstrumentRail,
+  buildDefaultStudioInstruments,
+} from "./studio/StudioInstrumentRail";
+import { StudioMediaPolaroidBar } from "./studio/StudioMediaPolaroidBar";
+import {
   compileCoverPromptFromSignals,
   mergeContactSheetBatch,
   parseStoredCoverVariants,
@@ -131,6 +136,12 @@ import {
   stripVariants,
   STUDIO_COVER_DRAFT_KEY,
 } from "../lib/studioCoverVariants";
+import {
+  formatCoverIndex,
+  getOrAllocateCoverIssueIndex,
+  readSessionCoverIssueIndex,
+  resolveCoverSystemCodeForSession,
+} from "../lib/studioCoverIndex";
 import type { ZineCoverVariant } from "../types";
 import { useUrlIngest } from "../hooks/useUrlIngest";
 import { useMediaUpload } from "../hooks/useMediaUpload";
@@ -553,8 +564,12 @@ export const InputStudio: React.FC<{
   );
 
   const [authorName, setAuthorName] = useState(() => profile?.handle || "Author");
-  const [coverSystemCode, setCoverSystemCode] = useState(
-    () => localStorage.getItem("mimi_cover_system_code") || "SYS // COV-INT.1",
+  const [coverIssueIndex] = useState(() => getOrAllocateCoverIssueIndex());
+  const [coverSystemCode, setCoverSystemCode] = useState(() =>
+    resolveCoverSystemCodeForSession(
+      readSessionCoverIssueIndex() ?? 1,
+      localStorage.getItem("mimi_cover_system_code"),
+    ),
   );
   useEffect(() => {
     if (profile?.handle) {
@@ -2621,6 +2636,16 @@ ${finalInput}`;
                 {!isMobile && renderDetailedBriefPanel()}
               </div>
 
+              {mediaFiles.length > 0 && (
+                <StudioMediaPolaroidBar
+                  mediaFiles={mediaFiles}
+                  onRemove={(index) =>
+                    setMediaFiles((prev) => prev.filter((_, i) => i !== index))
+                  }
+                  className="w-full max-w-2xl shrink-0"
+                />
+              )}
+
               {/* Used by Mimi // Active Context Strip */}
               <div className="w-full max-w-2xl mt-4 border-t border-dotted studio-border pt-3 select-none z-10 shrink-0">
                 <div className="flex items-center gap-2 mb-2">
@@ -2966,7 +2991,15 @@ ${finalInput}`;
                   }}
                   className={`w-full bg-transparent border-none studio-text-ink placeholder:studio-text-muted outline-none p-0 focus:ring-0 leading-tight ${getTreatmentTitleFontClass(activeTreatmentId, profile?.savedTreatments)}`}
                 />
-                <p className="font-mono text-[7px] uppercase tracking-[0.25em] studio-text-muted mt-1">{getTreatmentLabel(activeTreatmentId, profile?.savedTreatments)}</p>
+                <div className="mt-1 flex items-baseline justify-between gap-3">
+                  <p className="font-mono text-[8px] uppercase tracking-[0.28em] studio-text-muted">
+                    Index {formatCoverIndex(coverIssueIndex)}
+                  </p>
+                  <p className="font-mono text-[7px] uppercase tracking-[0.22em] studio-text-muted truncate">
+                    {coverSystemCode}
+                  </p>
+                </div>
+                <p className="font-mono text-[7px] uppercase tracking-[0.25em] studio-text-muted mt-0.5">{getTreatmentLabel(activeTreatmentId, profile?.savedTreatments)}</p>
               </div>
 
               {/* Cover card — shorter min-height on mobile so UPLOAD COVER clears the pinned colophon */}
@@ -2981,6 +3014,12 @@ ${finalInput}`;
                       <span className="font-mono text-[6.5px] tracking-[0.15em] font-extrabold text-amber-500">SYSTEM FRAGMENT</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
+                      <div className="flex justify-between items-baseline gap-2">
+                        <span className="font-mono text-[6px] tracking-[0.2em] text-stone-400 uppercase">INDEX:</span>
+                        <span className="font-mono text-[6.5px] tracking-[0.18em] text-amber-500 font-bold">
+                          {formatCoverIndex(coverIssueIndex)}
+                        </span>
+                      </div>
                       <div className="flex justify-between items-baseline gap-2">
                         <span className="font-mono text-[6px] tracking-[0.2em] text-stone-400 uppercase">TITLE:</span>
                         <span className="font-sans text-[7.5px] tracking-tight font-bold text-stone-100 truncate max-w-[150px] uppercase">
@@ -3778,100 +3817,46 @@ ${finalInput}`;
 
       </div>
 
-      {/* MOBILE INSTRUMENT RAIL — thin icon spine + brand (editorial middle ground) */}
-      {isMobile && !toolsSheetOpen && !moreSheetOpen && (
-        <footer
-          aria-label="Studio instruments"
-          className="studio-mobile-rail md:hidden fixed bottom-0 left-0 right-0 z-40 border-t studio-border studio-bg-panel"
-        >
-          <div className="flex items-center justify-center gap-1 px-2 pt-1.5 pb-1 overflow-x-auto no-scrollbar">
-            {(
-              [
-                {
-                  key: "tools",
-                  label: "Tools",
-                  icon: <LayoutGrid size={16} strokeWidth={1.4} />,
-                  active: toolsSheetOpen || isRecording || isDictating || deepThinking || useSearch,
-                  onClick: () => setToolsSheetOpen(true),
-                },
-                {
-                  key: "attach",
-                  label: "Attach media",
-                  icon: <Paperclip size={16} strokeWidth={1.4} />,
-                  active: mediaFiles.length > 0,
-                  onClick: () => mediaInputRef.current?.click(),
-                },
-                {
-                  key: "compose",
-                  label: "Compose",
-                  icon: <PenLine size={16} strokeWidth={1.4} />,
-                  active: activePanel === null && mobileStudioView === "editor",
-                  onClick: () => {
-                    setActivePanel(null);
-                    setMobileStudioView("editor");
-                  },
-                },
-                {
-                  key: "cover",
-                  label: "Cover",
-                  icon: <Eye size={16} strokeWidth={1.4} />,
-                  active: mobileStudioView === "cover",
-                  onClick: () => setMobileStudioView("cover"),
-                },
-                {
-                  key: "ground",
-                  label: "Web grounding",
-                  icon: <Globe size={16} strokeWidth={1.4} />,
-                  active: useSearch,
-                  onClick: () => setUseSearch((v) => !v),
-                },
-                {
-                  key: "treatments",
-                  label: "Treatments",
-                  icon: <Paintbrush size={16} strokeWidth={1.4} />,
-                  active: activePanel === "treatments",
-                  onClick: () => togglePanel("treatments"),
-                },
-                {
-                  key: "anchors",
-                  label: "Anchors",
-                  icon: <Layers size={16} strokeWidth={1.4} />,
-                  active: activePanel === "signal",
-                  onClick: () => togglePanel("signal"),
-                },
-                {
-                  key: "more",
-                  label: "More",
-                  icon: <MoreHorizontal size={16} strokeWidth={1.4} />,
-                  active: moreSheetOpen,
-                  onClick: () => setMoreSheetOpen(true),
-                },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => {
-                  item.onClick();
-                  playClick();
-                }}
-                aria-label={item.label}
-                aria-pressed={item.active || undefined}
-                className={`studio-mobile-rail-item min-w-11 min-h-11 w-11 h-11 flex items-center justify-center transition-colors ${
-                  item.active ? "studio-text-ink" : "studio-text-muted"
-                }`}
-              >
-                {item.icon}
-              </button>
-            ))}
-          </div>
-          <div className="border-t border-dotted studio-border px-4 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] flex flex-col items-center leading-none select-none">
-            <span className="font-serif italic text-[17px] studio-text-ink tracking-[0.01em]">Mimi</span>
-            <span className="font-mono text-[7px] uppercase tracking-[0.32em] studio-text-muted mt-0.5 font-bold">
-              Studio
-            </span>
-          </div>
-        </footer>
+      {/* Floating cylindrical scrollable toolbar */}
+      {!toolsSheetOpen && !moreSheetOpen && (
+        <StudioInstrumentRail
+            items={buildDefaultStudioInstruments({
+              onTools: isMobile ? () => setToolsSheetOpen(true) : undefined,
+              onAttach: () => mediaInputRef.current?.click(),
+              onCompose: () => {
+                setActivePanel(null);
+                setMobileStudioView("editor");
+              },
+              onTailor: () => setUseTailorProfile((v) => !v),
+              onCover: () => setMobileStudioView("cover"),
+              onGround: () => setUseSearch((v) => !v),
+              onMic: () => {
+                void startRecording();
+                playClick();
+              },
+              onTreatment: () => togglePanel("treatments"),
+              onContinuum: () => togglePanel("continuum"),
+              onPocket: () => togglePanel("procurement"),
+              onTelemetry: () => togglePanel("telemetry"),
+              onAnchors: () => togglePanel("signal"),
+              onMore: () => setMoreSheetOpen(true),
+              active: {
+                tools: toolsSheetOpen,
+                attach: mediaFiles.length > 0,
+                compose: activePanel === null && mobileStudioView === "editor",
+                tailor: useTailorProfile,
+                cover: mobileStudioView === "cover",
+                ground: useSearch,
+                mic: isRecording || isTranscribing,
+                treatment: activePanel === "treatments",
+                continuum: activePanel === "continuum",
+                pocket: activePanel === "procurement",
+                telemetry: activePanel === "telemetry",
+                anchors: activePanel === "signal",
+                more: moreSheetOpen,
+              },
+            })}
+          />
       )}
 
       {/* MOBILE TOOLS SHEET */}

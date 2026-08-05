@@ -404,14 +404,33 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
             </p>
           )}
 
-          <button
-            type="button"
-            onClick={handlePrimary}
-            disabled={!canSubmit || isThinking}
-            className="mt-6 inline-flex min-h-12 w-full items-center justify-center bg-[var(--mimi-ink,#0a0a0a)] px-5 font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--mimi-field,#ffffff)] disabled:opacity-40 sm:w-auto"
-          >
-            {isThinking ? "Developing…" : "Begin with this"}
-          </button>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={handlePrimary}
+              disabled={!canSubmit || isThinking}
+              className="inline-flex min-h-12 w-full items-center justify-center bg-[var(--mimi-ink,#0a0a0a)] px-5 font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--mimi-field,#ffffff)] disabled:opacity-40 sm:w-auto"
+            >
+              {isThinking ? "Developing…" : "Begin with this"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigatePath) {
+                  onNavigatePath("/studio/worktable-legacy?console=1");
+                  return;
+                }
+                window.dispatchEvent(
+                  new CustomEvent("mimi:route-request", {
+                    detail: { path: "/studio/worktable-legacy?console=1" },
+                  }),
+                );
+              }}
+              className="inline-flex min-h-12 w-full items-center justify-center border border-[var(--mimi-ink,#0a0a0a)] px-5 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--mimi-ink,#0a0a0a)] sm:w-auto"
+            >
+              Open compose desk
+            </button>
+          </div>
 
           {/* Below the fold — recent work + suggested next */}
           <section

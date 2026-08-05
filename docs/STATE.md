@@ -1,6 +1,6 @@
 # Mimi Studio — Module State
 
-**Last updated:** 2026-08-04  
+**Last updated:** 2026-08-05  
 **Source of truth for routes:** `lib/productCanon.ts` · **Validation:** `npm run validate:canon`
 
 ## Status legend
@@ -19,7 +19,8 @@
 | --- | --- | --- | --- | --- |
 | **Scribe** | `/scribe` | shipped | ResearchMemory nested in Atomize tab | Mobile density pass on long capture sessions |
 | **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
-| **Studio (orientation intake)** | `/studio` | shipped | Imagen-first toolbar (Stock / References toggles); inspo carousel + “Publish my rendition”; Unsplash via `/api/inspo/search`; Pinterest board import; proof-mode stock swap | Inline plate swap outside proof; mount or remove orphaned Scribe Pinterest desk |
+| **Studio (orientation intake)** | `/studio` | shipped | Imagen-first toolbar (Stock / References toggles); inspo carousel + “Publish my rendition”; Unsplash via `/api/inspo/search`; Pinterest board import; proof-mode stock swap | Promote compose shell (instrument rail + footnote dock) from legacy console after intake |
+| **Studio (compose console)** | `/studio/worktable-legacy` | partial | Extracted `StudioInstrumentRail`, footnote dock (Continuum · Pocket · Telemetry), polaroid media bar, auto cover index; spectrogram reverse-transcribe not wired | Mount post-intake on `/studio`; live telemetry beyond decorative dash |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |

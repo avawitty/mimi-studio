@@ -253,3 +253,15 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Facilitates moderated usability studies without polluting production analytics or requiring a separate tool chain.
 
 **Ref:** `lib/researchMode.ts`, `services/researchInstrumentation.ts`, `components/ResearchNoteWidget.tsx`
+
+---
+
+## 2026-08-05 — Studio footnote dock + instrument rail extraction
+
+**Decision:** Extract `StudioInstrumentRail` (scrollable bottom icons) and `StudioFootnoteDock` (Continuum · Pocket · Telemetry mini sheets opened from the footnote emblem). Dedicated icons: pipette = Treatments, repeat loop = Continuum, archive = Pocket. Auto monotonic cover issue index (`SYS // COV-NNN`) on legacy compose console. Zine reader pill toolbar gains COMMENTS + PUBLISH (owner `isPublic` path, distinct from STAGE broadcast).
+
+**Alternatives rejected:** (1) Stuff Continuum/Pocket/Telemetry into a single “card” toolbar icon. (2) Replace Studio OS Map·seal·Find anchors with the instrument rail globally.
+
+**Why:** Matches the elevated-notes mockup: one **floating cylindrical toolbar** scrolls all compose/zine tools inside a single pill — not a modular footnote dock + edge rail.
+
+**Ref:** `components/ui/FloatingCylinderToolbar.tsx`, `components/studio/StudioInstrumentRail.tsx`, `AnalysisDisplay.tsx`

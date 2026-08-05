@@ -18,6 +18,13 @@ import {
   buildConsentAwareTransmission,
   publishToastMessage,
 } from '../services/collective/broadcastTransmission';
+import {
+  buildPublishConsent,
+  consentFieldsForZine,
+  unpublishFieldsForZine,
+} from '../services/collective/consent';
+import { db } from '../services/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUser } from '../contexts/UserContext';
 import { resolveApiKey } from '../services/apiKeyService';
@@ -40,6 +47,7 @@ import {
 import { logProductTasteEvent } from '../services/tasteLogger';
 import { getFishShareUrl } from '../lib/siteHost';
 import { ZineLayoutEditor } from './ZineLayoutEditor';
+import { FloatingCylinderToolbar, type FloatingCylinderToolbarItem } from './ui/FloatingCylinderToolbar';
 import { ZineSpreadCanvas } from './ZineSpreadCanvas';
 import {
   defaultEditorTone,
@@ -218,6 +226,9 @@ export const AnalysisDisplay: React.FC<{
  const [isBroadcasting, setIsBroadcasting] = useState(false);
  const [isBroadcasted, setIsBroadcasted] = useState(false);
  const [showBroadcastConsent, setShowBroadcastConsent] = useState(false);
+ const [isPublished, setIsPublished] = useState(Boolean(metadata.isPublic));
+ const [showPublishConsent, setShowPublishConsent] = useState(false);
+ const [isPublishing, setIsPublishing] = useState(false);
  const [isEditing, setIsEditing] = useState(false);
  const [isExportingPDF, setIsExportingPDF] = useState(false);
  const [isDedicatedReadingMode, setIsDedicatedReadingMode] = useState(false);
@@ -1362,8 +1373,87 @@ export const AnalysisDisplay: React.FC<{
  console.error("Broadcast failed", e);
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Broadcast Failed.", type: 'error' } }));
  } finally {
- setIsBroadcasting(false);
+   setIsBroadcasting(false);
  }
+ };
+
+ useEffect(() => {
+   setIsPublished(Boolean(metadata.isPublic));
+ }, [metadata.isPublic]);
+
+ const requestPublish = () => {
+   if (!isOwner || isPublishing) return;
+   if (isPublished) {
+     void handleUnpublish();
+     return;
+   }
+   setShowPublishConsent(true);
+ };
+
+ const handleUnpublish = async () => {
+   if (!isOwner || !user?.uid || isPublishing) return;
+   setIsPublishing(true);
+   try {
+     const unpub = unpublishFieldsForZine();
+     await updateDoc(doc(db, "zines", metadata.id), unpub);
+     try {
+       const { mirrorZineToSovereign } = await import("../services/sovereignClient");
+       void mirrorZineToSovereign({ ...metadata, ...unpub });
+     } catch (mirrorErr) {
+       console.warn("MIMI // Sovereign unpublish mirror failed", mirrorErr);
+     }
+     setIsPublished(false);
+     onUpdateMetadata({ ...metadata, ...unpub });
+     window.dispatchEvent(
+       new CustomEvent("mimi:registry_alert", {
+         detail: {
+           message: "Unpublished · withdrawn from future Mean Median Mode windows.",
+           icon: <Radio size={14} />,
+         },
+       }),
+     );
+   } catch (err) {
+     console.error("Unpublish failed", err);
+   } finally {
+     setIsPublishing(false);
+   }
+ };
+
+ const handlePublishConsentConfirm = async (contributeToMeanMedianMode: boolean) => {
+   if (!isOwner || !user?.uid || isPublishing) return;
+   setIsPublishing(true);
+   try {
+     const consent = buildPublishConsent({
+       artifactId: metadata.id,
+       contributeToMeanMedianMode,
+     });
+     const fields = consentFieldsForZine(consent);
+     await updateDoc(doc(db, "zines", metadata.id), fields);
+     try {
+       const { mirrorZineToSovereign } = await import("../services/sovereignClient");
+       void mirrorZineToSovereign({ ...metadata, ...fields });
+     } catch (mirrorErr) {
+       console.warn("MIMI // Sovereign publish mirror failed", mirrorErr);
+     }
+     setIsPublished(true);
+     onUpdateMetadata({ ...metadata, ...fields });
+     setShowPublishConsent(false);
+     window.dispatchEvent(
+       new CustomEvent("mimi:registry_alert", {
+         detail: {
+           message: publishToastMessage({
+             contribute: contributeToMeanMedianMode,
+             handle: metadata.userHandle || profile?.handle,
+           }),
+           icon: <Radio size={14} />,
+         },
+       }),
+     );
+   } catch (err) {
+     console.error("Publish failed", err);
+   } finally {
+     setIsPublishing(false);
+   }
  };
 
  const handleContinuum = () => {
@@ -1394,6 +1484,113 @@ export const AnalysisDisplay: React.FC<{
  document.body.style.overflow = '';
  };
  }, []);
+
+ const zineToolbarItems = useMemo((): FloatingCylinderToolbarItem[] => {
+   const items: FloatingCylinderToolbarItem[] = [
+     {
+       key: "share",
+       label: "SHARE",
+       icon: <Share2 size={18} strokeWidth={1.5} />,
+       onClick: handleShareLink,
+     },
+     {
+       key: "comments",
+       label: "COMMENTS",
+       icon: <MessageSquare size={18} strokeWidth={1.5} />,
+       onClick: () => setShowComments(true),
+       title: "Voice and text comments",
+     },
+   ];
+
+   if (isOwner) {
+     items.push({
+       key: "publish",
+       label: isPublished ? "PUBLISHED" : "PUBLISH",
+       icon: isPublishing ? (
+         <Loader2 size={18} strokeWidth={1.5} className="animate-spin" />
+       ) : (
+         <Radio size={18} strokeWidth={1.5} />
+       ),
+       onClick: requestPublish,
+       disabled: isPublishing,
+       active: isPublished,
+       title: isPublished ? "Unpublish from Stand" : "Publish to Stand · Mean Median Mode",
+     });
+   }
+
+   items.push(
+     {
+       key: "stage",
+       label: isBroadcasted ? "STAGED" : "STAGE",
+       icon: <Radio size={18} strokeWidth={1.5} />,
+       onClick: requestBroadcast,
+       disabled: isBroadcasted || isBroadcasting,
+       active: isBroadcasted,
+       title: isBroadcasted ? "Staged on The Proscenium" : "Stage on The Proscenium · Mean Median Mode",
+     },
+     {
+       key: "export",
+       label: "EXPORT",
+       icon: <Download size={18} strokeWidth={1.5} />,
+       onClick: () => setShowExport(true),
+       title: "Export image or PDF",
+     },
+     {
+       key: "reorder",
+       label: "REORDER",
+       icon: <Layers size={18} strokeWidth={1.5} className="text-amber-600 dark:text-amber-500" />,
+       onClick: () => setShowReorderModal(true),
+       title: "Reorder pages before exporting",
+     },
+     {
+       key: "voice",
+       label: "VOICE",
+       icon: isVoiceLoading ? (
+         <Loader2 size={18} strokeWidth={1.5} className="animate-spin" />
+       ) : isPlaying ? (
+         <Pause size={18} strokeWidth={1.5} />
+       ) : (
+         <Volume2 size={18} strokeWidth={1.5} />
+       ),
+       onClick: handleVoiceToggle,
+     },
+     {
+       key: "notes",
+       label: "NOTES",
+       icon: <Bookmark size={18} strokeWidth={1.5} />,
+       onClick: () => setShowNotes((open) => !open),
+       active: showNotes,
+     },
+     {
+       key: "vault",
+       label: isSaved ? "VAULTED" : "VAULT",
+       icon: isSaved ? (
+         <Archive size={18} strokeWidth={1.5} className="fill-current" />
+       ) : (
+         <Archive size={18} strokeWidth={1.5} />
+       ),
+       onClick: handleSaveToPocket,
+       active: isSaved,
+     },
+   );
+
+   return items;
+ }, [
+   handleShareLink,
+   handleSaveToPocket,
+   handleVoiceToggle,
+   isBroadcasted,
+   isBroadcasting,
+   isOwner,
+   isPlaying,
+   isPublished,
+   isPublishing,
+   isSaved,
+   isVoiceLoading,
+   requestBroadcast,
+   requestPublish,
+   showNotes,
+ ]);
 
  return (
  <>
@@ -1540,6 +1737,15 @@ export const AnalysisDisplay: React.FC<{
  if (!isBroadcasting) setShowBroadcastConsent(false);
  }}
  onConfirm={handleBroadcastConsentConfirm}
+ />
+ <ProsceniumPublishConsentModal
+ open={showPublishConsent}
+ artifactTitle={metadata.content?.headlines?.[0] || metadata.title || 'Untitled'}
+ busy={isPublishing}
+ onCancel={() => {
+ if (!isPublishing) setShowPublishConsent(false);
+ }}
+ onConfirm={handlePublishConsentConfirm}
  />
  {showReorderModal && (
    <motion.div 
@@ -2695,107 +2901,14 @@ export const AnalysisDisplay: React.FC<{
  </motion.aside>
  )}
  </AnimatePresence>
-    {/* MINIMALIST PILL FOOTER */}
-    <motion.div 
-      drag
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-      dragElastic={0.2}
-      onDragEnd={(e, { offset, velocity }) => {
-        if (offset.y > 50 || velocity.y > 500) {
-          setIsToolbarCollapsed(true);
-        }
-      }}
-      title="Swipe or drag down to minimize"
-      initial={false}
-      animate={{ y: isToolbarCollapsed ? 100 : 0, opacity: isToolbarCollapsed ? 0 : 1, scale: isToolbarCollapsed ? 0.8 : 1 }}
-      className="fixed bottom-5 md:bottom-8 left-1/2 -translate-x-1/2 z-[9999] flex max-w-[calc(100vw-1rem)] items-center gap-3 md:gap-5 px-5 md:px-7 py-3.5 bg-[#F2F1E8]/78 backdrop-blur-2xl border border-white/60 text-[#817D75] font-mono print:hidden shadow-[0_20px_40px_-15px_rgba(0,0,0,0.14)] rounded-full cursor-grab active:cursor-grabbing hover:bg-[#F2F1E8]/94 transition-colors overflow-x-auto"
-    >
-      <button onClick={handleShareLink} className="flex flex-col items-center gap-2 hover:text-[#1A1A1A] transition-colors group">
-        <Share2 size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
-        <span className="text-[7px] uppercase tracking-[0.2em] font-black">SHARE</span>
-      </button>
-
-      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
-
-      <button
-        onClick={requestBroadcast}
-        disabled={isBroadcasted || isBroadcasting}
-        className={`flex flex-col items-center gap-2 transition-colors group ${isBroadcasted ? 'text-green-700' : 'hover:text-[#1A1A1A]'} disabled:opacity-40`}
-        title={isBroadcasted ? 'Staged on The Proscenium' : 'Stage on The Proscenium · Mean Median Mode'}
-      >
-        <Radio size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
-        <span className="text-[7px] uppercase tracking-[0.2em] font-black">{isBroadcasted ? 'STAGED' : 'STAGE'}</span>
-      </button>
-
-      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
-
-      <button onClick={() => setShowExport(true)} className="flex flex-col items-center gap-2 hover:text-[#1A1A1A] transition-colors group" title="Export image or PDF">
-        <Download size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
-        <span className="text-[7px] uppercase tracking-[0.2em] font-black">EXPORT</span>
-      </button>
-
-      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
-
-      <button onClick={() => setShowReorderModal(true)} className="flex flex-col items-center gap-2 hover:text-[#1A1A1A] transition-colors group" title="Reorder pages before exporting">
-        <Layers size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform text-amber-600 dark:text-amber-500" />
-        <span className="text-[7px] uppercase tracking-[0.2em] font-black">REORDER</span>
-      </button>
-
-      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
-
-      <button onClick={handleVoiceToggle} className="flex flex-col items-center gap-2 hover:text-[#1A1A1A] transition-colors group relative">
-        {isVoiceLoading ? (
-            <Loader2 size={18} strokeWidth={1.5} className="animate-spin text-[#1A1A1A]"/>
-        ) : isPlaying ? (
-            <Pause size={18} strokeWidth={1.5} className="text-[#1A1A1A]" />
-        ) : (
-            <Volume2 size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
-        )}
-        {isPlaying && (
-          <svg className="absolute -inset-2 w-10 h-10 -rotate-90 pointer-events-none" viewBox="0 0 40 40">
-            <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="113" strokeDashoffset={113 - (audioProgress * 113)} className="text-[#1A1A1A] transition-all duration-100"/>
-          </svg>
-        )}
-        <span className="text-[7px] uppercase tracking-[0.2em] font-black">VOICE</span>
-      </button>
-
-      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
-
-      <button onClick={() => setShowNotes(!showNotes)} className={`flex flex-col items-center gap-2 transition-colors group ${showNotes ? 'text-[#1A1A1A]' : 'hover:text-[#1A1A1A]'}`}>
-        <Bookmark size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
-        <span className="text-[7px] uppercase tracking-[0.2em] font-black">NOTES</span>
-      </button>
-
-      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
-
-      <button onClick={handleSaveToPocket} className={`flex flex-col items-center gap-2 transition-colors group ${isSaved ? 'text-green-600' : 'hover:text-[#1A1A1A]'}`}>
-        {isSaved ? <Archive className="fill-current" size={18} strokeWidth={1.5} /> : <Archive size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />}
-        <span className="text-[7px] uppercase tracking-[0.2em] font-black">{isSaved ? 'VAULTED' : 'VAULT'}</span>
-      </button>
-    </motion.div>
-
-    <AnimatePresence>
-      {isToolbarCollapsed && (
-        <motion.button
-          drag
-          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-          dragElastic={0.2}
-          onDragEnd={(e, { offset, velocity }) => {
-            if (offset.y < -50 || velocity.y < -500) {
-              setIsToolbarCollapsed(false);
-            }
-          }}
-          initial={{ y: 100, opacity: 0, scale: 0.8 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 100, opacity: 0, scale: 0.8 }}
-          onClick={() => setIsToolbarCollapsed(false)}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] flex items-center justify-center w-12 h-12 bg-[#1A1A1A] text-white shadow-2xl rounded-full print:hidden hover:scale-110 transition-transform cursor-pointer"
-          title="Drag up or click to expand"
-        >
-          <Menu size={16} />
-        </motion.button>
-      )}
-    </AnimatePresence>
+    <FloatingCylinderToolbar
+      variant="zine"
+      ariaLabel="Zine actions"
+      items={zineToolbarItems}
+      collapsible
+      collapsed={isToolbarCollapsed}
+      onCollapsedChange={setIsToolbarCollapsed}
+    />
 
     {/* DEDICATED FULLSCREEN READING MODE */}
     <AnimatePresence>
