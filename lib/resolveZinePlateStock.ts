@@ -4,11 +4,13 @@ export type { UnsplashPhotoResult };
 
 export async function resolveZinePlateStock(
   prompt: string,
+  options?: { page?: number },
 ): Promise<UnsplashPhotoResult | null> {
   const query = encodeURIComponent(prompt.trim());
   if (!query) return null;
 
-  const response = await fetch(`/api/inspo/search?q=${query}`);
+  const page = options?.page && options.page > 1 ? `&page=${options.page}` : "";
+  const response = await fetch(`/api/inspo/search?q=${query}${page}`);
   if (response.status === 404) return null;
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));

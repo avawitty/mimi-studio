@@ -16,8 +16,11 @@ export async function handleInspoSearchRoute(req: any, res: any) {
     return sendJson(res, 400, { error: "Search query required" });
   }
 
+  const pageParam = Number(req.query?.page);
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+
   try {
-    const photo = await searchUnsplashPhoto(query);
+    const photo = await searchUnsplashPhoto(query, undefined, { page });
     if (!photo) {
       return sendJson(res, 404, {
         error: "No stock photo matched that query",

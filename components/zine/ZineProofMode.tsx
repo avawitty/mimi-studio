@@ -25,15 +25,19 @@ interface ZineProofModeProps {
   artifact: MimiZineArtifact;
   onClose: () => void;
   onApprove?: () => void;
+  /** Swap the active page's stock plate without full issue regen. */
+  onSwapStockPlate?: (pageIndex: number) => Promise<boolean>;
 }
 
 export function ZineProofMode({
   artifact,
   onClose,
   onApprove,
+  onSwapStockPlate,
 }: ZineProofModeProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(true);
+  const [isSwappingPlate, setIsSwappingPlate] = useState(false);
   const proofPages = useMemo(
     () => buildZineProofSequence(artifact),
     [artifact],
@@ -80,6 +84,11 @@ export function ZineProofMode({
   }, [proofPages.length, onClose]);
 
   const activePage = proofPages[activeIndex];
+  const canSwapActivePlate =
+    Boolean(onSwapStockPlate && activePage?.image_url) &&
+    (activePage?.plateMediaOrigin === "unsplash" ||
+      Boolean(activePage?.stockAttribution) ||
+      Boolean(activePage?.imagePrompt?.trim()));
   const activeRationale = useMemo(() => {
     if (!activePage) return null;
     return describeZinePageRationale(activePage, artifact, {
@@ -161,6 +170,24 @@ export function ZineProofMode({
                 <p className="max-w-sm font-sans text-[10px] leading-relaxed text-[var(--mimi-stone,#78716c)] md:text-right">
                   {activeRationale.sequenceNote}
                 </p>
+                {canSwapActivePlate ? (
+                  <button
+                    type="button"
+                    disabled={isSwappingPlate}
+                    onClick={async () => {
+                      if (!onSwapStockPlate) return;
+                      setIsSwappingPlate(true);
+                      try {
+                        await onSwapStockPlate(activeIndex);
+                      } finally {
+                        setIsSwappingPlate(false);
+                      }
+                    }}
+                    className="min-h-10 border border-[var(--mimi-hairline,#d4d4d4)] px-3 font-mono text-[7px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)] hover:border-[var(--mimi-ink,#0a0a0a)] hover:text-[var(--mimi-ink,#0a0a0a)] disabled:opacity-40 md:ml-4 md:shrink-0"
+                  >
+                    {isSwappingPlate ? "Swapping…" : "Swap stock plate"}
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}

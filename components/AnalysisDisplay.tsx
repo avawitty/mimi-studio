@@ -57,6 +57,7 @@ import {
   withCanonicalZinePages,
 } from '../lib/zine/zineMigrations';
 import { ZineProofMode } from './zine/ZineProofMode';
+import { swapZinePlateStock } from '../lib/swapZinePlateStock';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -251,6 +252,7 @@ export const AnalysisDisplay: React.FC<{
  const [audioProgress, setAudioProgress] = useState(0);
  const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
  const [flippedSignalIndex, setFlippedSignalIndex] = useState<number | null>(null);
+ const plateSwapCountsRef = useRef<Record<string, number>>({});
  const atelierOwnerUid = user?.uid;
  const [atelierObjects, setAtelierObjects] = useState<AtelierObject[]>(() =>
    listAtelierObjects(atelierOwnerUid),
@@ -967,6 +969,74 @@ export const AnalysisDisplay: React.FC<{
    );
  };
 
+ const handleSwapStockPlate = async (pageIndex: number): Promise<boolean> => {
+   const page = normalizedArtifact.pages[pageIndex];
+   if (!page) return false;
+
+   const pageKey = page.id || `${metadata.id}:page:${pageIndex + 1}`;
+   const swapIndex = (plateSwapCountsRef.current[pageKey] || 0) + 1;
+   plateSwapCountsRef.current[pageKey] = swapIndex;
+
+   try {
+     const swapped = await swapZinePlateStock(page, swapIndex);
+     if (!swapped) {
+       window.dispatchEvent(
+         new CustomEvent('mimi:registry_alert', {
+           detail: {
+             message:
+               'No alternate stock plate matched — configure UNSPLASH_ACCESS_KEY or try again.',
+             type: 'error',
+           },
+         }),
+       );
+       return false;
+     }
+
+     const revisionRequired = artifactRequiresRevision(normalizedArtifact.status);
+     const revisedArtifact = revisionRequired
+       ? createArtifactRevision(normalizedArtifact, {
+           reason: `Stock plate swapped on page ${pageIndex + 1}`,
+           changedPageIds: [pageKey],
+         })
+       : normalizedArtifact;
+     const pages = [...revisedArtifact.pages];
+     pages[pageIndex] = {
+       ...swapped,
+       revision: revisedArtifact.revision,
+     };
+     onUpdateMetadata(
+       withCanonicalZinePages(
+         {
+           ...metadata,
+           artifactSchemaVersion: revisedArtifact.schemaVersion,
+           lifecycleStatus: revisedArtifact.status,
+           revision: revisedArtifact.revision,
+           revisions: revisedArtifact.revisions,
+           updatedAt: Date.now(),
+         },
+         pages,
+       ),
+     );
+     window.dispatchEvent(
+       new CustomEvent('mimi:registry_alert', {
+         detail: { message: 'Stock plate swapped — attribution updated on this spread.' },
+       }),
+     );
+     return true;
+   } catch (error) {
+     console.error('Stock plate swap failed', error);
+     window.dispatchEvent(
+       new CustomEvent('mimi:registry_alert', {
+         detail: {
+           message: 'Could not swap stock plate. Try again in a moment.',
+           type: 'error',
+         },
+       }),
+     );
+     return false;
+   }
+ };
+
  const handleHypothesisImageGenerated = async (base64: string) => {
  if (!user?.uid) return;
  try {
@@ -1459,6 +1529,7 @@ export const AnalysisDisplay: React.FC<{
      artifact={normalizedArtifact}
      onClose={() => setShowProof(false)}
      onApprove={isOwner ? handleApproveProof : undefined}
+     onSwapStockPlate={isOwner ? handleSwapStockPlate : undefined}
    />
  )}
  <ProsceniumPublishConsentModal

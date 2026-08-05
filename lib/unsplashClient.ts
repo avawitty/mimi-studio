@@ -25,12 +25,14 @@ export function compileStockSearchQuery(prompt: string): string {
 export async function searchUnsplashPhoto(
   query: string,
   accessKey = getUnsplashAccessKey(),
+  options?: { page?: number },
 ): Promise<UnsplashPhotoResult | null> {
   if (!accessKey) return null;
 
   const url = new URL("https://api.unsplash.com/search/photos");
   url.searchParams.set("query", compileStockSearchQuery(query));
   url.searchParams.set("per_page", "1");
+  url.searchParams.set("page", String(Math.max(1, options?.page ?? 1)));
   url.searchParams.set("orientation", "portrait");
 
   const response = await fetch(url.toString(), {
