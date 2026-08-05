@@ -1632,11 +1632,11 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
           </h3>
           <span className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">{folderItems.length} items</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4">
+        <div className="columns-2 md:columns-3 xl:columns-4 gap-4 md:gap-6 [column-fill:_balance]">
           {folderItems.map(item => (
-            <motion.div key={item.id} layout draggable={!isSelectionMode} onDragStartCapture={() => setDraggingItemId(item.id)} onDragEndCapture={() => { setDraggingItemId(null); setDropTargetFolderId(null); }} onClick={() => handleItemClick(item)} className={`group relative bg-white border rounded-none flex flex-col transition-all cursor-pointer ${draggingItemId === item.id ? 'opacity-40' : ''} ${isSelectionMode && selectedIds.has(item.id) ? 'border-nous-border ring-2 ring-stone-500/20' : 'border-nous-border '}`}>
-              <div className="relative aspect-square bg-nous-base overflow-hidden">
-                {item.type === 'image' && <img src={item.content.thumbnailUrl || item.content.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"loading="lazy"/>}
+            <motion.div key={item.id} layout draggable={!isSelectionMode} onDragStartCapture={() => setDraggingItemId(item.id)} onDragEndCapture={() => { setDraggingItemId(null); setDropTargetFolderId(null); }} onClick={() => handleItemClick(item)} className={`group relative break-inside-avoid mb-4 md:mb-6 bg-white border rounded-none flex flex-col transition-all cursor-pointer ${draggingItemId === item.id ? 'opacity-40' : ''} ${isSelectionMode && selectedIds.has(item.id) ? 'border-nous-border ring-2 ring-stone-500/20' : 'border-nous-border '}`}>
+              <div className={`relative bg-nous-base overflow-hidden ${item.type === 'image' ? '' : 'aspect-square'}`}>
+                {item.type === 'image' && <img src={item.content.thumbnailUrl || item.content.imageUrl} className="w-full h-auto object-cover block transition-transform duration-700 group-hover:scale-105"loading="lazy"/>}
                 {item.content?.metadata?.type === 'geo_pack' && (
                   <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-nous-text text-nous-base gap-4 text-center border border-nous-border/20">
                     <Target size={32} className="text-[#a8b79f] opacity-80"/>
@@ -1714,7 +1714,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
                 </div>
                 )}
               </div>
-              <div className="p-3 bg-white dark:bg-stone-900 flex flex-col justify-between flex-1 min-h-[92px]">
+              <div className="p-4 md:p-5 bg-white flex flex-col justify-between flex-1 gap-4">
                 <div>
                 {item.content.metadata?.folder && (
                   <span className="font-mono text-[8px] uppercase tracking-widest text-[#a8b79f] block mb-2 font-black tracking-[0.2em]">{item.content.metadata.folder}</span>
@@ -1735,9 +1735,9 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
                   </div>
                 )}
                 </div>
-                <div className="flex items-center justify-between mt-4 text-nous-subtle font-mono text-[8px] uppercase tracking-widest">
+                <div className="flex items-center justify-between text-nous-subtle font-mono text-[8px] uppercase tracking-widest">
                   <span>{new Date(item.timestamp || Date.now()).toLocaleDateString()}</span>
-                  <span>{item.type}</span>
+                  <span className="px-2 py-1 border archive-border rounded-nous-sm">{item.content?.aspectRatio || item.type}</span>
                 </div>
               </div>
             </motion.div>
