@@ -262,6 +262,6 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 **Alternatives rejected:** (1) Stuff Continuum/Pocket/Telemetry into a single “card” toolbar icon. (2) Replace Studio OS Map·seal·Find anchors with the instrument rail globally.
 
-**Why:** Matches the elevated-notes mockup: instruments stay in the scroll rail; lineage/registry/telemetry are footnote affordances that pull up from the emblem without crowding primary compose tools.
+**Why:** Matches the elevated-notes mockup: one **floating cylindrical toolbar** scrolls all compose/zine tools inside a single pill — not a modular footnote dock + edge rail.
 
-**Ref:** `components/studio/StudioInstrumentRail.tsx`, `StudioFootnoteDock.tsx`, `lib/studioCoverIndex.ts`, `AnalysisDisplay.tsx` toolbar
+**Ref:** `components/ui/FloatingCylinderToolbar.tsx`, `components/studio/StudioInstrumentRail.tsx`, `AnalysisDisplay.tsx`
