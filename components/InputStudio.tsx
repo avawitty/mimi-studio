@@ -122,6 +122,17 @@ import { dispatchStudioAlert } from "../lib/studioAlert";
 import { UsedContextColophon } from "./provenance/UsedContextColophon";
 import { CoverContactStrip } from "./studio/CoverContactStrip";
 import {
+  StudioInstrumentRail,
+  buildDefaultStudioInstruments,
+} from "./studio/StudioInstrumentRail";
+import {
+  StudioFootnoteDock,
+  type StudioFootnoteDockTab,
+} from "./studio/StudioFootnoteDock";
+import { StudioContinuumMini } from "./studio/StudioContinuumMini";
+import { StudioTelemetryMini } from "./studio/StudioTelemetryMini";
+import { StudioMediaPolaroidBar } from "./studio/StudioMediaPolaroidBar";
+import {
   compileCoverPromptFromSignals,
   mergeContactSheetBatch,
   parseStoredCoverVariants,
@@ -668,6 +679,14 @@ export const InputStudio: React.FC<{
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
   const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [footnoteDockOpen, setFootnoteDockOpen] = useState(false);
+  const [footnoteDockTab, setFootnoteDockTab] =
+    useState<StudioFootnoteDockTab>("continuum");
+
+  const openFootnoteDock = useCallback((tab: StudioFootnoteDockTab) => {
+    setFootnoteDockTab(tab);
+    setFootnoteDockOpen(true);
+  }, []);
   const [recentZines, setRecentZines] = useState<ZineMetadata[]>([]);
 
   // Mobile: swipe between the Input (editor) and Cover pages
@@ -2632,6 +2651,16 @@ ${finalInput}`;
                 {!isMobile && renderDetailedBriefPanel()}
               </div>
 
+              {mediaFiles.length > 0 && (
+                <StudioMediaPolaroidBar
+                  mediaFiles={mediaFiles}
+                  onRemove={(index) =>
+                    setMediaFiles((prev) => prev.filter((_, i) => i !== index))
+                  }
+                  className="w-full max-w-2xl shrink-0"
+                />
+              )}
+
               {/* Used by Mimi // Active Context Strip */}
               <div className="w-full max-w-2xl mt-4 border-t border-dotted studio-border pt-3 select-none z-10 shrink-0">
                 <div className="flex items-center gap-2 mb-2">
@@ -3803,100 +3832,109 @@ ${finalInput}`;
 
       </div>
 
-      {/* MOBILE INSTRUMENT RAIL — thin icon spine + brand (editorial middle ground) */}
+      {/* MOBILE INSTRUMENT RAIL — thin icon spine + footnote dock */}
       {isMobile && !toolsSheetOpen && !moreSheetOpen && (
-        <footer
-          aria-label="Studio instruments"
-          className="studio-mobile-rail md:hidden fixed bottom-0 left-0 right-0 z-40 border-t studio-border studio-bg-panel"
-        >
-          <div className="flex items-center justify-center gap-1 px-2 pt-1.5 pb-1 overflow-x-auto no-scrollbar">
-            {(
-              [
-                {
-                  key: "tools",
-                  label: "Tools",
-                  icon: <LayoutGrid size={16} strokeWidth={1.4} />,
-                  active: toolsSheetOpen || isRecording || isDictating || deepThinking || useSearch,
-                  onClick: () => setToolsSheetOpen(true),
+        <>
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40">
+            <StudioInstrumentRail
+              items={buildDefaultStudioInstruments({
+                onAttach: () => mediaInputRef.current?.click(),
+                onCompose: () => {
+                  setActivePanel(null);
+                  setMobileStudioView("editor");
                 },
-                {
-                  key: "attach",
-                  label: "Attach media",
-                  icon: <Paperclip size={16} strokeWidth={1.4} />,
-                  active: mediaFiles.length > 0,
-                  onClick: () => mediaInputRef.current?.click(),
+                onTailor: () => setUseTailorProfile((v) => !v),
+                onCover: () => setMobileStudioView("cover"),
+                onGround: () => setUseSearch((v) => !v),
+                onMic: () => {
+                  void startRecording();
+                  playClick();
                 },
-                {
-                  key: "compose",
-                  label: "Compose",
-                  icon: <PenLine size={16} strokeWidth={1.4} />,
-                  active: activePanel === null && mobileStudioView === "editor",
-                  onClick: () => {
-                    setActivePanel(null);
-                    setMobileStudioView("editor");
-                  },
+                onTreatment: () => togglePanel("treatments"),
+                onContinuum: () => openFootnoteDock("continuum"),
+                onPocket: () => openFootnoteDock("pocket"),
+                onAnchors: () => togglePanel("signal"),
+                onMore: () => setMoreSheetOpen(true),
+                active: {
+                  attach: mediaFiles.length > 0,
+                  compose: activePanel === null && mobileStudioView === "editor",
+                  tailor: useTailorProfile,
+                  cover: mobileStudioView === "cover",
+                  ground: useSearch,
+                  mic: isRecording || isTranscribing,
+                  treatment: activePanel === "treatments",
+                  continuum: footnoteDockOpen && footnoteDockTab === "continuum",
+                  pocket: footnoteDockOpen && footnoteDockTab === "pocket",
+                  anchors: activePanel === "signal",
+                  more: moreSheetOpen,
                 },
-                {
-                  key: "cover",
-                  label: "Cover",
-                  icon: <Eye size={16} strokeWidth={1.4} />,
-                  active: mobileStudioView === "cover",
-                  onClick: () => setMobileStudioView("cover"),
-                },
-                {
-                  key: "ground",
-                  label: "Web grounding",
-                  icon: <Globe size={16} strokeWidth={1.4} />,
-                  active: useSearch,
-                  onClick: () => setUseSearch((v) => !v),
-                },
-                {
-                  key: "treatments",
-                  label: "Treatments",
-                  icon: <Paintbrush size={16} strokeWidth={1.4} />,
-                  active: activePanel === "treatments",
-                  onClick: () => togglePanel("treatments"),
-                },
-                {
-                  key: "anchors",
-                  label: "Anchors",
-                  icon: <Layers size={16} strokeWidth={1.4} />,
-                  active: activePanel === "signal",
-                  onClick: () => togglePanel("signal"),
-                },
-                {
-                  key: "more",
-                  label: "More",
-                  icon: <MoreHorizontal size={16} strokeWidth={1.4} />,
-                  active: moreSheetOpen,
-                  onClick: () => setMoreSheetOpen(true),
-                },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => {
-                  item.onClick();
+              })}
+              onFootnoteClick={() => openFootnoteDock("continuum")}
+              footnoteInteractive
+            />
+          </div>
+          <StudioFootnoteDock
+            open={footnoteDockOpen}
+            activeTab={footnoteDockTab}
+            onTabChange={setFootnoteDockTab}
+            onClose={() => setFootnoteDockOpen(false)}
+            continuum={
+              <StudioContinuumMini
+                recentZines={recentZines}
+                linkedZineIds={linkedZineIds}
+                loading={recentZinesLoading}
+                onToggleLink={(zineId) => {
+                  setLinkedZineIds((current) =>
+                    current.includes(zineId)
+                      ? current.filter((id) => id !== zineId)
+                      : [...current, zineId],
+                  );
                   playClick();
                 }}
-                aria-label={item.label}
-                aria-pressed={item.active || undefined}
-                className={`studio-mobile-rail-item min-w-11 min-h-11 w-11 h-11 flex items-center justify-center transition-colors ${
-                  item.active ? "studio-text-ink" : "studio-text-muted"
-                }`}
-              >
-                {item.icon}
-              </button>
-            ))}
-          </div>
-          <div className="border-t border-dotted studio-border px-4 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] flex flex-col items-center leading-none select-none">
-            <span className="font-serif italic text-[17px] studio-text-ink tracking-[0.01em]">Mimi</span>
-            <span className="font-mono text-[7px] uppercase tracking-[0.32em] studio-text-muted mt-0.5 font-bold">
-              Studio
-            </span>
-          </div>
-        </footer>
+              />
+            }
+            pocket={
+              <StudioPocketDrawer
+                onInsertText={(text) => {
+                  setInput((prev) => (prev ? `${prev}\n${text}` : text));
+                  setFootnoteDockOpen(false);
+                }}
+                onInsertImageUrl={(url) => {
+                  setMediaFiles((prev) => [
+                    ...prev,
+                    {
+                      type: "image",
+                      url,
+                      data: "",
+                      mimeType: "image/jpeg",
+                      name: "pocket-ref",
+                    },
+                  ]);
+                  setFootnoteDockOpen(false);
+                }}
+                onOpenFullPocket={() => {
+                  window.dispatchEvent(new CustomEvent("mimi:toggle_pocket_stash"));
+                  setFootnoteDockOpen(false);
+                }}
+              />
+            }
+            telemetry={
+              <StudioTelemetryMini
+                entropy={entropy}
+                telemetryX={telemetryX}
+                telemetryY={telemetryY}
+                useTailorProfile={useTailorProfile}
+                dollLabel={
+                  studioDoll.enabled && studioDoll.activeDoll
+                    ? studioDoll.activeDoll.name
+                    : "Off"
+                }
+                authorName={authorName}
+                title={title || ""}
+              />
+            }
+          />
+        </>
       )}
 
       {/* MOBILE TOOLS SHEET */}

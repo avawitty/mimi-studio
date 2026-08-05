@@ -18,6 +18,13 @@ import {
   buildConsentAwareTransmission,
   publishToastMessage,
 } from '../services/collective/broadcastTransmission';
+import {
+  buildPublishConsent,
+  consentFieldsForZine,
+  unpublishFieldsForZine,
+} from '../services/collective/consent';
+import { db } from '../services/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUser } from '../contexts/UserContext';
 import { resolveApiKey } from '../services/apiKeyService';
@@ -218,6 +225,9 @@ export const AnalysisDisplay: React.FC<{
  const [isBroadcasting, setIsBroadcasting] = useState(false);
  const [isBroadcasted, setIsBroadcasted] = useState(false);
  const [showBroadcastConsent, setShowBroadcastConsent] = useState(false);
+ const [isPublished, setIsPublished] = useState(Boolean(metadata.isPublic));
+ const [showPublishConsent, setShowPublishConsent] = useState(false);
+ const [isPublishing, setIsPublishing] = useState(false);
  const [isEditing, setIsEditing] = useState(false);
  const [isExportingPDF, setIsExportingPDF] = useState(false);
  const [isDedicatedReadingMode, setIsDedicatedReadingMode] = useState(false);
@@ -1362,8 +1372,87 @@ export const AnalysisDisplay: React.FC<{
  console.error("Broadcast failed", e);
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { detail: { message:"Broadcast Failed.", type: 'error' } }));
  } finally {
- setIsBroadcasting(false);
+   setIsBroadcasting(false);
  }
+ };
+
+ useEffect(() => {
+   setIsPublished(Boolean(metadata.isPublic));
+ }, [metadata.isPublic]);
+
+ const requestPublish = () => {
+   if (!isOwner || isPublishing) return;
+   if (isPublished) {
+     void handleUnpublish();
+     return;
+   }
+   setShowPublishConsent(true);
+ };
+
+ const handleUnpublish = async () => {
+   if (!isOwner || !user?.uid || isPublishing) return;
+   setIsPublishing(true);
+   try {
+     const unpub = unpublishFieldsForZine();
+     await updateDoc(doc(db, "zines", metadata.id), unpub);
+     try {
+       const { mirrorZineToSovereign } = await import("../services/sovereignClient");
+       void mirrorZineToSovereign({ ...metadata, ...unpub });
+     } catch (mirrorErr) {
+       console.warn("MIMI // Sovereign unpublish mirror failed", mirrorErr);
+     }
+     setIsPublished(false);
+     onUpdateMetadata({ ...metadata, ...unpub });
+     window.dispatchEvent(
+       new CustomEvent("mimi:registry_alert", {
+         detail: {
+           message: "Unpublished · withdrawn from future Mean Median Mode windows.",
+           icon: <Radio size={14} />,
+         },
+       }),
+     );
+   } catch (err) {
+     console.error("Unpublish failed", err);
+   } finally {
+     setIsPublishing(false);
+   }
+ };
+
+ const handlePublishConsentConfirm = async (contributeToMeanMedianMode: boolean) => {
+   if (!isOwner || !user?.uid || isPublishing) return;
+   setIsPublishing(true);
+   try {
+     const consent = buildPublishConsent({
+       artifactId: metadata.id,
+       contributeToMeanMedianMode,
+     });
+     const fields = consentFieldsForZine(consent);
+     await updateDoc(doc(db, "zines", metadata.id), fields);
+     try {
+       const { mirrorZineToSovereign } = await import("../services/sovereignClient");
+       void mirrorZineToSovereign({ ...metadata, ...fields });
+     } catch (mirrorErr) {
+       console.warn("MIMI // Sovereign publish mirror failed", mirrorErr);
+     }
+     setIsPublished(true);
+     onUpdateMetadata({ ...metadata, ...fields });
+     setShowPublishConsent(false);
+     window.dispatchEvent(
+       new CustomEvent("mimi:registry_alert", {
+         detail: {
+           message: publishToastMessage({
+             contribute: contributeToMeanMedianMode,
+             handle: metadata.userHandle || profile?.handle,
+           }),
+           icon: <Radio size={14} />,
+         },
+       }),
+     );
+   } catch (err) {
+     console.error("Publish failed", err);
+   } finally {
+     setIsPublishing(false);
+   }
  };
 
  const handleContinuum = () => {
@@ -1540,6 +1629,15 @@ export const AnalysisDisplay: React.FC<{
  if (!isBroadcasting) setShowBroadcastConsent(false);
  }}
  onConfirm={handleBroadcastConsentConfirm}
+ />
+ <ProsceniumPublishConsentModal
+ open={showPublishConsent}
+ artifactTitle={metadata.content?.headlines?.[0] || metadata.title || 'Untitled'}
+ busy={isPublishing}
+ onCancel={() => {
+ if (!isPublishing) setShowPublishConsent(false);
+ }}
+ onConfirm={handlePublishConsentConfirm}
  />
  {showReorderModal && (
    <motion.div 
@@ -2714,6 +2812,39 @@ export const AnalysisDisplay: React.FC<{
         <Share2 size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
         <span className="text-[7px] uppercase tracking-[0.2em] font-black">SHARE</span>
       </button>
+
+      <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
+
+      <button
+        onClick={() => setShowComments(true)}
+        className="flex flex-col items-center gap-2 hover:text-[#1A1A1A] transition-colors group"
+        title="Voice and text comments"
+      >
+        <MessageSquare size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+        <span className="text-[7px] uppercase tracking-[0.2em] font-black">COMMENTS</span>
+      </button>
+
+      {isOwner && (
+        <>
+          <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
+
+          <button
+            onClick={requestPublish}
+            disabled={isPublishing}
+            className={`flex flex-col items-center gap-2 transition-colors group disabled:opacity-40 ${isPublished ? "text-green-700" : "hover:text-[#1A1A1A]"}`}
+            title={isPublished ? "Unpublish from Stand" : "Publish to Stand · Mean Median Mode"}
+          >
+            {isPublishing ? (
+              <Loader2 size={18} strokeWidth={1.5} className="animate-spin" />
+            ) : (
+              <Radio size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+            )}
+            <span className="text-[7px] uppercase tracking-[0.2em] font-black">
+              {isPublished ? "PUBLISHED" : "PUBLISH"}
+            </span>
+          </button>
+        </>
+      )}
 
       <div className="w-[1px] h-6 bg-[#A19D94]/20"/>
 
