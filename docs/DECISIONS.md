@@ -6,6 +6,16 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-04 — Pinterest board preview: API-first for token owner, HTML fallback
+
+**Decision:** When `PINTEREST_ACCESS_TOKEN` is set (Production Limited / Standard), resolve board previews via Pinterest API v5 (`boards` + `boards/{id}/pins`) for boards owned by the token account; fall back to existing public HTML scrape for other users' boards or when API resolution fails.
+
+**Alternatives rejected:** (1) Sandbox-only development (cannot read real curated boards). (2) Replace scrape entirely with API (trial tokens cannot read arbitrary public boards). (3) Official OAuth before proving read path.
+
+**Why:** Token owner's boards get full pin lists and stable image URLs; arbitrary public board URLs keep working without OAuth approval; aligns with zine/Tailor intake that accepts pasted board links.
+
+**Ref:** `lib/pinterestApi.ts`, `lib/pinterestBoardPreview.ts`, `npm run verify:pinterest-api`
+
 ---
 
 ## 2026-08-04 — Public editorial surfaces: single scroll owner
