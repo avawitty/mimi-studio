@@ -184,8 +184,30 @@ const humanizeShardField = (value: string) =>
  .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
  .replace(/[_-]+/g, ' ')
  .replace(/\s+/g, ' ')
- .trim()
- .replace(/^./, char => char.toUpperCase());
+    .trim()
+    .replace(/^./, char => char.toUpperCase());
+
+const formatAspectLabel = (value: unknown): string | null => {
+ if (value == null) return null;
+ if (typeof value === 'string') {
+ const trimmed = value.trim();
+ return trimmed.includes(':') ? trimmed : null;
+ }
+ if (typeof value === 'number' && isFinite(value) && value > 0) {
+ const commons: Array<[string, number]> = [
+ ['1:1', 1], ['16:9', 16 / 9], ['9:16', 9 / 16], ['4:3', 4 / 3],
+ ['3:4', 3 / 4], ['3:2', 3 / 2], ['2:3', 2 / 3], ['21:9', 21 / 9],
+ ];
+ let best = commons[0];
+ let bestDiff = Infinity;
+ for (const entry of commons) {
+ const diff = Math.abs(entry[1] - value);
+ if (diff < bestDiff) { bestDiff = diff; best = entry; }
+ }
+ return best[0];
+ }
+ return null;
+};
 
 const savedShardTextPriority = (field: SavedShardTextField) => {
  const key = field.path.split('.').pop()?.replace(/\[\d+\]/g, '').toLowerCase() || '';
@@ -1632,11 +1654,14 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
           </h3>
           <span className="font-mono text-[8px] uppercase tracking-widest archive-text-muted">{folderItems.length} items</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4">
-          {folderItems.map(item => (
-            <motion.div key={item.id} layout draggable={!isSelectionMode} onDragStartCapture={() => setDraggingItemId(item.id)} onDragEndCapture={() => { setDraggingItemId(null); setDropTargetFolderId(null); }} onClick={() => handleItemClick(item)} className={`group relative bg-white border rounded-none flex flex-col transition-all cursor-pointer ${draggingItemId === item.id ? 'opacity-40' : ''} ${isSelectionMode && selectedIds.has(item.id) ? 'border-nous-border ring-2 ring-stone-500/20' : 'border-nous-border '}`}>
-              <div className="relative aspect-square bg-nous-base overflow-hidden">
-                {item.type === 'image' && <img src={item.content.thumbnailUrl || item.content.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"loading="lazy"/>}
+        <div className="columns-2 md:columns-3 2xl:columns-4 gap-3 md:gap-5">
+          {folderItems.map(item => {
+            const ratioLabel = formatAspectLabel(item.content?.aspectRatio ?? item.content?.metadata?.aspectRatio ?? item.content?.imageConfig?.aspectRatio);
+            const isNaturalMedia = item.type === 'image' || item.type === 'zine_card';
+            return (
+            <motion.div key={item.id} layout draggable={!isSelectionMode} onDragStartCapture={() => setDraggingItemId(item.id)} onDragEndCapture={() => { setDraggingItemId(null); setDropTargetFolderId(null); }} onClick={() => handleItemClick(item)} className={`group relative mb-3 md:mb-5 break-inside-avoid bg-white archive-border border rounded-none flex flex-col transition-all cursor-pointer hover:shadow-[0_18px_40px_-24px_rgba(10,10,10,0.35)] ${draggingItemId === item.id ? 'opacity-40' : ''} ${isSelectionMode && selectedIds.has(item.id) ? 'ring-2 ring-archive-ink/30' : ''}`}>
+              <div className={`relative overflow-hidden bg-archive-cream ${isNaturalMedia ? '' : 'aspect-[4/5]'}`}>
+                {item.type === 'image' && <img src={item.content.thumbnailUrl || item.content.imageUrl} className="w-full h-auto block object-cover transition-transform duration-700 group-hover:scale-105"loading="lazy"/>}
                 {item.content?.metadata?.type === 'geo_pack' && (
                   <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-nous-text text-nous-base gap-4 text-center border border-nous-border/20">
                     <Target size={32} className="text-[#a8b79f] opacity-80"/>
@@ -1697,8 +1722,8 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
                   </div>
                 )}
                 {item.type === 'zine_card' && (
-                <div className="w-full h-full pointer-events-auto"onClick={(e) => { e.stopPropagation(); if(item.content.analysis && onSelectZine) onSelectZine({ id: item.content.zineId, title: item.content.title, content: item.content.analysis, tone: 'default', timestamp: item.timestamp, userHandle: 'Ghost' } as ZineMetadata); }}>
-                <img src={item.content.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
+                <div className="w-full pointer-events-auto"onClick={(e) => { e.stopPropagation(); if(item.content.analysis && onSelectZine) onSelectZine({ id: item.content.zineId, title: item.content.title, content: item.content.analysis, tone: 'default', timestamp: item.timestamp, userHandle: 'Ghost' } as ZineMetadata); }}>
+                <img src={item.content.imageUrl} className="w-full h-auto block object-cover transition-transform duration-700 group-hover:scale-105"/>
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="font-sans text-[8px] uppercase tracking-widest text-white font-black">Absorb Zine</span>
                 </div>
@@ -1714,19 +1739,19 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
                 </div>
                 )}
               </div>
-              <div className="p-3 bg-white dark:bg-stone-900 flex flex-col justify-between flex-1 min-h-[92px]">
+              <div className="p-4 md:p-5 bg-white flex flex-col justify-between flex-1 gap-4">
                 <div>
                 {item.content.metadata?.folder && (
-                  <span className="font-mono text-[8px] uppercase tracking-widest text-[#a8b79f] block mb-2 font-black tracking-[0.2em]">{item.content.metadata.folder}</span>
+                  <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#a8b79f] block mb-2 font-black">{item.content.metadata.folder}</span>
                 )}
                 {item.content?.metadata?.type === 'geo_pack' && item.content.metadata?.intentSummary && (
-                  <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle block mb-2 font-black tracking-[0.2em]">{item.content.metadata.intentSummary}</span>
+                  <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-nous-subtle block mb-2 font-black">{item.content.metadata.intentSummary}</span>
                 )}
-                <p className="font-serif italic text-sm text-nous-text leading-snug line-clamp-2">
+                <p className="font-serif italic text-[15px] md:text-base text-nous-text leading-snug line-clamp-3">
                   "{item.content.prompt || item.content.name || item.content.title || item.content.text || item.content.url || item.title || (item.content?.metadata?.type === 'geo_pack' ? 'GEO Signal' : 'Untitled')}"
                 </p>
                 {item.tags && item.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2 font-mono text-[7px] uppercase tracking-wider">
+                  <div className="flex flex-wrap gap-1 mt-3 font-mono text-[7px] uppercase tracking-wider">
                     {item.tags.slice(0, 2).map((tag, idx) => (
                       <span key={idx} className="px-1.5 py-0.5 bg-amber-400/10 text-amber-600 border border-amber-400/30 font-bold">
                         #{tag}
@@ -1735,13 +1760,14 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
                   </div>
                 )}
                 </div>
-                <div className="flex items-center justify-between mt-4 text-nous-subtle font-mono text-[8px] uppercase tracking-widest">
+                <div className="flex items-center justify-between border-t archive-border pt-3 text-nous-subtle font-mono text-[9px] uppercase tracking-[0.18em]">
                   <span>{new Date(item.timestamp || Date.now()).toLocaleDateString()}</span>
-                  <span>{item.type}</span>
+                  <span className="px-2 py-0.5 border archive-border rounded-none text-[8px] tracking-[0.2em]">{ratioLabel || item.type}</span>
                 </div>
               </div>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
