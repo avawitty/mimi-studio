@@ -33,6 +33,7 @@ describe("chamberChrome", () => {
     expect(isPublicFaceMode("studio")).toBe(false);
     expect(isPublicEditorialFlowMode("stand")).toBe(true);
     expect(isPublicEditorialFlowMode("proscenium")).toBe(true);
+    expect(isPublicEditorialFlowMode("archival")).toBe(false);
     expect(isPublicEditorialFlowMode("studio")).toBe(false);
     expect(isDarkPlateMode("mimi-rip")).toBe(true);
     expect(isDarkPlateMode("stand")).toBe(false);
@@ -54,6 +55,8 @@ describe("chamberChrome", () => {
     expect(mainShellClassName("editorial-home")).toContain("mimi-page-pad--public");
     expect(mainShellClassName("editorial-home")).toContain("mimi-field");
     expect(mainShellClassName("proscenium")).toContain("mimi-page-pad--public");
+    expect(mainShellClassName("archival")).not.toContain("mimi-field");
+    expect(mainShellClassName("archival")).toContain("bg-nous-base");
     expect(mainShellClassName("pocket")).toContain("mimi-page-pad");
     expect(mainShellClassName("pocket")).not.toContain("mimi-page-pad--public");
   });

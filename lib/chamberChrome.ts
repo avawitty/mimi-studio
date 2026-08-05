@@ -29,7 +29,6 @@ export const PUBLIC_EDITORIAL_FLOW_MODES = [
   "signature",
   "proscenium",
   "showcase",
-  "archival",
 ] as const;
 
 /** Forced-dark public plates — chrome must match (no light-over-dark seam) */
