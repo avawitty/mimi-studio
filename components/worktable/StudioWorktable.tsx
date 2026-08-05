@@ -315,7 +315,7 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
                 <button
                   type="button"
                   onClick={onOpenConsole}
-                  className="hidden sm:inline-flex min-h-10 px-2 font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--wt-ink-2,#6b6a66)] border border-[var(--wt-line,#d8d3c6)] hover:text-[var(--wt-ink,#1b1b19)]"
+                  className="inline-flex min-h-10 px-2 font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--wt-ink-2,#6b6a66)] border border-[var(--wt-line,#d8d3c6)] hover:text-[var(--wt-ink,#1b1b19)]"
                 >
                   Console
                 </button>

@@ -3818,10 +3818,9 @@ ${finalInput}`;
 
       </div>
 
-      {/* MOBILE — floating cylindrical scrollable toolbar */}
-      {isMobile && !toolsSheetOpen && !moreSheetOpen && (
-        <div className="md:hidden">
-          <StudioInstrumentRail
+      {/* Floating cylindrical scrollable toolbar */}
+      {!toolsSheetOpen && !moreSheetOpen && (
+        <StudioInstrumentRail
             items={buildDefaultStudioInstruments({
               onAttach: () => mediaInputRef.current?.click(),
               onCompose: () => {
@@ -3857,7 +3856,6 @@ ${finalInput}`;
               },
             })}
           />
-        </div>
       )}
 
       {/* MOBILE TOOLS SHEET */}

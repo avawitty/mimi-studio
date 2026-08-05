@@ -1520,6 +1520,14 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!isStudioWorktableLegacy) setStudioConsoleOpen(false);
   }, [isStudioWorktableLegacy]);
+
+  useEffect(() => {
+    if (!isStudioWorktableLegacy) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("console") === "1") {
+      setStudioConsoleOpen(true);
+    }
+  }, [isStudioWorktableLegacy]);
   const [showCaptiveSentinel, setShowCaptiveSentinel] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isHeaderTranslucent, setIsHeaderTranslucent] = useState(false);
