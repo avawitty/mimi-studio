@@ -88,6 +88,7 @@ import { ResearchNoteWidget } from "./components/ResearchNoteWidget";
 import { legalTypeFromPath } from "./lib/legalContent";
 import { useTactileAudio } from "./hooks/useTactileAudio";
 import { useChamber } from "./hooks/useChamber";
+import { isPublicEditorialFlowMode } from "./lib/chamberChrome";
 
 // Lazy load views to reduce initial request count and prevent 429 errors
 import { MobileProfileModal } from "./components/MobileProfileModal";
@@ -2359,7 +2360,13 @@ export const App: React.FC = () => {
 
   return (
     <IntelligenceGateContext.Provider value={gateValue}>
-      <div className="h-full w-full bg-nous-base text-nous-text transition-colors duration-500 flex flex-col relative overflow-hidden">
+      <div
+      className={`h-full w-full transition-colors duration-500 flex flex-col relative overflow-hidden ${
+        isPublicEditorialFlowMode(viewMode)
+          ? "bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)]"
+          : "bg-nous-base text-nous-text"
+      }`}
+      >
       <AnimatePresence>
         {(authLoading || isElevatorLoading) && (
           <ElevatorLoader
@@ -2540,7 +2547,9 @@ export const App: React.FC = () => {
               className={`flex-1 w-full relative ${
                 viewMode === "studio" || viewMode === "chamber-map"
                   ? "h-full min-h-0"
-                  : "h-full min-h-0 overflow-y-auto"
+                  : isPublicEditorialFlowMode(viewMode)
+                    ? "min-h-full"
+                    : "h-full min-h-0 overflow-y-auto"
               }`}
               initial={{ opacity: 0, y: isStandalonePwaShell ? 0 : 12 }}
               animate={{ opacity: 1, y: 0 }}

@@ -109,7 +109,7 @@ export const EditorialFrontPage: React.FC<EditorialFrontPageProps> = ({
   };
 
   return (
-    <PublicField className="w-full h-full min-h-0 overflow-y-auto transition-colors duration-300 pb-20 md:pb-28">
+    <PublicField bleed className="w-full min-h-full transition-colors duration-300 pb-20 md:pb-28">
       <AtelierDesk
         polaroidSrc={polaroidSrc}
         polaroidAlt={featured?.title ? `Cover — ${featured.title}` : "Archive specimen"}
