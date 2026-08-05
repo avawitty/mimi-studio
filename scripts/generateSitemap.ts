@@ -1,58 +1,31 @@
 /**
- * Generates public/sitemap.xml from the canonical route registry
- * (lib/productCanon.ts) so the sitemap is never hand-maintained.
+ * Generates public/sitemap.xml from the curated public-route list.
+ * Run: npx tsx scripts/generateSitemap.ts (wired into `build:vercel` ahead of `vite build`).
  *
- * CanonModule has no public/requiresAuth field, and there is no auth gate in
- * the app that distinguishes chamber routes from one another — every "live"
- * chamber's own userFlow/notes text describes personal, session-scoped
- * workspace content (e.g. "your published issues", "Private by default. Public
- * skin at mimi.rip/:handle when published"), not public discovery content a
- * crawler should index. The only confirmed public, unauthenticated
- * destination today is the site root. The genuinely public surfaces
- * (published mimi.rip/:handle readings, mimi.fish/s/:zineId shares) are
- * per-content and dynamic, not static chamber routes productCanon.ts can
- * enumerate, so they're out of scope for this generator.
- *
- * When a chamber is deliberately made public, give it an explicit signal in
- * productCanon.ts and extend getPublicRoutePaths() to read it — don't
- * hand-add a path here.
- *
- * Run: tsx scripts/generateSitemap.ts (also runs automatically before
- * `vite build` as part of `npm run build:vercel`).
+ * Route selection logic lives in lib/sitemapRoutes.ts — this file only wires
+ * it to disk. See that module for why publicity is opt-in (seoIndexable +
+ * a static allowlist) rather than derived from canon `status`.
  */
-import { writeFileSync } from "node:fs";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CANON_ROUTE_ALIASES } from "../lib/productCanon";
+import { buildSitemapXml, getPublicSitemapRoutes, getRobotsSitemapOrigin } from "../lib/sitemapRoutes";
 import { canonicalYouOrigin } from "../lib/siteHost";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.join(__dirname, "..");
 
-function getPublicRoutePaths(): string[] {
-  if (!CANON_ROUTE_ALIASES["/"]) {
-    throw new Error(
-      'lib/productCanon.ts no longer aliases "/" to a chamber — update scripts/generateSitemap.ts',
-    );
-  }
-  return ["/"];
-}
+// Derive the sitemap's host from robots.txt's own Sitemap: directive, so the
+// two files can never advertise different hosts. Fall back to the canonical
+// apex origin only if robots.txt is missing or malformed.
+const robotsPath = path.join(root, "public", "robots.txt");
+const robotsContent = fs.existsSync(robotsPath) ? fs.readFileSync(robotsPath, "utf8") : "";
+const SITE_ORIGIN = getRobotsSitemapOrigin(robotsContent) ?? canonicalYouOrigin();
 
-function buildSitemapXml(paths: string[]): string {
-  const base = canonicalYouOrigin();
-  const urls = paths
-    .map((p) => `  <url>\n    <loc>${base}${p}</loc>\n  </url>`)
-    .join("\n");
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
-}
+const routes = getPublicSitemapRoutes();
+const xml = buildSitemapXml(SITE_ORIGIN, routes);
 
-function main() {
-  const paths = getPublicRoutePaths();
-  const xml = buildSitemapXml(paths);
-  const outPath = path.resolve(__dirname, "../public/sitemap.xml");
-  writeFileSync(outPath, xml, "utf-8");
-  console.log(
-    `Wrote ${outPath} with ${paths.length} URL${paths.length === 1 ? "" : "s"}.`,
-  );
-}
+const outPath = path.join(root, "public", "sitemap.xml");
+fs.writeFileSync(outPath, xml, "utf8");
 
-main();
+console.log(`sitemap: wrote ${routes.length} routes to ${path.relative(root, outPath)} (origin ${SITE_ORIGIN})`);
