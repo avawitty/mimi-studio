@@ -969,8 +969,11 @@ export const AnalysisDisplay: React.FC<{
    );
  };
 
- const handleSwapStockPlate = async (pageIndex: number): Promise<boolean> => {
-   const page = normalizedArtifact.pages[pageIndex];
+ const handleSwapStockPlate = async (pageId: string): Promise<boolean> => {
+   const pageIndex = normalizedArtifact.pages.findIndex(
+     (candidate) => candidate.id === pageId,
+   );
+   const page = pageIndex >= 0 ? normalizedArtifact.pages[pageIndex] : undefined;
    if (!page) return false;
 
    const pageKey = page.id || `${metadata.id}:page:${pageIndex + 1}`;

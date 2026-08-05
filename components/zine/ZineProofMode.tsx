@@ -26,7 +26,7 @@ interface ZineProofModeProps {
   onClose: () => void;
   onApprove?: () => void;
   /** Swap the active page's stock plate without full issue regen. */
-  onSwapStockPlate?: (pageIndex: number) => Promise<boolean>;
+  onSwapStockPlate?: (pageId: string) => Promise<boolean>;
 }
 
 export function ZineProofMode({
@@ -83,9 +83,24 @@ export function ZineProofMode({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [proofPages.length, onClose]);
 
+  const authoredPageIds = useMemo(
+    () =>
+      new Set(
+        artifact.pages
+          .map((page) => page.id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [artifact.pages],
+  );
   const activePage = proofPages[activeIndex];
+  // Only authored pages exist in `artifact.pages` and can be swapped by id;
+  // derived proof pages (plan/section placeholders) are not swappable.
+  const activePageIsAuthored = Boolean(
+    activePage?.id && authoredPageIds.has(activePage.id),
+  );
   const canSwapActivePlate =
     Boolean(onSwapStockPlate && activePage?.image_url) &&
+    activePageIsAuthored &&
     (activePage?.plateMediaOrigin === "unsplash" ||
       Boolean(activePage?.stockAttribution) ||
       Boolean(activePage?.imagePrompt?.trim()));
@@ -175,10 +190,10 @@ export function ZineProofMode({
                     type="button"
                     disabled={isSwappingPlate}
                     onClick={async () => {
-                      if (!onSwapStockPlate) return;
+                      if (!onSwapStockPlate || !activePage?.id) return;
                       setIsSwappingPlate(true);
                       try {
-                        await onSwapStockPlate(activeIndex);
+                        await onSwapStockPlate(activePage.id);
                       } finally {
                         setIsSwappingPlate(false);
                       }
