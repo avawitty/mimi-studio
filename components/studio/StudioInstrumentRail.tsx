@@ -1,6 +1,7 @@
 import React from "react";
 import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
   Archive,
   Eye,
   Globe,
@@ -14,6 +15,10 @@ import {
   Scissors,
 } from "lucide-react";
 import { StudioFootnoteEmblem, type StudioFootnoteLabel } from "./StudioFootnoteEmblem";
+import {
+  FloatingCylinderToolbar,
+  type FloatingCylinderToolbarItem,
+} from "../ui/FloatingCylinderToolbar";
 
 export type StudioInstrumentKey =
   | "attach"
@@ -24,24 +29,18 @@ export type StudioInstrumentKey =
   | "treatment"
   | "continuum"
   | "pocket"
+  | "telemetry"
   | "anchors"
   | "more"
   | "mic";
 
-export type StudioInstrumentItem = {
+export type StudioInstrumentItem = FloatingCylinderToolbarItem & {
   key: StudioInstrumentKey;
-  label: string;
-  icon: React.ReactNode;
-  active?: boolean;
-  onClick: () => void;
 };
 
 type StudioInstrumentRailProps = {
   items: StudioInstrumentItem[];
-  onInstrumentClick?: (key: StudioInstrumentKey) => void;
-  onFootnoteClick?: () => void;
   footnoteLabel?: StudioFootnoteLabel;
-  footnoteInteractive?: boolean;
   className?: string;
 };
 
@@ -55,6 +54,7 @@ export function buildDefaultStudioInstruments(handlers: {
   onTreatment: () => void;
   onContinuum: () => void;
   onPocket: () => void;
+  onTelemetry: () => void;
   onAnchors: () => void;
   onMore: () => void;
   active?: Partial<Record<StudioInstrumentKey, boolean>>;
@@ -65,7 +65,7 @@ export function buildDefaultStudioInstruments(handlers: {
   return [
     {
       key: "attach",
-      label: "Attach media",
+      label: "Attach",
       icon: icon(Paperclip),
       active: active.attach,
       onClick: handlers.onAttach,
@@ -79,7 +79,7 @@ export function buildDefaultStudioInstruments(handlers: {
     },
     {
       key: "tailor",
-      label: "Tailor override",
+      label: "Tailor",
       icon: icon(Scissors),
       active: active.tailor,
       onClick: handlers.onTailor,
@@ -93,21 +93,21 @@ export function buildDefaultStudioInstruments(handlers: {
     },
     {
       key: "ground",
-      label: "Web grounding",
+      label: "Ground",
       icon: icon(Globe),
       active: active.ground,
       onClick: handlers.onGround,
     },
     {
       key: "mic",
-      label: "Voice memo",
+      label: "Voice",
       icon: icon(Mic),
       active: active.mic,
       onClick: handlers.onMic,
     },
     {
       key: "treatment",
-      label: "Treatments",
+      label: "Treatment",
       icon: icon(Pipette),
       active: active.treatment,
       onClick: handlers.onTreatment,
@@ -127,6 +127,13 @@ export function buildDefaultStudioInstruments(handlers: {
       onClick: handlers.onPocket,
     },
     {
+      key: "telemetry",
+      label: "Telemetry",
+      icon: icon(Activity),
+      active: active.telemetry,
+      onClick: handlers.onTelemetry,
+    },
+    {
       key: "anchors",
       label: "Anchors",
       icon: icon(Layers),
@@ -143,49 +150,23 @@ export function buildDefaultStudioInstruments(handlers: {
   ];
 }
 
+/** One floating cylindrical toolbar — all studio tools scroll inside the pill. */
 export const StudioInstrumentRail: React.FC<StudioInstrumentRailProps> = ({
   items,
-  onInstrumentClick,
-  onFootnoteClick,
   footnoteLabel = "Studio",
-  footnoteInteractive = Boolean(onFootnoteClick),
   className = "",
 }) => {
   return (
-    <footer
-      aria-label="Studio instruments"
-      className={`studio-mobile-rail border-t studio-border studio-bg-panel ${className}`.trim()}
-    >
-      <div
-        role="toolbar"
-        aria-label="Studio tools"
-        className="flex items-center justify-center gap-1 px-2 pt-1.5 pb-1 overflow-x-auto no-scrollbar"
-      >
-        {items.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => {
-              item.onClick();
-              onInstrumentClick?.(item.key);
-            }}
-            aria-label={item.label}
-            aria-pressed={item.active || undefined}
-            className={`studio-mobile-rail-item min-w-11 min-h-11 w-11 h-11 flex items-center justify-center transition-colors ${
-              item.active ? "studio-text-ink" : "studio-text-muted"
-            }`}
-          >
-            {item.icon}
-          </button>
-        ))}
-      </div>
-      <div className="border-t border-dotted studio-border px-4 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] flex flex-col items-center">
-        <StudioFootnoteEmblem
-          label={footnoteLabel}
-          onClick={onFootnoteClick}
-          interactive={footnoteInteractive}
-        />
-      </div>
-    </footer>
+    <FloatingCylinderToolbar
+      variant="studio"
+      ariaLabel="Studio instruments"
+      items={items}
+      className={className}
+      trailing={
+        <div className="px-2 py-1">
+          <StudioFootnoteEmblem label={footnoteLabel} />
+        </div>
+      }
+    />
   );
 };

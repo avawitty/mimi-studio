@@ -125,12 +125,6 @@ import {
   StudioInstrumentRail,
   buildDefaultStudioInstruments,
 } from "./studio/StudioInstrumentRail";
-import {
-  StudioFootnoteDock,
-  type StudioFootnoteDockTab,
-} from "./studio/StudioFootnoteDock";
-import { StudioContinuumMini } from "./studio/StudioContinuumMini";
-import { StudioTelemetryMini } from "./studio/StudioTelemetryMini";
 import { StudioMediaPolaroidBar } from "./studio/StudioMediaPolaroidBar";
 import {
   compileCoverPromptFromSignals,
@@ -679,14 +673,6 @@ export const InputStudio: React.FC<{
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
   const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
-  const [footnoteDockOpen, setFootnoteDockOpen] = useState(false);
-  const [footnoteDockTab, setFootnoteDockTab] =
-    useState<StudioFootnoteDockTab>("continuum");
-
-  const openFootnoteDock = useCallback((tab: StudioFootnoteDockTab) => {
-    setFootnoteDockTab(tab);
-    setFootnoteDockOpen(true);
-  }, []);
   const [recentZines, setRecentZines] = useState<ZineMetadata[]>([]);
 
   // Mobile: swipe between the Input (editor) and Cover pages
@@ -3832,109 +3818,46 @@ ${finalInput}`;
 
       </div>
 
-      {/* MOBILE INSTRUMENT RAIL — thin icon spine + footnote dock */}
+      {/* MOBILE — floating cylindrical scrollable toolbar */}
       {isMobile && !toolsSheetOpen && !moreSheetOpen && (
-        <>
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40">
-            <StudioInstrumentRail
-              items={buildDefaultStudioInstruments({
-                onAttach: () => mediaInputRef.current?.click(),
-                onCompose: () => {
-                  setActivePanel(null);
-                  setMobileStudioView("editor");
-                },
-                onTailor: () => setUseTailorProfile((v) => !v),
-                onCover: () => setMobileStudioView("cover"),
-                onGround: () => setUseSearch((v) => !v),
-                onMic: () => {
-                  void startRecording();
-                  playClick();
-                },
-                onTreatment: () => togglePanel("treatments"),
-                onContinuum: () => openFootnoteDock("continuum"),
-                onPocket: () => openFootnoteDock("pocket"),
-                onAnchors: () => togglePanel("signal"),
-                onMore: () => setMoreSheetOpen(true),
-                active: {
-                  attach: mediaFiles.length > 0,
-                  compose: activePanel === null && mobileStudioView === "editor",
-                  tailor: useTailorProfile,
-                  cover: mobileStudioView === "cover",
-                  ground: useSearch,
-                  mic: isRecording || isTranscribing,
-                  treatment: activePanel === "treatments",
-                  continuum: footnoteDockOpen && footnoteDockTab === "continuum",
-                  pocket: footnoteDockOpen && footnoteDockTab === "pocket",
-                  anchors: activePanel === "signal",
-                  more: moreSheetOpen,
-                },
-              })}
-              onFootnoteClick={() => openFootnoteDock("continuum")}
-              footnoteInteractive
-            />
-          </div>
-          <StudioFootnoteDock
-            open={footnoteDockOpen}
-            activeTab={footnoteDockTab}
-            onTabChange={setFootnoteDockTab}
-            onClose={() => setFootnoteDockOpen(false)}
-            continuum={
-              <StudioContinuumMini
-                recentZines={recentZines}
-                linkedZineIds={linkedZineIds}
-                loading={recentZinesLoading}
-                onToggleLink={(zineId) => {
-                  setLinkedZineIds((current) =>
-                    current.includes(zineId)
-                      ? current.filter((id) => id !== zineId)
-                      : [...current, zineId],
-                  );
-                  playClick();
-                }}
-              />
-            }
-            pocket={
-              <StudioPocketDrawer
-                onInsertText={(text) => {
-                  setInput((prev) => (prev ? `${prev}\n${text}` : text));
-                  setFootnoteDockOpen(false);
-                }}
-                onInsertImageUrl={(url) => {
-                  setMediaFiles((prev) => [
-                    ...prev,
-                    {
-                      type: "image",
-                      url,
-                      data: "",
-                      mimeType: "image/jpeg",
-                      name: "pocket-ref",
-                    },
-                  ]);
-                  setFootnoteDockOpen(false);
-                }}
-                onOpenFullPocket={() => {
-                  window.dispatchEvent(new CustomEvent("mimi:toggle_pocket_stash"));
-                  setFootnoteDockOpen(false);
-                }}
-              />
-            }
-            telemetry={
-              <StudioTelemetryMini
-                entropy={entropy}
-                telemetryX={telemetryX}
-                telemetryY={telemetryY}
-                useTailorProfile={useTailorProfile}
-                dollLabel={
-                  studioDoll.enabled && studioDoll.activeDoll
-                    ? studioDoll.activeDoll.name
-                    : "Off"
-                }
-                authorName={authorName}
-                title={title || ""}
-              />
-            }
+        <div className="md:hidden">
+          <StudioInstrumentRail
+            items={buildDefaultStudioInstruments({
+              onAttach: () => mediaInputRef.current?.click(),
+              onCompose: () => {
+                setActivePanel(null);
+                setMobileStudioView("editor");
+              },
+              onTailor: () => setUseTailorProfile((v) => !v),
+              onCover: () => setMobileStudioView("cover"),
+              onGround: () => setUseSearch((v) => !v),
+              onMic: () => {
+                void startRecording();
+                playClick();
+              },
+              onTreatment: () => togglePanel("treatments"),
+              onContinuum: () => togglePanel("continuum"),
+              onPocket: () => togglePanel("procurement"),
+              onTelemetry: () => togglePanel("telemetry"),
+              onAnchors: () => togglePanel("signal"),
+              onMore: () => setMoreSheetOpen(true),
+              active: {
+                attach: mediaFiles.length > 0,
+                compose: activePanel === null && mobileStudioView === "editor",
+                tailor: useTailorProfile,
+                cover: mobileStudioView === "cover",
+                ground: useSearch,
+                mic: isRecording || isTranscribing,
+                treatment: activePanel === "treatments",
+                continuum: activePanel === "continuum",
+                pocket: activePanel === "procurement",
+                telemetry: activePanel === "telemetry",
+                anchors: activePanel === "signal",
+                more: moreSheetOpen,
+              },
+            })}
           />
-        </>
+        </div>
       )}
 
       {/* MOBILE TOOLS SHEET */}
