@@ -5,6 +5,8 @@ import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
 import { chromeDataAttr } from "../../lib/chamberChrome";
+import { isMobileQuietChrome } from "../../lib/mobileShell";
+import { useIsNarrow } from "../../hooks/useBreakpoint";
 import {
   CREATOR_PATH,
   isDarkPlateMode,
@@ -42,6 +44,9 @@ export const StudioChrome: React.FC<{
   const isDark = theme === "dark";
   const isPublicFace = isPublicFaceMode(viewMode);
   const isDarkPlate = isDarkPlateMode(viewMode);
+  const isNarrow = useIsNarrow();
+  const mobileQuiet = isMobileQuietChrome(isNarrow);
+  const hideInstruments = isPublicFace || mobileQuiet;
   const [stashOpen, setStashOpen] = React.useState(pocketStashOpen);
 
   React.useEffect(() => {
@@ -174,6 +179,7 @@ export const StudioChrome: React.FC<{
       }`}
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.875rem)" }}
       data-chrome={chromeDataAttr(viewMode)}
+      data-mobile-quiet={mobileQuiet ? "true" : "false"}
     >
       {/* Top Shimmer Progress Line during generation / high latency */}
       {isGenerating && (
@@ -269,9 +275,11 @@ export const StudioChrome: React.FC<{
         </nav>
       )}
 
-      {/* Controls — public faces keep Menu + identity only so the plate can breathe */}
+      {/* Controls — public faces + mobile quiet: Menu + identity/account only */}
       <div className="flex items-center gap-2 md:gap-3">
-        {WORKFLOW_MAP_CHROME_MODES.has(viewMode) && viewMode !== "chamber-map" ? (
+        {!mobileQuiet &&
+        WORKFLOW_MAP_CHROME_MODES.has(viewMode) &&
+        viewMode !== "chamber-map" ? (
           <button
             type="button"
             onClick={() =>
@@ -299,13 +307,13 @@ export const StudioChrome: React.FC<{
         ) : null}
 
         {/* Studio mobile keeps Menu + identity (+ theme on sm+); pocket/oracle live in the instrument rail */}
-        {!(isPublicFace || (viewMode === "studio" && isMobile)) && timeString && (
+        {!(hideInstruments || (viewMode === "studio" && isMobile)) && timeString && (
           <span className="font-mono text-[9px] uppercase tracking-widest studio-text-muted hidden sm:inline-block border studio-border px-2.5 py-1.5 select-none bg-black/[0.02] dark:bg-white/[0.02] font-semibold transition-all hover:bg-black/[0.04] dark:hover:bg-white/[0.04]">
             {timeString}
           </span>
         )}
 
-        {!(isPublicFace || (viewMode === "studio" && isMobile)) && (
+        {!(hideInstruments || (viewMode === "studio" && isMobile)) && (
           <button
             type="button"
             aria-label={stashOpen ? "Close pocket stash" : "Open pocket stash"}
@@ -327,7 +335,7 @@ export const StudioChrome: React.FC<{
           </button>
         )}
 
-        {!(isPublicFace || (viewMode === "studio" && isMobile)) && (
+        {!(hideInstruments || (viewMode === "studio" && isMobile)) && (
           <button
             type="button"
             aria-label="Commune with the Oracle"
@@ -352,7 +360,7 @@ export const StudioChrome: React.FC<{
           title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           onClick={onToggleTheme}
           className={`${
-            isPublicFace || (viewMode === "studio" && isMobile)
+            hideInstruments || (viewMode === "studio" && isMobile)
               ? "hidden sm:flex"
               : "flex"
           } min-w-12 min-h-12 w-12 h-12 md:w-9 md:h-9 md:min-w-9 md:min-h-9 border items-center justify-center touch-manipulation active:scale-90 transition-all hover:scale-105 duration-300 ${chromeBtn}`}

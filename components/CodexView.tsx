@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { askCodex } from '../services/geminiService';
 import { useTheme, AestheticEra } from '../contexts/ThemeContext';
+import { mobileCanvasClass, mobileHairlineFieldClass } from '../lib/mobileShell';
 
 type CodexTab = 'read' | 'use' | 'cases';
 type CodexRootTab = 'manual' | 'modules' | 'ask';
@@ -598,16 +599,16 @@ export const CodexView: React.FC = () => {
   );
 
   return (
-    <div className="flex-1 overflow-y-auto bg-nous-base text-nous-text p-8 md:p-16">
-      <div className="max-w-4xl mx-auto">
+    <div className={`${mobileCanvasClass} overflow-y-auto bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)] px-4 py-4 md:p-16`}>
+      <div className="max-w-4xl mx-auto w-full">
         
-        {/* Header */}
+        {/* Header — compact on mobile (app chrome already names Codex) */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 border-b border-nous-border pb-8"
+          className="mb-6 md:mb-8 border-b border-[var(--mimi-hairline,#d4d4d4)] pb-4 md:pb-8"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="hidden md:flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <BookOpen size={24} className="text-nous-text" />
               <div>
@@ -626,27 +627,27 @@ export const CodexView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-none -mx-1 px-1">
             <button
               onClick={() => setActiveRootTab('modules')}
-              className={`font-mono text-[10px] uppercase tracking-widest transition-colors pb-2 border-b-2 ${
-                activeRootTab === 'modules' ? 'text-nous-text border-nous-text' : 'text-nous-subtle border-transparent hover:text-nous-text'
+              className={`shrink-0 font-mono text-[10px] uppercase tracking-widest transition-colors pb-2 border-b-2 whitespace-nowrap ${
+                activeRootTab === 'modules' ? 'text-[var(--mimi-ink)] border-[var(--mimi-ink)]' : 'text-[var(--mimi-stone)] border-transparent'
               }`}
             >
-              Taste Infrastructure
+              Infrastructure
             </button>
             <button
               onClick={() => setActiveRootTab('manual')}
-              className={`font-mono text-[10px] uppercase tracking-widest transition-colors pb-2 border-b-2 ${
-                activeRootTab === 'manual' ? 'text-nous-text border-nous-text' : 'text-nous-subtle border-transparent hover:text-nous-text'
+              className={`shrink-0 font-mono text-[10px] uppercase tracking-widest transition-colors pb-2 border-b-2 whitespace-nowrap ${
+                activeRootTab === 'manual' ? 'text-[var(--mimi-ink)] border-[var(--mimi-ink)]' : 'text-[var(--mimi-stone)] border-transparent'
               }`}
             >
-              Mimi User Manual
+              Manual
             </button>
             <button
               onClick={() => setActiveRootTab('ask')}
-              className={`font-mono text-[10px] uppercase tracking-widest transition-colors pb-2 border-b-2 ${
-                activeRootTab === 'ask' ? 'text-nous-text border-nous-text' : 'text-nous-subtle border-transparent hover:text-nous-text'
+              className={`shrink-0 font-mono text-[10px] uppercase tracking-widest transition-colors pb-2 border-b-2 whitespace-nowrap ${
+                activeRootTab === 'ask' ? 'text-[var(--mimi-ink)] border-[var(--mimi-ink)]' : 'text-[var(--mimi-stone)] border-transparent'
               }`}
             >
               Ask Codex
@@ -663,8 +664,8 @@ export const CodexView: React.FC = () => {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-8"
             >
-              {/* Luxury Positioning Quote Box */}
-              <div className="border border-nous-border bg-nous-surface/30 p-6 relative overflow-hidden">
+              {/* Manifesto — hairline section on mobile, card on desktop */}
+              <div className="border-b md:border border-[var(--mimi-hairline,#d4d4d4)] md:bg-nous-surface/30 py-5 md:p-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 font-mono text-[60px] leading-none opacity-5 font-bold select-none">MIMI</div>
                 <h3 className="font-mono text-[10px] uppercase tracking-widest text-[#777] mb-2 font-black flex items-center gap-1.5">
                   <Sparkles size={11} className="text-nous-text" /> Brand Manifesto
@@ -679,16 +680,16 @@ export const CodexView: React.FC = () => {
               </div>
 
               {/* Module Search */}
-              <div className="relative">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-nous-subtle">
+              <div className="relative border-b md:border-0 border-[var(--mimi-hairline,#d4d4d4)]">
+                <div className="absolute inset-y-0 left-0 md:left-3 flex items-center pointer-events-none text-[var(--mimi-stone)]">
                   <Search size={14} />
                 </div>
                 <input 
                   type="text"
                   value={moduleSearch}
                   onChange={(e) => setModuleSearch(e.target.value)}
-                  placeholder="Filter Taste Infrastructure modules (e.g. Studio, Tailor, signals...)"
-                  className="w-full bg-[#fcfcfc] dark:bg-nous-surface/50 border border-nous-border pl-10 pr-4 py-3 text-xs font-sans placeholder:text-[#ccc] dark:placeholder:text-[#666] outline-none focus:border-nous-text transition-colors"
+                  placeholder="Filter modules (Studio, Tailor, signals…)"
+                  className={`w-full bg-transparent pl-6 md:pl-10 pr-8 py-3 text-xs font-sans placeholder:text-[var(--mimi-stone)] outline-none md:bg-[#fcfcfc] dark:md:bg-nous-surface/50 md:border md:border-nous-border focus:border-[var(--mimi-ink)] transition-colors ${mobileHairlineFieldClass} md:border md:px-4`}
                 />
                 {moduleSearch && (
                   <button 

@@ -1123,6 +1123,47 @@
   }
 }
 
+/* Mobile shell — flat canvas, hairline rows, no card-in-card (lib/mobileShell.ts) */
+.mimi-mobile-canvas {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.mimi-mobile-row {
+  border: 0;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+.mimi-mobile-row:active {
+  background-color: color-mix(in srgb, var(--mimi-ink, #0a0a0a) 4%, transparent);
+}
+
+.mimi-mobile-row-stack {
+  border-top: 1px solid var(--mimi-hairline, #d4d4d4);
+  border-bottom: 1px solid var(--mimi-hairline, #d4d4d4);
+}
+
+.mimi-mobile-composer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--mimi-hairline, #d4d4d4);
+  background-color: color-mix(in srgb, var(--mimi-field, #ffffff) 94%, transparent);
+  backdrop-filter: blur(8px);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 0.5rem;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 767px) {
+  /* Worktable chambers: full-bleed canvas under quiet chrome */
+  main.mimi-page-pad {
+    padding-top: 0;
+  }
+}
+
 #root {
   height: 100dvh;
   width: 100%;

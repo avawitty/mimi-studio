@@ -309,10 +309,10 @@ export const ScribeChamber: React.FC<{ initialTab?: ScribeTab }> = ({ initialTab
                   key={item.id}
                   type="button"
                   onClick={() => setLibrary(item.id)}
-                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1 border font-mono text-[8px] uppercase tracking-[0.12em] transition-colors ${
+                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1 font-mono text-[8px] uppercase tracking-[0.12em] transition-colors border-b-2 ${
                     libraryView === item.id
-                      ? "archive-workflow-active border-archive-ink"
-                      : "archive-workflow-idle border-transparent"
+                      ? "archive-workflow-active border-archive-ink text-[var(--mimi-ink)]"
+                      : "archive-workflow-idle border-transparent text-[var(--mimi-stone)]"
                   }`}
                 >
                   {item.icon}
