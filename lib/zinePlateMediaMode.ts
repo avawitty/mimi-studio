@@ -1,26 +1,29 @@
 import type { ZinePlateMediaMode } from "../types.js";
 
 export const ZINE_PLATE_MEDIA_MODES: ZinePlateMediaMode[] = [
-  "photography-first",
   "generated",
+  "photography-first",
   "references-only",
 ];
 
 export const ZINE_PLATE_MEDIA_MODE_LABELS: Record<
   ZinePlateMediaMode,
-  { label: string; note: string }
+  { label: string; note: string; short: string }
 > = {
-  "photography-first": {
-    label: "Photography first",
-    note: "Licensed stock plates with attribution when available",
-  },
   generated: {
-    label: "Generated plates",
-    note: "AI-developed cover and spread imagery",
+    label: "Imagen",
+    short: "AI plates",
+    note: "Mimi develops cover and spread imagery — default",
+  },
+  "photography-first": {
+    label: "Stock",
+    short: "Licensed",
+    note: "Attributed stock photography when available",
   },
   "references-only": {
-    label: "My references",
-    note: "Use attached references only — no generated plates",
+    label: "References",
+    short: "Yours only",
+    note: "Attached references only — no generated plates",
   },
 };
 

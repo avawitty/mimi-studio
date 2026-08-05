@@ -8,7 +8,9 @@ import type {
 import { useOptionalUser } from "../../contexts/UserContext";
 import { fetchUserZines } from "../../services/firebaseUtils";
 import { MimiWordmark } from "../public-face/MimiWordmark";
-import { ZINE_PLATE_MEDIA_MODE_LABELS } from "../../lib/zinePlateMediaMode";
+import { StudioPlateMediaToolbar } from "./StudioPlateMediaToolbar";
+import { StudioInspoCarousel } from "./StudioInspoCarousel";
+import type { StudioInspoSlide } from "../../lib/studioInspoTypes";
 
 const EMPTY_ZINE_OPTIONS: ZineGenerationOptions = {
   style: "balanced",
@@ -93,6 +95,9 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
   const [boardUrl, setBoardUrl] = useState("");
   const [isFetchingBoard, setIsFetchingBoard] = useState(false);
   const [boardWarning, setBoardWarning] = useState<string | null>(null);
+  const [selectedInspo, setSelectedInspo] = useState<StudioInspoSlide | null>(
+    null,
+  );
 
   const zineOptions = zineOptionsProp ?? EMPTY_ZINE_OPTIONS;
 
@@ -144,6 +149,43 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
       isHighFidelity: initialHighFidelity,
       useSearch: false,
       zineOptions: { ...zineOptions, plateMediaMode },
+    });
+  };
+
+  const handlePublishRendition = (slide: StudioInspoSlide | null) => {
+    if (isThinking) return;
+
+    const payload =
+      input.trim() ||
+      (slide?.label
+        ? `Publish my rendition of “${slide.label.slice(0, 80)}”.`
+        : "Publish my rendition from this inspo.");
+
+    let media = mediaFiles;
+    if (
+      slide &&
+      slide.source !== "reference" &&
+      !media.some((file) => (file.url || file.data) === slide.imageUrl)
+    ) {
+      media = [
+        {
+          type: "image",
+          url: slide.imageUrl,
+          data: slide.imageUrl,
+          mimeType: "image/jpeg",
+          name: slide.label.slice(0, 80) || "inspo-reference",
+        },
+        ...media,
+      ];
+    }
+
+    onRefine?.(payload, media, "editorial", {
+      deepThinking: false,
+      isPublic: false,
+      isLite: false,
+      isHighFidelity: initialHighFidelity,
+      useSearch: false,
+      zineOptions: { ...zineOptions, plateMediaMode: "generated" },
     });
   };
 
@@ -289,16 +331,22 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3 border-t border-[var(--mimi-hairline,#d4d4d4)] px-3 py-2">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="min-h-11 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-stone,#78716c)] hover:text-[var(--mimi-ink,#0a0a0a)]"
-              >
-                Attach reference
-              </button>
+            <div className="flex flex-col gap-3 border-t border-[var(--mimi-hairline,#d4d4d4)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="min-h-11 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-stone,#78716c)] hover:text-[var(--mimi-ink,#0a0a0a)]"
+                >
+                  Attach reference
+                </button>
+                <StudioPlateMediaToolbar
+                  value={plateMediaMode}
+                  onChange={setPlateMediaMode}
+                />
+              </div>
               <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)]">
-                Text · image · note
+                Imagen default
               </span>
             </div>
           </section>
@@ -338,6 +386,15 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
             ) : null}
           </fieldset>
 
+          <StudioInspoCarousel
+            query={input}
+            references={mediaFiles}
+            selectedId={selectedInspo?.id ?? null}
+            onSelect={setSelectedInspo}
+            onPublishRendition={handlePublishRendition}
+            isPublishing={isThinking}
+          />
+
           {contextSummary && (
             <p
               role="status"
@@ -346,41 +403,6 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
               {contextSummary}
             </p>
           )}
-
-          <fieldset className="mt-6 border-0 p-0">
-            <legend className="font-mono text-[8px] uppercase tracking-[0.24em] text-[var(--mimi-stone,#78716c)]">
-              Plate media
-            </legend>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              {(
-                Object.entries(ZINE_PLATE_MEDIA_MODE_LABELS) as Array<
-                  [ZinePlateMediaMode, { label: string; note: string }]
-                >
-              ).map(([mode, copy]) => {
-                const active = plateMediaMode === mode;
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setPlateMediaMode(mode)}
-                    className={`min-h-11 flex-1 border px-3 py-2 text-left transition-colors sm:min-w-[10rem] sm:flex-none ${
-                      active
-                        ? "border-[var(--mimi-ink,#0a0a0a)] bg-[var(--mimi-worktable,#fafafa)]"
-                        : "border-[var(--mimi-hairline,#d4d4d4)] hover:border-[var(--mimi-stone,#78716c)]"
-                    }`}
-                  >
-                    <span className="block font-mono text-[9px] uppercase tracking-[0.18em]">
-                      {copy.label}
-                    </span>
-                    <span className="mt-1 block font-serif text-[12px] leading-snug text-[var(--mimi-stone,#78716c)]">
-                      {copy.note}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
 
           <button
             type="button"

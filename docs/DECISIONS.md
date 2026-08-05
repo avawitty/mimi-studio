@@ -30,6 +30,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-05 — Imagen-first Studio toolbar + inspo carousel
+
+**Decision:** Default `/studio` plate path is **Imagen** (`generated`). Stock and References are compact toolbar toggles, not equal-weight cards. Add an **Inspos** carousel (attached references + Unsplash previews from prompt) with **Publish my rendition →** — always routes through Imagen, seeding from the selected inspo.
+
+**Alternatives rejected:** (1) Photography-first as co-equal default beside Imagen. (2) Full InputStudio inspo panel remount on `/studio`. (3) “Publish” meaning literal stock republish without AI rendition.
+
+**Why:** Matches product intent: AI-developed plates first; stock/references are explicit opt-ins; inspo browsing supports ideation without leaving the calm orientation shell.
+
+**Ref:** `components/studio/StudioPlateMediaToolbar.tsx`, `components/studio/StudioInspoCarousel.tsx`, `lib/fetchStudioInspos.ts`
+
+---
+
 ## 2026-08-04 — Pinterest board preview: API-first for token owner, HTML fallback
 
 **Decision:** When `PINTEREST_ACCESS_TOKEN` is set (Production Limited / Standard), resolve board previews via Pinterest API v5 (`boards` + `boards/{id}/pins`) for boards owned by the token account; fall back to existing public HTML scrape for other users' boards or when API resolution fails.
