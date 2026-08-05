@@ -6,6 +6,7 @@ import {
   Eye,
   Globe,
   Layers,
+  LayoutGrid,
   Mic,
   MoreHorizontal,
   Paperclip,
@@ -21,6 +22,7 @@ import {
 } from "../ui/FloatingCylinderToolbar";
 
 export type StudioInstrumentKey =
+  | "tools"
   | "attach"
   | "compose"
   | "tailor"
@@ -45,6 +47,7 @@ type StudioInstrumentRailProps = {
 };
 
 export function buildDefaultStudioInstruments(handlers: {
+  onTools?: () => void;
   onAttach: () => void;
   onCompose: () => void;
   onTailor: () => void;
@@ -62,7 +65,20 @@ export function buildDefaultStudioInstruments(handlers: {
   const active = handlers.active ?? {};
   const icon = (Icon: LucideIcon) => <Icon size={16} strokeWidth={1.4} />;
 
+  const toolsItem: StudioInstrumentItem[] = handlers.onTools
+    ? [
+        {
+          key: "tools",
+          label: "Tools",
+          icon: icon(LayoutGrid),
+          active: active.tools,
+          onClick: handlers.onTools,
+        },
+      ]
+    : [];
+
   return [
+    ...toolsItem,
     {
       key: "attach",
       label: "Attach",

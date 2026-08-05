@@ -105,3 +105,15 @@ export function parseCoverIndexFromCode(code: string): number | null {
   const parsed = Number.parseInt(match[1]!, 10);
   return Number.isFinite(parsed) && parsed >= 1 ? parsed : null;
 }
+
+/** Match persisted cover code to the active session index, or derive a fresh code. */
+export function resolveCoverSystemCodeForSession(
+  sessionIndex: number,
+  storedCode: string | null,
+): string {
+  if (storedCode && !isLegacyDefaultCoverCode(storedCode)) {
+    const storedIndex = parseCoverIndexFromCode(storedCode);
+    if (storedIndex === sessionIndex) return storedCode;
+  }
+  return coverSystemCodeFromIndex(sessionIndex);
+}

@@ -22,7 +22,13 @@ export async function renderVoiceSpectrogramDataUrl(
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas unavailable");
 
-    ctx.fillStyle = "var(--mimi-field, #f5f1e8)";
+    const fieldToken =
+      typeof document !== "undefined"
+        ? getComputedStyle(document.documentElement)
+            .getPropertyValue("--mimi-field")
+            .trim()
+        : "";
+    ctx.fillStyle = fieldToken || "#f5f1e8";
     ctx.fillRect(0, 0, width, height);
 
     for (let x = 0; x < width; x += 1) {

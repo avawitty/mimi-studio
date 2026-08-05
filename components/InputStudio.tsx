@@ -137,11 +137,10 @@ import {
   STUDIO_COVER_DRAFT_KEY,
 } from "../lib/studioCoverVariants";
 import {
-  coverSystemCodeFromIndex,
   formatCoverIndex,
   getOrAllocateCoverIssueIndex,
-  isLegacyDefaultCoverCode,
   readSessionCoverIssueIndex,
+  resolveCoverSystemCodeForSession,
 } from "../lib/studioCoverIndex";
 import type { ZineCoverVariant } from "../types";
 import { useUrlIngest } from "../hooks/useUrlIngest";
@@ -566,12 +565,12 @@ export const InputStudio: React.FC<{
 
   const [authorName, setAuthorName] = useState(() => profile?.handle || "Author");
   const [coverIssueIndex] = useState(() => getOrAllocateCoverIssueIndex());
-  const [coverSystemCode, setCoverSystemCode] = useState(() => {
-    const stored = localStorage.getItem("mimi_cover_system_code");
-    if (stored && !isLegacyDefaultCoverCode(stored)) return stored;
-    const index = readSessionCoverIssueIndex() ?? 1;
-    return coverSystemCodeFromIndex(index);
-  });
+  const [coverSystemCode, setCoverSystemCode] = useState(() =>
+    resolveCoverSystemCodeForSession(
+      readSessionCoverIssueIndex() ?? 1,
+      localStorage.getItem("mimi_cover_system_code"),
+    ),
+  );
   useEffect(() => {
     if (profile?.handle) {
       setAuthorName(profile.handle);
@@ -3822,6 +3821,7 @@ ${finalInput}`;
       {!toolsSheetOpen && !moreSheetOpen && (
         <StudioInstrumentRail
             items={buildDefaultStudioInstruments({
+              onTools: isMobile ? () => setToolsSheetOpen(true) : undefined,
               onAttach: () => mediaInputRef.current?.click(),
               onCompose: () => {
                 setActivePanel(null);
@@ -3841,6 +3841,7 @@ ${finalInput}`;
               onAnchors: () => togglePanel("signal"),
               onMore: () => setMoreSheetOpen(true),
               active: {
+                tools: toolsSheetOpen,
                 attach: mediaFiles.length > 0,
                 compose: activePanel === null && mobileStudioView === "editor",
                 tailor: useTailorProfile,

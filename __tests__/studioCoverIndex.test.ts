@@ -6,6 +6,7 @@ import {
   getOrAllocateCoverIssueIndex,
   isLegacyDefaultCoverCode,
   parseCoverIndexFromCode,
+  resolveCoverSystemCodeForSession,
   startNewCoverIssue,
   COVER_ISSUE_COUNTER_KEY,
   COVER_ISSUE_SESSION_KEY,
@@ -72,5 +73,14 @@ describe("studioCoverIndex", () => {
     expect(isLegacyDefaultCoverCode("SYS // COV-INT.1")).toBe(true);
     expect(isLegacyDefaultCoverCode("SYS // COV-007")).toBe(false);
     expect(parseCoverIndexFromCode("SYS // COV-007")).toBe(7);
+  });
+
+  it("derives fresh cover code when stored index does not match session", () => {
+    expect(
+      resolveCoverSystemCodeForSession(2, "SYS // COV-001"),
+    ).toBe("SYS // COV-002");
+    expect(
+      resolveCoverSystemCodeForSession(2, "SYS // COV-002"),
+    ).toBe("SYS // COV-002");
   });
 });
