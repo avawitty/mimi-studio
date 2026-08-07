@@ -167,5 +167,8 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | P5b | Thimble / Brief / Darkroom Studio handoffs | **queued** |
 | P5c | Aesthetic entry plates + mobile Studio layout | **queued** |
 | P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **queued** |
+| **Platform** | Lovable Cloud + Lovable AI as default stack; migrate AI to edge fns | **queued** |
+| **Refactor** | Align P0–P6 AI paths with Lovable AI + Cloud (no BYOK /api) | **queued** |
+| P7 | Scribe, Stand, Signature, Residue/Proscenium stubs, Find anchor, OG/RSS, notifications | **queued** |
 
-Project knowledge on Lovable encodes toolbar/Tailor/Scry/Press/Darkroom canon for future agent turns. Production `mimi.you` remains source of truth for chamber semantics; merge or port after Lovable phases land.
+Project + workspace knowledge on Lovable encodes Cloud/AI platform rules and product canon. Production `mimi.you` remains separate (Express/Firebase/Neon); merge or port after Lovable phases land.
