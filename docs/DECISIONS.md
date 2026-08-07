@@ -285,3 +285,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Matches the elevated-notes mockup: one **floating cylindrical toolbar** scrolls all compose/zine tools inside a single pill — not a modular footnote dock + edge rail.
 
 **Ref:** `components/ui/FloatingCylinderToolbar.tsx`, `components/studio/StudioInstrumentRail.tsx`, `AnalysisDisplay.tsx`
+
+---
+
+## 2026-08-07 — Lovable parallel track phased advisory (menu, toolbar, Tailor, Scry, Press)
+
+**Decision:** Execute product expansion on Lovable project `82416757-f4d9-45c3-9665-4f043ec226e8` in phases: P0 menu + functional Studio toolbar + `/tailor` chamber with generation-contract wiring; P1 Profile/public card + Edit/Pocket/fish-rip; P2 Dolls onboarding + Omni Loop + Mesopic; P3 Scry curiosity profile + Used Context colophon + `/the-press` export chamber. Persist build canon via Lovable `set_project_knowledge`. Track queue status in `docs/STATE.md`.
+
+**Alternatives rejected:** (1) Blocking all Lovable work until queue drains to one message. (2) Requiring Perplexity for Scry v1. (3) Folding Tailor only into `/mimi-you` without dedicated chamber and contract injection.
+
+**Why:** Lovable queue is long but parallel messages preserve phased delivery; production canon (Tailor contract, colophon, Press, Scry lanes) maps cleanly onto TanStack stack; Scry can use existing research.server + credits.
+
+**Ref:** Lovable messages `umsg_01kzetkx9…` (P0), `umsg_01kzetm5…` (P2), `umsg_01kzetrb0…` (P3 Scry/colophon), `umsg_01kzetra4…` (P3 Press); `prd/aesthetic-05-provenance-colophon.md`, `prd/doll-staple-shell.md`
