@@ -1,6 +1,6 @@
 # Mimi Studio — Module State
 
-**Last updated:** 2026-08-05  
+**Last updated:** 2026-08-07  
 **Source of truth for routes:** `lib/productCanon.ts` · **Validation:** `npm run validate:canon`
 
 ## Status legend
@@ -93,10 +93,13 @@
 
 ## Public / infrastructure routes
 
-| Route | Status | Notes |
+| Route / host | Status | Notes |
 | --- | --- | --- |
-| `/u/:handle` | shipped | Public doll/profile cards |
-| `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`) |
+| `mimi.you` (skin `you`) | shipped | Full app; canonical identity |
+| `mimi.fish` (skin `fish`) | partial | Share plates + creator shelf; domains attached — run `setup:mimi-fish-domains` for Firebase Auth |
+| `mimi.rip` (skin `rip`) | partial | Inverse public plates + `/rip` chamber; domains attached — run `setup:mimi-rip-domains` |
+| `/u/:handle` | shipped | Public doll/profile cards (skin selects rip/fish/you variant on host) |
+| `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`); canonical share origin `mimi.fish` |
 | `/u/:handle/feed.xml` | shipped | Keep Tabs RSS |
 | `/api/feed` | shipped | Creator feed API |
 
