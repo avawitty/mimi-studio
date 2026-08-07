@@ -145,3 +145,19 @@ npm run build
 ```
 
 When status changes, update this file and append rationale to [`DECISIONS.md`](./DECISIONS.md).
+
+---
+
+## Lovable parallel track (Mimi Studios)
+
+**Project:** `82416757-f4d9-45c3-9665-4f043ec226e8` · TanStack Start + Supabase (not production Express host).  
+**Preview:** `https://id-preview--82416757-f4d9-45c3-9665-4f043ec226e8.lovable.app`
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| P0 | Unified menu, Studio toolbar instruments, `/tailor` + contract wiring, `/scry` + `/mesopic` stubs | **queued** (Lovable build queue) |
+| P1 | Profile identity + `/u/$handle`, Pocket polish, The Edit chamber, fish/rip hosts | **queued** |
+| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **queued** |
+| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **queued** |
+
+Project knowledge on Lovable encodes toolbar/Tailor/Scry/Press canon for future agent turns. Production `mimi.you` remains source of truth for chamber semantics; merge or port after Lovable phases land.
