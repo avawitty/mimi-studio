@@ -159,5 +159,13 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | P1 | Profile identity + `/u/$handle`, Pocket polish, The Edit chamber, fish/rip hosts | **queued** |
 | P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **queued** |
 | P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **queued** |
+| P4a | Workflow bar wired to issue pipeline (COLLECT→SAVE) | **queued** |
+| P4b | Registry completion + handoff chips + chamber map | **queued** |
+| P4c | Identity strip (Dolls↔Rip↔Tailor), Rip doll picker | **queued** |
+| P4d | Observatory + Forecast perception loop (honest demo) | **queued** |
+| P5 | Darkroom: Pinterest board + multi-image extract + `imageEditingRules` / `applicationLogic` | **queued** |
+| P5b | Thimble / Brief / Darkroom Studio handoffs | **queued** |
+| P5c | Aesthetic entry plates + mobile Studio layout | **queued** |
+| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **queued** |
 
-Project knowledge on Lovable encodes toolbar/Tailor/Scry/Press canon for future agent turns. Production `mimi.you` remains source of truth for chamber semantics; merge or port after Lovable phases land.
+Project knowledge on Lovable encodes toolbar/Tailor/Scry/Press/Darkroom canon for future agent turns. Production `mimi.you` remains source of truth for chamber semantics; merge or port after Lovable phases land.
