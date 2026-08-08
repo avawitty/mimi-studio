@@ -533,3 +533,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/tailor/tailorDefaults.ts`, `contexts/UserContext.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`
 
+---
+
+## 2026-08-08 — Editorial calibration plates + public zine refractions
+
+**Decision:** `enhanceZineGenerationLayout` prepends four optional calibration grammars when data exists: `screenwrite` (`screenwrite_excerpt`), `celestial` (`celestial_readout`), `signal-index` (`semiotic_signals`), `sonic` (`sonic_layer`). Reveal renders them via `ZinePageRenderer` in the Visual Plates section; standalone Celestial section is suppressed when a celestial plate is present. Published zines (`isPublic`) show an inline **Refractions** thread at the bottom — text + voice memo comments (`ZineComments` `variant="inline"`). Firestore `zine_comments` reads are public; writes remain auth-gated.
+
+**Alternatives rejected:** (1) Keep celestial/sonic as reveal-only sections — plates make calibration exportable in the flipbook spine. (2) Server comment API in v1 — existing Firestore + Storage path reused with relaxed read rules.
+
+**Why:** Creators asked for screenplay, celestial, sonic, and signal plates in the issue, plus interactive commentary on published shares.
+
+**Ref:** `lib/zine/insertEditorialPlates.ts`, `components/zine/grammars/*`, `components/ZineComments.tsx`, `components/AnalysisDisplay.tsx`, `firestore.rules`
+

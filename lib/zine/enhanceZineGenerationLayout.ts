@@ -1,5 +1,6 @@
 import type { ZineContent, ZinePageSpec } from "../../types";
 import { buildDefaultSpreadElements } from "../zineSpreadLayout";
+import { insertEditorialPlates, isCalibrationPlate } from "./insertEditorialPlates";
 import { prepareArtifactPages } from "./zineIssuePlanner";
 
 export interface EnhanceZineLayoutInput {
@@ -8,6 +9,7 @@ export interface EnhanceZineLayoutInput {
 }
 
 function seedSpreadLayout(page: ZinePageSpec): ZinePageSpec {
+  if (isCalibrationPlate(page)) return page;
   if (page.customLayout?.elements?.length) return page;
 
   const elements = buildDefaultSpreadElements(page, {
@@ -31,9 +33,10 @@ function seedSpreadLayout(page: ZinePageSpec): ZinePageSpec {
 export function enhanceZineGenerationLayout(
   input: EnhanceZineLayoutInput,
 ): ZineContent {
+  const withPlates = insertEditorialPlates(input.content);
   const prepared = prepareArtifactPages(
     input.artifactId,
-    input.content.pages || [],
+    withPlates || [],
   ).map((page, index) =>
     seedSpreadLayout({
       ...page,

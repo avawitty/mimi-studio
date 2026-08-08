@@ -572,7 +572,9 @@ export interface ZineSpec {
   the_roadmap?: string;
   originalThought?: string;
   poetic_provocation?: string;
-  
+  /** Screenplay excerpt plate — sets the zine scene before the reading. */
+  screenwrite_excerpt?: string;
+
   // Legacy fields
   oracular_mirror?: string;
   poetic_interpretation?: string;
@@ -639,7 +641,11 @@ export type ZinePageGrammar =
   | "evidence-ledger"
   | "editorial-split"
   | "dark-plate"
-  | "debris";
+  | "debris"
+  | "celestial"
+  | "screenwrite"
+  | "sonic"
+  | "signal-index";
 
 export type ZineSectionType =
   | "cover"
@@ -1037,6 +1043,11 @@ export interface ZinePageSpec {
   };
   /** Owner-composed absolute layout; when present, reveal renders this over the L/R template. */
   customLayout?: ZineCustomLayout;
+  /** Structured payload for editorial calibration plates (celestial, signals, etc.). */
+  plateData?: {
+    celestialReadout?: ZineCelestialReadout;
+    signals?: SemioticSignal[];
+  };
 }
 
 export interface ZineContent extends ZineSpec {

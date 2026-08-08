@@ -13,6 +13,10 @@ import { EditorialSplitPage } from "./grammars/EditorialSplitPage";
 import { EvidenceLedgerPage } from "./grammars/EvidenceLedgerPage";
 import { ReadingPage } from "./grammars/ReadingPage";
 import { SpecimenPage } from "./grammars/SpecimenPage";
+import { CelestialPlatePage } from "./grammars/CelestialPlatePage";
+import { ScreenwritePage } from "./grammars/ScreenwritePage";
+import { SonicPlatePage } from "./grammars/SonicPlatePage";
+import { SignalIndexPage } from "./grammars/SignalIndexPage";
 
 interface ZinePageRendererProps {
   artifact: MimiZineArtifact;
@@ -38,6 +42,14 @@ function grammarComponent(
       return <DarkPlatePage {...props} />;
     case "debris":
       return <DebrisPage {...props} />;
+    case "celestial":
+      return <CelestialPlatePage {...props} />;
+    case "screenwrite":
+      return <ScreenwritePage {...props} />;
+    case "sonic":
+      return <SonicPlatePage {...props} />;
+    case "signal-index":
+      return <SignalIndexPage {...props} />;
     default: {
       const exhaustive: never = grammar;
       return exhaustive;
