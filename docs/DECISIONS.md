@@ -30,6 +30,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Client taste model sync via API (not Neon imports)
+
+**Decision:** `services/tasteModelService.ts` must not import `infrastructure/database/neon/*` — even dynamic imports get bundled into the Vite client graph and break Vercel builds (`node:crypto` in `creditRepository`). Neon snapshot persist/read goes through `/api/mimi/taste-intelligence/snapshot/*` via `tasteIntelligenceClient`.
+
+**Alternatives rejected:** Vite `external` hacks for the whole neon tree; keeping dual-write in client service.
+
+**Why:** React must never connect to Neon; client bundles must stay server-free.
+
+**Ref:** `services/tasteModelService.ts`, `lib/tasteIntelligenceRoute.ts`, `services/tasteIntelligenceClient.ts`
+
+---
+
 ## 2026-08-08 — Computational Taste Model (derived snapshot, v1)
 
 **Decision:** Introduce `TasteModelSnapshot` as a **derived cache** compiled deterministically from canonical Tailor graph entities (`EvidenceNode`, `Observation`, `PatternCluster`, `CreativeLaw`) plus immutable `TasteEventV2` learning events. Pure compilation in `lib/tasteModel/`; persistence at `users/{uid}/tasteLearningEvents` and `users/{uid}/tasteModelSnapshots/{global|project-{id}}`. Legacy `TasteEvent` normalized additively via `normalizeTasteEvent()`. Candidate scoring returns fit score (0–100, not probability), confidence, and evidence-linked explanation — no LLM in the scoring path.

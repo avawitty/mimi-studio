@@ -2,7 +2,11 @@
  * Scry evidence contracts — typed lanes so archive / web / reading / shadow
  * never overwrite each other. Confidence is real or absent (never costume).
  */
-import type { ScryWhyMatched } from "../lib/scry/tasteScryRerank.js";
+import type { TasteSearchMatchReason } from "../lib/tasteIntelligence/tasteSearch.js";
+
+export type ScryWhyMatched = TasteSearchMatchReason & {
+  linkedFeatureLabels?: string[];
+};
 
 export type ResultStatus =
   | "success"

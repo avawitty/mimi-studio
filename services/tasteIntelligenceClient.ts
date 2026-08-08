@@ -100,3 +100,14 @@ export async function listTasteRefusals(projectId?: string): Promise<{
   const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
   return apiFetch(`/refusals${qs}`);
 }
+
+export async function persistTasteModelSnapshot(input: {
+  snapshot: TasteModelSnapshot;
+  projectId?: string;
+  workspaceId?: string;
+}): Promise<{ ok: true }> {
+  return apiFetch("/snapshot/persist", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}

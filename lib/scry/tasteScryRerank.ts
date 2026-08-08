@@ -13,10 +13,7 @@ import {
   type TasteSearchCandidate,
   type TasteSearchMatchReason,
 } from "../tasteIntelligence/tasteSearch.js";
-
-export type ScryWhyMatched = TasteSearchMatchReason & {
-  linkedFeatureLabels?: string[];
-};
+import type { ScryWhyMatched } from "../../schemas/scryContracts.js";
 
 const RERANKABLE_LANES: ScryLaneId[] = [
   "personalMemory",

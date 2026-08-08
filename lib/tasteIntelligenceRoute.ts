@@ -15,6 +15,13 @@ import {
   type CalibrationCandidate,
 } from "./tasteIntelligence/index.js";
 import type { TasteCalibrationPair } from "../schemas/tasteIntelligenceContracts.js";
+import type { TasteModelSnapshot } from "./tasteModel/contracts.js";
+
+const persistSnapshotSchema = z.object({
+  snapshot: z.custom<TasteModelSnapshot>(),
+  projectId: z.string().optional(),
+  workspaceId: z.string().uuid().optional(),
+});
 
 const calibrationStartSchema = z.object({
   projectId: z.string().optional(),
@@ -87,6 +94,10 @@ export async function handleTasteIntelligenceRoute(req: any, res: any) {
   if (action === "snapshot" && segments[1] === "latest") {
     if (!requireOperationalMethod(req, res, "GET")) return;
     return handleLatestSnapshot(req, res);
+  }
+  if (action === "snapshot" && segments[1] === "persist") {
+    if (!requireOperationalMethod(req, res, "POST")) return;
+    return handlePersistSnapshot(req, res);
   }
   if (action === "refusals") {
     if (!requireOperationalMethod(req, res, "GET")) return;
@@ -374,6 +385,39 @@ async function handleLatestSnapshot(req: any, res: any) {
       500,
       "SNAPSHOT_READ_FAILED",
       publicOperationalMessage(500, "Snapshot unavailable.", String(error)),
+    );
+  }
+}
+
+async function handlePersistSnapshot(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const body = persistSnapshotSchema.safeParse(req.body || {});
+    if (!body.success) {
+      sendOperationalError(res, 400, "INVALID_REQUEST", body.error.message);
+      return;
+    }
+
+    const { getNeonUnitOfWork } = await import(
+      "../infrastructure/database/neon/unitOfWork.js"
+    );
+    await getNeonUnitOfWork().transaction(async (repositories) => {
+      await repositories.tasteIntelligence.saveSnapshot(
+        decoded.uid,
+        body.data.snapshot,
+        {
+          projectId: body.data.projectId,
+          workspaceId: body.data.workspaceId,
+        },
+      );
+    });
+    sendJson(res, 200, { ok: true });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "SNAPSHOT_PERSIST_FAILED",
+      publicOperationalMessage(500, "Snapshot could not be saved.", String(error)),
     );
   }
 }

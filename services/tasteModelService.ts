@@ -50,34 +50,30 @@ function snapshotDoc(userId: string, scope: 'global' | string) {
   return doc(db, `users/${userId}/tasteModelSnapshots/${docId}`);
 }
 
-async function persistSnapshotToNeon(
-  userId: string,
+async function persistSnapshotViaApi(
   snapshot: TasteModelSnapshot,
   opts?: { projectId?: string; workspaceId?: string },
 ): Promise<void> {
-  const { getNeonUnitOfWork } = await import(
-    '../infrastructure/database/neon/unitOfWork.js'
-  );
-  await getNeonUnitOfWork().transaction(async (repositories) => {
-    await repositories.tasteIntelligence.saveSnapshot(userId, snapshot, opts);
-  });
+  try {
+    const { persistTasteModelSnapshot } = await import('./tasteIntelligenceClient');
+    await persistTasteModelSnapshot({
+      snapshot,
+      projectId: opts?.projectId,
+      workspaceId: opts?.workspaceId,
+    });
+  } catch {
+    /* Neon optional during migration — Firestore remains canonical client write */
+  }
 }
 
-async function readSnapshotFromNeon(
-  userId: string,
+async function readSnapshotViaApi(
   scope: 'global' | { projectId: string },
 ): Promise<TasteModelSnapshot | null> {
   try {
-    const { getNeonTasteIntelligenceRepository } = await import(
-      '../infrastructure/database/neon/tasteIntelligenceRuntime.js'
-    );
-    const neonScope =
-      scope === 'global' ? 'global' : scope.projectId;
-    const row = await getNeonTasteIntelligenceRepository().getLatestSnapshot(
-      userId,
-      neonScope,
-    );
-    return row?.snapshot ?? null;
+    const { getLatestTasteSnapshot } = await import('./tasteIntelligenceClient');
+    const scopeKey = scope === 'global' ? 'global' : scope.projectId;
+    const res = await getLatestTasteSnapshot(scopeKey);
+    return res.snapshot;
   } catch {
     return null;
   }
@@ -167,22 +163,6 @@ export async function recordTasteLearningEvent(
     doc(eventsCol(input.userId), eventId),
     stripUndefined(event as unknown as Record<string, unknown>),
   );
-
-  const normalized = normalizeTasteEvent(event);
-  try {
-    const { getNeonUnitOfWork } = await import(
-      '../infrastructure/database/neon/unitOfWork.js'
-    );
-    await getNeonUnitOfWork().transaction(async (repositories) => {
-      await repositories.tasteIntelligence.upsertLearningEvent(
-        input.userId,
-        normalized,
-        event.dedupeKey,
-      );
-    });
-  } catch {
-    /* Firestore remains fallback source during migration */
-  }
 
   return event;
 }
@@ -284,10 +264,8 @@ export async function compileAndSaveTasteModel(
     snapshotDoc(input.userId, 'global'),
     stripUndefined(globalSnapshot as unknown as Record<string, unknown>),
   );
-  await persistSnapshotToNeon(input.userId, globalSnapshot, {
+  await persistSnapshotViaApi(globalSnapshot, {
     projectId: input.projectId,
-  }).catch(() => {
-    /* Neon optional during migration */
   });
 
   let projectSnapshot: TasteModelSnapshot | undefined;
@@ -309,9 +287,9 @@ export async function compileAndSaveTasteModel(
       snapshotDoc(input.userId, `project-${input.projectId}`),
       stripUndefined(projectSnapshot as unknown as Record<string, unknown>),
     );
-    await persistSnapshotToNeon(input.userId, projectSnapshot, {
+    await persistSnapshotViaApi(projectSnapshot, {
       projectId: input.projectId,
-    }).catch(() => {});
+    });
   }
 
   return { global: globalSnapshot, project: projectSnapshot };
@@ -323,7 +301,7 @@ export async function getTasteModelSnapshot(
 ): Promise<TasteModelSnapshot | null> {
   if (!userId || userId.startsWith('local_')) return null;
 
-  const neonFirst = await readSnapshotFromNeon(userId, scope);
+  const neonFirst = await readSnapshotViaApi(scope);
   if (neonFirst) return neonFirst;
 
   const docId =
