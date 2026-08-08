@@ -34,6 +34,10 @@ starts everything on one port.
   `services/modelConfig.ts` / `lib/models.ts`. Do not hardcode outdated provider model
   strings — defaults track the newest curated catalog IDs (env-overridable via
   `AI_GATEWAY_*_MODEL` in `.env.example`).
+- Server credential order: `getServerAiGatewayKey()` in `lib/aiGatewayCompat.ts` —
+  on Vercel (`process.env.VERCEL`) prefer `VERCEL_OIDC_TOKEN` over `AI_GATEWAY_API_KEY`;
+  local/dev prefers the API key. Do not re-inline `process.env.AI_GATEWAY_API_KEY ||
+  process.env.VERCEL_OIDC_TOKEN` in new call sites.
 - Embeddings: prefer `embedGatewayText` / `embedManyGatewayText` in `lib/ai/generate.ts`
   (or `POST /api/mimi/embed`). Default model is `openai/text-embedding-3-small`. The
   Gemini proxy also remaps `embedContent` through `embedGeminiContentViaGateway`.

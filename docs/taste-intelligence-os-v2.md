@@ -90,12 +90,18 @@ JSONB holds versioned payloads; relational columns support owner/project/status/
 | `/api/mimi/taste-intelligence/calibration/judgment` | POST | Record judgment + deltas |
 | `/api/mimi/taste-intelligence/calibration/session` | GET | Active session |
 | `/api/mimi/taste-intelligence/snapshot/latest` | GET | Latest snapshot (Neon-first) |
+| `/api/mimi/taste-intelligence/snapshot/persist` | POST | Persist snapshot (Neon + dual-write) |
 | `/api/mimi/taste-intelligence/refusals` | GET | Active refusals |
+| `/api/mimi/taste-intelligence/refusals` | POST | Create / update refusal (negative taste) |
+| `/api/mimi/taste-intelligence/model-edits` | POST | Apply graph/model edit |
+| `/api/mimi/taste-intelligence/model-edits/undo` | POST | Undo last model edit |
 | `/api/mimi/taste-intelligence/saved-reason/propose` | POST | Propose why-saved hypotheses for artifact |
 | `/api/mimi/taste-intelligence/saved-reason` | GET | List hypotheses (`?artifactId=`) |
 | `/api/mimi/taste-intelligence/saved-reason/review` | POST | Confirm / reject / edit hypothesis |
 | `/api/mimi/taste-intelligence/compiler/compile` | POST | Compile + reconcile generation contract |
 | `/api/mimi/taste-intelligence/critic/critique` | POST | Critique candidate against contract |
+
+Wiring: Express `server/operationalRoutes.ts` + Vercel catch-all `api/mimi/taste-intelligence/[[...path]].ts` → `lib/tasteIntelligenceRoute.ts`.
 
 Auth: `verifyMimiSession`. Writes: idempotent keys. AI-backed critic extraction: future route via `ai/operations` (credits).
 
@@ -170,7 +176,7 @@ npm run verify:collective
 
 ## Rollout phases
 
-1. **Foundation** (this PR): schema, APIs, calibration, core logic, tests.
-2. **Surface integration**: Scry rerank UI, Pocket why-saved, Studio compiler/critic cards.
+1. **Foundation** — **shipped**: schema, APIs, calibration, core logic, tests.
+2. **Surface integration** — **mostly shipped**: Scry rerank (signed-in), Pocket why-saved queue + a11y, Studio compiler/critic cards with Tailor v2 merge. Remaining: richer Scry “why matched” panels; merge/split graph UI (`TASTE_GRAPH_MERGE_SPLIT`).
 3. **Team**: collaborative contract UI + shared critic.
 4. **Evaluation dashboard** in Tailor Diagnostics.
