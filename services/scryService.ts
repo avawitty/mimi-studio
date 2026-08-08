@@ -1,7 +1,7 @@
 /**
  * Scry orchestration — one ScryRun with four distinct evidence lanes.
  * Synthesis (reading / narrative) prefers AI Gateway via /api/mimi/generate-text.
- * Web / trend grounding keeps Gemini Google Search (gateway chat drops tools).
+ * Web lane: server deep research (/api/you-search) with Gemini Search fallback.
  */
 
 import { auth } from "./firebaseInit";
@@ -18,6 +18,7 @@ import type { CelestialCalibrationDraft } from "../schemas/celestialCalibrationC
 import type { CuriosityPromptId } from "./tailorEvidenceIntake";
 import { buildCuriosityHandoff } from "./tailorEvidenceIntake";
 import { saveCuriosityRecord } from "./curiosityStore";
+import type { YouSearchMappedResult, YouSearchResponse } from "../lib/youSearch";
 import {
   assessScryCoverage,
   createEmptyScryRun,
@@ -121,6 +122,146 @@ export function mapWebHits(raw: unknown, groundingChunks: unknown = []): Researc
   });
 }
 
+/** Map server-side deep research (/api/you-search) into specimen web-lane cards. */
+export function mapYouSearchHits(
+  results: YouSearchMappedResult[],
+  sourceMode?: YouSearchResponse["sourceMode"],
+): ResearchResult[] {
+  return results.slice(0, 12).map((item, index) => {
+    const keywords = item.aestheticSignals?.keywords?.slice(0, 6).join(", ");
+    const tone = item.aestheticSignals?.tone;
+    const relevanceParts = [tone, keywords].filter(Boolean);
+    const url = item.sourceUrl?.trim() || undefined;
+    return {
+      id: url || `you-${index}`,
+      type: item.simulated ? "web_simulated" : "web_reference",
+      title: item.title || "Web research lead",
+      snippet: item.summary || "",
+      url,
+      relevance: relevanceParts.length > 0 ? relevanceParts.join(" · ") : undefined,
+      sourceLane: "web" as const,
+      content: {
+        domain: item.domain,
+        confidence: item.confidence,
+        sourceMode,
+        references: item.aestheticSignals?.references?.slice(0, 6),
+      },
+    };
+  });
+}
+
+export type WebLaneEvidence = {
+  hits: ResearchResult[];
+  status: ResultStatus;
+  sourceMode?: ScryRun["webSourceMode"];
+  notice?: string;
+  provider: string;
+};
+
+async function fetchYouSearchEvidence(
+  query: string,
+  youApiKey?: string,
+): Promise<YouSearchResponse | null> {
+  try {
+    const headers = await authHeaders();
+    const key = (youApiKey || "").trim();
+    if (key) headers["x-api-key"] = key;
+
+    const res = await fetch("/api/you-search", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ query, count: 8 }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as YouSearchResponse;
+  } catch {
+    return null;
+  }
+}
+
+function webStatusForSourceMode(
+  sourceMode: YouSearchResponse["sourceMode"] | undefined,
+  hitCount: number,
+): ResultStatus {
+  if (hitCount === 0) return "empty";
+  if (sourceMode === "gateway-synthesis") return "partial";
+  if (sourceMode === "local-demo") return "simulated";
+  return "success";
+}
+
+/**
+ * Specimen web lane — server deep research first (You.com → Apify → Gateway synthesis),
+ * then Gemini Google Search as live fallback. Returns feed cards + mini write-ups.
+ */
+export async function fetchWebLaneEvidence(
+  query: string,
+  options?: { youApiKey?: string },
+): Promise<WebLaneEvidence> {
+  const youPayload = await fetchYouSearchEvidence(query, options?.youApiKey);
+  const sourceMode = youPayload?.sourceMode;
+  const youHits = mapYouSearchHits(youPayload?.results ?? [], sourceMode);
+
+  const liveModes = new Set(["you.com", "apify"]);
+  if (youHits.length > 0 && sourceMode && liveModes.has(sourceMode)) {
+    return {
+      hits: youHits,
+      status: "success",
+      sourceMode,
+      notice: youPayload?.notice,
+      provider: "you-search",
+    };
+  }
+
+  if (youHits.length > 0 && sourceMode === "gateway-synthesis") {
+    return {
+      hits: youHits,
+      status: "partial",
+      sourceMode,
+      notice:
+        youPayload?.notice ||
+        "AI Gateway synthesis — interpretive research leads, not live web citations.",
+      provider: "you-search",
+    };
+  }
+
+  try {
+    const gemini = (await scryWebSignals(query)) as {
+      results?: unknown;
+      groundingChunks?: unknown;
+    };
+    const geminiHits = mapWebHits(gemini.results, gemini.groundingChunks);
+    if (geminiHits.length > 0) {
+      return {
+        hits: geminiHits,
+        status: "success",
+        sourceMode: "gemini-search",
+        provider: "scryWebSignals",
+      };
+    }
+  } catch {
+    // fall through to any remaining you-search payload
+  }
+
+  if (youHits.length > 0) {
+    return {
+      hits: youHits,
+      status: webStatusForSourceMode(sourceMode, youHits.length),
+      sourceMode: sourceMode || "local-demo",
+      notice:
+        youPayload?.notice ||
+        "Demonstration research coordinates — configure You.com, Apify, or Gateway for live sources.",
+      provider: "you-search",
+    };
+  }
+
+  return {
+    hits: [],
+    status: "empty",
+    provider: "you-search",
+    notice: youPayload?.notice,
+  };
+}
+
 export function mapShadowHits(raw: unknown): ResearchResult[] {
   return asUnknownArray(raw).slice(0, 12).map((item: any, index) => ({
     id: item?.id || `shadow-${index}`,
@@ -221,6 +362,7 @@ export async function runSpecimenScry(options: {
   query: string;
   profile: UserProfile | null;
   geminiKey?: string;
+  youApiKey?: string;
   signal?: AbortSignal;
   curiosityIds?: CuriosityPromptId[];
   customCuriosity?: string;
@@ -259,17 +401,14 @@ export async function runSpecimenScry(options: {
 
   const [archiveSettled, webSettled, shadowSettled] = await Promise.all([
     settleLane("personalMemory", () => searchGrounding(query)),
-    settleLane("web", () => scryWebSignals(query)),
+    settleLane("web", () => fetchWebLaneEvidence(query, { youApiKey: options.youApiKey })),
     settleLane("shadowMemory", () => scryShadowMemoryLane(query)),
   ]);
 
   let webHitsForReading: ResearchResult[] = [];
   if (webSettled.ok === true) {
-    const data = webSettled.value as {
-      results?: unknown;
-      groundingChunks?: unknown;
-    };
-    webHitsForReading = mapWebHits(data.results, data.groundingChunks);
+    const data = webSettled.value as WebLaneEvidence;
+    webHitsForReading = data.hits;
   }
 
   const readingSettled = await settleLane("generatedReading", () =>
@@ -312,17 +451,15 @@ export async function runSpecimenScry(options: {
   }
 
   if (webSettled.ok === true) {
-    const data = webSettled.value as {
-      results?: unknown;
-      groundingChunks?: unknown;
-    };
-    const hits = mapWebHits(data.results, data.groundingChunks);
-    run.sources.web = hits;
-    run.laneStatus.web = hits.length > 0 ? "success" : "empty";
+    const data = webSettled.value as WebLaneEvidence;
+    run.sources.web = data.hits;
+    run.laneStatus.web = data.status;
+    run.webSourceMode = data.sourceMode;
+    run.webNotice = data.notice;
   } else {
     run.laneStatus.web = "failed";
     run.failures.push({
-      provider: "scryWebSignals",
+      provider: "fetchWebLaneEvidence",
       lane: "web",
       message: webSettled.ok === false ? webSettled.error : "Unknown web failure",
       at: Date.now(),

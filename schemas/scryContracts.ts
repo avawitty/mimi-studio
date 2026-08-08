@@ -88,6 +88,9 @@ export interface ScryRun {
     label: string;
   };
   latencyMs?: number;
+  /** Web lane provider chain outcome — honest labeling for specimen feed. */
+  webSourceMode?: "you.com" | "apify" | "gateway-synthesis" | "local-demo" | "gemini-search";
+  webNotice?: string;
   /**
    * When shadow docs exist but sit in a different embedding width than the
    * current query (legacy Gemini vs Gateway OpenAI), Scry can offer reindex.

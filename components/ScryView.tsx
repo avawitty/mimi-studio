@@ -418,6 +418,7 @@ export const ScryView: React.FC = () => {
           query: queryToUse,
           profile,
           geminiKey: apiKeys?.gemini,
+          youApiKey: apiKeys?.you_com,
           signal: controller.signal,
           curiosityIds,
           customCuriosity,
@@ -531,6 +532,7 @@ export const ScryView: React.FC = () => {
             query: scryQuery,
             profile,
             geminiKey: apiKeys?.gemini,
+            youApiKey: apiKeys?.you_com,
             signal: controller.signal,
             curiosityIds,
             customCuriosity,
@@ -698,6 +700,24 @@ export const ScryView: React.FC = () => {
             {run?.latencyMs != null ? (
               <p>
                 Latency: <span className="archive-text-ink">{run.latencyMs}ms</span>
+              </p>
+            ) : null}
+            {run?.webSourceMode ? (
+              <p>
+                Web lane:{" "}
+                <span className="archive-text-ink">
+                  {run.webSourceMode === "you.com"
+                    ? "You.com live"
+                    : run.webSourceMode === "apify"
+                      ? "Apify deep research"
+                      : run.webSourceMode === "gateway-synthesis"
+                        ? "Gateway synthesis"
+                        : run.webSourceMode === "gemini-search"
+                          ? "Gemini Search"
+                          : run.webSourceMode === "local-demo"
+                            ? "Demo coordinates"
+                            : run.webSourceMode}
+                </span>
               </p>
             ) : null}
           </div>
@@ -961,6 +981,11 @@ export const ScryView: React.FC = () => {
                   </div>
 
                   <LaneStrip run={run} busy={isScrying} inverted />
+                  {run?.webNotice ? (
+                    <p className="mt-3 font-mono text-[8px] uppercase tracking-[0.14em] text-white/40 leading-relaxed">
+                      {run.webNotice}
+                    </p>
+                  ) : null}
                   {tasteRanked ? (
                     <p
                       className="mt-3 font-mono text-[8px] uppercase tracking-[0.16em] text-[#9BB8CE]"
@@ -1131,6 +1156,11 @@ export const ScryView: React.FC = () => {
                   </div>
 
                   <LaneStrip run={run} busy={isScrying} />
+                  {run?.webNotice ? (
+                    <p className="mt-3 font-mono text-[8px] uppercase tracking-[0.14em] archive-text-muted leading-relaxed">
+                      {run.webNotice}
+                    </p>
+                  ) : null}
 
                   {run?.shadowIndexHint?.needsReindex ? (
                     <div
