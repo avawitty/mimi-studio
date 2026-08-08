@@ -21,6 +21,13 @@ import { fetchUserSubscription } from '../services/membershipPipeline';
 import { clearLegacyUsedContextState } from '../services/usedContextService';
 import { clearLegacyEditCompileState } from '../lib/editCompileExport';
 import { buildCreditGrant } from '../lib/mimiEntitlements';
+import {
+  DEFAULT_CELESTIAL_CALIBRATION,
+  listEnabledTailorAlgos,
+  normalizeTailorDraft,
+  resolveCelestialCalibration,
+  toggleTailorAlgoDisabled,
+} from '../lib/tailor/tailorDefaults';
 
 interface SystemStatus {
   auth: 'syncing' | 'anchored' | 'offline';
@@ -171,7 +178,7 @@ const DEFAULT_DRAFT: TailorLogicDraft = {
     tonalConstraints: 'Restrained and precise.',
     aestheticDNA: 'Post-Digital Minimalism.'
   },
-  celestialCalibration: { enabled: false, zodiac: 'gemini', astrologicalLineage: '', seasonalAlignment: '' },
+  celestialCalibration: { ...DEFAULT_CELESTIAL_CALIBRATION },
   generationTemperature: 0.8,
   draftStatus: 'provisional',
   lastTailored: Date.now()
@@ -408,9 +415,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const toggleAlgo = (algoId: string) => {
     if (!profile) return;
-    const current = profile.enabledAlgos || [];
-    const next = current.includes(algoId) ? current.filter(a => a !== algoId) : [...current, algoId];
-    updateProfile({ ...profile, enabledAlgos: next });
+    const disabledAlgos = toggleTailorAlgoDisabled(profile, algoId);
+    updateProfile({ ...profile, disabledAlgos, enabledAlgos: undefined });
   };
 
   const setApiKey = (provider: string, key: string) => {
@@ -563,21 +569,24 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const normalizedProfile: UserProfile = isGhostProfile
       ? { ...p, isSwan: false, plan: 'free', planStatus: 'ghost', isPatron: false }
       : p;
+    const withTailor = normalizedProfile.tailorDraft
+      ? { ...normalizedProfile, tailorDraft: normalizeTailorDraft(normalizedProfile.tailorDraft) }
+      : normalizedProfile;
     
-    if (normalizedProfile.personas && normalizedProfile.personas.length > 0) {
-        if (!normalizedProfile.activePersonaId) {
-            return { ...normalizedProfile, activePersonaId: normalizedProfile.personas[0].id };
+    if (withTailor.personas && withTailor.personas.length > 0) {
+        if (!withTailor.activePersonaId) {
+            return { ...withTailor, activePersonaId: withTailor.personas[0].id };
         }
-        return normalizedProfile;
+        return withTailor;
     }
     const defaultPersona: Persona = {
         id: 'persona_default',
         name: 'Personal',
-        tailorDraft: normalizedProfile.tailorDraft || DEFAULT_DRAFT,
+        tailorDraft: withTailor.tailorDraft || DEFAULT_DRAFT,
         createdAt: Date.now()
     };
     return {
-        ...normalizedProfile,
+        ...withTailor,
         personas: [defaultPersona],
         activePersonaId: defaultPersona.id
     };
@@ -1510,7 +1519,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       hasApiKey, openKeySelector, logout, refreshHasApiKey, systemStatus, setOracleStatus,
       apiKeys, setApiKey, removeApiKey, activeLlmProvider, setActiveLlmProvider,
       featureFlags, toggleFeature,
-      enabledAlgos: profile?.enabledAlgos || [],
+      enabledAlgos: listEnabledTailorAlgos(profile ?? undefined),
       toggleAlgo,
       personas: profile?.personas || [],
       activePersonaId: profile?.activePersonaId,

@@ -122,11 +122,17 @@ export const RipPublicPage: React.FC<RipPublicPageProps> = ({
     oppositePalette: rip.oppositePalette,
     oppositeSilhouette: rip.oppositeSilhouette,
     oppositeRegister: rip.oppositeRegister,
-    shadowExperiments: [] as string[],
+    shadowExperiments: rip.shadowExperiments || [],
+    semioticTouchpoints: rip.semioticTouchpoints,
+    inverseRecommendations: rip.inverseRecommendations,
+    inputCoverage: rip.inputCoverage,
     provenanceNotes: [
       "Published inverse projection from Taste Graph material.",
+      rip.inputCoverage
+        ? `Coverage ${Math.round(rip.inputCoverage.coverageScore * 100)}% at publish`
+        : "",
       "Canonical identity remains on mimi.you.",
-    ],
+    ].filter(Boolean),
     visibility: "public" as const,
     createdAt: rip.updatedAt,
     updatedAt: rip.updatedAt,

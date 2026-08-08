@@ -1074,7 +1074,7 @@ const DEFAULT_DRAFT_FALLBACK: TailorLogicDraft = {
     aestheticDNA: "Post-Digital Minimalism.",
   },
   celestialCalibration: {
-    enabled: false,
+    enabled: true,
     zodiac: "gemini",
     astrologicalLineage: "",
     seasonalAlignment: "",
@@ -5806,7 +5806,7 @@ export const TailorView: React.FC<{
                                   <span>Algo Firewall</span>
                                 </GlossaryTooltip>
                               }
-                              description="Arm or disarm specific algorithmic functions for this profile."
+                              description="All algorithms run by default. Disable any you want to keep out of this profile."
                             >
                               <div className="space-y-4">
                                 {[

@@ -19,7 +19,7 @@
 | --- | --- | --- | --- | --- |
 | **Scribe** | `/scribe` | shipped | ResearchMemory nested in Atomize tab | Mobile density pass on long capture sessions |
 | **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
-| **Studio (orientation intake)** | `/studio` | shipped | Imagen-first toolbar (Stock / References toggles); inspo carousel + “Publish my rendition”; Unsplash via `/api/inspo/search`; Pinterest board import; proof-mode stock swap | Promote compose shell (instrument rail + footnote dock) from legacy console after intake |
+| **Studio (orientation intake)** | `/studio` | shipped | Imagen-first toolbar (Stock / References toggles); inspo carousel + “Publish my rendition”; Unsplash via `/api/inspo/search`; Pinterest board import | Promote compose shell (instrument rail + footnote dock) from legacy console after intake |
 | **Studio (compose console)** | `/studio/worktable-legacy` | partial | Extracted `StudioInstrumentRail`, footnote dock (Continuum · Pocket · Telemetry), polaroid media bar, auto cover index; spectrogram reverse-transcribe not wired | Mount post-intake on `/studio`; live telemetry beyond decorative dash |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab |
@@ -46,6 +46,7 @@
 | **Mean Median Mode** | `/mean-median-mode` | **stub** | Same demonstration fixture as Observatory | Collapse or differentiate from Observatory overview |
 | **Forecast** | `/forecast` | partial | Observed panel uses **demonstration** MMM; content vectors key-gated | Remove any residual costume metrics; add Forecast to menu (`prd/chamber-loop-…`) |
 | **Celestial Calibration** | `/celestial-calibration` | shipped | Rising/houses need time + geocoded place | — |
+| **Oracle** | `/oracle` | **partial** | Cyberdeck voice overlay shipped; chamber reports + theme analysis now local-first (`oracleChamberService`); not in `CANON_MODULES` yet; celestial readings ephemeral | Register in canon; optional Neon sync for cross-device reports |
 
 ---
 

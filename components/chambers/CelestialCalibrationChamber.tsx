@@ -8,6 +8,7 @@ import {
   CELESTIAL_HANDOFF_TARGETS,
 } from "../../lib/celestialChamberContract";
 import { compileCelestialReadout } from "../../lib/celestial/compileCelestialReadout";
+import { describeCelestialReadoutGaps } from "../../lib/celestial/celestialReadoutCompleteness";
 import { CELESTIAL_BODY_LABELS } from "../../lib/celestial/bodyLabels";
 import { formatAspect } from "../../lib/celestial/aspects";
 import {
@@ -17,9 +18,13 @@ import {
 import { ASTRONOMICAL_SEASON_LABELS } from "../../lib/celestial/seasonalAlignment";
 import type { CelestialCalibrationDraft } from "../../schemas/celestialCalibrationContracts";
 import type { ZodiacSign } from "../../types";
+import {
+  DEFAULT_CELESTIAL_CALIBRATION,
+  resolveCelestialCalibration,
+} from "../../lib/tailor/tailorDefaults";
 
 const emptyDraft = (): CelestialCalibrationDraft => ({
-  enabled: false,
+  ...DEFAULT_CELESTIAL_CALIBRATION,
   zodiac: undefined,
   birthDate: "",
   birthTime: "",
@@ -29,9 +34,6 @@ const emptyDraft = (): CelestialCalibrationDraft => ({
   birthLongitude: undefined,
   geocodeLabel: "",
   geocodeStatus: "unset",
-  astrologicalLineage: "",
-  seasonalAlignment: "",
-  zodiacLocked: false,
 });
 
 function draftFromProfile(profile: {
@@ -42,13 +44,14 @@ function draftFromProfile(profile: {
   tailorDraft?: { celestialCalibration?: CelestialCalibrationDraft };
 }): CelestialCalibrationDraft {
   const fromTailor = profile.tailorDraft?.celestialCalibration;
+  const resolved = resolveCelestialCalibration(fromTailor);
   return {
     ...emptyDraft(),
-    ...(fromTailor || {}),
-    birthDate: fromTailor?.birthDate || profile.birthDate || "",
-    birthTime: fromTailor?.birthTime || profile.birthTime || "",
-    birthLocation: fromTailor?.birthLocation || profile.birthLocation || "",
-    zodiac: fromTailor?.zodiac || profile.zodiacSign,
+    ...resolved,
+    birthDate: resolved.birthDate || profile.birthDate || "",
+    birthTime: resolved.birthTime || profile.birthTime || "",
+    birthLocation: resolved.birthLocation || profile.birthLocation || "",
+    zodiac: resolved.zodiac || profile.zodiacSign,
   };
 }
 
@@ -73,6 +76,7 @@ export const CelestialCalibrationChamber: React.FC<{
   }, [profileUid, tailorStamp]);
 
   const readout = useMemo(() => compileCelestialReadout(draft), [draft]);
+  const readoutGaps = useMemo(() => describeCelestialReadoutGaps(draft), [draft]);
 
   const patch = (partial: Partial<CelestialCalibrationDraft>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
@@ -215,12 +219,12 @@ export const CelestialCalibrationChamber: React.FC<{
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={Boolean(draft.enabled)}
-                  onChange={(e) => patch({ enabled: e.target.checked })}
+                  checked={!draft.enabled}
+                  onChange={(e) => patch({ enabled: !e.target.checked })}
                   className="accent-nous-text"
                 />
                 <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
-                  Use in generation
+                  Exclude from zines
                 </span>
               </label>
             </div>
@@ -295,8 +299,18 @@ export const CelestialCalibrationChamber: React.FC<{
               </label>
             </div>
             {!draft.birthDate ? (
-              <p className="font-sans text-[11px] text-nous-subtle">
-                {CELESTIAL_CHAMBER_COPY.emptyBirthDate}
+              <div className="border border-amber-500/30 bg-amber-500/5 px-4 py-3 space-y-2">
+                <p className="font-mono text-[8px] uppercase tracking-[0.24em] text-amber-700 dark:text-amber-300">
+                  Partial readout
+                </p>
+                <p className="font-sans text-[11px] text-nous-subtle leading-relaxed">
+                  {CELESTIAL_CHAMBER_COPY.emptyBirthDate}
+                </p>
+              </div>
+            ) : readoutGaps.missingForFull.length > 0 ? (
+              <p className="font-sans text-[11px] text-nous-subtle leading-relaxed">
+                Natal Sun is active. Still optional:{" "}
+                {readoutGaps.missingForFull.join("; ")}.
               </p>
             ) : null}
           </section>

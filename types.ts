@@ -514,6 +514,17 @@ export interface Persona {
   };
 }
 
+/** Ephemeris-backed celestial data stamped on generated zines. */
+export interface ZineCelestialReadout {
+  calibration: string;
+  natal: import("./schemas/celestialCalibrationContracts").CelestialReadout | null;
+  issueMomentUtc: string;
+  issueMomentSummary: string;
+  scopeNotice: string;
+  readoutComplete: boolean;
+  missingForFull: string[];
+}
+
 export interface ZineSpec {
   id?: string;
   meta: {
@@ -555,6 +566,8 @@ export interface ZineSpec {
   semiotic_signals?: SemioticSignal[];
   aesthetic_touchpoints?: AestheticTouchpoint[];
   celestial_calibration?: string;
+  /** Ephemeris-backed celestial stamp (natal + issue-moment sky). */
+  celestial_readout?: ZineCelestialReadout;
   visual_plates?: string[];
   the_roadmap?: string;
   originalThought?: string;
@@ -1674,7 +1687,9 @@ export interface UserPreferences {
   savedTreatments?: StyleTreatment[];
   starredZineIds?: string[];
   lastAuditReport?: TailorAuditReport;
-  enabledAlgos?: string[]; // NEW: User-defined firewalls for specific functions
+  enabledAlgos?: string[]; // legacy opt-in list (migrated to disabledAlgos)
+  /** Opt-out list — algos not listed here are enabled by default. */
+  disabledAlgos?: string[];
   zineOptions?: ZineGenerationOptions;
   agentConfig?: {
     curatorEnabled: boolean;
@@ -2641,10 +2656,107 @@ export interface PublicShowcaseSnapshot {
  * Inverse taste projection ("mimi.rip") — diagnostic dark mirror of the Taste Graph.
  * Not identity. Private by default; publish via PublicRipSnapshot.
  */
+
+/** Deterministic inverse-reading operators — how a field was elected. */
+export type RipInverseFunction =
+  | "complement"
+  | "contrast"
+  | "admission"
+  | "shadow_projection"
+  | "semiotic_inversion"
+  | "material_flip"
+  | "register_shift"
+  | "proportion_disruption"
+  | "typographic_mirror"
+  | "temporal_reversal";
+
+/** Taste Graph source that fed a rip field or inversion. */
+export type RipSourceKind =
+  | "likeness_manifest"
+  | "evidence_dossier"
+  | "doll_projection"
+  | "tailor_draft"
+  | "synthesized";
+
+export interface RipInputCoverage {
+  hasLikeness: boolean;
+  hasDossier: boolean;
+  hasDoll: boolean;
+  hasTailorDraft: boolean;
+  /** 0–1: how much approved graph material was available */
+  coverageScore: number;
+  activeSources: RipSourceKind[];
+  dollName?: string;
+  dollId?: string;
+  containerName?: string;
+  inversionCount: number;
+  evidenceRefCount: number;
+}
+
+export interface RipFieldAttribution {
+  field: string;
+  sources: RipSourceKind[];
+  rationale: string;
+  confidence: number;
+  inverseFunction?: RipInverseFunction;
+  contributingValues?: string[];
+}
+
 export interface RipInversionCard {
   becauseYouTendTo: string;
   tryInstead: string;
   evidenceRefIds: string[];
+  sources?: RipSourceKind[];
+  confidence?: number;
+  rationale?: string;
+  inverseFunction?: RipInverseFunction;
+  semioticNode?: string;
+}
+
+/** Inverse semiotic touchpoint — cultural node adjacent to refusals, not literal subject mapping. */
+export interface RipSemioticTouchpoint {
+  motif: string;
+  context: string;
+  culturalNode: string;
+  inverseRationale: string;
+  resonance: number;
+  visualDirective: string;
+  savableKind: RipSavableInsightKind;
+  linkedAntiMotif?: string;
+  inverseFunction?: RipInverseFunction;
+}
+
+export interface RipInverseRecommendation {
+  title: string;
+  action: string;
+  rationale: string;
+  inverseFunction: RipInverseFunction;
+  priority: number;
+  savableKind: RipSavableInsightKind;
+}
+
+export type RipSavableInsightKind =
+  | "anti_motif"
+  | "blind_spot"
+  | "inversion"
+  | "touchpoint"
+  | "experiment"
+  | "palette_token"
+  | "register_shift"
+  | "silhouette_cue";
+
+/** User-pinned inverse insight from a rip reading (Firestore `ripInsights`). */
+export interface RipSavableInsight {
+  id: string;
+  ownerUid: string;
+  kind: RipSavableInsightKind;
+  label: string;
+  value: string;
+  ripReadingId: string;
+  inverseFunction?: RipInverseFunction;
+  savedAt: number;
+  intent?: "shadow_reference" | "experiment_prompt" | "creative_constraint";
+  tags?: string[];
 }
 
 export interface RipReading {
@@ -2675,6 +2787,11 @@ export interface RipReading {
   shadowExperiments: string[];
   /** Provenance notes for transparency */
   provenanceNotes: string[];
+  /** Input coverage + election transparency */
+  inputCoverage?: RipInputCoverage;
+  fieldAttributions?: RipFieldAttribution[];
+  semioticTouchpoints?: RipSemioticTouchpoint[];
+  inverseRecommendations?: RipInverseRecommendation[];
   visibility: "private" | "public";
   createdAt: number;
   updatedAt: number;
@@ -2692,6 +2809,10 @@ export interface PublicRipSnapshot {
   oppositeSilhouette: string;
   oppositeRegister: string;
   inversions: RipInversionCard[];
+  shadowExperiments?: string[];
+  semioticTouchpoints?: RipSemioticTouchpoint[];
+  inverseRecommendations?: RipInverseRecommendation[];
+  inputCoverage?: RipInputCoverage;
   sourceRipId: string;
   accentHex: string;
   updatedAt: number;

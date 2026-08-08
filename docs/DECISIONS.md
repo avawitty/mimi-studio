@@ -10,6 +10,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Oracle chamber reports (local-first cyberdeck UX)
+
+**Decision:** Redesign `/oracle` with cyberdeck instrument plates (matching `TheScribe` atmosphere). Persist Cyberdeck sessions locally via `services/oracleChamberService.ts` on chamber close/export; surface **Chamber Reports** (past transmissions) and **Recurring Themes** (client-side frequency extraction) on the Oracle page. Pocket export remains the durable archive path.
+
+**Alternatives rejected:** (1) Firestore collection for every voice snippet (quota + latency). (2) AI-generated theme summaries on each page load (cost + latency). (3) Flattening Oracle to quiet public kit (product exempts Oracle cyberdeck density).
+
+**Why:** Users need continuity across communes without manual Pocket export; local storage is honest for unsigned/offline use and matches other chamber-local patterns (`mimi_audits_*`, quiet studio ops).
+
+**Ref:** `components/TheOracle.tsx`, `components/oracle/*`, `components/TheScribe.tsx`, `services/oracleChamberService.ts`
+
+---
+
 ## 2026-08-08 — AI Gateway funding for TTS + Oracle Cyberdeck live voice
 
 **Decision:** Route Gemini-compat TTS (`responseModalities: AUDIO`, `*-tts-*` models) through `generateGatewaySpeech` in `/api/proxy/gemini` with funded-gateway metering. Mint Oracle Cyberdeck live sessions via `gateway.experimental_realtime.getToken` in `/api/live/token` when `AI_GATEWAY_API_KEY` is configured; client connects with `GatewayLiveConnection` (WebSocket codec). Keep Gemini ephemeral tokens as fallback when gateway is absent or for BYOK `x-api-key`.
@@ -495,7 +509,7 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Why:** Post-generation critique must evaluate what was produced, with honest partial states when imagery cannot be analyzed.
 
-**Ref:** `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`, `hooks/useStudioTasteCompiler.ts`
+**Ref:** `hooks/useStudioTasteCompiler.ts`, `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`
 
 ---
 
@@ -508,3 +522,40 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Rationale:** Mesopic vision metaphor matches low-light reading honesty; curiosity as a distinct data form enables pattern reports without approving Taste Graph memory. Observatory Mesopic remains collective faint signals only.
 
 **Ref:** `components/chambers/MesopicLensChamber.tsx`, `services/mesopicLensService.ts`, `services/curiosityStore.ts`, `schemas/curiosityContracts.ts`, `lib/curiosity/curiosityAnalytics.ts`, `services/scryService.ts`, `npm run verify:curiosity-tracking`
+
+---
+
+## 2026-08-08 — Studio zine generation: direct engine + layout enhancement
+
+**Decision:** `createZine` no longer runs the editorial issue-plan / proof pipeline (`realizeZineContentFromPlan`). Raw model output is post-processed with `enhanceZineGenerationLayout` — stable page IDs, grammars, and default spread layouts via `buildDefaultSpreadElements`. Hi-fi plate bake develops any page with an `imagePrompt` (no plan slot filter). Proof mode UI removed from zine reveal.
+
+**Alternatives rejected:** (1) Keep issue-plan compression in the generation hot path — added compile/proof complexity without improving first reveal. (2) Delete all plan/proof libraries — retained for legacy artifact hydration and Edit/Press export; not wired into Studio generation.
+
+**Why:** Creators asked for operable generation with better layout, not an extra proof/compile gate before reading the issue.
+
+**Ref:** `lib/zine/enhanceZineGenerationLayout.ts`, `services/zineGenerator.ts`, `lib/bakeZinePlates.ts`, `components/AnalysisDisplay.tsx`
+
+---
+
+## 2026-08-08 — Zines stamp ephemeris-backed celestial calibration
+
+**Decision:** After `createZine` returns model JSON, `applyCelestialToZine` overwrites `celestial_calibration` with authoritative ephemeris data from `astronomy-engine` (already a project dependency). When Celestial Calibration is enabled on the Tailor profile, natal Sun/Moon/Rising (when resolvable) and seasonal alignment are persisted on `content.celestial_readout`. Every issue also records issue-moment sky at composition time.
+
+**Alternatives rejected:** (1) Let the model invent poetic celestial copy — drifts from chamber math. (2) Add a new ephemeris package — `astronomy-engine` + existing `lib/celestial/ephemeris.ts` already cover natal positions.
+
+**Why:** Creators who opt into Celestial Calibration should see their calibrated timing in the finished zine, not only in generation prompts.
+
+**Ref:** `lib/celestial/applyCelestialToZine.ts`, `services/zineGenerator.ts`, `components/AnalysisDisplay.tsx`, `schemas/celestialCalibrationContracts.ts`
+
+---
+
+## 2026-08-08 — Tailor defaults: opt-out, not opt-in
+
+**Decision:** Tailor capabilities default **on**. Celestial Calibration `enabled` defaults to `true` for new and legacy profiles where the flag was never set. Algo Firewall uses `disabledAlgos` (opt-out list); all five algos run until explicitly disabled. Legacy `enabledAlgos` opt-in arrays migrate on read.
+
+**Alternatives rejected:** (1) Keep opt-in toggles — creators had to discover features before zines used them. (2) Force-migrate explicit `enabled: false` saves — respect intentional disables.
+
+**Why:** Studio output should include celestial timing and core algos without a setup gate; users turn off what they don't want.
+
+**Ref:** `lib/tailor/tailorDefaults.ts`, `contexts/UserContext.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`
+
