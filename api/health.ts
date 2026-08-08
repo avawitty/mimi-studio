@@ -1,4 +1,5 @@
 import { cors, sendJson } from "../lib/apiUtils.js";
+import { getServerAiGatewayKey } from "../lib/aiGatewayCompat.js";
 import { isSovereignEnabled } from "../lib/sovereign/db.js";
 import { isSovereignGatewayEmbedEnabled } from "../lib/sovereign/embeddings.js";
 import { neonAuthStatusSnippet } from "../lib/sovereign/neonAuth.js";
@@ -48,9 +49,7 @@ export default async function handler(req: any, res: any) {
     process.env.MIMI_ENABLE_SERVER_AI === "true" ||
     process.env.MIMI_ENABLE_SERVER_AI === "1";
 
-  const aiGatewayAvailable = Boolean(
-    process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN,
-  );
+  const aiGatewayAvailable = Boolean(getServerAiGatewayKey());
 
   let sovereign: Record<string, unknown> = fallbackSovereignStatus();
   try {

@@ -1,3 +1,5 @@
+import { getServerAiGatewayKey } from "./aiGatewayCompat.js";
+
 export const readJsonBody = async (req: any) => {
   if (req.body && typeof req.body === "object") return req.body;
   if (typeof req.body === "string") {
@@ -99,7 +101,7 @@ export const providerKey = (req: any, provider: "gemini" | "anthropic" | "openai
   // server.ts auto-enable, and image routes that prefer the gateway would
   // otherwise silently fall into Simulated Mirror Mode.
   if (provider === "gateway") {
-    return process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+    return getServerAiGatewayKey();
   }
 
   if (!serverAiEnabled()) return "";
