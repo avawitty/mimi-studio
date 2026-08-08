@@ -2276,6 +2276,8 @@ export interface PatternCluster {
   category: ObservationCategory;
   observationIds: string[];
   supportingEvidenceNodeIds: string[];
+  /** Canonical taste evidence atoms mirrored from supportingEvidenceNodeIds */
+  supportingEvidenceAtomIds?: string[];
   frequency: number;
   confidence: number;
   possibleInterpretations: string[];
@@ -2296,6 +2298,8 @@ export interface CreativeLaw {
   explanation: string;
   supportingPatternClusterIds: string[];
   supportingEvidenceNodeIds: string[];
+  /** Canonical taste evidence atoms mirrored from supportingEvidenceNodeIds */
+  supportingEvidenceAtomIds?: string[];
   confidence: number;
   claimType: ClaimType;
   userStatus: UserCurationStatus;

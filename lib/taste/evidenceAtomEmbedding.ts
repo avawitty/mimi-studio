@@ -52,3 +52,92 @@ export async function embedAndStoreEvidenceAtom(
 
   return embeddingRef;
 }
+
+export interface BackfillEvidenceAtomEmbeddingsResult {
+  scanned: number;
+  embedded: number;
+  skipped: number;
+  failed: number;
+}
+
+/**
+ * Backfill embeddingRef for analyzed atoms that predate embedding storage.
+ * Requires funded gateway key — intended for server/admin maintenance paths.
+ */
+export async function backfillEvidenceAtomEmbeddings(
+  db: AdminDb,
+  userId: string,
+  apiKey: string,
+  options: { projectId?: string; limit?: number } = {},
+): Promise<BackfillEvidenceAtomEmbeddingsResult> {
+  const result: BackfillEvidenceAtomEmbeddingsResult = {
+    scanned: 0,
+    embedded: 0,
+    skipped: 0,
+    failed: 0,
+  };
+
+  if (!db || !userId || !apiKey) return result;
+
+  const cap = options.limit ?? 50;
+  let queryRef = db
+    .collection("users")
+    .doc(userId)
+    .collection("evidenceAtoms")
+    .where("processingState", "==", "analyzed")
+    .orderBy("createdAt", "desc")
+    .limit(cap);
+
+  if (options.projectId) {
+    queryRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("evidenceAtoms")
+      .where("projectId", "==", options.projectId)
+      .where("tasteImpact", "==", true)
+      .orderBy("createdAt", "desc")
+      .limit(cap);
+  }
+
+  const snap = await queryRef.get();
+  for (const docSnap of snap.docs) {
+    result.scanned += 1;
+    const atom = docSnap.data() as {
+      id?: string;
+      embeddingRef?: string;
+      semanticDescription?: string;
+      originalSource?: string;
+    };
+    const atomId = atom.id || docSnap.id;
+
+    if (atom.embeddingRef) {
+      result.skipped += 1;
+      continue;
+    }
+
+    const text = (atom.semanticDescription || atom.originalSource || "").trim();
+    if (!text) {
+      result.skipped += 1;
+      continue;
+    }
+
+    try {
+      const embeddingRef = await embedAndStoreEvidenceAtom(db, userId, atomId, text, apiKey);
+      if (!embeddingRef) {
+        result.failed += 1;
+        continue;
+      }
+      await db
+        .collection("users")
+        .doc(userId)
+        .collection("evidenceAtoms")
+        .doc(atomId)
+        .update({ embeddingRef, updatedAt: Date.now() });
+      result.embedded += 1;
+    } catch {
+      result.failed += 1;
+    }
+  }
+
+  return result;
+}

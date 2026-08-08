@@ -47,12 +47,16 @@ async function resolveTasteAugmentedSystem(
   req: any,
   baseSystem: string | undefined,
   tasteContext?: string,
+  options?: { queryText?: string; apiKey?: string },
 ): Promise<string | undefined> {
   try {
     const decoded = await verifyMimiSession(req.headers || {});
     const { db } = getServerFirebaseAdmin();
     if (!db) return baseSystem;
-    const tasteBlock = await getServerTastePromptContext(db, decoded.uid, tasteContext as any);
+    const tasteBlock = await getServerTastePromptContext(db, decoded.uid, tasteContext as any, {
+      queryText: options?.queryText,
+      apiKey: options?.apiKey,
+    });
     if (!tasteBlock) return baseSystem;
     return baseSystem ? `${baseSystem}\n\n${tasteBlock}` : tasteBlock;
   } catch {
@@ -110,7 +114,10 @@ export async function handleMimiGenerateTextRoute(req: any, res: any) {
     }
 
     const role = (input.role || "textFast") as GatewayTextRole;
-    const system = await resolveTasteAugmentedSystem(req, input.system, input.tasteContext);
+    const system = await resolveTasteAugmentedSystem(req, input.system, input.tasteContext, {
+      queryText: input.prompt,
+      apiKey,
+    });
 
     const result = await generateGatewayText({
       prompt: input.prompt,

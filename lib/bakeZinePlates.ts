@@ -109,9 +109,16 @@ export async function bakeZineVisualPlates(
   const useStock = shouldResolveStockPlates(plateMediaMode);
   const useAi = shouldAiGeneratePlates(plateMediaMode);
 
+  const retrievalQuery =
+    content.hero_image_prompt ||
+    content.header_image_prompt ||
+    content.headlines?.[0] ||
+    content.title ||
+    undefined;
+
   const tastePromptBlock =
     options.ownerUid && useAi
-      ? await fetchTastePromptContext(options.tasteContext || "editorial")
+      ? await fetchTastePromptContext(options.tasteContext || "editorial", retrievalQuery)
       : "";
   const withTaste = (prompt: string) =>
     tastePromptBlock ? `${prompt}\n\n${tastePromptBlock}` : prompt;

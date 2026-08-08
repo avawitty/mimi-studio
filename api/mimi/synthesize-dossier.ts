@@ -81,11 +81,14 @@ export default async function handler(req: any, res: any) {
       const { getServerTastePromptContext } = await import("../../lib/taste/serverTasteState.js");
       const decoded = await verifyMimiSession(req.headers || {});
       const { db } = getServerFirebaseAdmin();
-      if (db) {
+      if (db && apiKey) {
+        const retrievalQuery =
+          userBlurb?.trim() || blueprintDigest?.trim()?.slice(0, 500) || undefined;
         const tasteBlock = await getServerTastePromptContext(
           db,
           decoded.uid,
           input.tasteContext,
+          { queryText: retrievalQuery, apiKey },
         );
         if (tasteBlock) systemPrompt = `${systemPrompt}\n\n${tasteBlock}`;
       }

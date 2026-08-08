@@ -1,5 +1,6 @@
 import type {
   CreativeLaw,
+  EvidenceAtom,
   EvidenceNode,
   EvidenceSummary,
   Observation,
@@ -16,6 +17,8 @@ import {
   updateEvidenceNode,
   updateTailorProject,
 } from './tailorService';
+import { queryEvidenceAtoms } from './taste/evidenceAtomService';
+import { atomIdsForEvidenceNodes, buildTailorNodeToAtomMap } from '../lib/taste/tailorEvidenceAtomMap';
 
 type ObservationDraft = Omit<Observation, 'id' | 'userId' | 'projectId' | 'createdAt' | 'userStatus'>;
 type PatternClusterDraft = Omit<
@@ -272,6 +275,13 @@ export async function runMockTailorAnalysis(
   const evidence = await listEvidenceNodes(userId, projectId);
   if (evidence.length < 1) throw new Error('At least one evidence node required');
 
+  const projectAtoms = await queryEvidenceAtoms(userId, {
+    projectId,
+    tasteImpact: true,
+    maxResults: 200,
+  }).catch((): EvidenceAtom[] => []);
+  const nodeToAtom = buildTailorNodeToAtomMap(projectAtoms);
+
   const project = await getTailorProject(userId, projectId);
   await updateTailorProject(userId, projectId, { analysisStatus: 'processing', blurb });
 
@@ -304,6 +314,7 @@ export async function runMockTailorAnalysis(
     output.patternClusters.map((cluster) => ({
       ...cluster,
       observationIds: unique(cluster.supportingEvidenceNodeIds.flatMap((id) => observationIdsByEvidence[id] ?? [])),
+      supportingEvidenceAtomIds: atomIdsForEvidenceNodes(cluster.supportingEvidenceNodeIds, nodeToAtom),
       userStatus: 'suggested',
       userWeight: 'medium',
     })),
@@ -322,6 +333,7 @@ export async function runMockTailorAnalysis(
     output.creativeLaws.map((law) => ({
       ...law,
       supportingPatternClusterIds: unique(law.supportingEvidenceNodeIds.flatMap((id) => clusterIdsByEvidence[id] ?? [])),
+      supportingEvidenceAtomIds: atomIdsForEvidenceNodes(law.supportingEvidenceNodeIds, nodeToAtom),
       userStatus: 'suggested',
     })),
   );

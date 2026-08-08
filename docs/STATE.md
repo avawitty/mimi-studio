@@ -28,7 +28,7 @@
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
 | **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; computational model (#224) inspector wired | Wire embedding similarity into candidate score; complete atom migration |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP compiler + scoring; no embedding similarity in candidate score yet | Server-side recompile trigger; atom bridge completion |
-| **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
+| **Taste Intelligence (EvidenceAtom)** | — | **shipped** | Phase 1–3: semantic retrieval, atom supersession, Tailor atom id links | Optional backfill of atom ids on legacy clusters |
 
 ---
 
@@ -87,7 +87,7 @@
 | **Shadow memory migration** | shipped | UID-gated reindex | — |
 | **Gateway entitlements** | shipped | Stripe + promo paths | — |
 | **Serverless lazy graphs** | shipped | CI: `verify:api-lazy-graphs` | — |
-| **Taste Intelligence (Phase 1)** | infrastructure | Analysis queue on ingest; `GET /api/mimi/taste-state`; taste context in generate-text + create-zine | Pocket mirror; embed pipeline |
+| **Taste Intelligence (Phase 1–3)** | shipped | Semantic retrieval, atom supersession, Tailor atom id links | Optional backfill of atom ids on legacy clusters |
 | **Taste Corpus explorer** | `/taste-corpus` | shipped | Demonstration seed manifest (20 specimens) | Wire `--from-sovereign` export; expand corpus from Floor covers |
 | **Public face kit** | — | shipped | `PublicField` + `isPublicEditorialFlowMode` single-scroll contract | Audit remaining dark-plate chambers for nested scroll only if reported |
 

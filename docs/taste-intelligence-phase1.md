@@ -53,10 +53,11 @@ Existing collections **remain** in Phase 1:
 
 ## Ingest paths
 
-1. **API** — `POST /api/mimi/evidence` (preferred for server-side ingest) → queues analysis when `AI_GATEWAY_API_KEY` is set
+1. **API** — `POST /api/mimi/evidence` (preferred for server-side ingest)
 2. **Analyze** — `POST /api/mimi/evidence/analyze` `{ atomId }` (session + funded gateway)
 3. **Client** — `createEvidenceAtom(userId, input)` → schedules analyze via API
 4. **Tailor bridge** — `addEvidenceNode` → `evidenceNodeToAtomInput` → `createEvidenceAtom` (fire-and-forget)
+5. **Pocket bridge** — `addToPocket` → `pocketItemToAtomInput` → `createEvidenceAtom` (fire-and-forget)
 
 ## Generation context
 
@@ -65,14 +66,41 @@ Signed-in requests to these routes receive `TASTE INTELLIGENCE` in the system pr
 - `POST /api/mimi/generate-text` (optional `tasteContext` in body)
 - `POST /api/mimi/create-zine` (optional `tasteContext` in body)
 
-Read path: `GET /api/mimi/taste-state?context=editorial`
+Read path: `GET /api/mimi/taste-state?context=editorial&q=sparse+editorial+spread`
 
-## Known debt (Phase 1.5+)
+Semantic search: `POST /api/mimi/evidence/search` `{ query, context?, projectId?, maxResults? }`
 
-- [ ] Post-ingest analysis hook (`analyze-image` / embed) after atom create
+When `q` / `queryText` is provided and AI Gateway is available, `relevantEvidence` is ranked by cosine similarity over `embeddingRef` vectors (fallback: recency).
+
+## Embeddings
+
+After interpretation via the funded analyze route, `runEvidenceAtomAnalysis` embeds `semanticDescription` (or `originalSource` fallback) via AI Gateway and stores the vector at:
+
+```
+users/{uid}/evidenceAtomEmbeddings/{atomId}
+```
+
+The atom's `embeddingRef` field stores the stable path `users/{uid}/evidenceAtomEmbeddings/{atomId}`.
+
+### Embedding backfill
+
+`backfillEvidenceAtomEmbeddings()` in `lib/taste/evidenceAtomEmbedding.ts` embeds analyzed atoms missing `embeddingRef`. Project-scoped backfill uses the composite index `projectId + tasteImpact + createdAt` (see `firestore.indexes.json`).
+
+### Deployed query failures
+
+Missing indexes surface as `EvidenceAtomQueryError` with code `INDEX_REQUIRED` — not silent empty results. `/api/mimi/evidence/search` returns HTTP 503 with `INDEX_REQUIRED` when the composite index is not deployed.
+
+## Known debt (Phase 2+)
+
+- [x] Post-ingest analysis hook after atom create (client `scheduleEvidenceAtomAnalysis`)
 - [x] `GET /api/mimi/taste-state` for server-side generation
-- [ ] Pocket mirror (like Tailor bridge)
-- [x] Migrate generation routes to inject `tasteStateToPromptContext()`
+- [x] Pocket mirror (like Tailor bridge)
+- [x] Embedding refs on atoms after analysis
+- [x] Taste context in zine bake + dossier synthesis routes
+- [x] Semantic retrieval using `embeddingRef` in taste state + generation
+- [x] Scribe specimen retrieval prefers `EvidenceAtom`; legacy `EvidenceNode` fallback only when unmigrated
+- [x] Tailor clusters/laws store `supportingEvidenceAtomIds` alongside node ids
+- [x] Taste Graph panel semantic search via `POST /api/mimi/evidence/search`
 - [ ] Deprecate duplicate reads from `EvidenceNode` where `EvidenceAtom` supersedes
 
 ## Correction loop

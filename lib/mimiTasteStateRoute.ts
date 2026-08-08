@@ -7,6 +7,7 @@ import {
 } from "./apiUtils.js";
 import { verifyMimiSession, getServerFirebaseAdmin } from "./serverFirebaseAdmin.js";
 import { getServerTasteState } from "./taste/serverTasteState.js";
+import { getServerAiGatewayKey } from "./aiGatewayCompat.js";
 import type { TasteScope } from "../types.js";
 
 const querySchema = z.object({
@@ -21,6 +22,7 @@ const querySchema = z.object({
       "experimental",
     ])
     .optional(),
+  q: z.string().trim().min(1).max(8000).optional(),
 });
 
 /**
@@ -46,7 +48,10 @@ export async function handleMimiTasteStateRoute(req: any, res: any) {
     }
 
     const context = parsed.data.context as TasteScope | undefined;
-    const state = await getServerTasteState(db, decoded.uid, context);
+    const state = await getServerTasteState(db, decoded.uid, context, {
+      queryText: parsed.data.q,
+      apiKey: getServerAiGatewayKey(),
+    });
 
     sendJson(res, 200, { state });
   } catch (error) {

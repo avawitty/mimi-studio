@@ -1,4 +1,12 @@
-import type { TasteState } from "../../types";
+import type { EvidenceAtom, TasteState } from "../../types";
+
+function formatEvidenceAtomLine(atom: EvidenceAtom): string {
+  const label = atom.kind;
+  const description =
+    atom.semanticDescription?.trim() ||
+    atom.originalSource.trim().slice(0, 160);
+  return `  • [${label}] ${description}`;
+}
 
 /**
  * Format a TasteState as a concise prompt segment for generation context.
@@ -41,6 +49,16 @@ export function tasteStateToPromptContext(state: TasteState): string {
     lines.push("TENSIONS:");
     for (const t of state.tensions.slice(0, 3)) {
       lines.push(`  • ${t.conceptA} ↔ ${t.conceptB}`);
+    }
+  }
+
+  const relevantEvidence = (state.relevantEvidence || []).filter(
+    (atom) => atom.userReaction !== "rejected",
+  );
+  if (relevantEvidence.length > 0) {
+    lines.push("RELEVANT EVIDENCE:");
+    for (const atom of relevantEvidence.slice(0, 6)) {
+      lines.push(formatEvidenceAtomLine(atom));
     }
   }
 
