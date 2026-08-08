@@ -42,8 +42,8 @@ describe("tailor opt-out defaults", () => {
   });
 
   it("enables all editorial plates by default", () => {
-    expect(listEnabledEditorialPlates(undefined)).toHaveLength(6);
-    expect(listEnabledEditorialPlates({})).toHaveLength(6);
+    expect(listEnabledEditorialPlates(undefined)).toHaveLength(10);
+    expect(listEnabledEditorialPlates({})).toHaveLength(10);
   });
 
   it("toggles editorial plates via disabledPlates opt-out", () => {

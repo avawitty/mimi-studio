@@ -9,3 +9,7 @@ export { DossierTab } from "./DossierTab";
 export { AtelierDesk } from "./AtelierDesk";
 export { FilingFolder } from "./FilingFolder";
 export { OracleSpecimenHero } from "./OracleSpecimenHero";
+export { PublicProfileCard } from "./PublicProfileCard";
+export type { PublicProfileCardProps } from "./PublicProfileCard";
+export { PublicProfileCardCompact } from "./PublicProfileCardCompact";
+export type { PublicProfileCardCompactProps } from "./PublicProfileCardCompact";

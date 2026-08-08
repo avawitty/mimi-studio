@@ -12,6 +12,11 @@ export interface ForecastTrend {
   analysis: string;
 }
 
+import {
+  buildForecastSearchQuery,
+  type ForecastQueryContext,
+} from "../lib/forecastIntake";
+
 export interface ResearchSynthesisResponse {
   synthesis: string;
   trends: ForecastTrend[];
@@ -215,9 +220,11 @@ ${evidence}`,
  */
 export const fetchContentForecast = async (
   apiKeys?: Record<string, string>,
+  context?: ForecastQueryContext,
 ): Promise<ResearchSynthesisResponse> => {
-  const query =
-    "emerging content formats editorial archives slow web aesthetic communities 2026";
+  const query = context
+    ? buildForecastSearchQuery(context)
+    : "emerging content formats editorial archives slow web aesthetic communities 2026";
 
   try {
     const { articles, provider, usable } = await fetchYouSearchArticles(query, apiKeys);

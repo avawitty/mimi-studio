@@ -170,6 +170,45 @@ export async function deleteResidueArtifact(
   await deleteDoc(doc(artifactsCol(db, ownerUid), artifactId));
 }
 
+export async function listResidueArtifacts(
+  db: Firestore,
+  ownerUid: string,
+  opts?: { kind?: string; limit?: number },
+): Promise<
+  Array<{
+    artifactId: string;
+    runId: string;
+    kind: string;
+    payload: unknown;
+    createdAt?: string;
+  }>
+> {
+  if (!ownerUid || ownerUid === "ghost") return [];
+  const base = artifactsCol(db, ownerUid);
+  const snap = await getDocs(
+    opts?.kind ? query(base, where("kind", "==", opts.kind)) : query(base),
+  );
+  const rows = snap.docs
+    .map((d) => {
+      const data = d.data() as {
+        artifactId?: string;
+        runId?: string;
+        kind?: string;
+        payload?: unknown;
+        createdAt?: string;
+      };
+      return {
+        artifactId: String(data.artifactId || d.id),
+        runId: String(data.runId || ""),
+        kind: String(data.kind || ""),
+        payload: data.payload,
+        createdAt: data.createdAt,
+      };
+    })
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  return typeof opts?.limit === "number" ? rows.slice(0, opts.limit) : rows;
+}
+
 export async function saveMemoryAtomProposal(
   db: Firestore,
   ownerUid: string,
@@ -233,6 +272,14 @@ export function createMemoryResidueStore() {
     },
     async deleteArtifact(ownerUid: string, artifactId: string) {
       artifacts.delete(`${ownerUid}:${artifactId}`);
+    },
+    async listArtifacts(ownerUid: string, opts?: { kind?: string; limit?: number }) {
+      const prefix = `${ownerUid}:`;
+      const rows = [...artifacts.entries()]
+        .filter(([key]) => key.startsWith(prefix))
+        .map(([, art]) => art);
+      const filtered = opts?.kind ? rows.filter((a) => a.kind === opts.kind) : rows;
+      return typeof opts?.limit === "number" ? filtered.slice(0, opts.limit) : filtered;
     },
     async saveProposal(ownerUid: string, proposal: { proposalId: string; runId: string; approvalState: string }) {
       proposals.set(`${ownerUid}:${proposal.proposalId}`, proposal);

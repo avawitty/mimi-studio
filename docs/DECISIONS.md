@@ -10,6 +10,72 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+---
+
+---
+
+## 2026-08-08 — Public profile OG + bio editing
+
+**Decision:** Add server-visible SEO for `/u/:handle` via `lib/publicProfileSeo.ts`, Express `app.get("/u/:handle")` metadata injection, and Vercel bot rewrite to `api/og/profile.ts`. Add bio textarea to `UserProfileView` (280 chars) saved to `profiles_public`. Client SPA navigation updates meta via `setPublicProfileMetaTags` on `PublicShowcasePage`.
+
+**Alternatives rejected:** (1) Client-only SEO for share previews (crawlers need server HTML). (2) Separate bio field on `publicShowcase` snapshot (bio is identity, not doll token).
+
+**Why:** Completes the public card loop — creators can write bio in settings; link previews show doll portrait, bio, and handle.
+
+**Ref:** `lib/publicProfileSeo.ts`, `api/og/profile.ts`, `server.ts`, `components/UserProfileView.tsx`, `vercel.json`
+
+---
+
+## 2026-08-08 — Unified `PublicProfileCard` for `/u/:handle`
+
+**Decision:** Extract a shared `PublicProfileCard` (`components/public-face/PublicProfileCard.tsx`) backed by `lib/publicProfileCard.ts` helpers. Canonical mimi.you showcase composes identity (photo, display name, bio, handle), taste signature excerpt (`aestheticSignature` → `semantic_signature` → doll philosophy), opt-in inverse reading teaser when `publicRip` is published, doll specimen, public zine grid, Keep Tabs, and cross-links to mimi.fish / mimi.rip.
+
+**Alternatives rejected:** (1) Continue duplicating layout across `PublicShowcasePage`, `PublicSharePage`, and directory tiles. (2) Expose full private taste graph on the public card. (3) Inline rip reading on mimi.you instead of linking to mimi.rip.
+
+**Why:** Product asked for a single public profile card surface; prior `/u/:handle` showed doll + zines only and ignored bio, avatar, signature report, and rip opt-in. Public-face kit + token colors align with PRD-07.
+
+**Ref:** `components/public-face/PublicProfileCard.tsx`, `lib/publicProfileCard.ts`, `services/publicShowcaseService.ts`, `components/PublicShowcasePage.tsx`
+
+---
+
+## 2026-08-08 — Omni Loop Cult dolls: onboarding + art-history time travel
+
+**Decision:** Ship Omni Loop Cult as `omni-loop-resin-v1` staple (ball-jointed resin BJD species). Doll onboarding: user photo + 2+ aesthetic refs + user-declared likeness attributes → Gemini analysis → `saveDoll` + shell portrait via `/api/mimi-image`. Time travel: era picker + Met public-domain refs → `generateRedepictionPrompt` (when Tailor project exists) or fallback shell prompt → scene image with doll + artwork + friend portrait refs. Persist scenes in `users/{uid}/dollScenes`; public gallery tab for shared scenes.
+
+**Alternatives rejected:** (1) Require full Tailor evidence loop before any doll. (2) Copy artwork compositions without transformative prompt layer. (3) Separate API routes for doll scenes (reuse Firestore + mimi-image).
+
+**Why:** Product vision needs a direct dolls chamber entry (photo + motif refs) and generative art-history reinterpretation for memes/marketing; existing `generateRedepictionPrompt` was unused.
+
+**Ref:** `services/dollOnboardingService.ts`, `services/dollSceneService.ts`, `services/dollLikeness.ts`, `components/tailor/DollOnboardingFlow.tsx`, `components/tailor/TimeTravelStudio.tsx`, `services/dollEngine/staplePrompt.ts`
+
+---
+
+## 2026-08-08 — Taste Signature as evidence-backed editorial reading
+
+**Decision:** Expand `/signature` from DNA-card + charts into a layered artifact: exportable **plate** (unchanged public face) → **editorial reading** (thesis, confidence, Used Context refs) → semiotic touchpoints, creative directions, recommendations, anti-signature, drift notes → collapsed analytics. Generation pulls zines, Tailor draft, approved Used Context, and taste model snapshot via AI Gateway (`textDeep`) with Gemini JSON fallback. Explicit **Approve signature** persists `status: approved` and records `mark_signature` through `recordAndRecompile`; **Repair** routes to Tailor.
+
+**Alternatives rejected:** (1) Dashboard-first layout with charts above the fold. (2) Personality-diagnosis copy without provenance. (3) Signature as pure LLM summary of zines only (ignores approved context and taste model).
+
+**Why:** Product canon places Signature in the **Approve** phase; creators need a sufficient, citable reading they can approve or repair before it becomes durable taste memory. Plate stays shareable; reading stays honest about confidence and evidence.
+
+**Ref:** `services/signatureService.ts`, `lib/signature/signatureSchema.ts`, `components/SignatureView.tsx`, `components/signature/SignatureReading.tsx`, `types.ts` (`AestheticSignature`)
+
+---
+
+## 2026-08-08 — Oracle chamber reports (local-first cyberdeck UX)
+
+**Decision:** Redesign `/oracle` with cyberdeck instrument plates (matching `TheScribe` atmosphere). Persist Cyberdeck sessions locally via `services/oracleChamberService.ts` on chamber close/export; surface **Chamber Reports** (past transmissions) and **Recurring Themes** (client-side frequency extraction) on the Oracle page. Pocket export remains the durable archive path.
+
+**Alternatives rejected:** (1) Firestore collection for every voice snippet (quota + latency). (2) AI-generated theme summaries on each page load (cost + latency). (3) Flattening Oracle to quiet public kit (product exempts Oracle cyberdeck density).
+
+**Why:** Users need continuity across communes without manual Pocket export; local storage is honest for unsigned/offline use and matches other chamber-local patterns (`mimi_audits_*`, quiet studio ops).
+
+**Ref:** `components/TheOracle.tsx`, `components/oracle/*`, `components/TheScribe.tsx`, `services/oracleChamberService.ts`
+
+---
+
 ## 2026-08-08 — AI Gateway funding for TTS + Oracle Cyberdeck live voice
 
 **Decision:** Route Gemini-compat TTS (`responseModalities: AUDIO`, `*-tts-*` models) through `generateGatewaySpeech` in `/api/proxy/gemini` with funded-gateway metering. Mint Oracle Cyberdeck live sessions via `gateway.experimental_realtime.getToken` in `/api/live/token` when `AI_GATEWAY_API_KEY` is configured; client connects with `GatewayLiveConnection` (WebSocket codec). Keep Gemini ephemeral tokens as fallback when gateway is absent or for BYOK `x-api-key`.
@@ -21,6 +87,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Ref:** `lib/ai/generate.ts`, `lib/aiGatewayCompat.ts`, `api/live/token.ts`, `hooks/gatewayLiveConnection.ts`, `hooks/useLiveSession.ts`, `services/liveAuth.ts`
 
 ---
+
+## 2026-08-08 — Pocket why-saved prompt queue (a11y)
 
 **Decision:** Serialize multi-image why-saved prompts through `useWhySavedPrompt` artifact queue (one sheet at a time; Done exits queue; dismiss advances). Per-hypothesis review pending/error state; `epistemicLabelForHypothesis` centralizes Inferred/Observed/Creator labels; `useModalFocus` traps focus in `WhySavedSheet`.
 
@@ -229,7 +297,18 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 
 ---
 
-## 2026-08-04 — Publisher Console artifact-first release desk
+## 2026-08-08 — The Press Export Chamber wired end-to-end
+
+**Decision:** Wire `ExportChamber` into `PublisherDashboard` so destination cards and the Release desk open the artifact export surface in-place — with destination-aware initial modes (PDF, asset ZIP, Shopify pack), publish consent for web issues, and Firestore `exportState` recording after successful exports.
+
+**Alternatives rejected:** (1) Keep routing export actions to `/studio`. (2) Duplicate export UI inside PublisherDashboard. (3) Silent publish without Proscenium consent modal.
+
+**Why:** The Press release desk already derives readiness and destinations; creators need one honest handoff to extract artifacts and publish without leaving the chamber. Studio remains the proof/edit surface; export and publication happen after approval in The Press.
+
+**Ref:** `components/PublisherDashboard.tsx`, `components/ExportChamber.tsx`, `lib/publisher/artifactExportActions.ts`
+
+---
+
 
 **Decision:** Restructure The Press around **Release** (artifact readiness, destinations, approvals) and **Performance** (post-publication metrics only when connected). Derive readiness deterministically from proof diagnostics, export manifest, Intel handoff, and Shopify pack inspection — no simulated reach/revenue/deliverability cards.
 
@@ -499,6 +578,18 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 ---
 
+## 2026-08-08 — Mesopic Lens chamber + curiosity tracking (Scry + personal twilight readings)
+
+**Decision:** Ship **Mesopic Lens** (`/mesopic-lens`) as a personal twilight Q&A chamber — profile × celestial calibration × Gemini web grounding, synthesis via AI Gateway. Log questions as **curiosity records** (localStorage + Firestore `users/{uid}/curiosities`) for deterministic pattern reports. Extend **Scry** with the same curiosity chips, web-grounded + celestial-informed reading lane, and pattern panel.
+
+**Alternatives rejected:** Repurposing legacy `/obsidian-mirror` Lyria route (would break existing music chamber); Neon table for curiosity (Firestore matches taste-event patterns and works unsigned with local fallback); collective Observatory Mesopic as the personal oracle (wrong consent/scope).
+
+**Rationale:** Mesopic vision metaphor matches low-light reading honesty; curiosity as a distinct data form enables pattern reports without approving Taste Graph memory. Observatory Mesopic remains collective faint signals only.
+
+**Ref:** `components/chambers/MesopicLensChamber.tsx`, `services/mesopicLensService.ts`, `services/curiosityStore.ts`, `schemas/curiosityContracts.ts`, `lib/curiosity/curiosityAnalytics.ts`, `services/scryService.ts`, `npm run verify:curiosity-tracking`
+
+---
+
 ## 2026-08-08 — Studio zine generation: direct engine + layout enhancement
 
 **Decision:** `createZine` no longer runs the editorial issue-plan / proof pipeline (`realizeZineContentFromPlan`). Raw model output is post-processed with `enhanceZineGenerationLayout` — stable page IDs, grammars, and default spread layouts via `buildDefaultSpreadElements`. Hi-fi plate bake develops any page with an `imagePrompt` (no plan slot filter). Proof mode UI removed from zine reveal.
@@ -582,4 +673,38 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Alternatives rejected:** (1) Keep Used Context as footer-only — loses composition grammar. (2) Wire forecast-drift to demonstration MMM fixtures — honest labeling requires Tailor-sourced vectors until Forecast ships live data.
 
 **Ref:** `lib/zine/buildPlateStampData.ts`, `lib/zine/insertEditorialPlates.ts`, `lib/zine/enrichEditorialPlateContent.ts`, `components/zine/grammars/*PlatePage.tsx`
+
+---
+
+## 2026-08-08 — Forecast intake + Apify-backed evidence
+
+**Decision:** Forecast chamber requires lightweight **profile intake** (personal) or **brand intake** (Brand OS scope) before Overview/Content vectors run. Intake persists on `UserProfile.forecastIntake` and drives personalized search queries through existing `/api/you-search` (You.com → Apify `rag-web-browser` → Gateway fallback).
+
+**Alternatives rejected:** (1) Force Tailor/GEO completion first — too heavy for a first forecast read. (2) Duplicate full `BrandIntakeView` inside Forecast — link to full report instead.
+
+**Why:** Makes Forecast operable without full DNA/GEO calibration; brand scope gets real positioning inputs; reuses billable Apify path already wired for search.
+
+**Ref:** `lib/forecastIntake.ts`, `components/forecast/ForecastIntakePanel.tsx`, `components/TheForecast.tsx`, `services/researchService.ts`
+
+---
+
+## 2026-08-08 — Forecast server compose + Residue handoff
+
+**Decision:** Add `POST /api/forecast` to server-compose `ForecastReport` (You.com/Apify evidence + demonstration MMM), persist on `userPreferences.forecastSnapshot`, and surface latest `ResidueForecastArtifact` in `/forecast` Overview and Cultural vectors.
+
+**Alternatives rejected:** (1) Client-only persistence — no cross-device sync. (2) Merging Residue scenarios into collective cultural trajectories — keep namespaces distinct with explicit provenance.
+
+**Why:** Completes the Residue → Forecast handoff; gives signed-in users a durable snapshot without re-fetching on every device.
+
+**Ref:** `lib/forecast/serverComposeForecast.ts`, `lib/forecastRoute.ts`, `api/forecast.ts`, `components/forecast/ForecastResiduePanel.tsx`
+
+---
+
+## 2026-08-08 — Proscenium showcases collective consent on Stage
+
+**Decision:** Stage wing surfaces Mean Median Mode consent states on each transmission (`ProsceniumContributionBadge`) and a collective brief panel with Observatory / MMM handoffs (`ProsceniumCollectiveBrief`). Local Echoes demo specimens illustrate contributing, staged-only, and withdrawn states — never mixed into live counts.
+
+**Why:** Collective intelligence consent shipped in Pocket / ZineCard / AnalysisDisplay but Proscenium had no visible readout of what staging means for Observatory aggregates.
+
+**Ref:** `components/proscenium/ProsceniumContributionBadge.tsx`, `components/proscenium/ProsceniumCollectiveBrief.tsx`, `components/ProsceniumView.tsx`
 

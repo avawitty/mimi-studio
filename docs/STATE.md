@@ -22,10 +22,10 @@
 | **Studio (orientation intake)** | `/studio` | shipped | Imagen-first toolbar (Stock / References toggles); inspo carousel + “Publish my rendition”; Unsplash via `/api/inspo/search`; Pinterest board import | Promote compose shell (instrument rail + footnote dock) from legacy console after intake |
 | **Studio (compose console)** | `/studio/worktable-legacy` | partial | Extracted `StudioInstrumentRail`, footnote dock (Continuum · Pocket · Telemetry), polaroid media bar, auto cover index; spectrogram reverse-transcribe not wired | Mount post-intake on `/studio`; live telemetry beyond decorative dash |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
-| **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab |
+| **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab; Export Chamber wired from Publisher Console destinations |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
-| **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
+| **Taste Signature** | `/signature` | shipped | Expanded reading (thesis, touchpoints, directions, recommendations); approve → `mark_signature` taste event | Public-face mobile review after chrome changes |
 | **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; embedding space migrations on model change | Complete atom migration; run shadow audit after Gateway model bumps |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
@@ -37,14 +37,16 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Scry** | `/scry` | shipped | Unified retrieval service deferred; taste rerank uses snapshot + refusals when signed in | Keep lane honesty + taste rerank tests in `verify:*` / unit suite |
+| **Scry** | `/scry` | shipped | Curiosity records (local + Firestore); readings ground on profile + celestial + web; unified retrieval service still deferred | Keep lane honesty + curiosity `verify:curiosity-tracking` |
+| **Mesopic Lens** | `/mesopic-lens` | **shipped** | Personal twilight Q&A (distinct from Observatory collective Mesopic); curiosity pattern reports | Celestial handoff when calibration inactive |
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
 | **Observatory** | `/observatory` | **stub** | **Default `loadMeanMedianModeReport("demonstration")`** + demo Mesopic | Live aggregates gated on Proscenium consent pipeline |
 | **Mean Median Mode** | `/mean-median-mode` | **stub** | Same demonstration fixture as Observatory | Collapse or differentiate from Observatory overview |
-| **Forecast** | `/forecast` | partial | Observed panel uses **demonstration** MMM; content vectors key-gated | Remove any residual costume metrics; add Forecast to menu (`prd/chamber-loop-…`) |
+| **Forecast** | `/forecast` | partial | Intake + Apify queries + **POST /api/forecast** snapshot + Residue artifact panel shipped; cultural vector still uses **demonstration** MMM | Live MMM aggregates when Proscenium consent ships |
 | **Celestial Calibration** | `/celestial-calibration` | shipped | Rising/houses need time + geocoded place | — |
+| **Oracle** | `/oracle` | **partial** | Cyberdeck voice overlay shipped; chamber reports + theme analysis now local-first (`oracleChamberService`); not in `CANON_MODULES` yet; celestial readings ephemeral | Register in canon; optional Neon sync for cross-device reports |
 
 ---
 
@@ -61,7 +63,7 @@
 | **Sanctuary** | `/sanctuary` | shipped | Local-only boundary | — |
 | **The Ward** | `/ward` | shipped | — | — |
 | **Atelier** | `/atelier` | shipped | Soft cap 40 objects | Verify Shopify touchpoint metadata path |
-| **The Proscenium** | `/proscenium` | **stub** | **`mock_1`…`mock_3` Local Echoes** hardcoded in `ProsceniumView` | Replace demo specimens with consented live transmissions or honest empty |
+| **The Proscenium** | `/proscenium` | **partial** | Stage shows consent badges + Observatory handoff; Local Echoes demo specimens illustrate MMM states | Live transmission corpus still thin without signed-in staging |
 | **Studio Map** | `/chamber-map` | shipped | — | — |
 | **Codex** | `/codex` | shipped | — | — |
 
@@ -71,7 +73,7 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Mimi Dolls** | `/mimi-dolls` | partial | Shell-first shipped; **scenario projection deferred**; Rip uses `dolls[0]` only | Add Rip CTA; doll picker for Rip input |
+| **Mimi Dolls** | `/mimi-dolls` | partial | Omni Loop onboarding + time-travel scenes shipped; Rip uses `dolls[0]` only | Rip CTA; cross-user public scene feed |
 | **mimi.rip** | `/rip` | shipped | Deterministic inverse read (v0, no AI enrichment) | Public OG via server HTML on publish routes |
 | **Aesthetic Intelligence** | `/aesthetic-intelligence` | shipped | Aliased → `/tailor/diagnostics` | — |
 | **Art Style Scryer** | `/art-style` | shipped | Aliased → `/tailor/style-lab` | — |
@@ -102,7 +104,7 @@
 | `mimi.you` (skin `you`) | shipped | Full app; canonical identity |
 | `mimi.fish` (skin `fish`) | partial | Share plates + creator shelf; domains attached — run `setup:mimi-fish-domains` for Firebase Auth |
 | `mimi.rip` (skin `rip`) | partial | Inverse public plates + `/rip` chamber; domains attached — run `setup:mimi-rip-domains` |
-| `/u/:handle` | shipped | Public doll/profile cards (skin selects rip/fish/you variant on host) |
+| `/u/:handle` | shipped | `PublicProfileCard` + compact directory tiles + OG + external links; public doll/profile cards (skin selects rip/fish/you variant on host) |
 | `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`); canonical share origin `mimi.fish`; inline **Refractions** (text + voice) on published issues |
 | `/u/:handle/feed.xml` | shipped | Keep Tabs RSS |
 | `/api/feed` | shipped | Creator feed API |
@@ -128,7 +130,7 @@
 
 ## Cross-cutting debt
 
-1. **Perception loop handoffs** — Observatory → Forecast → Edit not fully wired; Forecast missing from live menu (see `prd/chamber-loop-forecast-observatory-rip-dolls.md`).
+1. **Perception loop handoffs** — Observatory → Forecast → Edit not fully wired; Forecast intake, server snapshot, and Residue panel shipped; live collective MMM still demonstration.
 2. **Identity loop handoffs** — Dolls ↔ Rip ↔ Tailor CTAs incomplete; Rip reads first doll only.
 3. **Demonstration labeling** — Collective modules label demos; commerce mock catalog does not yet say "demonstration".
 4. **Font stack drift** — Shell uses Geist Variable; house style names DM Sans — converge on tokens in new UI.
@@ -161,8 +163,8 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | --- | --- | --- |
 | P0 | Unified menu, Studio toolbar instruments, `/tailor` + contract wiring, `/scry` + `/mesopic` stubs | **queued** (Lovable build queue) |
 | P1 | Profile identity + `/u/$handle`, Pocket polish, The Edit chamber, fish/rip hosts | **queued** |
-| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **queued** |
-| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **queued** |
+| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **partial** — Omni Loop onboarding + time-travel in production Express; Mesopic Lens chamber shipped (#251) |
+| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **shipped** — curiosity records + pattern reports in Mesopic Lens + Scry (`verify:curiosity-tracking`); Export Chamber opens from The Press destinations with PDF/ZIP/Shopify export + publish consent |
 | P4a | Workflow bar wired to issue pipeline (COLLECT→SAVE) | **queued** |
 | P4b | Registry completion + handoff chips + chamber map | **queued** |
 | P4c | Identity strip (Dolls↔Rip↔Tailor), Rip doll picker | **queued** |
@@ -170,7 +172,7 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | P5 | Darkroom: Pinterest board + multi-image extract + `imageEditingRules` / `applicationLogic` | **queued** |
 | P5b | Thimble / Brief / Darkroom Studio handoffs | **queued** |
 | P5c | Aesthetic entry plates + mobile Studio layout | **queued** |
-| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **queued** |
+| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **partial** — Mesopic Lens chamber shipped; panel unification still queued |
 | **Platform** | Lovable Cloud + Lovable AI as default stack; migrate AI to edge fns | **queued** |
 | **Refactor** | Align P0–P6 AI paths with Lovable AI + Cloud (no BYOK /api) | **queued** |
 | P7 | Scribe, Stand, Signature, Residue/Proscenium stubs, Find anchor, OG/RSS, notifications | **queued** |

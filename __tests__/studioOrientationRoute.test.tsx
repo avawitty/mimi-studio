@@ -24,17 +24,19 @@ describe("/studio routing", () => {
     cleanup();
   });
 
-  it("wires App.tsx so /studio mounts StudioWorktable by default", () => {
+  it("wires App.tsx so /studio mounts InputStudio, not StudioWorktable", () => {
     const appSource = readFileSync(resolve(process.cwd(), "App.tsx"), "utf8");
 
     expect(appSource).toMatch(
-      /import\s+\{\s*StudioWorktable\s*\}\s+from\s+"\.\/components\/worktable\/StudioWorktable"/,
+      /import\s+\{\s*InputStudio\s*\}\s+from\s+"\.\/components\/InputStudio"/,
     );
+    expect(appSource).toMatch(/pathParts\[1\] === "worktable-legacy"/);
+    expect(appSource).toMatch(/isStudioWorktableLegacy/);
     expect(appSource).toMatch(/pathParts\[1\] === "orientation"/);
     expect(appSource).toMatch(/isStudioOrientation/);
 
     const studioMountIdx = appSource.indexOf(
-      '{viewMode === "studio" &&\n                      (studioConsoleOpen',
+      '{viewMode === "studio" &&\n                      (isStudioWorktableLegacy',
     );
     expect(studioMountIdx).toBeGreaterThan(-1);
     const afterStudioMount = appSource.slice(studioMountIdx);
@@ -43,28 +45,38 @@ describe("/studio routing", () => {
     );
     const studioMountSection =
       nextSiblingIdx === -1
-        ? afterStudioMount.slice(0, 8000)
+        ? afterStudioMount.slice(0, 9000)
         : afterStudioMount.slice(0, nextSiblingIdx);
-    expect(studioMountSection).toContain("StudioWorktable");
-    expect(studioMountSection).toContain("onOpenMenu={() => setIsNavOpen(true)}");
+
+    expect(studioMountSection).toContain("<InputStudio");
     expect(studioMountSection).toContain("isStudioOrientation");
-    expect(studioMountSection).toContain("StudioOrientationEntry");
+    expect(studioMountSection).toContain("<StudioOrientationEntry");
+    expect(studioMountSection).toContain("<StudioWorktable");
+    expect(studioMountSection).toContain("Legacy worktable · experimental");
+
+    // Primary default branch is InputStudio (after orientation ternary)
+    expect(studioMountSection).toMatch(
+      /isStudioOrientation\s*\?\s*\([\s\S]*?<StudioOrientationEntry[\s\S]*?\)\s*:\s*\(\s*<InputStudio/,
+    );
   });
 
-  it("points LAZY_CHAMBERS.studio at StudioWorktable", () => {
+  it("points LAZY_CHAMBERS.studio at InputStudio", () => {
     const routesSource = readFileSync(
       resolve(process.cwd(), "lib/routes.tsx"),
       "utf8",
     );
     expect(routesSource).toMatch(
-      /studio:\s*lazy\(\(\)\s*=>\s*import\("\.\.\/components\/worktable\/StudioWorktable"\)\)/,
+      /studio:\s*lazy\([\s\S]*?InputStudio/,
     );
     expect(routesSource).toMatch(
       /"studio-orientation":\s*lazy\([\s\S]*?StudioOrientationEntry/,
     );
+    expect(routesSource).toMatch(
+      /"studio-worktable-legacy":\s*lazy\([\s\S]*?StudioWorktable/,
+    );
   });
 
-  it("renders archival worktable desk chrome on the primary worktable", () => {
+  it("renders archival worktable desk chrome on the legacy worktable route", () => {
     render(<StudioWorktable onOpenMenu={() => {}} />);
 
     expect(screen.getByRole("heading", { name: "Mimi" })).toBeInTheDocument();
@@ -80,7 +92,7 @@ describe("/studio routing", () => {
     expect(screen.getByText(/FIG\. 01/i)).toBeInTheDocument();
   });
 
-  it("aligns prompt cycle invitation with textarea placeholder", () => {
+  it("aligns prompt cycle invitation with textarea placeholder on legacy worktable", () => {
     render(<StudioWorktable />);
 
     const invitation = screen.getByText(
