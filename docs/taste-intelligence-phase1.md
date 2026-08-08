@@ -84,6 +84,14 @@ users/{uid}/evidenceAtomEmbeddings/{atomId}
 
 The atom's `embeddingRef` field stores the stable path `users/{uid}/evidenceAtomEmbeddings/{atomId}`.
 
+### Embedding backfill
+
+`backfillEvidenceAtomEmbeddings()` in `lib/taste/evidenceAtomEmbedding.ts` embeds analyzed atoms missing `embeddingRef`. Project-scoped backfill uses the composite index `projectId + tasteImpact + createdAt` (see `firestore.indexes.json`).
+
+### Deployed query failures
+
+Missing indexes surface as `EvidenceAtomQueryError` with code `INDEX_REQUIRED` — not silent empty results. `/api/mimi/evidence/search` returns HTTP 503 with `INDEX_REQUIRED` when the composite index is not deployed.
+
 ## Known debt (Phase 2+)
 
 - [x] Post-ingest analysis hook after atom create

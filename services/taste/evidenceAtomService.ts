@@ -32,6 +32,9 @@ import type {
   UserCurationStatus,
 } from "../../types";
 import type { CreateEvidenceAtomInput } from "../../lib/taste/evidenceAtomSchema";
+import {
+  classifyEvidenceAtomQueryError,
+} from "../../lib/taste/evidenceAtomQuery";
 import { buildEvidenceAtomFromInput } from "../../lib/taste/buildEvidenceAtom";
 import { sanitizeFirestoreData } from "../firebaseUtils";
 import { scheduleEvidenceAtomAnalysis } from "./scheduleEvidenceAtomAnalysis";
@@ -142,8 +145,10 @@ export async function queryEvidenceAtoms(
     const q = query(evidenceAtomsCol(userId), ...constraints);
     const snap = await getDocs(q);
     return snap.docs.map((d) => d.data() as EvidenceAtom);
-  } catch {
-    return [];
+  } catch (error) {
+    const classified = classifyEvidenceAtomQueryError(error);
+    console.warn("MIMI // Evidence atom query failed:", classified.code, classified.message);
+    throw classified;
   }
 }
 

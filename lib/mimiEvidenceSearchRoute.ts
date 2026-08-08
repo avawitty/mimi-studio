@@ -9,6 +9,7 @@ import {
 } from "./apiUtils.js";
 import { verifyMimiSession, getServerFirebaseAdmin } from "./serverFirebaseAdmin.js";
 import { searchEvidenceAtomsSemantic } from "./taste/evidenceAtomRetrieval.js";
+import { classifyEvidenceAtomQueryError } from "./taste/evidenceAtomQuery.js";
 import { resolveRouteGatewayKey } from "./mimiFundedText.js";
 
 const searchSchema = z.object({
@@ -80,6 +81,12 @@ export async function handleMimiEvidenceSearchRoute(req: any, res: any) {
       })),
     });
   } catch (error) {
+    const queryErr = classifyEvidenceAtomQueryError(error);
+    if (queryErr.code === "INDEX_REQUIRED") {
+      sendError(res, 503, queryErr.message, "INDEX_REQUIRED");
+      return;
+    }
+
     const code = String((error as { code?: unknown })?.code || "");
     const isAuth = new Set([
       "MISSING_MIMI_SESSION",

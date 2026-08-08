@@ -477,6 +477,28 @@ describe("pocketItemToAtomInput", () => {
   });
 });
 
+describe("classifyEvidenceAtomQueryError", () => {
+  it("maps failed-precondition to INDEX_REQUIRED", async () => {
+    const { classifyEvidenceAtomQueryError } = await import(
+      "../lib/taste/evidenceAtomQuery"
+    );
+    const err = classifyEvidenceAtomQueryError({
+      code: "failed-precondition",
+      message: "The query requires an index",
+    });
+    expect(err.code).toBe("INDEX_REQUIRED");
+    expect(err.message).toContain("composite index");
+  });
+
+  it("maps permission-denied distinctly from index failures", async () => {
+    const { classifyEvidenceAtomQueryError } = await import(
+      "../lib/taste/evidenceAtomQuery"
+    );
+    const err = classifyEvidenceAtomQueryError({ code: "permission-denied" });
+    expect(err.code).toBe("PERMISSION_DENIED");
+  });
+});
+
 describe("evidenceAtomEmbeddingRef", () => {
   it("returns a stable users-scoped path", () => {
     expect(evidenceAtomEmbeddingRef("u1", "atom-1")).toBe(

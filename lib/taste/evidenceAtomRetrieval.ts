@@ -5,6 +5,7 @@
 import type { EvidenceAtom, TasteScope } from "../../types";
 import { embedGatewayText } from "../ai/generate.js";
 import { cosineSimilarity, embeddingsCompatible } from "../embeddingMath.js";
+import { classifyEvidenceAtomQueryError } from "./evidenceAtomQuery.js";
 import { EVIDENCE_ATOM_EMBEDDING_COLLECTION } from "./evidenceAtomEmbedding.js";
 
 export const EVIDENCE_SEMANTIC_CANDIDATE_CAP = 200;
@@ -98,21 +99,32 @@ async function loadCandidateAtoms(
 ): Promise<EvidenceAtom[]> {
   const cap = options.candidateCap ?? EVIDENCE_SEMANTIC_CANDIDATE_CAP;
   try {
-    const snap = await db
+    let queryRef = db
       .collection("users")
       .doc(userId)
-      .collection("evidenceAtoms")
-      .orderBy("createdAt", "desc")
-      .limit(cap)
-      .get();
+      .collection("evidenceAtoms");
+
+    if (options.projectId) {
+      queryRef = queryRef
+        .where("projectId", "==", options.projectId)
+        .where("tasteImpact", "==", true)
+        .orderBy("createdAt", "desc")
+        .limit(cap);
+    } else {
+      queryRef = queryRef.orderBy("createdAt", "desc").limit(cap);
+    }
+
+    const snap = await queryRef.get();
     return snap.docs
       .map((d: { data: () => unknown }) => d.data() as EvidenceAtom)
       .filter((atom: EvidenceAtom) => atom.tasteImpact !== false)
       .filter((atom: EvidenceAtom) => Boolean(atom.embeddingRef))
       .filter((atom: EvidenceAtom) => atomMatchesScope(atom, options.context))
       .filter((atom: EvidenceAtom) => atomMatchesProject(atom, options.projectId));
-  } catch {
-    return [];
+  } catch (error) {
+    const classified = classifyEvidenceAtomQueryError(error);
+    console.warn("MIMI // Semantic retrieval candidate query failed:", classified.code);
+    throw classified;
   }
 }
 
