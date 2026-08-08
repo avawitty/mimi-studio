@@ -521,3 +521,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/celestial/applyCelestialToZine.ts`, `services/zineGenerator.ts`, `components/AnalysisDisplay.tsx`, `schemas/celestialCalibrationContracts.ts`
 
+---
+
+## 2026-08-08 — Tailor defaults: opt-out, not opt-in
+
+**Decision:** Tailor capabilities default **on**. Celestial Calibration `enabled` defaults to `true` for new and legacy profiles where the flag was never set. Algo Firewall uses `disabledAlgos` (opt-out list); all five algos run until explicitly disabled. Legacy `enabledAlgos` opt-in arrays migrate on read.
+
+**Alternatives rejected:** (1) Keep opt-in toggles — creators had to discover features before zines used them. (2) Force-migrate explicit `enabled: false` saves — respect intentional disables.
+
+**Why:** Studio output should include celestial timing and core algos without a setup gate; users turn off what they don't want.
+
+**Ref:** `lib/tailor/tailorDefaults.ts`, `contexts/UserContext.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`
+

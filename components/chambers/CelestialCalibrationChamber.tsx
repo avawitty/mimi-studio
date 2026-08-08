@@ -8,6 +8,7 @@ import {
   CELESTIAL_HANDOFF_TARGETS,
 } from "../../lib/celestialChamberContract";
 import { compileCelestialReadout } from "../../lib/celestial/compileCelestialReadout";
+import { describeCelestialReadoutGaps } from "../../lib/celestial/celestialReadoutCompleteness";
 import { CELESTIAL_BODY_LABELS } from "../../lib/celestial/bodyLabels";
 import { formatAspect } from "../../lib/celestial/aspects";
 import {
@@ -75,6 +76,7 @@ export const CelestialCalibrationChamber: React.FC<{
   }, [profileUid, tailorStamp]);
 
   const readout = useMemo(() => compileCelestialReadout(draft), [draft]);
+  const readoutGaps = useMemo(() => describeCelestialReadoutGaps(draft), [draft]);
 
   const patch = (partial: Partial<CelestialCalibrationDraft>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
@@ -297,8 +299,18 @@ export const CelestialCalibrationChamber: React.FC<{
               </label>
             </div>
             {!draft.birthDate ? (
-              <p className="font-sans text-[11px] text-nous-subtle">
-                {CELESTIAL_CHAMBER_COPY.emptyBirthDate}
+              <div className="border border-amber-500/30 bg-amber-500/5 px-4 py-3 space-y-2">
+                <p className="font-mono text-[8px] uppercase tracking-[0.24em] text-amber-700 dark:text-amber-300">
+                  Partial readout
+                </p>
+                <p className="font-sans text-[11px] text-nous-subtle leading-relaxed">
+                  {CELESTIAL_CHAMBER_COPY.emptyBirthDate}
+                </p>
+              </div>
+            ) : readoutGaps.missingForFull.length > 0 ? (
+              <p className="font-sans text-[11px] text-nous-subtle leading-relaxed">
+                Natal Sun is active. Still optional:{" "}
+                {readoutGaps.missingForFull.join("; ")}.
               </p>
             ) : null}
           </section>

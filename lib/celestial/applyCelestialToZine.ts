@@ -9,6 +9,10 @@ import {
   compileCelestialReadout,
 } from "./compileCelestialReadout";
 import { computeNatalChartSlice } from "./ephemeris";
+import {
+  celestialNatalCompletionHint,
+  describeCelestialReadoutGaps,
+} from "./celestialReadoutCompleteness";
 
 export interface ZineCelestialStamp {
   /** Authoritative timing line shown in the zine reveal. */
@@ -19,6 +23,10 @@ export interface ZineCelestialStamp {
   issueMomentUtc: string;
   issueMomentSummary: string;
   scopeNotice: string;
+  /** True when natal Sun (minimum) is computed from birth date. */
+  readoutComplete: boolean;
+  /** Fields still needed for fuller chart (Rising, houses, etc.). */
+  missingForFull: string[];
 }
 
 function issueMomentSummary(asOf: Date): string {
@@ -51,6 +59,8 @@ export function buildZineCelestialStamp(
 ): ZineCelestialStamp {
   const natal = draft?.enabled ? compileCelestialReadout(draft) : null;
   const momentSummary = issueMomentSummary(asOf);
+  const gaps = describeCelestialReadoutGaps(draft);
+  const completionHint = celestialNatalCompletionHint(draft);
 
   if (natal?.enabled && natal.sun) {
     const parts = [natal.timingPhrase, momentSummary];
@@ -64,6 +74,22 @@ export function buildZineCelestialStamp(
       issueMomentUtc: asOf.toISOString(),
       issueMomentSummary: momentSummary,
       scopeNotice: CELESTIAL_SCOPE_NOTICE,
+      readoutComplete: true,
+      missingForFull: gaps.missingForFull,
+    };
+  }
+
+  if (natal?.enabled) {
+    const parts = [momentSummary];
+    if (completionHint) parts.push(completionHint);
+    return {
+      calibration: parts.join(" · "),
+      natal,
+      issueMomentUtc: asOf.toISOString(),
+      issueMomentSummary: momentSummary,
+      scopeNotice: CELESTIAL_SCOPE_NOTICE,
+      readoutComplete: false,
+      missingForFull: gaps.missingForFull,
     };
   }
 
@@ -73,6 +99,8 @@ export function buildZineCelestialStamp(
     issueMomentUtc: asOf.toISOString(),
     issueMomentSummary: momentSummary,
     scopeNotice: CELESTIAL_SCOPE_NOTICE,
+    readoutComplete: false,
+    missingForFull: gaps.missingForFull,
   };
 }
 

@@ -26,6 +26,15 @@ describe("applyCelestialToZine", () => {
     expect(stamp.calibration).toContain("Issue composed under");
     expect(stamp.natal).toBeNull();
     expect(stamp.issueMomentSummary).toBeTruthy();
+    expect(stamp.readoutComplete).toBe(false);
+  });
+
+  it("prompts for birth date when calibration is on but date is missing", () => {
+    const stamp = buildZineCelestialStamp({ enabled: true });
+    expect(stamp.readoutComplete).toBe(false);
+    expect(stamp.calibration).toContain("Celestial Calibration");
+    expect(stamp.missingForFull).toContain("birth date");
+    expect(stamp.natal?.enabled).toBe(true);
   });
 
   it("overrides model celestial_calibration with ephemeris readout", () => {

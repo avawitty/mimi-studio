@@ -2195,6 +2195,26 @@ export const AnalysisDisplay: React.FC<{
      ) : null}
    </div>
  ) : null}
+ {metadata.content.celestial_readout?.readoutComplete === false &&
+ isOwner &&
+ metadata.content.celestial_readout.natal?.enabled ? (
+   <div className="w-full max-w-2xl text-left border border-amber-400/30 bg-amber-400/5 px-5 py-4 space-y-3">
+     <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-amber-200/80">
+       Partial celestial readout
+     </p>
+     <p className="font-sans text-sm text-white/75 leading-relaxed">
+       This issue shows the sky at composition time only. Add your birth date in
+       Celestial Calibration for natal Sun, Moon, and planets on future zines.
+     </p>
+     <button
+       type="button"
+       onClick={() => { window.location.assign('/celestial-calibration'); }}
+       className="font-mono text-[9px] uppercase tracking-[0.22em] text-amber-100 border border-amber-400/40 px-4 py-2 hover:bg-amber-400/10 transition-colors"
+     >
+       Open Celestial Calibration
+     </button>
+   </div>
+ ) : null}
  {metadata.content.celestial_readout?.issueMomentSummary ? (
    <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/45 max-w-2xl text-left">
      {metadata.content.celestial_readout.issueMomentSummary}

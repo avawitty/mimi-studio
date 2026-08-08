@@ -32,7 +32,7 @@ export const CELESTIAL_CHAMBER_COPY = {
   phase1Scope:
     "Ephemeris via astronomy-engine. Civil clock uses resolved IANA timezone when a place is geocoded; otherwise time is treated as UTC. Rising + Whole Sign houses require birth time and coordinates. Sidereal frames and quadrant houses stay unsupported.",
   emptyBirthDate:
-    "Enter a birth date to derive your tropical Sun. Without a date, calibration stays inactive for generation.",
+    "Calibration is on — add a birth date below for your natal Sun, Moon, and planets in every zine. Without it, issues only show the sky at composition time.",
   saveHint:
     "Saving writes Tailor celestialCalibration and mirrors birth fields on your profile.",
   resolvePlaceHint:

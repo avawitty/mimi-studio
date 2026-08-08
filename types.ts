@@ -521,6 +521,8 @@ export interface ZineCelestialReadout {
   issueMomentUtc: string;
   issueMomentSummary: string;
   scopeNotice: string;
+  readoutComplete: boolean;
+  missingForFull: string[];
 }
 
 export interface ZineSpec {
