@@ -253,12 +253,40 @@ export const tasteGenerationContractSchema = z.object({
   compilerVersion: z.string(),
 });
 
+export const generatedArtifactForTasteCritiqueSchema = z.object({
+  id: z.string(),
+  medium: z.enum([
+    "editorial",
+    "image",
+    "writing",
+    "ui",
+    "brand",
+    "fashion",
+    "product",
+  ]),
+  text: z.string().optional(),
+  imageRefs: z.array(z.string()).optional(),
+  pages: z
+    .array(
+      z.object({
+        text: z.string().optional(),
+        imageRef: z.string().optional(),
+        layoutMetadata: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .optional(),
+  generationMetadata: z.record(z.string(), z.unknown()).optional(),
+  sourcePromptTags: z.array(z.string()).optional(),
+});
+
 export const tasteCritiqueSchema = z.object({
   id: z.string(),
   contractId: z.string(),
   candidateId: z.string(),
+  artifactId: z.string().optional(),
   alignmentScore: z.number(),
   confidence: z.number().min(0).max(1),
+  confidenceLabel: z.enum(["low", "moderate", "high"]).optional(),
   preservedRules: z.array(z.string()),
   violatedRules: z.array(z.string()),
   usefulDepartures: z.array(z.string()),
@@ -266,6 +294,31 @@ export const tasteCritiqueSchema = z.object({
   saturationWarnings: z.array(z.string()),
   counterfactualRepairs: z.array(tasteCounterfactualSchema),
   evidenceIds: z.array(z.string()),
+  unresolvedUnknowns: z.array(z.string()).optional(),
+  featureExtraction: z
+    .object({
+      completeness: z.enum(["full", "partial", "failed"]),
+      partialReason: z.string().optional(),
+      provenance: z.array(
+        z.object({
+          source: z.enum(["deterministic", "ai"]),
+          provider: z.string().optional(),
+          model: z.string().optional(),
+          featureCount: z.number(),
+        }),
+      ),
+      extractedFeatures: z
+        .array(
+          z.object({
+            label: z.string(),
+            confidence: z.number(),
+            source: z.enum(["text", "layout", "image", "metadata"]),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  sourceSnapshotId: z.string().optional(),
   createdAt: z.number(),
   criticVersion: z.string(),
 });
@@ -492,6 +545,9 @@ export type TasteRefusal = z.infer<typeof tasteRefusalSchema>;
 export type TasteModelEdit = z.infer<typeof tasteModelEditSchema>;
 export type TasteCounterfactual = z.infer<typeof tasteCounterfactualSchema>;
 export type TasteGenerationContract = z.infer<typeof tasteGenerationContractSchema>;
+export type GeneratedArtifactForTasteCritique = z.infer<
+  typeof generatedArtifactForTasteCritiqueSchema
+>;
 export type TasteCritique = z.infer<typeof tasteCritiqueSchema>;
 export type TasteExposureEvent = z.infer<typeof tasteExposureEventSchema>;
 export type TasteSaturationState = z.infer<typeof tasteSaturationStateSchema>;

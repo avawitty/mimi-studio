@@ -4,6 +4,7 @@ import type {
   TasteCritique,
   TasteGenerationContract,
 } from "../schemas/tasteIntelligenceContracts";
+import type { GeneratedArtifactForTasteCritique } from "../lib/tasteIntelligence/generatedArtifact";
 import type { TailorLogicDraft } from "../types";
 import type { GenerationContractReconciliation } from "../lib/tasteIntelligence/mergeGenerationContracts";
 import {
@@ -11,6 +12,7 @@ import {
   critiqueTasteCandidate,
 } from "../services/tasteIntelligenceClient";
 import { createTailorProfileFromLegacyDraft } from "../services/tailorProfileContract";
+import { isCritiquableArtifact } from "../lib/tasteIntelligence/generatedArtifact";
 
 export type StudioTasteCompilerOptions = {
   enabled: boolean;
@@ -40,12 +42,10 @@ export function useStudioTasteCompiler(options: StudioTasteCompilerOptions) {
   const [critiqueLoading, setCritiqueLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [entitlementBlocked, setEntitlementBlocked] = useState(false);
+  const [critiqueUnavailable, setCritiqueUnavailable] = useState(false);
 
-  const pendingCritiqueRef = useRef<{
-    contractId: string;
-    candidateId: string;
-    tags: string[];
-  } | null>(null);
+  const pendingContractIdRef = useRef<string | null>(null);
+  const sourcePromptTagsRef = useRef<string[]>([]);
 
   const resolveTailorContract = useCallback(() => {
     if (!useTailorProfile || !tailorDraft) return undefined;
@@ -109,57 +109,75 @@ export function useStudioTasteCompiler(options: StudioTasteCompilerOptions) {
   }, [compileContract, enabled, signedIn]);
 
   const prepareForGeneration = useCallback(
-    async (candidateId: string, tags: string[]) => {
+    async (sourcePromptTags: string[] = []) => {
       const result =
         contract && promptBlock
           ? { contract, promptBlock, reconciliation }
           : await compileContract();
       if (!result?.contract) return null;
 
-      pendingCritiqueRef.current = {
-        contractId: result.contract.id,
-        candidateId,
-        tags,
-      };
+      pendingContractIdRef.current = result.contract.id;
+      sourcePromptTagsRef.current = sourcePromptTags;
       setCritique(null);
+      setCritiqueUnavailable(false);
       return result;
     },
     [compileContract, contract, promptBlock, reconciliation],
   );
 
-  const runPendingCritique = useCallback(async () => {
-    const pending = pendingCritiqueRef.current;
-    if (!enabled || !pending || !signedIn) return null;
+  const critiqueGeneratedArtifact = useCallback(
+    async (artifact: GeneratedArtifactForTasteCritique) => {
+      const contractId = pendingContractIdRef.current ?? contract?.id;
+      if (!enabled || !signedIn || !contractId) return null;
 
-    setCritiqueLoading(true);
-    setError(null);
+      if (!isCritiquableArtifact(artifact)) {
+        setCritiqueUnavailable(true);
+        setCritique(null);
+        return null;
+      }
 
-    try {
-      const result = await critiqueTasteCandidate({
-        contractId: pending.contractId,
-        candidate: {
-          id: pending.candidateId,
-          tags: pending.tags,
-        },
-        projectId,
-        persist: true,
-      });
-      setCritique(result.critique);
-      pendingCritiqueRef.current = null;
-      return result.critique;
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Critique could not run.";
-      setError(message);
-      return null;
-    } finally {
-      setCritiqueLoading(false);
-    }
-  }, [enabled, projectId, signedIn]);
+      setCritiqueLoading(true);
+      setError(null);
+      setCritiqueUnavailable(false);
+
+      try {
+        const result = await critiqueTasteCandidate({
+          contractId,
+          artifact: {
+            ...artifact,
+            sourcePromptTags:
+              artifact.sourcePromptTags ?? sourcePromptTagsRef.current,
+          },
+          projectId,
+          persist: true,
+        });
+        setCritique(result.critique);
+        pendingContractIdRef.current = null;
+        sourcePromptTagsRef.current = [];
+        return result.critique;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Critique could not run.";
+        if (
+          message.toLowerCase().includes("artifact") ||
+          message.toLowerCase().includes("extraction")
+        ) {
+          setCritiqueUnavailable(true);
+        }
+        setError(message);
+        return null;
+      } finally {
+        setCritiqueLoading(false);
+      }
+    },
+    [contract?.id, enabled, projectId, signedIn],
+  );
 
   const clearCritique = useCallback(() => {
     setCritique(null);
-    pendingCritiqueRef.current = null;
+    setCritiqueUnavailable(false);
+    pendingContractIdRef.current = null;
+    sourcePromptTagsRef.current = [];
   }, []);
 
   return {
@@ -171,9 +189,10 @@ export function useStudioTasteCompiler(options: StudioTasteCompilerOptions) {
     critiqueLoading,
     error,
     entitlementBlocked,
+    critiqueUnavailable,
     compileContract,
     prepareForGeneration,
-    runPendingCritique,
+    critiqueGeneratedArtifact,
     clearCritique,
   };
 }

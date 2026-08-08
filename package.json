@@ -50,6 +50,7 @@
     "verify:atelier": "tsx scripts/verifyAtelierService.ts",
     "verify:gateway-generate-text": "tsx scripts/verifyGatewayGenerateText.ts",
     "verify:gateway-generate-image": "tsx scripts/verifyGatewayGenerateImage.ts",
+    "verify:production-gateway-path": "tsx scripts/verifyProductionGatewayPath.ts",
     "verify:embeddings": "tsx scripts/verifyEmbeddingPipeline.ts",
     "verify:corpus": "tsx scripts/verifyTasteCorpusExplorer.ts",
     "verify:residue": "tsx scripts/verifyResidueEngine.ts",

@@ -345,6 +345,12 @@ export const TheStand: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> 
                   </div>
                 </div>
 
+                <p className="font-sans text-[11px] leading-snug text-[var(--mimi-stone)] px-1">
+                  {mode === 'mine'
+                    ? 'Your published issues — covers on your personal shelf.'
+                    : 'Browse issues from other creators on the open Floor.'}
+                </p>
+
                 <div className="relative w-full md:w-auto">
                   <Search
                     size={14}

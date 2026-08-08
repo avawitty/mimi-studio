@@ -11,6 +11,8 @@ import {
   scatterLayout,
   type MessyClipLayout,
 } from "./messyPocketLayout";
+import { WhySavedSheet } from "./WhySavedSheet";
+import { useWhySavedPrompt } from "../../hooks/useWhySavedPrompt";
 
 export const POCKET_STASH_TOGGLE_EVENT = "mimi:toggle_pocket_stash";
 export const POCKET_STASH_OPEN_EVENT = "mimi:open_pocket_stash";
@@ -62,6 +64,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
   onOpenRegistry,
 }) => {
   const { user } = useUser();
+  const whySaved = useWhySavedPrompt(user?.uid);
   const deskRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<PocketItem[]>([]);
@@ -232,9 +235,10 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
     );
     if (!list.length) return;
     const uid = user?.uid || "local-guest";
+    const savedImages: { artifactId: string; tags: string[] }[] = [];
     for (const file of list) {
       if (file.type.startsWith("image/")) {
-        await archiveManager.saveToPocket(
+        const artifactId = await archiveManager.saveToPocket(
           uid,
           "image",
           {
@@ -243,6 +247,9 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
           },
           [file],
         );
+        if (artifactId && user?.uid && !user.isAnonymous) {
+          savedImages.push({ artifactId, tags: [file.name, file.type] });
+        }
       } else {
         const text = await file.text();
         await archiveManager.saveToPocket(uid, "text", {
@@ -251,6 +258,9 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
           origin: "messy-pocket-stash",
         });
       }
+    }
+    if (savedImages.length > 0) {
+      whySaved.enqueueArtifacts(savedImages);
     }
     flashDropped();
     await loadItems();
@@ -498,6 +508,20 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
           </div>
         </div>
       </div>
+      <WhySavedSheet
+        open={Boolean(whySaved.prompt)}
+        onDismiss={whySaved.dismiss}
+        onDone={whySaved.done}
+        hypotheses={whySaved.hypotheses}
+        loading={whySaved.loading}
+        error={whySaved.error}
+        snapshotAvailable={whySaved.snapshotAvailable}
+        queuePosition={whySaved.queuePosition}
+        queueLength={whySaved.queueLength}
+        isReviewing={whySaved.isReviewing}
+        reviewErrors={whySaved.reviewErrors}
+        onReview={whySaved.review}
+      />
     </div>
   );
 };

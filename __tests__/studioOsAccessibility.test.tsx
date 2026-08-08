@@ -17,7 +17,7 @@ describe("Studio OS accessibility", () => {
     ).toBeInTheDocument();
   });
 
-  it("gives every icon-only navigation button an accessible name", () => {
+  it("gives every navigation button an accessible name", () => {
     const { container } = render(
       <StudioNavigation
         active="map"
@@ -27,11 +27,9 @@ describe("Studio OS accessibility", () => {
       />,
     );
 
-    const iconOnlyButtons = [...container.querySelectorAll("button")].filter(
-      (button) => button.textContent?.trim() === "",
-    );
-    expect(iconOnlyButtons.length).toBeGreaterThan(0);
-    for (const button of iconOnlyButtons) {
+    const buttons = [...container.querySelectorAll("button")];
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const button of buttons) {
       expect(button).toHaveAccessibleName();
     }
   });

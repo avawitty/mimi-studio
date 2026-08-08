@@ -354,6 +354,7 @@ export const InputStudio: React.FC<{
   isThinking: boolean;
   initialValue?: string;
   initialMedia?: MediaFile[];
+  initialCoverVariants?: ZineCoverVariant[];
   continuumContext?: any;
   zineOptions: ZineGenerationOptions;
   setZineOptions: (options: ZineGenerationOptions) => void;
@@ -363,6 +364,7 @@ export const InputStudio: React.FC<{
   isThinking,
   initialValue,
   initialMedia,
+  initialCoverVariants,
   continuumContext,
   initialHighFidelity,
   zineOptions,
@@ -504,14 +506,6 @@ export const InputStudio: React.FC<{
     tailorDraft: profile?.tailorDraft,
     signedIn: Boolean(currentUser?.uid),
   });
-  const wasThinkingRef = useRef(false);
-
-  useEffect(() => {
-    if (wasThinkingRef.current && !isThinking && tasteCompilerEnabled) {
-      void tasteCompiler.runPendingCritique();
-    }
-    wasThinkingRef.current = isThinking;
-  }, [isThinking, tasteCompilerEnabled, tasteCompiler.runPendingCritique]);
 
   const [isHighFidelity, setIsHighFidelity] = useState(
     initialHighFidelity || false,
@@ -617,9 +611,10 @@ export const InputStudio: React.FC<{
   const [isDraggingOverSlot, setIsDraggingOverSlot] = useState<boolean>(false);
   const [isComposingCover, setIsComposingCover] = useState(false);
   const [composeCoverError, setComposeCoverError] = useState<string | null>(null);
-  const [coverVariants, setCoverVariants] = useState<ZineCoverVariant[]>(() =>
-    parseStoredCoverVariants(localStorage.getItem(STUDIO_COVER_DRAFT_KEY)),
-  );
+  const [coverVariants, setCoverVariants] = useState<ZineCoverVariant[]>(() => {
+    if (initialCoverVariants?.length) return initialCoverVariants;
+    return parseStoredCoverVariants(localStorage.getItem(STUDIO_COVER_DRAFT_KEY));
+  });
   const [showImageApiKeyInfo, setShowImageApiKeyInfo] = useState(false);
   const [coverProvider, setCoverProvider] = useState<StudioCoverProvider>(() => {
     const stored = localStorage.getItem("mimi_cover_provider");
@@ -1262,14 +1257,13 @@ ${finalInput}`;
       finalInput = `${studioDoll.dollPromptContext}\n\n${finalInput}`;
     }
 
+    let tasteContractId: string | undefined;
     if (tasteCompilerEnabled && currentUser?.uid) {
-      const prepared = await tasteCompiler.prepareForGeneration(
-        `studio-${Date.now()}`,
-        activeTags,
-      );
+      const prepared = await tasteCompiler.prepareForGeneration(activeTags);
       if (prepared?.promptBlock) {
         finalInput = `${prepared.promptBlock}\n\n${finalInput}`;
       }
+      tasteContractId = prepared?.contract.id;
     }
 
     const coverExport = buildStudioCoverExportMeta(
@@ -1303,6 +1297,8 @@ ${finalInput}`;
           activeTreatmentId || zineOptions.selectedTreatmentId,
         temperature: activeCognitivePersona?.temperature,
       },
+      tasteContractId,
+      sourcePromptTags: activeTags,
     });
 
     localStorage.removeItem("mimi_draft_input");
@@ -2065,6 +2061,15 @@ ${finalInput}`;
     }
   }, [coverVariants, syncComposedCoverMedia]);
 
+  useEffect(() => {
+    if (!initialCoverVariants?.length) return;
+    setCoverVariants(initialCoverVariants);
+    const selected = selectedCoverVariant(initialCoverVariants);
+    if (selected?.url) {
+      syncComposedCoverMedia(selected.url);
+    }
+  }, [initialCoverVariants, syncComposedCoverMedia]);
+
   const handlePromoteCoverVariant = useCallback(
     (seed: string) => {
       const mainUrl =
@@ -2708,6 +2713,8 @@ ${finalInput}`;
                 <TasteCritiqueCard
                   critique={tasteCompiler.critique}
                   loading={tasteCompiler.critiqueLoading}
+                  unavailable={tasteCompiler.critiqueUnavailable}
+                  error={tasteCompiler.error}
                 />
               </div>
 

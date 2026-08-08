@@ -17,15 +17,28 @@ import {
   compileTasteGenerationContract,
   critiqueAgainstContract,
   extractCandidateFeatures,
+  extractionToCritiqueFeatures,
+  extractDeterministicArtifactFeatures,
+  extractArtifactFeatures,
+  isCritiquableArtifact,
+  zineMetadataToGeneratedArtifact,
   mergeGenerationContracts,
   formatGenerationContractPrompt,
   rerankTasteSearchResults,
   buildTastePassport,
   computePairwiseAccuracy,
   computeBrierScore,
+  proposeSavedReasonHypotheses,
+  applySavedReasonReview,
+  epistemicLabelForHypothesis,
   computeModelDelta,
   applyEditsToSnapshot,
   refusalTypeForRefineOption,
+  replayTasteSnapshot,
+  deriveEditBaseline,
+  getUndoableForwardEdit,
+  assertUndoableEdit,
+  isUndoModelEdit,
 } from "../lib/tasteIntelligence";
 import { mergeGraphPositions, projectTasteModelToGraph } from "../lib/tasteModel";
 import { readFileSync } from "node:fs";
@@ -217,22 +230,6 @@ describe("taste intelligence compiler and critic", () => {
     expect(contract.mode).toBe("aligned");
   });
 
-  it("critic is deterministic after feature extraction", () => {
-    const snapshot = minimalSnapshot();
-    const contract = compileTasteGenerationContract(
-      snapshot,
-      { ownerId: "u1" },
-      "writing",
-      "adjacent",
-    );
-    const candidate = { id: "c1", featureIds: ["pattern_cluster:c1"] };
-    const extracted = extractCandidateFeatures(candidate, snapshot);
-    const a = critiqueAgainstContract({ contract, snapshot, candidate, extracted });
-    const b = critiqueAgainstContract({ contract, snapshot, candidate, extracted });
-    expect(a.alignmentScore).toBe(b.alignmentScore);
-    expect(a.violatedRules).toEqual(b.violatedRules);
-  });
-
   it("merges tailor v2 generationContract into compiler output", () => {
     const snapshot = minimalSnapshot();
     const compiled = compileTasteGenerationContract(
@@ -256,6 +253,275 @@ describe("taste intelligence compiler and critic", () => {
     expect(contract.contextRules.some((r) => r.startsWith("Objective:"))).toBe(true);
     const prompt = formatGenerationContractPrompt(contract, reconciliation);
     expect(prompt).toContain("Reconciled with Tailor Profile v2");
+  });
+});
+
+describe("post-generation taste critic", () => {
+  const generatedText =
+    "Soft contrast editorial spread with muted contrast typography and archival melancholy rhythm across three pages.";
+
+  const artifact = {
+    id: "zine-real-123",
+    medium: "editorial" as const,
+    text: generatedText,
+    pages: [
+      { text: "Page one body with soft contrast motifs." },
+      { text: "Page two continues the editorial rhythm." },
+    ],
+    sourcePromptTags: ["neon", "stock-futurism"],
+  };
+
+  it("extracts features from actual generated content not source tags", async () => {
+    const snapshot = minimalSnapshot();
+    const extraction = await extractArtifactFeatures({
+      artifact,
+      snapshot,
+      allowAiExtraction: false,
+    });
+    expect(extraction.labels.some((l) => l.toLowerCase().includes("soft"))).toBe(
+      true,
+    );
+    expect(extraction.tags).not.toContain("neon");
+    expect(extraction.tags).not.toContain("stock-futurism");
+    expect(extraction.completeness).not.toBe("failed");
+  });
+
+  it("empty output does not produce critiquable artifact", () => {
+    expect(
+      isCritiquableArtifact({ id: "empty", medium: "editorial", text: "  " }),
+    ).toBe(false);
+  });
+
+  it("source tags remain provenance only in zine conversion", () => {
+    const converted = zineMetadataToGeneratedArtifact(
+      {
+        id: "z-1",
+        title: "Issue title",
+        theme: "Editorial Stillness",
+        content: {
+          meta: { mode: "editorial" as const, intent: "test", timestamp: Date.now() },
+          taste_context: { active_archetype: "editor", active_palette: [] },
+          title: "Issue",
+          structure: { hero_prompt: "", pages: [] },
+          visual_guidance: { palette: [], motifs: [] },
+          pages: [{ pageNumber: 1, headline: "H", bodyCopy: "Body", imagePrompt: "" }],
+        } as unknown as import("../types").ZineContent,
+        tags: ["prompt-only"],
+      },
+      ["prompt-only", "anchor"],
+    );
+    expect(converted.sourcePromptTags).toEqual(["prompt-only", "anchor"]);
+    expect(converted.text).toContain("Body");
+  });
+
+  it("explicit refusal violation lowers score", () => {
+    const snapshot = minimalSnapshot();
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["pattern_cluster:c1"],
+      refusalType: "always",
+      signedWeight: -1,
+      confidence: 0.95,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: [],
+    });
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1", refusals: [refusal] },
+      "editorial",
+      "aligned",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const extracted = extractionToCritiqueFeatures(extraction);
+    const withRefusal = critiqueAgainstContract({
+      contract,
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted,
+      refusals: [refusal],
+    });
+    const withoutRefusal = critiqueAgainstContract({
+      contract: compileTasteGenerationContract(
+        snapshot,
+        { ownerId: "u1" },
+        "editorial",
+        "aligned",
+      ),
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted,
+      refusals: [],
+    });
+    expect(
+      withRefusal.violatedRules.length + withRefusal.violatedRules.join(" "),
+    ).toMatch(/refusal|avoid/i);
+    expect(withRefusal.alignmentScore).toBeLessThanOrEqual(
+      withoutRefusal.alignmentScore,
+    );
+  });
+
+  it("aligned vs adjacent vs divergent interpret departures differently", () => {
+    const snapshot = minimalSnapshot();
+    const preserveRule = snapshot.featureWeights[0]!.label;
+    const modes = ["aligned", "adjacent", "divergent"] as const;
+    const results = modes.map((mode) => {
+      const contract = {
+        ...compileTasteGenerationContract(
+          snapshot,
+          { ownerId: "u1" },
+          "editorial",
+          mode,
+        ),
+        preserve: [preserveRule],
+        permit: ["experimental layout"],
+      };
+      const extraction = extractDeterministicArtifactFeatures(
+        {
+          id: `z-${mode}`,
+          medium: "editorial",
+          text: "experimental layout without preserve motifs",
+        },
+        snapshot,
+      );
+      return critiqueAgainstContract({
+        contract,
+        snapshot,
+        candidate: { id: `z-${mode}`, featureIds: [] },
+        extracted: extractionToCritiqueFeatures(extraction),
+      });
+    });
+    expect(results[0]!.violatedRules.length).toBeGreaterThan(0);
+    expect(results[2]!.usefulDepartures.length).toBeGreaterThan(0);
+  });
+
+  it("hard refusal remains violation in divergent mode", () => {
+    const snapshot = minimalSnapshot();
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["pattern_cluster:c1"],
+      refusalType: "always",
+      signedWeight: -1,
+      confidence: 0.95,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: [],
+    });
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1", refusals: [refusal] },
+      "editorial",
+      "divergent",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const critique = critiqueAgainstContract({
+      contract,
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted: extractionToCritiqueFeatures(extraction),
+      refusals: [refusal],
+    });
+    expect(
+      critique.violatedRules.some(
+        (r) => r.toLowerCase().includes("refusal") || r.toLowerCase().includes("avoid"),
+      ),
+    ).toBe(true);
+  });
+
+  it("repair suggestions are re-scored on 0-100 scale", () => {
+    const snapshot = minimalSnapshot();
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1" },
+      "editorial",
+      "aligned",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const critique = critiqueAgainstContract({
+      contract,
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted: extractionToCritiqueFeatures(extraction),
+    });
+    if (critique.counterfactualRepairs.length > 0) {
+      const repair = critique.counterfactualRepairs[0]!;
+      expect(repair.resultingScore).toBeGreaterThanOrEqual(0);
+      expect(repair.resultingScore).toBeLessThanOrEqual(100);
+      for (const mod of repair.modifications) {
+        expect(mod.scoreAfter).toBeGreaterThanOrEqual(0);
+        expect(mod.scoreAfter).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
+  it("artifact ID links critique to actual output", () => {
+    const snapshot = minimalSnapshot();
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1" },
+      "editorial",
+      "aligned",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const critique = critiqueAgainstContract({
+      contract,
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted: extractionToCritiqueFeatures(extraction),
+    });
+    expect(critique.artifactId).toBe("zine-real-123");
+    expect(critique.candidateId).toBe("zine-real-123");
+    expect(critique.alignmentScore).toBeGreaterThanOrEqual(0);
+    expect(critique.alignmentScore).toBeLessThanOrEqual(100);
+  });
+
+  it("partial extraction surfaces partial state", async () => {
+    const snapshot = minimalSnapshot();
+    const partialArtifact = {
+      id: "partial-1",
+      medium: "editorial" as const,
+      text: "Editorial text only",
+      pages: [
+        { text: "Page without image" },
+        { text: "Second page", imageRef: undefined as string | undefined },
+      ],
+      imageRefs: ["https://example.com/missing-plate.jpg"],
+    };
+    const extraction = await extractArtifactFeatures({
+      artifact: partialArtifact,
+      snapshot,
+      allowAiExtraction: false,
+    });
+    expect(extraction.completeness).toBe("partial");
+    const critique = critiqueAgainstContract({
+      contract: compileTasteGenerationContract(
+        snapshot,
+        { ownerId: "u1" },
+        "editorial",
+        "aligned",
+      ),
+      snapshot,
+      candidate: { id: partialArtifact.id, featureIds: extraction.featureIds },
+      extracted: extractionToCritiqueFeatures(extraction),
+    });
+    expect(critique.featureExtraction?.completeness).toBe("partial");
+  });
+
+  it("critic is deterministic after artifact feature extraction", () => {
+    const snapshot = minimalSnapshot();
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1" },
+      "writing",
+      "adjacent",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const extracted = extractionToCritiqueFeatures(extraction);
+    const candidate = { id: artifact.id, featureIds: extraction.featureIds };
+    const a = critiqueAgainstContract({ contract, snapshot, candidate, extracted });
+    const b = critiqueAgainstContract({ contract, snapshot, candidate, extracted });
+    expect(a.alignmentScore).toBe(b.alignmentScore);
+    expect(a.violatedRules).toEqual(b.violatedRules);
   });
 });
 
@@ -432,6 +698,89 @@ describe("calibration pair ranking", () => {
       emergingFeatureIds: [],
     });
     expect(fresh[0]!.priority).toBeGreaterThanOrEqual(repeated[0]?.priority ?? 0);
+  });
+});
+
+describe("taste intelligence why saved", () => {
+  it("proposes hypotheses from taste snapshot features", () => {
+    const snapshot = minimalSnapshot();
+    const hypotheses = proposeSavedReasonHypotheses("artifact-1", snapshot, []);
+    expect(hypotheses.length).toBeGreaterThan(0);
+    expect(hypotheses[0]!.artifactId).toBe("artifact-1");
+    expect(hypotheses[0]!.userStatus).toBe("unreviewed");
+  });
+
+  it("confirm marks hypothesis as creator confirmed", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-2", snapshot);
+    expect(hypothesis).toBeTruthy();
+    const reviewed = applySavedReasonReview(hypothesis!, "confirm");
+    expect(reviewed.userStatus).toBe("confirmed");
+    expect(reviewed.source).toBe("creator_authored");
+  });
+
+  it("reject marks not-why-i-saved interpretive rejection", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-3", snapshot);
+    const reviewed = applySavedReasonReview(hypothesis!, "reject");
+    expect(reviewed.userStatus).toBe("rejected");
+  });
+
+  it("edit preserves creator correction text", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-4", snapshot);
+    const reviewed = applySavedReasonReview(
+      hypothesis!,
+      "edit",
+      "Saved for the grain, not the palette.",
+    );
+    expect(reviewed.userStatus).toBe("edited");
+    expect(reviewed.hypothesis).toContain("grain");
+  });
+
+  it("skip does not mutate hypothesis status or source", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-5", snapshot);
+    expect(hypothesis).toBeTruthy();
+    const skipped = applySavedReasonReview(hypothesis!, "skip");
+    expect(skipped).toEqual(hypothesis);
+    expect(skipped.userStatus).toBe("unreviewed");
+    expect(skipped.source).toBe("model_proposed");
+  });
+
+  it("unavailable taste snapshot uses tag-based rule hypotheses only", () => {
+    const hypotheses = proposeSavedReasonHypotheses(
+      "artifact-6",
+      null,
+      ["composition", "image/jpeg"],
+    );
+    expect(hypotheses.every((h) => h.source === "rule_based")).toBe(true);
+    expect(hypotheses.length).toBeGreaterThan(0);
+  });
+
+  it("epistemic labels distinguish inferred, observed, and creator review", () => {
+    const snapshot = minimalSnapshot();
+    const [modelHypothesis, ruleHypothesis] = proposeSavedReasonHypotheses(
+      "artifact-7",
+      snapshot,
+      ["composition"],
+    );
+    expect(modelHypothesis?.source).toBe("model_proposed");
+    expect(epistemicLabelForHypothesis(modelHypothesis!)).toBe("Inferred");
+
+    const ruleOnly = ruleHypothesis?.source === "rule_based"
+      ? ruleHypothesis
+      : proposeSavedReasonHypotheses("artifact-7b", null, ["composition"])[0]!;
+    expect(epistemicLabelForHypothesis(ruleOnly)).toBe("Observed");
+
+    const confirmed = applySavedReasonReview(modelHypothesis!, "confirm");
+    expect(epistemicLabelForHypothesis(confirmed)).toBe("Creator confirmed");
+
+    const rejected = applySavedReasonReview(modelHypothesis!, "reject");
+    expect(epistemicLabelForHypothesis(rejected)).toBe("Creator rejected");
+
+    const edited = applySavedReasonReview(modelHypothesis!, "edit", "My reason");
+    expect(epistemicLabelForHypothesis(edited)).toBe("Creator corrected");
   });
 });
 
@@ -702,5 +1051,95 @@ describe("negative taste and model editing slice", () => {
     expect(source).toContain("min-h-[44px]");
     expect(source).toContain("SignalRefineSheet");
     expect(source).toContain("useIsNarrow");
+  });
+
+  it("refusal → edit → undo → recompile is deterministic after reload", () => {
+    const baseline = minimalSnapshot();
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["pattern_cluster:c1"],
+      refusalType: "always",
+      signedWeight: -1,
+      confidence: 0.95,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: ["evt-1"],
+    });
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "rename",
+      targetIds: ["pattern_cluster:c1"],
+      before: { label: "Soft contrast" },
+      after: { label: "Edited label" },
+    });
+    const undo = createUndoEdit(edit);
+
+    const afterRefusal = replayTasteSnapshot({
+      baseline,
+      edits: [],
+      refusals: [refusal],
+    });
+    const afterEdit = replayTasteSnapshot({
+      baseline,
+      edits: [edit],
+      refusals: [refusal],
+    });
+    const afterUndo = replayTasteSnapshot({
+      baseline,
+      edits: [edit, undo],
+      refusals: [refusal],
+    });
+
+    const featureAfterRefusal = afterRefusal.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    )!;
+    const featureAfterEdit = afterEdit.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    )!;
+    const featureAfterUndo = afterUndo.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    )!;
+
+    expect(featureAfterEdit.label).toBe("Edited label");
+    expect(featureAfterUndo.label).toBe(featureAfterRefusal.label);
+    expect(featureAfterUndo.signedWeight).toBeCloseTo(
+      featureAfterRefusal.signedWeight,
+      5,
+    );
+
+    const derivedBaseline = deriveEditBaseline(afterUndo, [edit, undo]);
+    const replayed = replayTasteSnapshot({
+      baseline: derivedBaseline,
+      edits: [edit, undo],
+      refusals: [refusal],
+    });
+    const reloaded = JSON.parse(JSON.stringify(replayed)) as TasteModelSnapshot;
+    expect(reloaded.featureWeights).toEqual(afterUndo.featureWeights);
+    expect(reloaded.interactionRules).toEqual(afterUndo.interactionRules);
+  });
+
+  it("undo is limited to the most recent forward edit", () => {
+    const rename = createModelEdit({
+      ownerId: "u1",
+      operation: "rename",
+      targetIds: ["pattern_cluster:c1"],
+      before: { label: "Soft contrast" },
+      after: { label: "Renamed once" },
+    });
+    const weight = createModelEdit({
+      ownerId: "u1",
+      operation: "set_weight",
+      targetIds: ["pattern_cluster:c1"],
+      before: { signedWeight: 0.6 },
+      after: { signedWeight: 0.1 },
+    });
+
+    expect(getUndoableForwardEdit([rename, weight])?.id).toBe(weight.id);
+    expect(assertUndoableEdit([rename, weight], weight.id)?.id).toBe(weight.id);
+    expect(assertUndoableEdit([rename, weight], rename.id)).toBeNull();
+
+    const undoWeight = createUndoEdit(weight);
+    expect(isUndoModelEdit(undoWeight)).toBe(true);
+    expect(getUndoableForwardEdit([rename, weight, undoWeight])?.id).toBe(rename.id);
   });
 });

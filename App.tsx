@@ -33,6 +33,7 @@ import {
   AppState,
   ToneTag,
   ZineMetadata,
+  ZineCoverVariant,
   DriftEvent,
   MediaFile,
   ZineContent,
@@ -47,6 +48,7 @@ import { resolveApiKey } from "./services/apiKeyService";
 import { diagnoseOracle } from "./services/geminiClient";
 import { createZine } from "./services/zineGenerator";
 import { clearApprovedUsedContext } from "./services/usedContextService";
+import { STUDIO_COVER_DRAFT_KEY } from "./lib/studioCoverVariants";
 import { getEditorialCompileExport } from "./lib/editCompileExport";
 import {
   saveZineToProfile,
@@ -59,6 +61,9 @@ import { ZineConfiguration } from "./components/ZineConfiguration";
 import { ApiKeyShield } from "./components/ApiKeyShield";
 import { ZineGenerationOptions } from "./types";
 import { InputStudio } from "./components/InputStudio";
+import { critiqueTasteCandidate } from "./services/tasteIntelligenceClient";
+import { zineMetadataToGeneratedArtifact } from "./lib/tasteIntelligence/generatedArtifact";
+import type { TasteCritique } from "./schemas/tasteIntelligenceContracts";
 import { StudioOrientationEntry } from "./components/studio/StudioOrientationEntry";
 import { StudioWorktable } from "./components/worktable/StudioWorktable";
 import { StudioChrome } from "./components/studio/StudioChrome";
@@ -82,8 +87,13 @@ import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { AgentProvider, useAgents } from "./contexts/AgentContext";
 import { MENU_STRUCTURE } from "./components/navigationConfig";
 import { canonicalizeMimiRoute } from "./lib/productCanon";
+import { isExtendedMenuMode } from "./lib/navigationMenu";
 import { LegalDocumentPage } from "./components/LegalDocumentPage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import {
+  COOKIE_CONSENT_CHANGED,
+  hasCookieConsentChoice,
+} from "./lib/cookieConsent";
 import { ResearchNoteWidget } from "./components/ResearchNoteWidget";
 import { legalTypeFromPath } from "./lib/legalContent";
 import { useTactileAudio } from "./hooks/useTactileAudio";
@@ -412,6 +422,24 @@ const BinderRing = ({ className }: { className?: string }) => (
   </div>
 );
 
+const GATEWAY_DISMISSED_KEY = "mimi_gateway_dismissed";
+
+function readGatewayDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(GATEWAY_DISMISSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistGatewayDismissed(): void {
+  try {
+    sessionStorage.setItem(GATEWAY_DISMISSED_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 const NavigationDrawer: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -423,6 +451,9 @@ const NavigationDrawer: React.FC<{
   setUiMode: (mode: "stage" | "control") => void;
   onOpenGuide: () => void;
   isGenerating?: boolean;
+  currentTitle: string;
+  focusSearch?: boolean;
+  onFocusSearchConsumed?: () => void;
 }> = ({
   isOpen,
   onClose,
@@ -434,6 +465,9 @@ const NavigationDrawer: React.FC<{
   setUiMode,
   onOpenGuide,
   isGenerating = false,
+  currentTitle,
+  focusSearch = false,
+  onFocusSearchConsumed,
 }) => {
   const handleNav = (mode: string) => {
     if (isGenerating) return;
@@ -442,6 +476,22 @@ const NavigationDrawer: React.FC<{
   };
   const [searchQuery, setSearchQuery] = React.useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const [showExtendedChambers, setShowExtendedChambers] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isOpen || !focusSearch) return;
+    const timer = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+      onFocusSearchConsumed?.();
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [focusSearch, isOpen, onFocusSearchConsumed]);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery("");
+    }
+  }, [isOpen]);
 
   const hidden = profile?.hiddenMenuItems || [];
   const filteredMenuItems = MENU_STRUCTURE
@@ -450,6 +500,14 @@ const NavigationDrawer: React.FC<{
       items: section.items.filter((item) => {
         // Exclude hidden menu items
         if (hidden.includes(item.mode)) return false;
+        if (
+          section.section === "All Chambers" &&
+          !showExtendedChambers &&
+          !searchQuery &&
+          isExtendedMenuMode(item.mode)
+        ) {
+          return false;
+        }
 
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
@@ -474,6 +532,20 @@ const NavigationDrawer: React.FC<{
       return acc + section.items.length;
     }, 0);
   }, [filteredMenuItems]);
+
+  const hiddenExtendedCount = React.useMemo(() => {
+    if (showExtendedChambers || searchQuery) return 0;
+    return MENU_STRUCTURE.reduce((acc, section) => {
+      if (section.section !== "All Chambers") return acc;
+      return (
+        acc +
+        section.items.filter(
+          (item) =>
+            !hidden.includes(item.mode) && isExtendedMenuMode(item.mode),
+        ).length
+      );
+    }, 0);
+  }, [hidden, searchQuery, showExtendedChambers]);
 
   const { user } = useUser();
   const { currentPalette, toggleMode } = useTheme();
@@ -503,13 +575,16 @@ const NavigationDrawer: React.FC<{
           >
             {/* Drawer Header */}
             <div className="px-6 py-5 border-b studio-border flex items-start justify-between studio-bg-surface select-none">
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <span className="font-mono text-[9px] uppercase tracking-[0.28em] font-bold leading-none studio-text-muted">
                   Full Menu
                 </span>
                 <span className="font-serif italic text-2xl leading-tight studio-text-ink mt-1.5">
                   All chambers
                 </span>
+                <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400 truncate">
+                  You are in · {currentTitle}
+                </p>
               </div>
               <button
                 type="button"
@@ -526,6 +601,39 @@ const NavigationDrawer: React.FC<{
               onNavigate={handleNav}
               disabled={isGenerating}
             />
+
+            <div className="px-6 py-3 border-b studio-border studio-bg-surface space-y-3">
+              <label className="sr-only" htmlFor="chamber-search">
+                Find a chamber
+              </label>
+              <div className="relative">
+                <Search
+                  size={14}
+                  strokeWidth={1.5}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+                  aria-hidden
+                />
+                <input
+                  id="chamber-search"
+                  ref={searchInputRef}
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Find a chamber…"
+                  className="w-full min-h-11 border studio-border bg-transparent pl-9 pr-3 font-sans text-sm studio-text-ink placeholder:text-stone-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                />
+              </div>
+              {viewMode !== "chamber-map" ? (
+                <button
+                  type="button"
+                  onClick={() => handleNav("chamber-map")}
+                  className="flex w-full min-h-11 items-center justify-center gap-2 border studio-border px-3 font-mono text-[8px] uppercase tracking-[0.2em] font-bold studio-text-ink hover:bg-stone-100 dark:hover:bg-stone-900 transition-colors"
+                >
+                  <Compass size={12} strokeWidth={1.5} className="text-amber-500" />
+                  <span>Open Studio Map</span>
+                </button>
+              ) : null}
+            </div>
 
             {/* High Latency / Generation Guard Banner */}
             {isGenerating && (
@@ -620,6 +728,16 @@ const NavigationDrawer: React.FC<{
                   </motion.div>
                 )}
               </AnimatePresence>
+              {hiddenExtendedCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowExtendedChambers(true)}
+                  className="mt-4 w-full min-h-11 border studio-border px-3 py-2 font-mono text-[8px] uppercase tracking-[0.2em] font-bold studio-text-muted hover:studio-text-ink hover:bg-stone-100 dark:hover:bg-stone-900 transition-colors"
+                >
+                  Show {hiddenExtendedCount} more chamber
+                  {hiddenExtendedCount === 1 ? "" : "s"}
+                </button>
+              ) : null}
             </div>
 
             {/* Polished System Alignment Footer */}
@@ -1307,6 +1425,7 @@ export const App: React.FC = () => {
   }), []);
 
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [navFocusSearch, setNavFocusSearch] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isMobileConsoleOpen, setIsMobileConsoleOpen] = useState(false);
   const [commandDrawerOpen, setCommandDrawerOpen] = useState(false);
@@ -1507,6 +1626,9 @@ export const App: React.FC = () => {
 
   const [showQuotaShield, setShowQuotaShield] = useState(false);
   const [zineMetadata, setZineMetadata] = useState<ZineMetadata | null>(null);
+  const [tasteCritique, setTasteCritique] = useState<TasteCritique | null>(null);
+  const [tasteCritiqueLoading, setTasteCritiqueLoading] = useState(false);
+  const [tasteCritiqueUnavailable, setTasteCritiqueUnavailable] = useState(false);
   const [zineOptions, setZineOptions] = useState<ZineGenerationOptions>({
     style: "balanced",
     theme: "organic",
@@ -1518,21 +1640,24 @@ export const App: React.FC = () => {
   const [isDeepRefraction, setIsDeepRefraction] = useState(false);
   const [threadValue, setThreadValue] = useState<string>("");
   const [threadMedia, setThreadMedia] = useState<MediaFile[]>([]);
+  const [threadCoverVariants, setThreadCoverVariants] = useState<
+    ZineCoverVariant[] | undefined
+  >(undefined);
   const [threadHighFidelity, setThreadHighFidelity] = useState(false);
   /** Escape hatch: dense InputStudio console under legacy worktable only */
   const [studioConsoleOpen, setStudioConsoleOpen] = useState(false);
 
   useEffect(() => {
-    if (!isStudioWorktableLegacy) setStudioConsoleOpen(false);
-  }, [isStudioWorktableLegacy]);
+    if (viewMode !== "studio") setStudioConsoleOpen(false);
+  }, [viewMode]);
 
   useEffect(() => {
-    if (!isStudioWorktableLegacy) return;
+    if (viewMode !== "studio") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("console") === "1") {
       setStudioConsoleOpen(true);
     }
-  }, [isStudioWorktableLegacy, path]);
+  }, [viewMode, path]);
   const [showCaptiveSentinel, setShowCaptiveSentinel] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isHeaderTranslucent, setIsHeaderTranslucent] = useState(false);
@@ -1541,7 +1666,20 @@ export const App: React.FC = () => {
   const [showPatronModal, setShowPatronModal] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const [showGateway, setShowGateway] = useState(false);
-  const [hasSeenGateway, setHasSeenGateway] = useState(false);
+  const [hasSeenGateway, setHasSeenGateway] = useState(readGatewayDismissed);
+
+  const dismissGateway = useCallback(() => {
+    setShowGateway(false);
+    setHasSeenGateway(true);
+    persistGatewayDismissed();
+  }, []);
+  const [cookieConsentResolved, setCookieConsentResolved] = useState(
+    () => typeof window !== "undefined" && hasCookieConsentChoice(),
+  );
+  const blockFirstRunOverlays =
+    showGateway || authLoading || isElevatorLoading;
+  const onboardingReady =
+    !authLoading && !isElevatorLoading && !showGateway && cookieConsentResolved;
   const [showProfileHover, setShowProfileHover] = useState(false);
 
   useEffect(() => {
@@ -1618,6 +1756,15 @@ export const App: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
+    const syncCookieConsent = () =>
+      setCookieConsentResolved(hasCookieConsentChoice());
+    syncCookieConsent();
+    window.addEventListener(COOKIE_CONSENT_CHANGED, syncCookieConsent);
+    return () =>
+      window.removeEventListener(COOKIE_CONSENT_CHANGED, syncCookieConsent);
+  }, []);
+
+  useEffect(() => {
     if (authLoading) return;
 
     if (user && !user.isAnonymous) {
@@ -1630,6 +1777,18 @@ export const App: React.FC = () => {
       setHasSeenGateway(true);
     }
   }, [user, authLoading, hasSeenGateway]);
+
+  const openMenuSearch = useCallback(() => {
+    setNavFocusSearch(true);
+    setIsNavOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const onOpenMenuSearch = () => openMenuSearch();
+    window.addEventListener("mimi:open_menu_search", onOpenMenuSearch);
+    return () =>
+      window.removeEventListener("mimi:open_menu_search", onOpenMenuSearch);
+  }, [openMenuSearch]);
 
   const [checkoutPlan, setCheckoutPlan] = useState<
     "core" | "optioning" | "pro" | "lab" | null
@@ -1806,6 +1965,11 @@ export const App: React.FC = () => {
           setThreadValue(e.detail_data.context || e.detail_data);
           if (e.detail_data.initialMedia) {
             setThreadMedia(e.detail_data.initialMedia);
+          }
+          if (e.detail_data.initialCoverVariants?.length) {
+            setThreadCoverVariants(e.detail_data.initialCoverVariants);
+          } else {
+            setThreadCoverVariants(undefined);
           }
           if (e.detail_data.isHighFidelity) {
             setThreadHighFidelity(true);
@@ -2067,6 +2231,15 @@ export const App: React.FC = () => {
         if (opts.studioCoverVariants?.length) {
           result.content.meta = result.content.meta || {};
           result.content.meta.studioCoverVariants = opts.studioCoverVariants;
+          result.coverSpec = {
+            ...(result.coverSpec || {
+              title: result.content.title || "Untitled",
+              overlays: [],
+              treatment: "editorial",
+              overlayBaked: false,
+            }),
+            covers: opts.studioCoverVariants,
+          };
         }
 
         if (coverUrl && opts.studioCoverOverlays?.length) {
@@ -2139,8 +2312,14 @@ export const App: React.FC = () => {
         if (fragmentIds.length > 0) {
           clearApprovedUsedContext("studio", targetUid);
         }
-        navigate("/zine/" + id);
-        setZineMetadata({
+        if (opts.studioCoverVariants?.length) {
+          try {
+            localStorage.removeItem(STUDIO_COVER_DRAFT_KEY);
+          } catch {
+            /* private mode */
+          }
+        }
+        const zineRecord: ZineMetadata = {
           id,
           userId: targetUid,
           userHandle: profile?.handle || "Ghost",
@@ -2168,7 +2347,35 @@ export const App: React.FC = () => {
           createdAt: Date.now(),
           theme: opts.zineOptions?.theme || "Editorial Stillness",
           aestheticVector: {},
-        });
+        };
+        navigate("/zine/" + id);
+        setZineMetadata(zineRecord);
+        setTasteCritique(null);
+        setTasteCritiqueUnavailable(false);
+
+        if (opts.tasteContractId) {
+          setTasteCritiqueLoading(true);
+          const artifact = zineMetadataToGeneratedArtifact(
+            zineRecord,
+            opts.sourcePromptTags,
+          );
+          void critiqueTasteCandidate({
+            contractId: opts.tasteContractId,
+            artifact,
+            projectId: opts.projectId,
+            persist: true,
+          })
+            .then((result) => {
+              setTasteCritique(result.critique);
+            })
+            .catch(() => {
+              setTasteCritiqueUnavailable(true);
+            })
+            .finally(() => {
+              setTasteCritiqueLoading(false);
+            });
+        }
+
         window.dispatchEvent(
           new CustomEvent("mimi:sound", { detail: { type: "success" } }),
         );
@@ -2306,7 +2513,7 @@ export const App: React.FC = () => {
       return (
         <>
           <LegalDocumentPage type={legalType} />
-          <CookieConsentBanner />
+          <CookieConsentBanner suppressed={blockFirstRunOverlays} />
         </>
       );
     }
@@ -2431,8 +2638,8 @@ export const App: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <MimiGateway isOpen={showGateway} onClose={() => setShowGateway(false)} />
-      <CoreLoopOnboarding ready={!authLoading && !isElevatorLoading && !showGateway} />
+      <MimiGateway isOpen={showGateway} onClose={dismissGateway} />
+      <CoreLoopOnboarding ready={onboardingReady} />
       <ApiKeyShield isOpen={!memoizedHasApiKey} onClose={() => {}} />
 
       <RegistryAlert />
@@ -2596,9 +2803,14 @@ export const App: React.FC = () => {
                 {appState === AppState.REVEALED && zineMetadata ? (
                   <AnalysisDisplay
                     metadata={zineMetadata}
+                    tasteCritique={tasteCritique}
+                    tasteCritiqueLoading={tasteCritiqueLoading}
+                    tasteCritiqueUnavailable={tasteCritiqueUnavailable}
                     onReset={() => {
                       navigate("/studio");
                       setZineMetadata(null);
+                      setTasteCritique(null);
+                      setTasteCritiqueUnavailable(false);
                       setAppState(AppState.IDLE);
                     }}
                     onUpdateMetadata={(updated) => {
@@ -2636,6 +2848,7 @@ export const App: React.FC = () => {
                                 isThinking={appState === AppState.THINKING}
                                 initialValue={threadValue}
                                 initialMedia={threadMedia}
+                                initialCoverVariants={threadCoverVariants}
                                 initialHighFidelity={threadHighFidelity}
                                 zineOptions={zineOptions}
                                 setZineOptions={setZineOptions}
@@ -2683,6 +2896,7 @@ export const App: React.FC = () => {
                           setZineOptions={setZineOptions}
                           onNavigate={setViewMode}
                           onNavigatePath={navigate}
+                          onOpenGuide={() => setIsGuideOpen(true)}
                         />
                       ) : (
                         <InputStudio
@@ -2690,6 +2904,7 @@ export const App: React.FC = () => {
                           isThinking={appState === AppState.THINKING}
                           initialValue={threadValue}
                           initialMedia={threadMedia}
+                          initialCoverVariants={threadCoverVariants}
                           initialHighFidelity={threadHighFidelity}
                           zineOptions={zineOptions}
                           setZineOptions={setZineOptions}
@@ -2845,8 +3060,9 @@ export const App: React.FC = () => {
                         {viewMode === "chamber-map" && (
                           <ChamberMapView
                             onNavigate={setViewMode}
-                            onOpenFind={() => setCommandDrawerOpen(true)}
+                            onOpenFind={openMenuSearch}
                             onOpenMenu={() => setIsNavOpen(true)}
+                            onOpenGuide={() => setIsGuideOpen(true)}
                           />
                         )}
                         {viewMode === "atelier" && <AtelierChamber />}
@@ -2886,13 +3102,16 @@ export const App: React.FC = () => {
             </motion.div>
           </AnimatePresence>
           <SelectionMemoryCapture />
-          <CookieConsentBanner />
+          <CookieConsentBanner suppressed={blockFirstRunOverlays} />
       </AppShell>
 
       {/* GLOBAL RESPONSIVE RIGHT-SIDE SLIDING DRAWER MENU */}
       <NavigationDrawer
         isOpen={isNavOpen}
-        onClose={() => setIsNavOpen(false)}
+        onClose={() => {
+          setIsNavOpen(false);
+          setNavFocusSearch(false);
+        }}
         viewMode={viewMode}
         setViewMode={setViewMode}
         logout={logout}
@@ -2901,6 +3120,9 @@ export const App: React.FC = () => {
         setUiMode={setUiMode}
         onOpenGuide={() => setIsGuideOpen(true)}
         isGenerating={appState === AppState.THINKING}
+        currentTitle={currentTitle}
+        focusSearch={navFocusSearch}
+        onFocusSearchConsumed={() => setNavFocusSearch(false)}
       />
 
       <GuideModal

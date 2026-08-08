@@ -696,6 +696,31 @@ export class NeonTasteIntelligenceRepository implements TasteIntelligenceReposit
     return hypothesis;
   }
 
+  async upsertSavedReasonHypothesis(
+    ownerId: string,
+    hypothesis: SavedReasonHypothesis,
+  ): Promise<SavedReasonHypothesis> {
+    this.requireTransaction();
+    savedReasonHypothesisSchema.parse(hypothesis);
+    await this.db
+      .insert(savedReasonHypotheses)
+      .values({
+        id: hypothesis.id,
+        ownerId,
+        artifactId: hypothesis.artifactId,
+        hypothesisPayload: hypothesis as unknown as Record<string, unknown>,
+        userStatus: hypothesis.userStatus,
+      })
+      .onConflictDoUpdate({
+        target: savedReasonHypotheses.id,
+        set: {
+          hypothesisPayload: hypothesis as unknown as Record<string, unknown>,
+          userStatus: hypothesis.userStatus,
+        },
+      });
+    return hypothesis;
+  }
+
   async listSavedReasonHypotheses(
     ownerId: string,
     artifactId?: string,

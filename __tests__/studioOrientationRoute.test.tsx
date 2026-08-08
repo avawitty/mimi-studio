@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { StudioOrientationEntry } from "../components/studio/StudioOrientationEntry";
+import { StudioWorktable } from "../components/worktable/StudioWorktable";
 
 const FORBIDDEN_ON_ORIENTATION = [
   "FIG. 01",
@@ -75,6 +76,34 @@ describe("/studio routing", () => {
     );
   });
 
+  it("renders archival worktable desk chrome on the legacy worktable route", () => {
+    render(<StudioWorktable onOpenMenu={() => {}} />);
+
+    expect(screen.getByRole("heading", { name: "Mimi" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Studio worktable · archival desk/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Open full chambers menu/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Spark · Generate/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/FIG\. 01/i)).toBeInTheDocument();
+  });
+
+  it("aligns prompt cycle invitation with textarea placeholder on legacy worktable", () => {
+    render(<StudioWorktable />);
+
+    const invitation = screen.getByText(
+      /Right now, the material anchoring me is/i,
+    );
+    expect(invitation).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/Right now, the material anchoring me is/i),
+    ).toBeInTheDocument();
+  });
+
   it("does not render archival desk chrome on the orientation entry", () => {
     render(<StudioOrientationEntry />);
 
@@ -86,7 +115,7 @@ describe("/studio routing", () => {
       screen.getByRole("button", { name: /Begin with this/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Legacy worktable \(experimental\)/i }),
+      screen.getByRole("link", { name: /Archival worktable desk/i }),
     ).toBeInTheDocument();
 
     const bodyText = document.body.textContent || "";

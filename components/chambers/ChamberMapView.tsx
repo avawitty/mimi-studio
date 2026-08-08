@@ -16,6 +16,7 @@ import {
   type ActiveDossier,
 } from "../studio-os/DossierContext";
 import { NextAction } from "../studio-os/NextAction";
+import { StartHereStrip } from "../studio-os/StartHereStrip";
 import { StudioShell } from "../studio-os/StudioShell";
 import { DossierFolder } from "../studio-os/artifacts/DossierFolder";
 import { OrientationShell } from "../studio-os/families/OrientationShell";
@@ -57,6 +58,8 @@ export interface ChamberMapViewProps {
   onOpenFind?: () => void;
   /** Opens the shared NavigationDrawer (same path as StudioChrome). */
   onOpenMenu?: () => void;
+  /** Opens the Application Guide modal. */
+  onOpenGuide?: () => void;
   initialMode?: ChamberMapMode;
 }
 
@@ -153,7 +156,8 @@ function actionForDossier(
 
 const StudioMap: React.FC<{
   onNavigate: (mode: string) => void;
-}> = ({ onNavigate }) => {
+  onOpenGuide?: () => void;
+}> = ({ onNavigate, onOpenGuide }) => {
   const { activeDossier, recentMaterials } = useDossierContext();
   const phase = activeDossier?.phase ?? "collect";
   const action = actionForDossier(
@@ -195,6 +199,13 @@ const StudioMap: React.FC<{
             sentence={action.sentence}
             intent={action.intent}
           />
+
+          {!activeDossier && recentMaterials.length === 0 ? (
+            <StartHereStrip
+              onNavigate={onNavigate}
+              onOpenGuide={onOpenGuide}
+            />
+          ) : null}
         </div>
 
         <ContextTray className="lg:pt-16" />
@@ -388,6 +399,7 @@ export const ChamberMapView: React.FC<ChamberMapViewProps> = ({
   onNavigate,
   onOpenFind,
   onOpenMenu,
+  onOpenGuide,
   initialMode = "studio-map",
 }) => {
   const [mode, setMode] = useState<ChamberMapMode>(initialMode);
@@ -437,7 +449,7 @@ export const ChamberMapView: React.FC<ChamberMapViewProps> = ({
         </div>
       </div>
       {mode === "studio-map" ? (
-        <StudioMap onNavigate={navigate} />
+        <StudioMap onNavigate={navigate} onOpenGuide={onOpenGuide} />
       ) : (
         <ArchitectureRegistry onNavigate={navigate} />
       )}

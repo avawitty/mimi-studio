@@ -75,6 +75,7 @@ export const MODELS: Record<LLMProviderId, RoleMap> = {
     imageEdit: env('AI_GATEWAY_IMAGE_EDIT_MODEL', GATEWAY_DEFAULT_MODELS.imageEdit),
     video:     env('AI_GATEWAY_VIDEO_MODEL',      GATEWAY_DEFAULT_MODELS.video),
     tts:       env('AI_GATEWAY_TTS_MODEL',        GATEWAY_DEFAULT_MODELS.tts),
+    live:      env('AI_GATEWAY_LIVE_MODEL',       GATEWAY_DEFAULT_MODELS.live),
     embedding: env('AI_GATEWAY_EMBEDDING_MODEL',  GATEWAY_DEFAULT_MODELS.embedding),
   },
 };
