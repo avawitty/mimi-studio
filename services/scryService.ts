@@ -13,6 +13,11 @@ import {
   generateOracleResearch,
 } from "./geminiService";
 import type { UserProfile } from "../types";
+import { celestialReadoutForOracle } from "../lib/celestial/compileCelestialReadout";
+import type { CelestialCalibrationDraft } from "../schemas/celestialCalibrationContracts";
+import type { CuriosityPromptId } from "./tailorEvidenceIntake";
+import { buildCuriosityHandoff } from "./tailorEvidenceIntake";
+import { saveCuriosityRecord } from "./curiosityStore";
 import {
   assessScryCoverage,
   createEmptyScryRun,
@@ -133,21 +138,58 @@ export function mapShadowHits(raw: unknown): ResearchResult[] {
   }));
 }
 
+function celestialDraftFromProfile(
+  profile: UserProfile | null,
+): CelestialCalibrationDraft | null {
+  return profile?.tailorDraft?.celestialCalibration ?? null;
+}
+
+function formatReadingWebContext(hits: ResearchResult[]): string {
+  if (hits.length === 0) return "No live web signals were available for this reading.";
+  return hits
+    .slice(0, 6)
+    .map(
+      (h, i) =>
+        `[${i + 1}] ${h.title}${h.url ? ` (${h.url})` : ""}: ${(h.snippet || h.relevance || "").slice(0, 140)}`,
+    )
+    .join("\n");
+}
+
+export function composeScryQuery(
+  query: string,
+  curiosityIds?: CuriosityPromptId[],
+  customCuriosity?: string,
+): string {
+  const handoff = buildCuriosityHandoff(curiosityIds ?? [], customCuriosity ?? "");
+  const parts = [query.trim(), ...handoff.intendedHelp].filter(Boolean);
+  return parts.join(" · ");
+}
+
 async function laneReading(
   profile: UserProfile | null,
   query: string,
   geminiKey?: string,
+  webHits: ResearchResult[] = [],
 ): Promise<{ reading?: GeneratedReading; status: ResultStatus; failure?: string }> {
   const draft = profile?.tailorDraft;
+  const celestial = celestialReadoutForOracle(celestialDraftFromProfile(profile));
   const gateway = await generateViaGateway({
     role: "textFast",
     system:
-      'You are "The Scribe", an editorial oracle for Mimi. Reply with one powerful paragraph only — poetic, specific to the query and aesthetic context. No JSON, no preamble.',
+      'You are "The Scribe", an editorial oracle for Mimi. Reply with one powerful paragraph only — poetic, specific to the query, aesthetic context, celestial calibration when enabled, and numbered web signals when present. Never invent natal positions or web facts absent from the prompt. No JSON, no preamble.',
     prompt: `Aesthetic context: ${JSON.stringify({
       aestheticCore: draft?.positioningCore?.aestheticCore,
       narrativeVoice: draft?.expressionEngine?.narrativeVoice,
       tags: draft?.positioningCore?.aestheticCore?.tags?.slice?.(0, 8),
-    }).slice(0, 1200)}\n\nQuery: ${query}`,
+    }).slice(0, 1200)}
+
+Celestial readout (authoritative — do not invent beyond this JSON):
+${JSON.stringify(celestial).slice(0, 1800)}
+
+Web signals for grounding:
+${formatReadingWebContext(webHits)}
+
+Query: ${query}`,
     temperature: 0.85,
   });
   if (gateway) {
@@ -179,9 +221,25 @@ export async function runSpecimenScry(options: {
   profile: UserProfile | null;
   geminiKey?: string;
   signal?: AbortSignal;
+  curiosityIds?: CuriosityPromptId[];
+  customCuriosity?: string;
+  userId?: string;
+  persistCuriosity?: boolean;
 }): Promise<ScryRun> {
-  const { query, profile, geminiKey } = options;
+  const rawQuery = options.query.trim();
+  const query = composeScryQuery(
+    rawQuery,
+    options.curiosityIds,
+    options.customCuriosity,
+  );
+  const { profile, geminiKey } = options;
   const run = createEmptyScryRun(query);
+  run.rawQuery = rawQuery;
+  run.curiosityIds = options.curiosityIds;
+  run.customCuriosity = options.customCuriosity?.trim() || undefined;
+  run.celestialEnabled = Boolean(
+    celestialReadoutForOracle(celestialDraftFromProfile(profile)).enabled,
+  );
   const started = performance.now();
 
   const settleLane = async <T>(
@@ -198,13 +256,24 @@ export async function runSpecimenScry(options: {
     }
   };
 
-  const [archiveSettled, webSettled, readingSettled, shadowSettled] =
-    await Promise.all([
-      settleLane("personalMemory", () => searchGrounding(query)),
-      settleLane("web", () => scryWebSignals(query)),
-      settleLane("generatedReading", () => laneReading(profile, query, geminiKey)),
-      settleLane("shadowMemory", () => scryShadowMemoryLane(query)),
-    ]);
+  const [archiveSettled, webSettled, shadowSettled] = await Promise.all([
+    settleLane("personalMemory", () => searchGrounding(query)),
+    settleLane("web", () => scryWebSignals(query)),
+    settleLane("shadowMemory", () => scryShadowMemoryLane(query)),
+  ]);
+
+  let webHitsForReading: ResearchResult[] = [];
+  if (webSettled.ok === true) {
+    const data = webSettled.value as {
+      results?: unknown;
+      groundingChunks?: unknown;
+    };
+    webHitsForReading = mapWebHits(data.results, data.groundingChunks);
+  }
+
+  const readingSettled = await settleLane("generatedReading", () =>
+    laneReading(profile, query, geminiKey, webHitsForReading),
+  );
 
   if (archiveSettled.ok === true) {
     const data = archiveSettled.value as {
@@ -319,6 +388,25 @@ export async function runSpecimenScry(options: {
   run.completedAt = Date.now();
   run.latencyMs = Math.floor(performance.now() - started);
   run.confidence = assessScryCoverage(run);
+
+  if (options.persistCuriosity !== false && rawQuery) {
+    try {
+      const tokenUid = auth.currentUser?.uid;
+      const record = await saveCuriosityRecord({
+        source: "scry",
+        question: query,
+        userId: options.userId ?? tokenUid,
+        curiosityIds: options.curiosityIds,
+        customCuriosity: options.customCuriosity,
+        readingPreview: run.sources.generatedReading?.text,
+        webCitationCount: run.sources.web.length,
+        celestialEnabled: run.celestialEnabled,
+      });
+      run.curiosityRecordId = record.id;
+    } catch {
+      // non-fatal
+    }
+  }
 
   try {
     const [snapshotSettled, refusalsSettled] = await Promise.allSettled([

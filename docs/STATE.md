@@ -37,7 +37,8 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Scry** | `/scry` | shipped | Unified retrieval service deferred; taste rerank uses snapshot + refusals when signed in | Keep lane honesty + taste rerank tests in `verify:*` / unit suite |
+| **Scry** | `/scry` | shipped | Curiosity records (local + Firestore); readings ground on profile + celestial + web; unified retrieval service still deferred | Keep lane honesty + curiosity `verify:curiosity-tracking` |
+| **Mesopic Lens** | `/mesopic-lens` | **shipped** | Personal twilight Q&A (distinct from Observatory collective Mesopic); curiosity pattern reports | Celestial handoff when calibration inactive |
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
@@ -163,7 +164,7 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | P0 | Unified menu, Studio toolbar instruments, `/tailor` + contract wiring, `/scry` + `/mesopic` stubs | **queued** (Lovable build queue) |
 | P1 | Profile identity + `/u/$handle`, Pocket polish, The Edit chamber, fish/rip hosts | **queued** |
 | P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **queued** |
-| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **queued** |
+| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **partial** — curiosity records + pattern reports in Mesopic Lens + Scry (`verify:curiosity-tracking`) |
 | P4a | Workflow bar wired to issue pipeline (COLLECT→SAVE) | **queued** |
 | P4b | Registry completion + handoff chips + chamber map | **queued** |
 | P4c | Identity strip (Dolls↔Rip↔Tailor), Rip doll picker | **queued** |
@@ -171,7 +172,7 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | P5 | Darkroom: Pinterest board + multi-image extract + `imageEditingRules` / `applicationLogic` | **queued** |
 | P5b | Thimble / Brief / Darkroom Studio handoffs | **queued** |
 | P5c | Aesthetic entry plates + mobile Studio layout | **queued** |
-| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **queued** |
+| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **partial** — Mesopic Lens chamber shipped; panel unification still queued |
 | **Platform** | Lovable Cloud + Lovable AI as default stack; migrate AI to edge fns | **queued** |
 | **Refactor** | Align P0–P6 AI paths with Lovable AI + Cloud (no BYOK /api) | **queued** |
 | P7 | Scribe, Stand, Signature, Residue/Proscenium stubs, Find anchor, OG/RSS, notifications | **queued** |

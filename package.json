@@ -56,6 +56,7 @@
     "verify:residue": "tsx scripts/verifyResidueEngine.ts",
     "verify:collective": "tsx scripts/verifyCollectiveIntelligence.ts",
     "verify:celestial": "tsx scripts/verifyCelestialCalibration.ts",
+    "verify:curiosity-tracking": "tsx scripts/verifyCuriosityTracking.ts",
     "verify:forecast": "tsx scripts/verifyForecastChamber.ts",
     "verify:operational-spine": "tsx scripts/verifyOperationalSpine.ts",
     "verify:doll-engine": "tsx scripts/verifyDollEngine.ts",
