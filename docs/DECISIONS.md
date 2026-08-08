@@ -128,6 +128,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Sovereign Floor backfill + batch evidence analyze scripts
+
+**Decision:** Add `npm run taste:backfill-floor-sovereign` to read public zines from the sovereign archive (`is_public = 1`) and mirror to `floor_{zineId}` Firestore EvidenceAtoms. Add `npm run taste:analyze-evidence-atoms` to run `runEvidenceAtomAnalysis` (interpret + embed) on pending/failed atoms via Admin + `AI_GATEWAY_API_KEY`.
+
+**Alternatives rejected:** (1) Floor backfill only from Firestore (empty public zine set in prod). (2) Manual per-atom API calls from the client for ops backfill.
+
+**Why:** Production Floor lives in sovereign; ops needs a one-shot path to taste spine + embeddings without UI.
+
+**Ref:** `scripts/backfillFloorEvidenceAtomsFromSovereign.ts`, `scripts/analyzePendingEvidenceAtoms.ts`
+
+---
+
 ## 2026-08-08 — Unified Taste Graph summary read path
 
 **Decision:** Add `GET /api/mimi/taste-graph/summary` as the canonical server read for Taste Graph chambers: `TasteState` + latest `TasteModelSnapshot` + projected graph (`projectTasteModelToGraph` preferred over legacy `tasteGraphNodes` when signal is richer) + readiness gaps + server Used Context. Remove demonstration nodes from `/taste-graph` when empty. Mirror Pocket saves into deterministic `EvidenceAtom` ids (`pocket_{itemId}`) via `mirrorPocketItemToEvidenceAtom`. Persist Used Context tray to Firestore (`users/{uid}/studioMeta/usedContext`) with `GET/PUT /api/mimi/used-context` and client hydrate on empty local store.

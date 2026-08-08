@@ -83,6 +83,8 @@
     "sovereign:reindex": "tsx scripts/reindexSovereignEmbeddings.ts",
     "taste:backfill-floor-atoms": "tsx scripts/backfillFloorEvidenceAtoms.ts",
     "taste:backfill-darkroom-treatments": "tsx scripts/backfillDarkroomTreatments.ts",
+    "taste:backfill-floor-sovereign": "tsx scripts/backfillFloorEvidenceAtomsFromSovereign.ts",
+    "taste:analyze-evidence-atoms": "tsx scripts/analyzePendingEvidenceAtoms.ts",
     "corpus:embed": "tsx scripts/embed.ts",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
