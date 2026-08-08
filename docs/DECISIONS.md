@@ -509,3 +509,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/zine/enhanceZineGenerationLayout.ts`, `services/zineGenerator.ts`, `lib/bakeZinePlates.ts`, `components/AnalysisDisplay.tsx`
 
+---
+
+## 2026-08-08 — Zines stamp ephemeris-backed celestial calibration
+
+**Decision:** After `createZine` returns model JSON, `applyCelestialToZine` overwrites `celestial_calibration` with authoritative ephemeris data from `astronomy-engine` (already a project dependency). When Celestial Calibration is enabled on the Tailor profile, natal Sun/Moon/Rising (when resolvable) and seasonal alignment are persisted on `content.celestial_readout`. Every issue also records issue-moment sky at composition time.
+
+**Alternatives rejected:** (1) Let the model invent poetic celestial copy — drifts from chamber math. (2) Add a new ephemeris package — `astronomy-engine` + existing `lib/celestial/ephemeris.ts` already cover natal positions.
+
+**Why:** Creators who opt into Celestial Calibration should see their calibrated timing in the finished zine, not only in generation prompts.
+
+**Ref:** `lib/celestial/applyCelestialToZine.ts`, `services/zineGenerator.ts`, `components/AnalysisDisplay.tsx`, `schemas/celestialCalibrationContracts.ts`
+

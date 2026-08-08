@@ -17,9 +17,13 @@ import {
 import { ASTRONOMICAL_SEASON_LABELS } from "../../lib/celestial/seasonalAlignment";
 import type { CelestialCalibrationDraft } from "../../schemas/celestialCalibrationContracts";
 import type { ZodiacSign } from "../../types";
+import {
+  DEFAULT_CELESTIAL_CALIBRATION,
+  resolveCelestialCalibration,
+} from "../../lib/tailor/tailorDefaults";
 
 const emptyDraft = (): CelestialCalibrationDraft => ({
-  enabled: false,
+  ...DEFAULT_CELESTIAL_CALIBRATION,
   zodiac: undefined,
   birthDate: "",
   birthTime: "",
@@ -29,9 +33,6 @@ const emptyDraft = (): CelestialCalibrationDraft => ({
   birthLongitude: undefined,
   geocodeLabel: "",
   geocodeStatus: "unset",
-  astrologicalLineage: "",
-  seasonalAlignment: "",
-  zodiacLocked: false,
 });
 
 function draftFromProfile(profile: {
@@ -42,13 +43,14 @@ function draftFromProfile(profile: {
   tailorDraft?: { celestialCalibration?: CelestialCalibrationDraft };
 }): CelestialCalibrationDraft {
   const fromTailor = profile.tailorDraft?.celestialCalibration;
+  const resolved = resolveCelestialCalibration(fromTailor);
   return {
     ...emptyDraft(),
-    ...(fromTailor || {}),
-    birthDate: fromTailor?.birthDate || profile.birthDate || "",
-    birthTime: fromTailor?.birthTime || profile.birthTime || "",
-    birthLocation: fromTailor?.birthLocation || profile.birthLocation || "",
-    zodiac: fromTailor?.zodiac || profile.zodiacSign,
+    ...resolved,
+    birthDate: resolved.birthDate || profile.birthDate || "",
+    birthTime: resolved.birthTime || profile.birthTime || "",
+    birthLocation: resolved.birthLocation || profile.birthLocation || "",
+    zodiac: resolved.zodiac || profile.zodiacSign,
   };
 }
 
@@ -215,12 +217,12 @@ export const CelestialCalibrationChamber: React.FC<{
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={Boolean(draft.enabled)}
-                  onChange={(e) => patch({ enabled: e.target.checked })}
+                  checked={!draft.enabled}
+                  onChange={(e) => patch({ enabled: !e.target.checked })}
                   className="accent-nous-text"
                 />
                 <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
-                  Use in generation
+                  Exclude from zines
                 </span>
               </label>
             </div>

@@ -1685,7 +1685,9 @@ export interface UserPreferences {
   savedTreatments?: StyleTreatment[];
   starredZineIds?: string[];
   lastAuditReport?: TailorAuditReport;
-  enabledAlgos?: string[]; // NEW: User-defined firewalls for specific functions
+  enabledAlgos?: string[]; // legacy opt-in list (migrated to disabledAlgos)
+  /** Opt-out list — algos not listed here are enabled by default. */
+  disabledAlgos?: string[];
   zineOptions?: ZineGenerationOptions;
   agentConfig?: {
     curatorEnabled: boolean;
