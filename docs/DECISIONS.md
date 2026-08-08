@@ -44,7 +44,17 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-08 — Studio floating pill + funded gateway credit heal
+## 2026-08-08 — Studio compose console is sole `/studio` surface (orientation + worktable retired)
+
+**Decision:** `/studio` mounts `InputStudio` only (floating pill toolbar, cover composer, Tools drawer). Remove `StudioOrientationEntry` and `StudioWorktable` routes and components. Legacy URLs (`/studio/worktable-legacy`, `/studio/orientation`) redirect to `/studio`.
+
+**Alternatives rejected:** (1) Keep orientation at `/studio` with compose behind `?console=1` — reverted tonight's shipped UI (#271). (2) Keep archival worktable at `/studio/worktable-legacy` — duplicates compose console without cover composer.
+
+**Why:** Merge with main (#271) restored orientation intake as default, hiding the cover composer work from #269/#244. Creators expect the compose desk they validated tonight.
+
+**Ref:** `App.tsx`, `lib/productCanon.ts`, `components/InputStudio.tsx`, `components/studio/StudioCoverComposer.tsx`
+
+---
 
 **Decision:** Consolidate Studio compose chrome into one scrollable floating pill (`buildDefaultStudioInstruments`) with a universal Tools drawer (Anchors, Continuum, Treatments, Used Context, noise). Retire desktop footer tabs and vertical rail. Cover composer uses compact `UsedContextColophon`. Funded gateway heals patron seats (`isPatron` + `patronActivatedAt`) without Stripe verify; assessment trial users get initial 150-credit grant and skip day-pass drip reset.
 

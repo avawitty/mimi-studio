@@ -271,15 +271,15 @@ export const CANON_MODULES: CanonModule[] = [
     status: "live",
     canonicalRoute: "/studio",
     implementedMode: "studio",
-    component: "StudioOrientationEntry",
+    component: "InputStudio",
     aliases: ["Orientation", "Intake", "Studio", "Worktable", "Compose"],
     inputs: ["prompt text", "media references", "approved context when present"],
     generations: ["provider routing", "prompt optimization", "Tailor-aware context synthesis", "asset injection"],
     outputs: ["mini zines", "creative roadmaps", "image prompts", "content briefs", "instruction packets"],
     userFlow:
-      "Land on calm orientation intake — multimodal prompt, plate media toolbar, inspo carousel. Full compose console via ?console=1 or Open compose desk; experimental archival desk at /studio/worktable-legacy only.",
+      "Land on the full compose console — floating pill toolbar, cover composer, Tools drawer (Anchors, Continuum, Treatments, Used Context).",
     notes:
-      "Primary /studio mounts StudioOrientationEntry. InputStudio is the console escape hatch; do not mount StudioWorktable at /studio.",
+      "Primary /studio mounts InputStudio only. Orientation intake and archival worktable surfaces are retired.",
     family: "orientation",
     phase: "compose",
     visibility: "primary",
@@ -287,7 +287,7 @@ export const CANON_MODULES: CanonModule[] = [
     // the archival desk itself is not mounted at /studio.
     atmosphere: ["paper", "worktable"],
     primaryAction: {
-      label: "Begin with this",
+      label: "Compose cover",
       intent: { type: "compose" },
     },
     suggestedNext: {

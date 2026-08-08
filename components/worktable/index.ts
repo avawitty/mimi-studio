@@ -14,5 +14,3 @@ export { AuraMeter, AURA_MOODS, auraMoodToTone } from "./AuraMeter";
 export type { AuraMood } from "./AuraMeter";
 export { TasteDrawer } from "./TasteDrawer";
 export type { TasteDrawerTab } from "./TasteDrawer";
-export { StudioWorktable } from "./StudioWorktable";
-export type { StudioWorktableProps } from "./StudioWorktable";

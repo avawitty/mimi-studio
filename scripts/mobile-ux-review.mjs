@@ -168,13 +168,13 @@ if ((await floor.count()) > 0) {
   note("fail", "stand", "Floor tab missing");
 }
 
-// Studio orientation entry — not the archival worktable / Tools console
+// Studio compose console — cover composer + floating pill toolbar
 await page.goto(`${base}/studio`, { waitUntil: "domcontentloaded" });
 await dismiss(page);
 const studioBody = await page.locator("body").innerText().catch(() => "");
-const hasOrientation =
-  /Start with a thought/i.test(studioBody) &&
-  /Begin with this/i.test(studioBody);
+const hasComposeConsole =
+  /Compose cover/i.test(studioBody) || /Studio pages/i.test(studioBody);
+const hasOrientationIntake = /Start with a thought/i.test(studioBody);
 const hasArchivalChrome =
   /FIG\.\s*01/i.test(studioBody) ||
   /SPARK\s*·\s*GENERATE/i.test(studioBody) ||
@@ -184,40 +184,14 @@ const hasArchivalChrome =
     /CUT/.test(studioBody) &&
     /DEV/.test(studioBody) &&
     /ISSUE/.test(studioBody));
-if (!hasOrientation) {
-  note("fail", "studio", "Orientation intake missing on /studio");
+if (!hasComposeConsole) {
+  note("fail", "studio", "Compose console missing on /studio");
+} else if (hasOrientationIntake) {
+  note("fail", "studio", "Orientation intake still mounted on /studio");
 } else if (hasArchivalChrome) {
   note("fail", "studio", "Archival desk chrome still present on /studio");
 } else {
-  note("pass", "studio", "Orientation intake; archival desk chrome absent");
-}
-
-const legacyLink = page.getByRole("link", {
-  name: /Legacy worktable\s*[·(]\s*experimental/i,
-});
-if ((await legacyLink.count()) === 0) {
-  note("warn", "studio", "Legacy worktable link missing below the fold");
-} else {
-  note("pass", "studio", "Legacy worktable link present below the fold");
-  await dismiss(page);
-  await page.goto(`${base}/studio/worktable-legacy`, {
-    waitUntil: "domcontentloaded",
-  });
-  await dismiss(page);
-  await page.waitForTimeout(400);
-  await shot(page, "05-worktable-legacy");
-  const legacyBody = await page.locator("body").innerText().catch(() => "");
-  if (!/Legacy worktable/i.test(legacyBody)) {
-    note("fail", "studio", "Legacy route missing experimental banner");
-  } else {
-    note(
-      "pass",
-      "studio",
-      "Legacy worktable available at /studio/worktable-legacy",
-    );
-  }
-  await page.goto(`${base}/studio`, { waitUntil: "domcontentloaded" });
-  await dismiss(page);
+  note("pass", "studio", "Compose console with cover composer on /studio");
 }
 
 const fabs = await page.evaluate(() => {

@@ -6,9 +6,10 @@ const read = (relativePath: string) =>
   readFileSync(resolve(process.cwd(), relativePath), "utf8");
 
 describe("stabilization invariants", () => {
-  it("keeps orientation intake as default /studio surface", () => {
+  it("keeps InputStudio as default /studio surface", () => {
     const app = read("App.tsx");
-    expect(app).toMatch(/<StudioOrientationEntry/);
+    expect(app).toMatch(/<InputStudio/);
+    expect(app).not.toMatch(/<StudioOrientationEntry/);
     expect(app).not.toMatch(/FIG\. 01/);
   });
 
