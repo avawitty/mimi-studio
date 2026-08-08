@@ -130,6 +130,13 @@ export interface AestheticSignature {
   contextFingerprint?: string;
 }
 
+/** Frozen public taste signature — explicit publish consent, distinct from approved memory. */
+export interface PublicSignatureSnapshot {
+  handle: string;
+  signature: AestheticSignature;
+  publishedAt: number;
+}
+
 export interface InfluenceLineageItem {
   artist: string;
   movement: string;
@@ -1869,6 +1876,8 @@ export interface UserProfile extends UserPreferences {
   handle: string;
   /** Published doll + taste token for anonymous visitors at /u/:handle */
   publicShowcase?: PublicShowcaseSnapshot;
+  /** Opt-in published taste signature plate at /u/:handle/signature */
+  publicSignature?: PublicSignatureSnapshot | null;
   /** Opt-in inverse reading for mimi.rip/:handle (private when absent) */
   publicRip?: PublicRipSnapshot | null;
   email?: string | null;

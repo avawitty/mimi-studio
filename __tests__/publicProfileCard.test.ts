@@ -3,10 +3,13 @@ import {
   buildPublicSignatureExcerpt,
   formatPublicLinkLabel,
   getPublicExternalLinks,
+  hasPublishedPublicSignature,
   hasPublishedRip,
   resolvePublicProfileIdentity,
 } from "../lib/publicProfileCard";
-import type { PublicRipSnapshot, PublicShowcaseSnapshot, UserProfile } from "../types";
+import { extractPublishedPublicSignature } from "../lib/signature/publicSignature";
+import { buildPublicSignatureSnapshot } from "../lib/signature/publishSignature";
+import type { AestheticSignature, PublicRipSnapshot, PublicShowcaseSnapshot, UserProfile } from "../types";
 
 const baseProfile = (overrides: Partial<UserProfile> = {}): UserProfile =>
   ({
@@ -28,52 +31,62 @@ const showcase: PublicShowcaseSnapshot = {
   updatedAt: Date.now(),
 };
 
+const approvedSignature = {
+  primaryAxis: "Archival restraint",
+  secondaryAxis: "Warm geometry",
+  motifs: ["parchment", "olive"],
+  moodCluster: "Quiet",
+  generatedAt: Date.now(),
+  influenceLineage: [] as AestheticSignature["influenceLineage"],
+  creativeCycles: [] as AestheticSignature["creativeCycles"],
+  motifEvolution: [] as AestheticSignature["motifEvolution"],
+  status: "approved" as const,
+  approvedAt: Date.now(),
+};
+
 describe("publicProfileCard helpers", () => {
-  it("resolves identity with doll portrait as public avatar", () => {
+  it("resolves identity from published showcase only", () => {
     const identity = resolvePublicProfileIdentity(
       baseProfile({
         displayName: "Atelier",
-        bio: "Editorial studio.",
+        bio: "Private editorial studio.",
         photoURL: "https://example.com/avatar.jpg",
       }),
       showcase,
     );
 
     expect(identity.handle).toBe("atelier");
-    expect(identity.displayName).toBe("Atelier");
-    expect(identity.bio).toBe("Editorial studio.");
+    expect(identity.displayName).toBe("Studio Doll");
+    expect(identity.bio).toBe("Quiet evidence over noise.");
     expect(identity.avatarUrl).toBe("https://example.com/doll.jpg");
     expect(identity.avatarIsDoll).toBe(true);
     expect(identity.dollLabel).toBe("Studio Doll");
   });
 
-  it("falls back to photoURL only before doll likeness is published", () => {
+  it("never leaks OAuth photo or private bio without a published showcase", () => {
     const identity = resolvePublicProfileIdentity(
-      baseProfile({ photoURL: "https://example.com/avatar.jpg" }),
-      { ...showcase, dollPortraitUrl: undefined },
+      baseProfile({
+        displayName: "Atelier",
+        bio: "Private editorial studio.",
+        photoURL: "https://example.com/avatar.jpg",
+      }),
+      null,
     );
 
-    expect(identity.avatarUrl).toBe("https://example.com/avatar.jpg");
-    expect(identity.avatarIsDoll).toBe(false);
+    expect(identity.avatarUrl).toBeUndefined();
+    expect(identity.displayName).toBeUndefined();
+    expect(identity.bio).toBeUndefined();
   });
 
-  it("prefers aesthetic signature for public excerpt", () => {
+  it("uses published signature snapshot for public excerpt", () => {
     const excerpt = buildPublicSignatureExcerpt(
       baseProfile({
+        publicSignature: buildPublicSignatureSnapshot("atelier", approvedSignature),
         tasteProfile: {
-          semantic_signature: "Soft brutalism with archival warmth.",
+          semantic_signature: "Private semantic line",
           archetype_weights: {},
           color_frequency: {},
-          aestheticSignature: {
-            primaryAxis: "Archival restraint",
-            secondaryAxis: "Warm geometry",
-            motifs: ["parchment", "olive"],
-            moodCluster: "Quiet",
-            generatedAt: Date.now(),
-            influenceLineage: [],
-            creativeCycles: [],
-            motifEvolution: [],
-          },
+          aestheticSignature: approvedSignature,
         },
       }),
       showcase,
@@ -82,57 +95,57 @@ describe("publicProfileCard helpers", () => {
     expect(excerpt?.title).toBe("Archival restraint");
     expect(excerpt?.subtitle).toBe("Warm geometry");
     expect(excerpt?.motifs).toEqual(["parchment", "olive"]);
+    expect(excerpt?.fullPagePath).toBe("/u/atelier/signature");
   });
 
-  it("links to full signature page only when approved", () => {
-    const draft = buildPublicSignatureExcerpt(
+  it("does not expose approved-but-unpublished signatures on public cards", () => {
+    const excerpt = buildPublicSignatureExcerpt(
       baseProfile({
-        handle: "atelier",
         tasteProfile: {
-          semantic_signature: "",
+          semantic_signature: "Soft brutalism with archival warmth.",
           archetype_weights: {},
           color_frequency: {},
-          aestheticSignature: {
-            primaryAxis: "Draft axis",
-            secondaryAxis: "",
-            motifs: [],
-            moodCluster: "Quiet",
-            generatedAt: Date.now(),
-            influenceLineage: [],
-            creativeCycles: [],
-            motifEvolution: [],
-            status: "draft",
-          },
+          aestheticSignature: approvedSignature,
         },
       }),
       showcase,
     );
-    expect(draft?.fullPagePath).toBeUndefined();
 
-    const approved = buildPublicSignatureExcerpt(
+    expect(excerpt?.title).toBe("Studio Doll");
+    expect(excerpt?.semanticLine).toBe("Quiet evidence over noise.");
+    expect(excerpt?.fullPagePath).toBeUndefined();
+  });
+
+  it("links to full signature page only when published", () => {
+    const approvedOnly = buildPublicSignatureExcerpt(
       baseProfile({
         handle: "atelier",
         tasteProfile: {
           semantic_signature: "",
           archetype_weights: {},
           color_frequency: {},
-          aestheticSignature: {
-            primaryAxis: "Archival restraint",
-            secondaryAxis: "",
-            motifs: [],
-            moodCluster: "Quiet",
-            generatedAt: Date.now(),
-            influenceLineage: [],
-            creativeCycles: [],
-            motifEvolution: [],
-            status: "approved",
-            approvedAt: Date.now(),
-          },
+          aestheticSignature: approvedSignature,
         },
       }),
       showcase,
     );
-    expect(approved?.fullPagePath).toBe("/u/atelier/signature");
+    expect(approvedOnly?.fullPagePath).toBeUndefined();
+
+    const published = buildPublicSignatureExcerpt(
+      baseProfile({
+        handle: "atelier",
+        publicSignature: buildPublicSignatureSnapshot("atelier", approvedSignature),
+      }),
+      showcase,
+    );
+    expect(published?.fullPagePath).toBe("/u/atelier/signature");
+    expect(
+      hasPublishedPublicSignature(
+        baseProfile({
+          publicSignature: buildPublicSignatureSnapshot("atelier", approvedSignature),
+        }),
+      ),
+    ).toBe(true);
   });
 
   it("detects published rip snapshots", () => {
@@ -156,17 +169,35 @@ describe("publicProfileCard helpers", () => {
     expect(hasPublishedRip(null)).toBe(false);
   });
 
-  it("filters external links to public http(s) urls", () => {
+  it("does not leak private external links on public cards", () => {
     const links = getPublicExternalLinks({
-      externalLinks: [
-        { title: "Portfolio", url: "https://example.com" },
-        { title: "Bad", url: "javascript:alert(1)" },
-        { title: "Link", url: "not-a-url" },
-      ],
-    } as any);
+      externalLinks: [{ title: "Portfolio", url: "https://example.com" }],
+    } as UserProfile);
 
-    expect(links).toHaveLength(1);
-    expect(links[0]?.url).toBe("https://example.com");
-    expect(formatPublicLinkLabel(links[0]!)).toBe("Portfolio");
+    expect(links).toHaveLength(0);
+    expect(formatPublicLinkLabel({ title: "Portfolio", url: "https://example.com" })).toBe(
+      "Portfolio",
+    );
+  });
+});
+
+describe("public signature publication boundary", () => {
+  it("returns null for approved private signatures on public routes", () => {
+    const profile = baseProfile({
+      tasteProfile: {
+        semantic_signature: "private",
+        archetype_weights: {},
+        color_frequency: {},
+        aestheticSignature: approvedSignature,
+      },
+    });
+    expect(extractPublishedPublicSignature(profile)).toBeNull();
+  });
+
+  it("returns published snapshot only when explicitly published", () => {
+    const profile = baseProfile({
+      publicSignature: buildPublicSignatureSnapshot("atelier", approvedSignature),
+    });
+    expect(extractPublishedPublicSignature(profile)?.primaryAxis).toBe("Archival restraint");
   });
 });

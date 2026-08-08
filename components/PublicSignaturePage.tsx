@@ -3,7 +3,7 @@ import { ArrowUpRight, Fingerprint } from "lucide-react";
 import { loadPublicProfileShowcase } from "../services/publicShowcaseService";
 import type { AestheticSignature } from "../types";
 import {
-  extractApprovedPublicSignature,
+  extractPublishedPublicSignature,
   publicSignatureDescription,
   publicSignaturePlateTitle,
 } from "../lib/signature/publicSignature";
@@ -43,7 +43,7 @@ export const PublicSignaturePage: React.FC<PublicSignaturePageProps> = ({
         return;
       }
       setPublicHandle(data.profile.handle || normalizedHandle);
-      setSignature(extractApprovedPublicSignature(data.profile));
+      setSignature(extractPublishedPublicSignature(data.profile));
       setLoading(false);
     });
     return () => {
