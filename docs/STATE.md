@@ -28,6 +28,7 @@
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
 | **Taste Graph** | `/taste-graph` | shipped | Embedding space migrations on model change | Run shadow audit after Gateway model bumps |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
+| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs shipped; Scry/Pocket/Studio integration partial | Wire Scry rerank UI + Studio compiler cards; expand graph editor ops UI |
 
 ---
 

@@ -7,6 +7,7 @@ import { EvidenceDossierFlow } from './EvidenceDossierFlow';
 import { useUser } from '../../contexts/UserContext';
 import { getTailorProject, listEvidenceNodes } from '../../services/tailorService';
 import type { TailorProject, EvidenceNode } from '../../types';
+import { CalibrationLab } from './CalibrationLab';
 import { ChamberHandoff } from '../ChamberHandoff';
 
 export type TailorPanel =
@@ -14,7 +15,8 @@ export type TailorPanel =
   | 'dossier'
   | 'intake'
   | 'style-lab'
-  | 'diagnostics';
+  | 'diagnostics'
+  | 'calibrate';
 
 interface TailorHubProps {
   initialOverrides?: unknown;
@@ -41,6 +43,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
     intake: '/tailor/evidence',
     'style-lab': '/tailor/style-lab',
     diagnostics: '/tailor/diagnostics',
+    calibrate: '/tailor/calibrate',
   };
 
   const selectPanel = (panel: TailorPanel) => {
@@ -76,6 +79,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
     { id: 'intake', label: 'Evidence Intake', note: 'collect' },
     { id: 'blueprint', label: 'Profile Blueprint', note: 'compile' },
     { id: 'style-lab', label: 'Style Lab', note: 'interpret' },
+    { id: 'calibrate', label: 'Calibration Lab', note: 'learn' },
     { id: 'diagnostics', label: 'Diagnostics', note: 'review' },
     { id: 'dossier', label: 'Compiled Dossier', note: 'apply' },
   ];
@@ -188,6 +192,29 @@ export const TailorHub: React.FC<TailorHubProps> = ({
           )
         )}
         {mode === 'style-lab' && <ArtStyleChamber />}
+        {mode === 'calibrate' && (
+          isSignedIn ? (
+            <CalibrationLab navigate={navigate} />
+          ) : (
+            <div className="flex h-full min-h-0 items-center justify-center px-6 py-12">
+              <div className="w-full max-w-sm text-center">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#d4af37]">
+                  Calibration Lab
+                </p>
+                <h2 className="mt-3 font-serif text-2xl text-stone-900 dark:text-stone-100">
+                  Sign on to calibrate your model
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => void login()}
+                  className="mt-6 inline-flex min-h-11 w-full items-center justify-center bg-stone-900 px-6 font-mono text-[11px] uppercase tracking-[0.2em] font-bold text-white"
+                >
+                  Sign on
+                </button>
+              </div>
+            </div>
+          )
+        )}
         {mode === 'diagnostics' && <AestheticIntelligenceChamber />}
         {isSimulatedMode && mode !== 'blueprint' && (
           <div className="flex h-full min-h-0 items-center justify-center px-6 py-12">

@@ -17,4 +17,29 @@ export function registerOperationalRoutes(app: Express): void {
   app.get("/api/memory/atoms", async (req, res) => {
     await memoryAtomsHandler(req, res);
   });
+  app.post("/api/mimi/taste-intelligence/calibration/start", async (req, res) => {
+    (req as { path?: string }).path = "calibration/start";
+    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
+    await handleTasteIntelligenceRoute(req, res);
+  });
+  app.post("/api/mimi/taste-intelligence/calibration/judgment", async (req, res) => {
+    (req as { path?: string }).path = "calibration/judgment";
+    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
+    await handleTasteIntelligenceRoute(req, res);
+  });
+  app.get("/api/mimi/taste-intelligence/calibration/session", async (req, res) => {
+    (req as { path?: string }).path = "calibration/session";
+    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
+    await handleTasteIntelligenceRoute(req, res);
+  });
+  app.get("/api/mimi/taste-intelligence/snapshot/latest", async (req, res) => {
+    (req as { path?: string }).path = "snapshot/latest";
+    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
+    await handleTasteIntelligenceRoute(req, res);
+  });
+  app.get("/api/mimi/taste-intelligence/refusals", async (req, res) => {
+    (req as { path?: string }).path = "refusals";
+    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
+    await handleTasteIntelligenceRoute(req, res);
+  });
 }
