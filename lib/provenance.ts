@@ -17,6 +17,8 @@ export interface ProvenanceRecord {
   originMetadata: Record<string, unknown>;
   creatorTags: string[];
   transformationHistory: ProvenanceTransfer[];
+  /** True only when this lineage is allowed to inform durable Taste Intelligence. */
+  tasteImpact?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -27,6 +29,7 @@ export interface ProvenanceSeed {
   originMetadata?: Record<string, unknown>;
   creatorTags?: string[];
   actor?: string;
+  tasteImpact?: boolean;
 }
 
 function provenanceRef(userId: string, artifactId: string) {
@@ -38,6 +41,7 @@ export function createProvenanceSeed(
   originChamber: ProvenanceChamber,
   originMetadata: Record<string, unknown> = {},
   creatorTags: string[] = [],
+  tasteImpact = false,
 ): ProvenanceRecord {
   const now = Date.now();
   return {
@@ -46,6 +50,7 @@ export function createProvenanceSeed(
     originMetadata,
     creatorTags,
     transformationHistory: [],
+    tasteImpact,
     createdAt: now,
     updatedAt: now,
   };
@@ -88,6 +93,7 @@ export async function recordProvenanceOrigin(
     seed.originChamber,
     seed.originMetadata ?? {},
     seed.creatorTags ?? [],
+    seed.tasteImpact ?? false,
   );
   await saveProvenanceRecord(userId, record);
   return record;
@@ -119,6 +125,7 @@ export async function recordProvenanceTransfer(
         originMetadata: {},
         creatorTags: [],
         transformationHistory: [entry],
+        tasteImpact: false,
         createdAt: now,
         updatedAt: now,
       };
