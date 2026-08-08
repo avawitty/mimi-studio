@@ -87,19 +87,4 @@ export function registerOperationalRoutes(app: Express): void {
     const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
     await handleTasteIntelligenceRoute(req, res);
   });
-  app.post("/api/mimi/taste-intelligence/saved-reason/propose", async (req, res) => {
-    (req as { path?: string }).path = "saved-reason/propose";
-    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
-    await handleTasteIntelligenceRoute(req, res);
-  });
-  app.get("/api/mimi/taste-intelligence/saved-reason", async (req, res) => {
-    (req as { path?: string }).path = "saved-reason";
-    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
-    await handleTasteIntelligenceRoute(req, res);
-  });
-  app.post("/api/mimi/taste-intelligence/saved-reason/review", async (req, res) => {
-    (req as { path?: string }).path = "saved-reason/review";
-    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
-    await handleTasteIntelligenceRoute(req, res);
-  });
 }
