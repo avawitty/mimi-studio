@@ -196,6 +196,12 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
       return;
   }
 
+  if (isFirestoreQuotaError(error)) {
+    console.warn(`MIMI // Firestore quota exhausted at ${path} — local fallback where available`);
+    notifyFirestoreQuotaLocalMode();
+    return;
+  }
+
   throw new Error(toUserFacingError(errorMessage));
 }
 
@@ -212,6 +218,12 @@ export function logFirestoreError(error: unknown, operationType: OperationType, 
       }
     }));
     return; // Exit early, don't log the full JSON error
+  }
+
+  if (isFirestoreQuotaError(error)) {
+    console.warn(`MIMI // Firestore quota exhausted at ${path}`);
+    notifyFirestoreQuotaLocalMode();
+    return;
   }
 
   console.error(`MIMI // Firestore Error: [${operationType}] at ${path}:`, errorMessage);
@@ -1044,13 +1056,27 @@ export const fetchUserZines = async (uid: string, forceRefresh = false) => {
 /** Cap Firestore community scans; prefer sovereign archive when available. */
 const COMMUNITY_ZINE_READ_CAP = 60;
 
-const isFirestoreQuotaError = (error: unknown): boolean => {
+export const isFirestoreQuotaError = (error: unknown): boolean => {
   const code = typeof (error as any)?.code === "string" ? (error as any).code : "";
   const message = error instanceof Error ? error.message : String(error || "");
   return (
     code === "resource-exhausted" ||
     message.includes("RESOURCE_EXHAUSTED") ||
-    message.includes("Quota exceeded")
+    message.includes("Quota exceeded") ||
+    message.includes("Quota limit exceeded")
+  );
+};
+
+const notifyFirestoreQuotaLocalMode = (): void => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("mimi:registry_alert", {
+      detail: {
+        type: "announcement",
+        message:
+          "Cloud database daily limit reached. Your work is saved locally on this device until the quota resets.",
+      },
+    }),
   );
 };
 

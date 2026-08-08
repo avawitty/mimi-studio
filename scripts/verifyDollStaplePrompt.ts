@@ -65,6 +65,7 @@ check("portrait prompt keeps house lock + taste accents", () => {
   assert.match(prompt, /resin|ball-joint/i);
   assert.match(prompt, /structured blazer/i);
   assert.match(prompt, /Atelier Proxy/);
+  assert.match(prompt, /facing camera directly/i);
   assert.match(prompt, /Avoid:/i);
   assert.doesNotMatch(prompt, /photoreal human skin pores.*LOCKED/i);
 });
