@@ -18,12 +18,11 @@ import {
   type DollImageReference,
 } from "./dollEngine";
 import { celestialTimingForGeneration } from "../lib/celestial/compileCelestialReadout";
+import { applyCelestialToZine } from "../lib/celestial/applyCelestialToZine";
 import {
-    buildAttachedAssetsFromMedia,
     draftZineArtifactId,
-    realizeZineContentFromPlan,
-} from "../lib/zine/realizeZineContentFromPlan";
-import type { ZineIssuePlan } from "../types";
+    enhanceZineGenerationLayout,
+} from "../lib/zine/enhanceZineGenerationLayout";
 
 function groundAcquisitionSignal(
   currentSignal: Record<string, unknown>,
@@ -93,38 +92,15 @@ function cleanAndParse(text: string | undefined): any {
 
 async function realizeGeneratedZineContent(
     content: any,
-    text: string,
-    opts: any,
-    media: any[],
-): Promise<{ content: any; issuePlan?: ZineIssuePlan }> {
-    const usedContext = opts?.usedContext || [];
-    const realized = realizeZineContentFromPlan({
+    _text: string,
+    _opts: any,
+    _media: any[],
+): Promise<{ content: any }> {
+    const enhanced = enhanceZineGenerationLayout({
         content,
         artifactId: draftZineArtifactId(),
-        originalInput: text,
-        fragmentIds: usedContext.map((entry: { atomId: string }) => entry.atomId),
-        usedContextSnapshots: usedContext.map(
-            (entry: {
-                atomId: string;
-                title: string;
-                content: string;
-                source?: string;
-            }) => ({
-                atomId: entry.atomId,
-                title: entry.title,
-                content: entry.content,
-                source: entry.source,
-            }),
-        ),
-        attachedAssets: buildAttachedAssetsFromMedia(media),
-        existingCoverUrl:
-            opts?.studioCoverUrl ||
-            media.find((file: { type: string; url?: string; data?: string }) => file.type === "image")
-                ?.url ||
-            media.find((file: { type: string; url?: string; data?: string }) => file.type === "image")
-                ?.data,
     });
-    return { content: realized.content, issuePlan: realized.issuePlan };
+    return { content: enhanced };
 }
 
 export const createZine = async (text: string, media: any[], tone: ToneTag, profile: any, opts: any, apiKey?: string, transmissions?: any[], stackIds?: string[], selectedComponents?: any[], zineOptions?: ZineGenerationOptions): Promise<any> => {
@@ -344,7 +320,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             9. aesthetic_touchpoints: Exactly 3-5 motifs.
                - Each MUST have a type: 'visual', 'lexical', or 'sonic'.
                - motif: A short descriptive string.
-            10. celestial_calibration: The timing of the insight (e.g., "Late Autumn, Pre-Dawn").
+            10. celestial_calibration: When celestialCalibration appears in User Context, echo its timingPhrase and seasonalAlignment — do not invent rising signs, houses, or aspects beyond that JSON. Otherwise describe the issue-moment sky in editorial prose (season, light quality).
             11. visual_plates: Four (4) specific image prompts. Use the Tailor Logic to define the lighting, grain, and composition. They must be cohesive with the uploaded artifacts.
             12. roadmap: A Cultural Authority Roadmap. The objective is to anchor brands or individuals in sustainable aesthetic authority over time. Do not repeat brand names or references from the Tailor Logic. Use Tailor Logic only to understand positioning direction.
                 - Authority Anchor: Core Claim, Repetition Vector, Exclusion Principle.
@@ -552,6 +528,12 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             if (!content.celestial_calibration) {
                 content.celestial_calibration = "The stars are silent on this matter, suggesting a period of internal refraction.";
             }
+
+            const celestialDraft =
+                profileToUse?.tailorDraft?.celestialCalibration ||
+                profileToUse?.extensions?.celestialCalibration;
+            const stamped = applyCelestialToZine(content, celestialDraft);
+            Object.assign(content, stamped);
             
             if (!content.visual_plates || content.visual_plates.length === 0) {
                 content.visual_plates = [content.header_image_prompt];
@@ -662,7 +644,11 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
         
         triggerAlert(`Aesthetic Refraction Active. Initializing Semantic Mirror Fallback: ${error.message || 'Model Timeout'}.`, "error");
         const simulated = generateSimulatedZine(text, zineOptions || {}, opts?.bypassTailor ? null : profile);
-        return await realizeGeneratedZineContent(simulated, text, opts, media || []);
+        const celestialDraft =
+            profile?.tailorDraft?.celestialCalibration ||
+            profile?.extensions?.celestialCalibration;
+        const stampedSimulated = applyCelestialToZine(simulated, celestialDraft);
+        return await realizeGeneratedZineContent(stampedSimulated, text, opts, media || []);
     }
 };
 

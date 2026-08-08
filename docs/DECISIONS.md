@@ -495,4 +495,41 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Why:** Post-generation critique must evaluate what was produced, with honest partial states when imagery cannot be analyzed.
 
-**Ref:** `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`, `hooks/useStudioTasteCompiler.ts`
+**Ref:** `hooks/useStudioTasteCompiler.ts`, `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`
+
+---
+
+## 2026-08-08 — Studio zine generation: direct engine + layout enhancement
+
+**Decision:** `createZine` no longer runs the editorial issue-plan / proof pipeline (`realizeZineContentFromPlan`). Raw model output is post-processed with `enhanceZineGenerationLayout` — stable page IDs, grammars, and default spread layouts via `buildDefaultSpreadElements`. Hi-fi plate bake develops any page with an `imagePrompt` (no plan slot filter). Proof mode UI removed from zine reveal.
+
+**Alternatives rejected:** (1) Keep issue-plan compression in the generation hot path — added compile/proof complexity without improving first reveal. (2) Delete all plan/proof libraries — retained for legacy artifact hydration and Edit/Press export; not wired into Studio generation.
+
+**Why:** Creators asked for operable generation with better layout, not an extra proof/compile gate before reading the issue.
+
+**Ref:** `lib/zine/enhanceZineGenerationLayout.ts`, `services/zineGenerator.ts`, `lib/bakeZinePlates.ts`, `components/AnalysisDisplay.tsx`
+
+---
+
+## 2026-08-08 — Zines stamp ephemeris-backed celestial calibration
+
+**Decision:** After `createZine` returns model JSON, `applyCelestialToZine` overwrites `celestial_calibration` with authoritative ephemeris data from `astronomy-engine` (already a project dependency). When Celestial Calibration is enabled on the Tailor profile, natal Sun/Moon/Rising (when resolvable) and seasonal alignment are persisted on `content.celestial_readout`. Every issue also records issue-moment sky at composition time.
+
+**Alternatives rejected:** (1) Let the model invent poetic celestial copy — drifts from chamber math. (2) Add a new ephemeris package — `astronomy-engine` + existing `lib/celestial/ephemeris.ts` already cover natal positions.
+
+**Why:** Creators who opt into Celestial Calibration should see their calibrated timing in the finished zine, not only in generation prompts.
+
+**Ref:** `lib/celestial/applyCelestialToZine.ts`, `services/zineGenerator.ts`, `components/AnalysisDisplay.tsx`, `schemas/celestialCalibrationContracts.ts`
+
+---
+
+## 2026-08-08 — Tailor defaults: opt-out, not opt-in
+
+**Decision:** Tailor capabilities default **on**. Celestial Calibration `enabled` defaults to `true` for new and legacy profiles where the flag was never set. Algo Firewall uses `disabledAlgos` (opt-out list); all five algos run until explicitly disabled. Legacy `enabledAlgos` opt-in arrays migrate on read.
+
+**Alternatives rejected:** (1) Keep opt-in toggles — creators had to discover features before zines used them. (2) Force-migrate explicit `enabled: false` saves — respect intentional disables.
+
+**Why:** Studio output should include celestial timing and core algos without a setup gate; users turn off what they don't want.
+
+**Ref:** `lib/tailor/tailorDefaults.ts`, `contexts/UserContext.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`
+

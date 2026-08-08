@@ -2269,7 +2269,6 @@ export const App: React.FC = () => {
               isQuickPreview: opts.isQuickPreview,
               existingCoverUrl: coverUrl,
               ownerUid: targetUidForBake === "ghost" ? undefined : targetUidForBake,
-              issuePlan: result.issuePlan,
               plateMediaMode: opts.zineOptions?.plateMediaMode,
             });
             result.content = baked.content;

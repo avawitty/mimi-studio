@@ -514,6 +514,17 @@ export interface Persona {
   };
 }
 
+/** Ephemeris-backed celestial data stamped on generated zines. */
+export interface ZineCelestialReadout {
+  calibration: string;
+  natal: import("./schemas/celestialCalibrationContracts").CelestialReadout | null;
+  issueMomentUtc: string;
+  issueMomentSummary: string;
+  scopeNotice: string;
+  readoutComplete: boolean;
+  missingForFull: string[];
+}
+
 export interface ZineSpec {
   id?: string;
   meta: {
@@ -555,6 +566,8 @@ export interface ZineSpec {
   semiotic_signals?: SemioticSignal[];
   aesthetic_touchpoints?: AestheticTouchpoint[];
   celestial_calibration?: string;
+  /** Ephemeris-backed celestial stamp (natal + issue-moment sky). */
+  celestial_readout?: ZineCelestialReadout;
   visual_plates?: string[];
   the_roadmap?: string;
   originalThought?: string;
@@ -1674,7 +1687,9 @@ export interface UserPreferences {
   savedTreatments?: StyleTreatment[];
   starredZineIds?: string[];
   lastAuditReport?: TailorAuditReport;
-  enabledAlgos?: string[]; // NEW: User-defined firewalls for specific functions
+  enabledAlgos?: string[]; // legacy opt-in list (migrated to disabledAlgos)
+  /** Opt-out list — algos not listed here are enabled by default. */
+  disabledAlgos?: string[];
   zineOptions?: ZineGenerationOptions;
   agentConfig?: {
     curatorEnabled: boolean;
