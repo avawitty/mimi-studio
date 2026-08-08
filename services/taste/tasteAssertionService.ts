@@ -33,6 +33,11 @@ import type {
   TasteScope,
 } from "../../types";
 import type { CreateTasteAssertionInput } from "../../lib/taste/evidenceAtomSchema";
+import {
+  capAssertionConfidence,
+  CORRECTION_CLAIM_TYPE,
+  CORRECTION_CONFIDENCE_DELTA,
+} from "../../lib/taste/tasteStateLogic";
 
 const uid = () =>
   crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -62,11 +67,7 @@ export async function createTasteAssertion(
 
   const now = Date.now();
   const id = uid();
-
-  // Enforce confidence ceiling for AI-generated (inferred/speculative) assertions
-  const maxConfidence =
-    input.claimType === "inferred" || input.claimType === "speculative" ? 0.7 : 1.0;
-  const confidence = Math.min(input.confidence, maxConfidence);
+  const confidence = capAssertionConfidence(input.claimType, input.confidence);
 
   const assertion: TasteAssertion = {
     id,
@@ -159,29 +160,6 @@ export async function getAssertionsForUser(
 // ─── Correction ──────────────────────────────────────────────────────────────
 
 /**
- * Confidence adjustments per CorrectionState.
- * Corrections are the primary way the user steers the taste model.
- * User corrections always take precedence over weak inferred behavior.
- */
-const CORRECTION_CONFIDENCE_DELTA: Record<CorrectionState, number> = {
-  YES: +0.25,          // confirms — significant boost
-  SORT_OF: -0.20,      // partial — meaningful reduction
-  NOT_ANYMORE: -0.35,  // was true, not now — strong reduction
-  ONLY_HERE: -0.15,    // contextually true — moderate reduction
-  NOT_ME: -0.50,       // full negation — major reduction
-  MORE_LIKE_THIS: +0.15, // positive signal on atom, modest assertion boost
-};
-
-const CORRECTION_CLAIM_TYPE: Record<CorrectionState, ClaimType> = {
-  YES: "user_confirmed",
-  SORT_OF: "user_confirmed",
-  NOT_ANYMORE: "user_confirmed",
-  ONLY_HERE: "user_confirmed",
-  NOT_ME: "user_rejected",
-  MORE_LIKE_THIS: "user_confirmed",
-};
-
-/**
  * Apply a user correction to a TasteAssertion.
  * Updates confidence (clamped to [0, 1]) and promotes/demotes claimType.
  */
@@ -189,11 +167,16 @@ export async function applyAssertionCorrection(
   userId: string,
   assertionId: string,
   correction: CorrectionState,
-): Promise<TasteAssertion | null> {
-  if (!userId || userId === "ghost") return null;
+  options?: { contextScope?: TasteScope },
+): Promise<TasteAssertion> {
+  if (!userId || userId === "ghost") {
+    throw new Error("Authentication required to apply assertion corrections.");
+  }
 
   const existing = await getTasteAssertion(userId, assertionId);
-  if (!existing) return null;
+  if (!existing) {
+    throw new Error("Assertion not found.");
+  }
 
   const delta = CORRECTION_CONFIDENCE_DELTA[correction];
   const newConfidence = Math.max(0, Math.min(1, existing.confidence + delta));
@@ -205,6 +188,10 @@ export async function applyAssertionCorrection(
     userCorrection: correction,
     updatedAt: Date.now(),
   };
+
+  if (correction === "ONLY_HERE" && options?.contextScope) {
+    updates.context = options.contextScope;
+  }
 
   await updateDoc(assertionRef(userId, assertionId), updates);
   return { ...existing, ...updates } as TasteAssertion;

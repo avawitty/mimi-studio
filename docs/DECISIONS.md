@@ -306,3 +306,15 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 **Why:** Matches the elevated-notes mockup: one **floating cylindrical toolbar** scrolls all compose/zine tools inside a single pill — not a modular footnote dock + edge rail.
 
 **Ref:** `components/ui/FloatingCylinderToolbar.tsx`, `components/studio/StudioInstrumentRail.tsx`, `AnalysisDisplay.tsx`
+
+---
+
+## 2026-08-08 — Taste Intelligence Phase 1 (EvidenceAtom spine)
+
+**Decision:** Introduce canonical `EvidenceAtom`, `TasteAssertion`, `TasteConcept`, and computed `TasteState` under `users/{uid}/` Firestore subcollections. Ingest via `POST /api/mimi/evidence` (session-verified) and client `createEvidenceAtom`. Mirror Tailor `EvidenceNode` writes non-blockingly into `evidenceAtoms`. Corrections write `interactionEvents` audit rows. First UI surface: `TasteEvidenceAtomsPanel` on Taste Graph Intel Memo tab.
+
+**Alternatives rejected:** (1) Store taste atoms in Neon on day one — memory approvals live in Neon but taste evidence is still Firebase-scoped in Phase 1. (2) Replace Tailor `EvidenceNode` immediately — bridge only until migration Phase 2.
+
+**Why:** Unifies taste-relevant evidence with explicit source vs inference separation, correction loop, and a single `getTasteState()` interface for generation — without blocking on full Tailor/Pocket migration.
+
+**Ref:** `docs/taste-intelligence-phase1.md`, `lib/taste/`, `services/taste/`, `lib/mimiEvidenceRoute.ts`

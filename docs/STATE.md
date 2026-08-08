@@ -26,8 +26,9 @@
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
-| **Taste Graph** | `/taste-graph` | shipped | Embedding space migrations on model change | Run shadow audit after Gateway model bumps |
-| **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
+| **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; computational model (#224) inspector wired | Wire embedding similarity into candidate score; complete atom migration |
+| **Computational Taste Model** | — (derived) | **shipped** | MVP compiler + scoring; no embedding similarity in candidate score yet | Server-side recompile trigger; atom bridge completion |
+| **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
 
 ---
 
@@ -86,7 +87,7 @@
 | **Shadow memory migration** | shipped | UID-gated reindex | — |
 | **Gateway entitlements** | shipped | Stripe + promo paths | — |
 | **Serverless lazy graphs** | shipped | CI: `verify:api-lazy-graphs` | — |
-| **Data plane ownership map** | shipped | Stand vs Floor vs Mine distinctions still debated | Document in sovereign-archive when resolved |
+| **Taste Intelligence (Phase 1)** | infrastructure | Firestore `evidenceAtoms` / `tasteAssertions` / `tasteConcepts`; `POST /api/mimi/evidence`; Tailor mirror on `addEvidenceNode` | Analysis hook after ingest; generation consumes `getTasteState()` |
 | **Taste Corpus explorer** | `/taste-corpus` | shipped | Demonstration seed manifest (20 specimens) | Wire `--from-sovereign` export; expand corpus from Floor covers |
 | **Public face kit** | — | shipped | `PublicField` + `isPublicEditorialFlowMode` single-scroll contract | Audit remaining dark-plate chambers for nested scroll only if reported |
 
