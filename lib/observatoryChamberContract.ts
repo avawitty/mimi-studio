@@ -39,4 +39,11 @@ export const OBSERVATORY_COPY = {
     "Demonstration faint signals — not live Mesopic aggregates. Weak structure is labeled, never sold as atmosphere.",
   mesopicEmptyBanner:
     "No below-threshold consented signals in this window. Faint structure will appear here before it clears Mean Median Mode.",
+  mesopicPersonalDisambiguation:
+    "This Mesopic Lens reads collective faint signals from consented public work. For personal twilight questions — profile, celestial calibration, and web grounding — open Mesopic Lens in Studio.",
+} as const;
+
+export const OBSERVATORY_MESOPIC_HANDOFF = {
+  view: "mesopic-lens",
+  label: "Personal Mesopic Lens",
 } as const;

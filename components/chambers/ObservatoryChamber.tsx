@@ -20,6 +20,7 @@ import {
   OBSERVATORY_CHAMBER_MODULE_ID,
   OBSERVATORY_COPY,
   OBSERVATORY_HANDOFF_TARGETS,
+  OBSERVATORY_MESOPIC_HANDOFF,
 } from "../../lib/observatoryChamberContract";
 
 export type ObservatorySegment = "overview" | "mmm" | "mesopic";
@@ -269,18 +270,43 @@ export const ObservatoryChamber: React.FC<{
 
           {segment === "mesopic" ? (
             <div className="space-y-6">
-              <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-stone-500">
-                Mesopic Lens · {windowDays}d window
-              </p>
+              <div className="space-y-2 max-w-2xl">
+                <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-stone-500">
+                  Mesopic Lens · {windowDays}d window
+                </p>
+                <p className="font-serif italic text-xl md:text-2xl text-stone-100 leading-relaxed">
+                  {OBSERVATORY_COPY.mesopicThesis}
+                </p>
+                <p className="font-sans text-[11px] text-stone-500 leading-relaxed">
+                  {OBSERVATORY_COPY.mesopicPersonalDisambiguation}
+                </p>
+              </div>
               <MesopicLensPanel report={displayMesopic} tone="void" />
-              {!isMesopicLive && !showDemo ? (
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowDemo(true)}
-                  className="font-mono text-[8px] uppercase tracking-widest text-stone-500 hover:text-stone-200"
+                  onClick={() => go(OBSERVATORY_MESOPIC_HANDOFF.view)}
+                  className="px-4 py-2 border border-stone-100 bg-stone-100 text-[#050506] font-mono text-[8px] uppercase tracking-widest"
                 >
-                  Preview demonstration mesopic specimens
+                  {OBSERVATORY_MESOPIC_HANDOFF.label}
                 </button>
+              </div>
+              {!isMesopicLive && !showDemo ? (
+                <div className="space-y-2">
+                  <p
+                    role="status"
+                    className="font-sans text-[12px] text-stone-400 leading-relaxed"
+                  >
+                    {OBSERVATORY_COPY.mesopicEmptyBanner}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowDemo(true)}
+                    className="font-mono text-[8px] uppercase tracking-widest text-stone-500 hover:text-stone-200 underline underline-offset-4"
+                  >
+                    Preview demonstration mesopic specimens
+                  </button>
+                </div>
               ) : null}
             </div>
           ) : null}
