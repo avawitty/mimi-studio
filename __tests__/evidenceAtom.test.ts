@@ -39,6 +39,10 @@ import {
   MIN_EVIDENCE_SEMANTIC_SCORE,
 } from "../lib/taste/evidenceAtomRetrieval";
 import {
+  atomIdsForEvidenceNodes,
+  buildTailorNodeToAtomMap,
+} from "../lib/taste/tailorEvidenceAtomMap";
+import {
   tasteStateToPromptContext,
   tasteConfidenceLabel,
 } from "../services/taste/tasteStateService";
@@ -514,6 +518,33 @@ describe("rankEvidenceAtomsByEmbedding", () => {
     });
     expect(ranked[0]?.atom.id).toBe("a1");
     expect(ranked[0]?.score).toBeGreaterThan(0.9);
+  });
+});
+
+describe("tailorEvidenceAtomMap", () => {
+  it("maps tailor node ids to mirrored atom ids", () => {
+    const map = buildTailorNodeToAtomMap([
+      {
+        id: "atom-99",
+        userId: "u1",
+        projectId: "p1",
+        kind: "image",
+        sourceType: "image",
+        originalSource: "ref",
+        sourceMetadata: { tailorEvidenceNodeId: "ev-1" },
+        observationIds: [] as string[],
+        ingestSource: "tailor",
+        tasteImpact: true,
+        userReaction: "suggested",
+        confidence: 0.5,
+        stabilityClass: "project",
+        processingState: "analyzed",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    ]);
+    expect(atomIdsForEvidenceNodes(["ev-1"], map)).toEqual(["atom-99"]);
+    expect(atomIdsForEvidenceNodes(["missing"], map)).toEqual([]);
   });
 });
 

@@ -354,3 +354,15 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 **Why:** Closes the read path for Phase 2 embeddings and reduces duplicate specimen reads without blocking Tailor's project graph.
 
 **Ref:** `lib/taste/evidenceAtomRetrieval.ts`, `lib/mimiEvidenceSearchRoute.ts`, `services/scribeService.ts`, `lib/taste/tastePromptContext.ts`
+
+---
+
+## 2026-08-08 — Taste Intelligence Phase 3 completion (Tailor atom links + search UI)
+
+**Decision:** Populate `supportingEvidenceAtomIds` on PatternCluster/CreativeLaw when Tailor analysis runs, using `buildTailorNodeToAtomMap` from project-scoped evidence atoms. Profile compilation prefers atom ids over node ids. Taste Graph evidence panel exposes semantic search; Scribe merges semantic hits from `POST /api/mimi/evidence/search`.
+
+**Alternatives rejected:** (1) Remove `supportingEvidenceNodeIds` immediately — breaks Tailor UI graph until full chamber migration. (2) Index atom embeddings in sovereign Floor — public zine plane stays separate; private taste search uses Firestore subcollection.
+
+**Why:** Finishes the atom supersession path for retrieval consumers while keeping Tailor project graph stable.
+
+**Ref:** `lib/taste/tailorEvidenceAtomMap.ts`, `services/tailorAnalysisService.ts`, `components/taste/TasteEvidenceAtomsPanel.tsx`

@@ -4,6 +4,7 @@ import { fetchMemoryAtoms } from './memoryService';
 import { auth } from './firebaseInit';
 import { getTasteGraph } from './tasteGraphService';
 import { queryEvidenceAtoms } from './taste/evidenceAtomService';
+import { searchEvidenceAtomsClient } from './taste/searchEvidenceAtomsClient';
 import { 
   listTailorProjects, 
   getTailorProject, 
@@ -411,8 +412,40 @@ export async function retrieveScribeContext(
   }
 
   // Filter out rejected or superseded records, then sort and return the top 10
-  return candidates
-    .filter((item) => item.approvalStatus !== 'rejected' && item.approvalStatus !== 'superseded')
+  const filtered = candidates
+    .filter((item) => item.approvalStatus !== 'rejected' && item.approvalStatus !== 'superseded');
+
+  if (question.trim().length >= 3) {
+    try {
+      const semanticHits = await searchEvidenceAtomsClient(question, {
+        projectId,
+        maxResults: 6,
+      });
+      const existingIds = new Set(filtered.map((item) => item.id));
+      for (const hit of semanticHits) {
+        if (existingIds.has(hit.atom.id)) continue;
+        const meta = hit.atom.sourceMetadata as { title?: string };
+        filtered.push({
+          id: hit.atom.id,
+          kind: 'specimen',
+          title: meta.title || hit.atom.originalSource.slice(0, 80) || 'Evidence atom',
+          excerpt: (hit.atom.semanticDescription || hit.atom.originalSource).slice(0, 300),
+          approvalStatus:
+            hit.atom.userReaction === 'accepted' || hit.atom.processingState === 'analyzed'
+              ? 'approved'
+              : 'unapproved',
+          relevance: Math.min(0.95, 0.55 + hit.score * 0.35 + AUTHORITY_MODIFIERS.specimen),
+          retrievalReason: 'Semantically matched taste evidence atom.',
+          sourceUrl: hit.atom.assetUrl || hit.atom.thumbnailUrl,
+        });
+        existingIds.add(hit.atom.id);
+      }
+    } catch {
+      /* semantic retrieval is optional */
+    }
+  }
+
+  return filtered
     .sort((a, b) => b.relevance - a.relevance)
     .slice(0, 10);
 }

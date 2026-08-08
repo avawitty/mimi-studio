@@ -819,6 +819,7 @@ export async function splitPatternCluster(
         category: source.category,
         observationIds: part.observationIds,
         supportingEvidenceNodeIds: source.supportingEvidenceNodeIds,
+        supportingEvidenceAtomIds: source.supportingEvidenceAtomIds,
         frequency: part.observationIds.length,
         confidence: source.confidence,
         possibleInterpretations: source.possibleInterpretations,

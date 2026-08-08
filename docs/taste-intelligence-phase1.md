@@ -93,7 +93,8 @@ The atom's `embeddingRef` field stores the stable path `users/{uid}/evidenceAtom
 - [x] Taste context in zine bake + dossier synthesis routes
 - [x] Semantic retrieval using `embeddingRef` in taste state + generation
 - [x] Scribe specimen retrieval prefers `EvidenceAtom`; legacy `EvidenceNode` fallback only when unmigrated
-- [ ] Deprecate duplicate reads from `EvidenceNode` in Tailor analysis graph (project-scoped IDs remain)
+- [x] Tailor clusters/laws store `supportingEvidenceAtomIds` alongside node ids
+- [x] Taste Graph panel semantic search via `POST /api/mimi/evidence/search`
 
 ## Correction loop
 

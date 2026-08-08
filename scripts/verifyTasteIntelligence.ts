@@ -15,6 +15,10 @@ import {
   rankEvidenceAtomsByEmbedding,
   MIN_EVIDENCE_SEMANTIC_SCORE,
 } from "../lib/taste/evidenceAtomRetrieval";
+import {
+  atomIdsForEvidenceNodes,
+  buildTailorNodeToAtomMap,
+} from "../lib/taste/tailorEvidenceAtomMap";
 import { buildEvidenceAtomFromInput } from "../lib/taste/buildEvidenceAtom";
 import { createEvidenceAtomSchema } from "../lib/taste/evidenceAtomSchema";
 import { atomReactionToCorrection } from "../lib/taste/correctionLogic";
@@ -201,5 +205,29 @@ const ranked = rankEvidenceAtomsByEmbedding(
   { minScore: MIN_EVIDENCE_SEMANTIC_SCORE, maxResults: 1 },
 );
 assert(ranked[0]?.atom.id === "atom-a", "semantic rank prefers nearest embedding");
+
+// ─── Tailor node → atom map ───────────────────────────────────────────────────
+
+const nodeMap = buildTailorNodeToAtomMap([
+  {
+    id: "atom-99",
+    userId: "u1",
+    projectId: "p1",
+    kind: "image",
+    sourceType: "image",
+    originalSource: "ref",
+    sourceMetadata: { tailorEvidenceNodeId: "ev-node-1" },
+    observationIds: [] as string[],
+    ingestSource: "tailor",
+    tasteImpact: true,
+    userReaction: "suggested",
+    confidence: 0.5,
+    stabilityClass: "project",
+    processingState: "analyzed",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+]);
+assert(atomIdsForEvidenceNodes(["ev-node-1", "missing"], nodeMap)[0] === "atom-99", "node map resolves atom ids");
 
 console.log("verify:taste-intelligence — all checks passed");
