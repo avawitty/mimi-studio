@@ -662,12 +662,13 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
         console.error("MIMI // Zine Generation Error:", error);
         
         triggerAlert(`Aesthetic Refraction Active. Initializing Semantic Mirror Fallback: ${error.message || 'Model Timeout'}.`, "error");
-        const simulated = generateSimulatedZine(text, zineOptions || {}, opts?.bypassTailor ? null : profile);
+        const profileToUse = opts?.bypassTailor ? null : profile;
+        const simulated = generateSimulatedZine(text, zineOptions || {}, profileToUse);
         const celestialDraft =
-            profile?.tailorDraft?.celestialCalibration ||
-            profile?.extensions?.celestialCalibration;
+            profileToUse?.tailorDraft?.celestialCalibration ||
+            profileToUse?.extensions?.celestialCalibration;
         const stampedSimulated = applyCelestialToZine(simulated, celestialDraft);
-        return await realizeGeneratedZineContent(stampedSimulated, text, opts, media || [], profile);
+        return await realizeGeneratedZineContent(stampedSimulated, text, opts, media || [], profileToUse);
     }
 };
 
