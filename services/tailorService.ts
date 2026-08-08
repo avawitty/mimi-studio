@@ -11,7 +11,26 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebaseInit';
-import { handleFirestoreError, OperationType } from './firebaseUtils';
+import { handleFirestoreError, isFirestoreQuotaError, OperationType } from './firebaseUtils';
+import {
+  getLocalTailorProject,
+  listLocalEvidenceNodes,
+  listLocalObservations,
+  listLocalPatternClusters,
+  listLocalCreativeLaws,
+  listLocalTailorProjects,
+  mergeLocalTasteGraphIds,
+  saveLocalCreativeLaw,
+  saveLocalEvidenceNode,
+  saveLocalObservation,
+  saveLocalPatternCluster,
+  saveLocalTailorProject,
+  saveLocalTasteGraph,
+  getLocalTasteGraph,
+  updateLocalCreativeLaw,
+  updateLocalEvidenceNode,
+  updateLocalPatternCluster,
+} from './tailorLocalArchive';
 import { evidenceNodeToAtomInput } from '../lib/taste/evidenceNodeBridge';
 import { createEvidenceAtom } from './taste/evidenceAtomService';
 import { getReadConfidenceLabel } from '../constants/tailorSafetyRules';
@@ -92,8 +111,15 @@ export async function createTailorProject(
       updatedAt: Date.now(),
     });
     project.tasteGraphId = graph.id;
+    await saveLocalTailorProject(project);
     return project;
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      const graph = await createTasteGraph(userId, id);
+      project.tasteGraphId = graph.id;
+      await saveLocalTailorProject(project);
+      return project;
+    }
     handleFirestoreError(e, OperationType.WRITE, `tailorProjects/${id}`);
     throw e;
   }
@@ -103,10 +129,15 @@ export async function getTailorProject(userId: string, projectId: string): Promi
   if (!userId || userId === 'ghost') return null;
   try {
     const snap = await getDoc(doc(db, `users/${userId}/tailorProjects/${projectId}`));
-    return snap.exists() ? (snap.data() as TailorProject) : null;
+    const project = snap.exists() ? (snap.data() as TailorProject) : null;
+    if (project) await saveLocalTailorProject(project);
+    return project;
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      return await getLocalTailorProject(userId, projectId);
+    }
     handleFirestoreError(e, OperationType.GET, `tailorProjects/${projectId}`);
-    return null;
+    return await getLocalTailorProject(userId, projectId);
   }
 }
 
@@ -119,10 +150,15 @@ export async function listTailorProjects(userId: string): Promise<TailorProject[
       limit(50),
     );
     const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as TailorProject);
+    const projects = snap.docs.map((d) => d.data() as TailorProject);
+    for (const p of projects) await saveLocalTailorProject(p);
+    return projects;
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      return await listLocalTailorProjects(userId);
+    }
     handleFirestoreError(e, OperationType.GET, 'tailorProjects');
-    return [];
+    return await listLocalTailorProjects(userId);
   }
 }
 
@@ -132,12 +168,24 @@ export async function updateTailorProject(
   patch: Partial<TailorProject>,
 ): Promise<void> {
   if (!userId || userId === 'ghost') return;
+  const updatedAt = Date.now();
   try {
     await updateDoc(doc(db, `users/${userId}/tailorProjects/${projectId}`), {
       ...patch,
-      updatedAt: Date.now(),
+      updatedAt,
     });
+    const existing = await getLocalTailorProject(userId, projectId);
+    if (existing) {
+      await saveLocalTailorProject({ ...existing, ...patch, updatedAt });
+    }
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      const existing = await getLocalTailorProject(userId, projectId);
+      if (existing) {
+        await saveLocalTailorProject({ ...existing, ...patch, updatedAt });
+      }
+      return;
+    }
     handleFirestoreError(e, OperationType.WRITE, `tailorProjects/${projectId}`);
   }
 }
@@ -178,8 +226,23 @@ export async function addEvidenceNode(
       console.warn("MIMI // Tailor → EvidenceAtom mirror failed (non-blocking):", err);
     });
 
+    await saveLocalEvidenceNode(evidence);
     return evidence;
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      await saveLocalEvidenceNode(evidence);
+      const nodes = await listLocalEvidenceNodes(userId, projectId);
+      const readConfidence = getReadConfidenceLabel(nodes.length);
+      await updateTailorProject(userId, projectId, {
+        evidenceCount: nodes.length,
+        readConfidence,
+      });
+      const project = await getTailorProject(userId, projectId);
+      if (project?.tasteGraphId) {
+        await mergeLocalTasteGraphIds(userId, project.tasteGraphId, { evidenceNodeIds: [id] });
+      }
+      return evidence;
+    }
     handleFirestoreError(e, OperationType.WRITE, `evidenceNodes/${id}`);
     throw e;
   }
@@ -189,10 +252,15 @@ export async function listEvidenceNodes(userId: string, projectId: string): Prom
   if (!userId || userId === 'ghost') return [];
   try {
     const snap = await getDocs(projectCol(userId, projectId, 'evidenceNodes'));
-    return snap.docs.map((d) => d.data() as EvidenceNode);
+    const nodes = snap.docs.map((d) => d.data() as EvidenceNode);
+    for (const node of nodes) await saveLocalEvidenceNode(node);
+    return nodes;
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      return await listLocalEvidenceNodes(userId, projectId);
+    }
     handleFirestoreError(e, OperationType.GET, 'evidenceNodes');
-    return [];
+    return await listLocalEvidenceNodes(userId, projectId);
   }
 }
 
@@ -202,12 +270,18 @@ export async function updateEvidenceNode(
   nodeId: string,
   patch: Partial<EvidenceNode>,
 ): Promise<void> {
+  const updatedAt = Date.now();
   try {
     await updateDoc(doc(projectCol(userId, projectId, 'evidenceNodes'), nodeId), {
       ...patch,
-      updatedAt: Date.now(),
+      updatedAt,
     });
+    await updateLocalEvidenceNode(userId, projectId, nodeId, { ...patch, updatedAt });
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      await updateLocalEvidenceNode(userId, projectId, nodeId, { ...patch, updatedAt });
+      return;
+    }
     handleFirestoreError(e, OperationType.WRITE, `evidenceNodes/${nodeId}`);
   }
 }
@@ -232,7 +306,12 @@ export async function saveObservations(
       userStatus: obs.userStatus ?? 'suggested',
       createdAt: Date.now(),
     };
-    await setDoc(doc(projectCol(userId, projectId, 'observations'), id), full);
+    try {
+      await setDoc(doc(projectCol(userId, projectId, 'observations'), id), full);
+    } catch (e) {
+      if (!isFirestoreQuotaError(e)) throw e;
+    }
+    await saveLocalObservation(full);
     saved.push(full);
     ids.push(id);
   }
@@ -248,10 +327,15 @@ export async function listObservations(userId: string, projectId: string): Promi
   if (!userId || userId === 'ghost') return [];
   try {
     const snap = await getDocs(projectCol(userId, projectId, 'observations'));
-    return snap.docs.map((d) => d.data() as Observation);
+    const observations = snap.docs.map((d) => d.data() as Observation);
+    for (const obs of observations) await saveLocalObservation(obs);
+    return observations;
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      return await listLocalObservations(userId, projectId);
+    }
     handleFirestoreError(e, OperationType.GET, 'observations');
-    return [];
+    return await listLocalObservations(userId, projectId);
   }
 }
 
@@ -278,7 +362,12 @@ export async function savePatternClusters(
       createdAt: now,
       updatedAt: now,
     };
-    await setDoc(doc(projectCol(userId, projectId, 'patternClusters'), id), stripUndefined(full));
+    try {
+      await setDoc(doc(projectCol(userId, projectId, 'patternClusters'), id), stripUndefined(full));
+    } catch (e) {
+      if (!isFirestoreQuotaError(e)) throw e;
+    }
+    await saveLocalPatternCluster(full);
     saved.push(full);
     ids.push(id);
   }
@@ -294,10 +383,15 @@ export async function listPatternClusters(userId: string, projectId: string): Pr
   if (!userId || userId === 'ghost') return [];
   try {
     const snap = await getDocs(projectCol(userId, projectId, 'patternClusters'));
-    return snap.docs.map((d) => d.data() as PatternCluster);
+    const clusters = snap.docs.map((d) => d.data() as PatternCluster);
+    for (const cluster of clusters) await saveLocalPatternCluster(cluster);
+    return clusters;
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      return await listLocalPatternClusters(userId, projectId);
+    }
     handleFirestoreError(e, OperationType.GET, 'patternClusters');
-    return [];
+    return await listLocalPatternClusters(userId, projectId);
   }
 }
 
@@ -307,15 +401,21 @@ export async function updatePatternCluster(
   clusterId: string,
   patch: Partial<PatternCluster>,
 ): Promise<void> {
+  const updatedAt = Date.now();
   try {
     await updateDoc(
       doc(projectCol(userId, projectId, 'patternClusters'), clusterId),
       stripUndefined({
         ...patch,
-        updatedAt: Date.now(),
+        updatedAt,
       }),
     );
+    await updateLocalPatternCluster(userId, projectId, clusterId, { ...patch, updatedAt });
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      await updateLocalPatternCluster(userId, projectId, clusterId, { ...patch, updatedAt });
+      return;
+    }
     handleFirestoreError(e, OperationType.WRITE, `patternClusters/${clusterId}`);
   }
 }
@@ -342,7 +442,12 @@ export async function saveCreativeLaws(
       createdAt: now,
       updatedAt: now,
     };
-    await setDoc(doc(projectCol(userId, projectId, 'creativeLaws'), id), full);
+    try {
+      await setDoc(doc(projectCol(userId, projectId, 'creativeLaws'), id), full);
+    } catch (e) {
+      if (!isFirestoreQuotaError(e)) throw e;
+    }
+    await saveLocalCreativeLaw(full);
     saved.push(full);
     ids.push(id);
   }
@@ -358,10 +463,15 @@ export async function listCreativeLaws(userId: string, projectId: string): Promi
   if (!userId || userId === 'ghost') return [];
   try {
     const snap = await getDocs(projectCol(userId, projectId, 'creativeLaws'));
-    return snap.docs.map((d) => d.data() as CreativeLaw);
+    const laws = snap.docs.map((d) => d.data() as CreativeLaw);
+    for (const law of laws) await saveLocalCreativeLaw(law);
+    return laws;
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      return await listLocalCreativeLaws(userId, projectId);
+    }
     handleFirestoreError(e, OperationType.GET, 'creativeLaws');
-    return [];
+    return await listLocalCreativeLaws(userId, projectId);
   }
 }
 
@@ -371,15 +481,21 @@ export async function updateCreativeLaw(
   lawId: string,
   patch: Partial<CreativeLaw>,
 ): Promise<void> {
+  const updatedAt = Date.now();
   try {
     await updateDoc(
       doc(projectCol(userId, projectId, 'creativeLaws'), lawId),
       stripUndefined({
         ...patch,
-        updatedAt: Date.now(),
+        updatedAt,
       }),
     );
+    await updateLocalCreativeLaw(userId, projectId, lawId, { ...patch, updatedAt });
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      await updateLocalCreativeLaw(userId, projectId, lawId, { ...patch, updatedAt });
+      return;
+    }
     handleFirestoreError(e, OperationType.WRITE, `creativeLaws/${lawId}`);
   }
 }
@@ -404,7 +520,12 @@ export async function createTasteGraph(userId: string, projectId?: string): Prom
     createdAt: now,
     updatedAt: now,
   };
-  await setDoc(doc(userCol(userId, 'tasteGraphs'), id), stripUndefined(graph));
+  try {
+    await setDoc(doc(userCol(userId, 'tasteGraphs'), id), stripUndefined(graph));
+  } catch (e) {
+    if (!isFirestoreQuotaError(e)) throw e;
+  }
+  await saveLocalTasteGraph(graph);
   return graph;
 }
 
@@ -415,10 +536,15 @@ export async function getTasteGraphDocument(
   if (!userId || userId === 'ghost') return null;
   try {
     const snap = await getDoc(doc(userCol(userId, 'tasteGraphs'), graphId));
-    return snap.exists() ? (snap.data() as TasteGraphDocument) : null;
+    const graph = snap.exists() ? (snap.data() as TasteGraphDocument) : null;
+    if (graph) await saveLocalTasteGraph(graph);
+    return graph;
   } catch (e) {
+    if (isFirestoreQuotaError(e)) {
+      return await getLocalTasteGraph(userId, graphId);
+    }
     handleFirestoreError(e, OperationType.GET, `tasteGraphs/${graphId}`);
-    return null;
+    return await getLocalTasteGraph(userId, graphId);
   }
 }
 
@@ -444,7 +570,8 @@ export async function appendToTasteGraph(
   const mergeIds = (existing: string[], incoming?: string[]) =>
     incoming ? [...new Set([...existing, ...incoming])] : existing;
 
-  await updateDoc(doc(userCol(userId, 'tasteGraphs'), graphId), {
+  const updatedGraph: TasteGraphDocument = {
+    ...graph,
     evidenceNodeIds: mergeIds(graph.evidenceNodeIds, patch.evidenceNodeIds),
     observationIds: mergeIds(graph.observationIds, patch.observationIds),
     patternClusterIds: mergeIds(graph.patternClusterIds, patch.patternClusterIds),
@@ -454,7 +581,27 @@ export async function appendToTasteGraph(
     dossierIds: mergeIds(graph.dossierIds, patch.dossierIds),
     version: graph.version + 1,
     updatedAt: Date.now(),
-  });
+  };
+
+  try {
+    await updateDoc(doc(userCol(userId, 'tasteGraphs'), graphId), {
+      evidenceNodeIds: updatedGraph.evidenceNodeIds,
+      observationIds: updatedGraph.observationIds,
+      patternClusterIds: updatedGraph.patternClusterIds,
+      creativeLawIds: updatedGraph.creativeLawIds,
+      fieldNoteIds: updatedGraph.fieldNoteIds,
+      dollIds: updatedGraph.dollIds,
+      dossierIds: updatedGraph.dossierIds,
+      version: updatedGraph.version,
+      updatedAt: updatedGraph.updatedAt,
+    });
+  } catch (e) {
+    if (!isFirestoreQuotaError(e)) {
+      handleFirestoreError(e, OperationType.WRITE, `tasteGraphs/${graphId}`);
+      return;
+    }
+  }
+  await saveLocalTasteGraph(updatedGraph);
 }
 
 // ─── Field Notes ────────────────────────────────────────────────────────────
