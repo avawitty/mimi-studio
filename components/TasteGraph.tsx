@@ -35,6 +35,9 @@ import {
 } from './chambers/ArchiveChamberShell';
 import { GraphSettle } from './motion/GraphSettle';
 import { TasteEvidenceAtomsPanel } from './taste/TasteEvidenceAtomsPanel';
+import type { TasteGraphReadiness } from '../lib/taste/tasteGraphSummary';
+import { hydrateUsedContextFromServer } from '../services/usedContextService';
+import type { TasteGraphProjectionSource } from '../lib/taste/tasteGraphSummary';
 
 type TabType = 'map' | 'radar' | 'clusters' | 'report';
 type RadarAxis = { axis: string; value: number; desc: string };
@@ -96,6 +99,9 @@ export const TasteGraph: React.FC = () => {
   const [footprintSection, setFootprintSection] = useState<
     'anchors' | 'embeddings' | 'tags' | 'clusters' | null
   >('anchors');
+  const [readiness, setReadiness] = useState<TasteGraphReadiness | null>(null);
+  const [graphSource, setGraphSource] = useState<TasteGraphProjectionSource>('empty');
+  const [tasteConfidence, setTasteConfidence] = useState(0);
 
   const liveFootprint = compileTasteFootprint({
     nodes,
@@ -233,16 +239,54 @@ export const TasteGraph: React.FC = () => {
     setLoading(true);
     try {
       if (user && !user.isAnonymous) {
-        const [graph, storedFootprint, gravity] = await Promise.all([
-          getTasteGraph(user.uid),
+        void hydrateUsedContextFromServer(user.uid);
+
+        let graphNodes: TasteGraphNode[] = [];
+        let graphEdges: TasteGraphEdge[] = [];
+        let summaryLoaded = false;
+
+        try {
+          const token = await auth.currentUser?.getIdToken();
+          const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+          const res = await fetch('/api/mimi/taste-graph/summary', { headers });
+          if (res.ok) {
+            const json = (await res.json()) as {
+              summary?: {
+                graph?: { nodes: TasteGraphNode[]; edges: TasteGraphEdge[]; source?: TasteGraphProjectionSource };
+                readiness?: TasteGraphReadiness;
+                state?: { confidence?: number };
+              };
+            };
+            if (json.summary) {
+              summaryLoaded = true;
+              graphNodes = json.summary.graph?.nodes ?? [];
+              graphEdges = json.summary.graph?.edges ?? [];
+              setGraphSource(json.summary.graph?.source ?? 'empty');
+              setReadiness(json.summary.readiness ?? null);
+              setTasteConfidence(json.summary.state?.confidence ?? 0);
+            }
+          }
+        } catch (e) {
+          console.warn("MIMI // Taste graph summary unavailable, using legacy graph:", e);
+        }
+
+        if (!summaryLoaded) {
+          const graph = await getTasteGraph(user.uid);
+          graphNodes = graph.nodes;
+          graphEdges = graph.edges;
+          setGraphSource(graph.nodes.length > 0 ? 'legacy' : 'empty');
+        }
+
+        setNodes(graphNodes);
+        setEdges(graphEdges);
+
+        const [storedFootprint, gravity] = await Promise.all([
           getTasteFootprint(user.uid),
           tasteGravity.refresh(),
         ]);
-        setNodes(graph.nodes);
-        setEdges(graph.edges);
 
         const live = compileTasteFootprint({
-          nodes: graph.nodes,
+          nodes: graphNodes,
           points: gravity.points,
           clusters: gravity.clusters,
           dimension: tasteGravity.dimension || gravity.points[0]?.vector?.length || 0,
@@ -253,42 +297,23 @@ export const TasteGraph: React.FC = () => {
           : live;
         setFootprint(next);
 
-        // Persist only when live streams are strictly richer than the stored doc.
         const liveScore = footprintSignalScore(live);
         const storedScore = storedFootprint ? footprintSignalScore(storedFootprint) : -1;
         if (liveScore > storedScore) {
           void syncFootprint(user.uid, {
-            nodes: graph.nodes,
+            nodes: graphNodes,
             points: gravity.points,
             clusters: gravity.clusters,
             dimension: live.dimension,
           });
         }
       } else {
-        // Fallback or demo nodes to make it beautiful even in local mode or anonymous preview
-        const demoNodes: TasteGraphNode[] = [
-          { id: 'n1', label: 'Neo-Brutalist', type: 'concept', weight: 3.2, explanation: 'Bold geometry, raw layout structures, and high-contrast space distribution.', tags: ['brutalism', 'grid', 'contrast'] },
-          { id: 'n2', label: 'Cormorant Serif', type: 'motif', weight: 2.4, explanation: 'Delicate editorial sophistry, precise hairline serifs and spacious letter trackings.', tags: ['editorial', 'serif', 'margin'] },
-          { id: 'n3', label: 'Post-Digital Archive', type: 'era', weight: 4.1, explanation: 'Immersive tactile scanlines, nostalgic dithered pixels, and historic catalogs.', tags: ['archive', 'scanline', 'dither'] },
-          { id: 'n4', label: 'Tactile Stone', type: 'motif', weight: 1.8, explanation: 'Porous organic paper textures, raw mineral minerals, and warm clay palettes.', tags: ['mineral', 'clay', 'tactile'] },
-          { id: 'n5', label: 'Symmetric Balance', type: 'concept', weight: 2.8, explanation: 'Grid-driven classic balances, structured layouts, and quiet borders.', tags: ['symmetry', 'classic', 'structure'] }
-        ];
-        setNodes(demoNodes);
-        setEdges([
-          { source: 'n1', target: 'n3', strength: 0.8, type: 'relates_to' },
-          { source: 'n3', target: 'n2', strength: 0.4, type: 'contrasts_with' },
-          { source: 'n1', target: 'n5', strength: 0.9, type: 'relates_to' },
-          { source: 'n4', target: 'n1', strength: 0.5, type: 'relates_to' }
-        ]);
-        setFootprint(
-          compileTasteFootprint({
-            nodes: demoNodes,
-            points: [],
-            clusters: [],
-            dimension: 0,
-            source: 'live',
-          }),
-        );
+        setNodes([]);
+        setEdges([]);
+        setReadiness(null);
+        setGraphSource('empty');
+        setTasteConfidence(0);
+        setFootprint(emptyTasteFootprint());
       }
     } catch (e) {
       console.error("MIMI // Failed to load taste graph:", e);
@@ -922,7 +947,39 @@ export const TasteGraph: React.FC = () => {
                   {activeTab === 'map' && (
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-8 h-full items-center">
                       <div className="order-2 md:order-1 md:col-span-7 aspect-square max-h-[440px] bg-stone-50 dark:bg-[#0d0d0d] border border-stone-200/60 dark:border-stone-850/60 p-4 relative flex items-center justify-center shadow-xs">
-                        {renderCoordinateMapSVG()}
+                        {nodes.length === 0 ? (
+                          <div className="text-center space-y-4 px-6 max-w-sm">
+                            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-stone-500">
+                              No approved taste coordinates yet
+                            </p>
+                            <p className="font-serif italic text-sm text-stone-600 dark:text-stone-400 leading-relaxed">
+                              Save references to Pocket, curate patterns in Tailor, or extract from your archive. Mimi only maps taste from real evidence — not demonstration fixtures.
+                            </p>
+                            {readiness?.gaps?.length ? (
+                              <ul className="text-left space-y-2 font-mono text-[9px] text-stone-500 uppercase tracking-wide">
+                                {readiness.gaps.slice(0, 3).map((gap) => (
+                                  <li key={gap} className="border-l border-amber-500/60 pl-3">{gap}</li>
+                                ))}
+                              </ul>
+                            ) : null}
+                            <div className="flex flex-wrap gap-2 justify-center pt-2">
+                              <a
+                                href="/pocket"
+                                className="px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest hover:bg-stone-100 dark:hover:bg-stone-900"
+                              >
+                                Open Pocket
+                              </a>
+                              <a
+                                href="/tailor"
+                                className="px-3 py-1.5 border archive-border font-mono text-[8px] uppercase tracking-widest hover:bg-stone-100 dark:hover:bg-stone-900"
+                              >
+                                Open Tailor
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          renderCoordinateMapSVG()
+                        )}
                       </div>
 
                       <div className="order-1 md:order-2 md:col-span-5 space-y-5 text-left flex flex-col justify-center">
@@ -932,7 +989,14 @@ export const TasteGraph: React.FC = () => {
                         </div>
                         <p className="font-serif italic text-stone-600 dark:text-stone-400 text-xs leading-relaxed">
                           Your visual artifacts and editorial selections are stored, recalled, and compiled into a taste footprint — anchors, embeddings, tags, and pattern clusters in one ledger.
+                          {graphSource === 'snapshot' && ' · Projected from your compiled taste model.'}
+                          {graphSource === 'legacy' && ' · Showing saved map coordinates until model projection is richer.'}
                         </p>
+                        {readiness && (
+                          <p className="font-mono text-[8px] uppercase tracking-widest text-stone-500">
+                            Readiness {readiness.score}/100 · {readiness.evidenceCount} evidence · confidence {Math.round(tasteConfidence * 100)}%
+                          </p>
+                        )}
                         
                         <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200/50 dark:border-stone-850/50 text-xs">
                           <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-stone-200 dark:border-stone-800">
@@ -1297,11 +1361,21 @@ export const TasteGraph: React.FC = () => {
 
                       <div className="space-y-4 font-serif text-xs leading-relaxed text-stone-700 dark:text-stone-300">
                         <p className="font-mono text-[9px] uppercase tracking-wider font-extrabold text-amber-600 dark:text-amber-400">I. Executive Summary &amp; Spatial Alignment</p>
-                        <p>
-                          Our decentralized analysis layer has evaluated your active design artifacts, wardrobe metrics, and text scraps. 
-                          The results yield an extremely dense, high-uniformity cluster focusing heavily on <span className="font-sans font-bold text-stone-900 dark:text-stone-100">Neo-Brutalist structural geometry</span> 
-                          softened by natural earthy, mineral materials (<span className="italic">Tactile Stone</span>) and framed in elite typographic <span className="italic">Editorial Elegance</span>.
-                        </p>
+                        {nodes.length === 0 ? (
+                          <p>
+                            No taste coordinates are mapped yet. Capture evidence in Pocket or Tailor, approve what Mimi should remember, then return here for a traceable map of your aesthetic direction.
+                          </p>
+                        ) : (
+                          <p>
+                            Active taste map holds <span className="font-sans font-bold text-stone-900 dark:text-stone-100">{nodes.length} coordinate node(s)</span>
+                            {nodes.slice(0, 3).map((n) => n.label).join(', ').length > 0
+                              ? ` — leading signals include ${nodes.slice(0, 3).map((n) => n.label).join(', ')}.`
+                              : '.'}
+                            {readiness?.canInformGeneration
+                              ? ' This profile is strong enough to inform generation.'
+                              : ' Add more approved evidence to strengthen generation context.'}
+                          </p>
+                        )}
 
                         <p className="font-mono text-[9px] uppercase tracking-wider font-extrabold text-amber-600 dark:text-amber-400 pt-3">II. Algorithmic Identity Defense Strategy</p>
                         <p>
@@ -1311,10 +1385,11 @@ export const TasteGraph: React.FC = () => {
                         </p>
 
                         <div className="p-4 bg-stone-100 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800 text-xs font-mono tracking-wider text-stone-500 space-y-1">
-                          <p className="font-extrabold text-stone-800 dark:text-stone-300">CORE METRIC THESIS MATRIX:</p>
-                          <p>● COHESION MULTIPLIER: 1.48x (Strong clustering tendency)</p>
-                          <p>● DEFENSIVE LATENCY: 12ms (Secure routing active)</p>
-                          <p>● ALIGNMENT STABILITY: STABLE (0.04% entropy divergence)</p>
+                          <p className="font-extrabold text-stone-800 dark:text-stone-300">READINESS MATRIX:</p>
+                          <p>● EVIDENCE ATOMS: {readiness?.evidenceCount ?? 0}</p>
+                          <p>● ASSERTIONS: {readiness?.assertionCount ?? 0}</p>
+                          <p>● MODEL SNAPSHOT: {readiness?.hasSnapshot ? 'compiled' : 'pending'}</p>
+                          <p>● CONFIDENCE: {Math.round(tasteConfidence * 100)}%</p>
                         </div>
 
                         <div className="pt-4">

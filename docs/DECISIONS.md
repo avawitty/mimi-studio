@@ -64,6 +64,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Unified Taste Graph summary read path
+
+**Decision:** Add `GET /api/mimi/taste-graph/summary` as the canonical server read for Taste Graph chambers: `TasteState` + latest `TasteModelSnapshot` + projected graph (`projectTasteModelToGraph` preferred over legacy `tasteGraphNodes` when signal is richer) + readiness gaps + server Used Context. Remove demonstration nodes from `/taste-graph` when empty. Mirror Pocket saves into deterministic `EvidenceAtom` ids (`pocket_{itemId}`) via `mirrorPocketItemToEvidenceAtom`. Persist Used Context tray to Firestore (`users/{uid}/studioMeta/usedContext`) with `GET/PUT /api/mimi/used-context` and client hydrate on empty local store.
+
+**Alternatives rejected:** (1) Keep three parallel read paths (map nodes, Tailor graph, snapshot) without a summary API. (2) Demo orbital nodes for anonymous/empty signed-in users. (3) Used Context localStorage-only forever.
+
+**Why:** Substantial taste data requires one honest read surface, traceable ingest from every capture chamber, and durable approved context for cross-device generation. Projection from compiled snapshot aligns map UI with Tailor curation without duplicating authoritative node storage.
+
+**Ref:** `lib/mimiTasteGraphSummaryRoute.ts`, `lib/taste/tasteGraphSummary.ts`, `lib/taste/pocketAtomBridge.ts`, `services/taste/mirrorPocketToEvidenceAtom.ts`, `lib/mimiUsedContextRoute.ts`, `components/TasteGraph.tsx`
+
+---
+
 ## 2026-08-08 — Taste Signature as evidence-backed editorial reading
 
 **Decision:** Expand `/signature` from DNA-card + charts into a layered artifact: exportable **plate** (unchanged public face) → **editorial reading** (thesis, confidence, Used Context refs) → semiotic touchpoints, creative directions, recommendations, anti-signature, drift notes → collapsed analytics. Generation pulls zines, Tailor draft, approved Used Context, and taste model snapshot via AI Gateway (`textDeep`) with Gemini JSON fallback. Explicit **Approve signature** persists `status: approved` and records `mark_signature` through `recordAndRecompile`; **Repair** routes to Tailor.

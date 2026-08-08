@@ -25,10 +25,17 @@
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab; Export Chamber wired from Publisher Console destinations |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
+<<<<<<< HEAD
 | **Taste Signature** | `/signature` | shipped | Expanded reading + public `/u/:handle/signature` OG; incremental evidence patch; approve → `mark_signature` | Public-face mobile review |
 | **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; embedding space migrations on model change | Complete atom migration; run shadow audit after Gateway model bumps |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
+=======
+| **Taste Signature** | `/signature` | shipped | Expanded reading (thesis, touchpoints, directions, recommendations); approve → `mark_signature` taste event | Public-face mobile review after chrome changes |
+| **Taste Graph** | `/taste-graph` | partial | Unified `GET /api/mimi/taste-graph/summary`; honest empty state (no demo nodes); Pocket → EvidenceAtom mirror | Scribe + Darkroom ingest mirrors; embedding backfill (#223) |
+| **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; map reads snapshot projection when richer | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
+| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket mirror on save; Used Context server sync (`PUT /api/mimi/used-context`) | Semantic retrieval (#223); Scribe highlight mirror |
+>>>>>>> 7f38b9b (feat(taste-graph): unified summary API, Pocket mirror, honest empty state)
 | **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
 
 ---
