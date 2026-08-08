@@ -18,6 +18,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Scry taste rerank + visible why-matched
+
+**Decision:** After the four Scry evidence lanes settle, `runSpecimenScry` loads the latest taste snapshot + refusals (graceful no-op when unsigned out or API unavailable) and reranks hits **within each lane** via `lib/scry/tasteScryRerank.ts` → `rerankTasteSearchResults`. Each `ResearchResult` may carry `tasteScore` and `whyMatched` (semantic fit, linked features, trajectory, refusal contradiction). ScryView merges lanes sorted by taste score and exposes an expandable “Why matched” panel per card.
+
+**Alternatives rejected:** (1) New schema columns for search provenance. (2) Cross-lane overwrite into a single blended blob. (3) Client-only rerank in ScryView without service-layer attachment.
+
+**Why:** Completes the search vertical slice with explainable retrieval tied to the approved taste model; preserves lane honesty from ADR 2026-08-02.
+
+**Ref:** `lib/scry/tasteScryRerank.ts`, `services/scryService.ts`, `components/ScryView.tsx`, `schemas/scryContracts.ts`
+
+---
+
 ## 2026-08-08 — Computational Taste Model (derived snapshot, v1)
 
 **Decision:** Introduce `TasteModelSnapshot` as a **derived cache** compiled deterministically from canonical Tailor graph entities (`EvidenceNode`, `Observation`, `PatternCluster`, `CreativeLaw`) plus immutable `TasteEventV2` learning events. Pure compilation in `lib/tasteModel/`; persistence at `users/{uid}/tasteLearningEvents` and `users/{uid}/tasteModelSnapshots/{global|project-{id}}`. Legacy `TasteEvent` normalized additively via `normalizeTasteEvent()`. Candidate scoring returns fit score (0–100, not probability), confidence, and evidence-linked explanation — no LLM in the scoring path.
