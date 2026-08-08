@@ -7,6 +7,7 @@ import {
 } from "../lib/studioCoverVariants";
 import { normalizeZineArtifact } from "../lib/zine/normalizeZineArtifact";
 import type { ZineMetadata } from "../types";
+import { makeLegacyZineMetadata } from "./fixtures/zineMetadata";
 
 describe("studioCoverVariants", () => {
   it("promotes a strip variant and demotes the previous main", () => {
@@ -62,20 +63,17 @@ describe("studioCoverVariants", () => {
       { url: "v1", seed: "v1", prompt: "p1", selected: false },
       { url: "v2", seed: "v2", prompt: "p2", selected: true },
     ];
-    const metadata = {
-      id: "zine_test",
-      userId: "u1",
-      title: "Test Issue",
-      tone: "EDITORIAL",
-      timestamp: Date.now(),
-      likes: 0,
+    const base = makeLegacyZineMetadata();
+    const metadata: ZineMetadata = {
+      ...base,
       content: {
-        title: "Test Issue",
-        meta: { studioCoverVariants: covers },
-        pages: [],
+        ...base.content,
+        meta: {
+          ...base.content.meta,
+          studioCoverVariants: covers,
+        },
       },
-      coverImageUrl: "https://example.com/cover.jpg",
-    } as ZineMetadata;
+    };
 
     const artifact = normalizeZineArtifact(metadata);
     expect(artifact.cover.covers).toEqual(covers);
