@@ -26,9 +26,9 @@
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | Expanded reading + public `/u/:handle/signature` OG; incremental evidence patch; approve → `mark_signature` | Public-face mobile review |
-| **Taste Graph** | `/taste-graph` | partial | Unified summary API + trajectory/tensions on map; honest empty state; Pocket/Scribe ingest mirrors; Tailor curation → assertions | Floor/Darkroom mirrors; embedding backfill (#223) |
-| **Computational Taste Model** | — (derived) | **shipped** | Deterministic compiler + scoring; map reads snapshot projection; embedding similarity in candidate score | Server-side recompile trigger on ingest |
-| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe mirrors; Tailor curation → assertions; Used Context merge hydrate; analysis pipeline + TasteState | Floor mirror; semantic retrieval (#223) |
+| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; embedding centroid on compile; Pocket/Scribe/Floor publish mirrors; Used Context conflict UI | Darkroom mirror; historical floor backfill job |
+| **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring; map reads snapshot projection | Wire candidate embeddings from Scry/Studio paths |
+| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor publish mirrors; embed on analyze; Used Context merge hydrate | Semantic retrieval (#223); batch analyze backfill |
 | **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
 
 ---
