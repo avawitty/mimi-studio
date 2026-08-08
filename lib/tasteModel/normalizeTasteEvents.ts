@@ -144,7 +144,40 @@ export function normalizeTasteEvents(events: AnyTasteEvent[]): NormalizedTasteEv
 }
 
 /**
- * Build a dedupe key for curation actions to prevent double-writes.
+ * Collapse duplicate learning events by dedupe key (or id) before compilation.
+ * Keeps the newest occurrence when legacy duplicates exist in storage.
+ */
+export function dedupeTasteEventsForCompile(
+  events: NormalizedTasteEvent[],
+): NormalizedTasteEvent[] {
+  const byKey = new Map<string, NormalizedTasteEvent>();
+
+  for (const event of events) {
+    const key = event.dedupeKey ?? event.id;
+    const existing = byKey.get(key);
+    if (!existing || event.occurredAt >= existing.occurredAt) {
+      byKey.set(key, event);
+    }
+  }
+
+  return [...byKey.values()].sort((a, b) => a.occurredAt - b.occurredAt);
+}
+
+/**
+ * Stable dedupe key for explicit curation / correction actions.
+ * Omits time bucketing so replaying the same action cannot append twice.
+ */
+export function buildStableTasteEventDedupeKey(
+  userId: string,
+  action: TasteLearningAction,
+  targetType: string,
+  targetId: string,
+): string {
+  return `${userId}:${action}:${targetType}:${targetId}`;
+}
+
+/**
+ * Time-bucketed dedupe key for passive/implicit behavioral events.
  */
 export function buildTasteEventDedupeKey(
   userId: string,
@@ -153,5 +186,5 @@ export function buildTasteEventDedupeKey(
   targetId: string,
   occurredAtBucket: number,
 ): string {
-  return `${userId}:${action}:${targetType}:${targetId}:${occurredAtBucket}`;
+  return `${buildStableTasteEventDedupeKey(userId, action, targetType, targetId)}:${occurredAtBucket}`;
 }

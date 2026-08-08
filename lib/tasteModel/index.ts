@@ -49,7 +49,9 @@ export {
 } from './constants';
 
 export {
+  buildStableTasteEventDedupeKey,
   buildTasteEventDedupeKey,
+  dedupeTasteEventsForCompile,
   normalizeTasteEvent,
   normalizeTasteEvents,
 } from './normalizeTasteEvents';

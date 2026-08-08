@@ -29,6 +29,7 @@ import {
   USER_WEIGHT_MULTIPLIERS,
 } from './constants';
 import type { CreativeLaw, Observation, PatternCluster } from '../../types';
+import { dedupeTasteEventsForCompile } from './normalizeTasteEvents';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -439,8 +440,9 @@ function shrinkTowardGlobal(
  */
 export function compileTasteModel(input: CompileTasteModelInput): TasteModelSnapshot {
   const now = input.compiledAt ?? Date.now();
+  const events = dedupeTasteEventsForCompile(input.events);
   const featureMap = new Map<string, FeatureAccumulator>();
-  const explicitPolarity = resolveExplicitPolarity(input.events);
+  const explicitPolarity = resolveExplicitPolarity(events);
 
   seedFeaturesFromGraph(
     featureMap,
@@ -452,8 +454,8 @@ export function compileTasteModel(input: CompileTasteModelInput): TasteModelSnap
 
   const filteredEvents =
     input.scope === 'global'
-      ? input.events.filter((e) => e.scope === 'persistent' || e.scope === 'project')
-      : input.events.filter(
+      ? events.filter((e) => e.scope === 'persistent' || e.scope === 'project')
+      : events.filter(
           (e) =>
             e.scope === 'project' &&
             (!input.projectId || e.projectId === input.projectId),
