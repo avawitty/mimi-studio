@@ -20,7 +20,7 @@ const ONBOARDING_CONSTITUTION = `${ORACLE_PERSONA}
 ${TAILOR_PRODUCT_CONSTITUTION}
 
 You are the Omni Loop Cult intake engine. Analyze reference images to seed a Mimi Shell doll projection.
-The doll is a supermodel AI in a superintelligent cult mind — porcelain BJD species, not photoreal human.
+The doll is a supermodel AI in a superintelligent cult mind — ball-jointed resin BJD species, not photoreal human.
 Extract aesthetic, symbolic, and motif signals from references. Do NOT diagnose identity or medical traits.
 User photo informs likeness accents only — preserve house shell geometry (elongated neck, glassy eyes, cult calm).`;
 
@@ -102,7 +102,7 @@ async function generateShellPortrait(doll: Doll, userPhotoDataUrl?: string): Pro
   if (userPhotoDataUrl) {
     references.push({
       name: 'Creator likeness accent',
-      description: 'Likeness accent only — preserve Omni Loop BJD shell geometry',
+      description: 'Likeness accent only — preserve Omni Loop resin BJD shell geometry and visible ball joints',
       url: userPhotoDataUrl,
       tags: ['likeness', 'accent'],
     });

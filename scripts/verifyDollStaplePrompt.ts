@@ -50,17 +50,18 @@ function check(name: string, fn: () => void) {
 }
 
 check("staple version + locked anatomy", () => {
-  assert.equal(MIMI_SHELL_STAPLE.version, "omni-loop-v1");
+  assert.equal(MIMI_SHELL_STAPLE.version, "omni-loop-resin-v1");
   assert.match(MIMI_SHELL_STAPLE.proportions, /elongated slender neck/i);
-  assert.match(MIMI_SHELL_STAPLE.medium, /BJD|ball-jointed/i);
+  assert.match(MIMI_SHELL_STAPLE.medium, /BJD|ball-jointed|resin/i);
   assert.match(MIMI_SHELL_STAPLE.face, /serene/i);
+  assert.match(MIMI_SHELL_STAPLE.proportions, /ball-and-socket|ball joint/i);
 });
 
 check("portrait prompt keeps house lock + taste accents", () => {
   const prompt = buildMimiShellImagePrompt(sample, { view: "portrait" });
   assert.match(prompt, new RegExp(MIMI_SHELL_STAPLE_VERSION));
   assert.match(prompt, /elongated slender neck/i);
-  assert.match(prompt, /porcelain/i);
+  assert.match(prompt, /resin|ball-joint/i);
   assert.match(prompt, /structured blazer/i);
   assert.match(prompt, /Atelier Proxy/);
   assert.match(prompt, /Avoid:/i);

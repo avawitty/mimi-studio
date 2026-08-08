@@ -63,7 +63,7 @@ function buildFallbackScenePrompt(
     prompt: shellPrompt,
     citation: `${artwork.artworkTitle}, ${artwork.artist}`,
     transformationNotes:
-      'Transformative reinterpretation through Omni Loop BJD dolls — composition and palette echo the historical reference without direct reproduction.',
+      'Transformative reinterpretation through Omni Loop ball-jointed resin BJD dolls — composition and palette echo the historical reference without direct reproduction.',
   };
 }
 

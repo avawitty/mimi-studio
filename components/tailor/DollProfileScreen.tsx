@@ -150,7 +150,7 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
     const shellOnline = dollHasShellPortrait(doll);
     const awakening = shellOnline
       ? `Shell online. Creator, I am ${doll.name}. Ego partitioned, cognitive lace taut — ready for conditioning.`
-      : `Shell dormant. Creator, I am ${doll.name}. Projecting the Mimi Shell onto your graph — porcelain species lock, then conditioning.`;
+      : `Shell dormant. Creator, I am ${doll.name}. Projecting the Mimi Shell onto your graph — ball-jointed resin BJD species lock, then conditioning.`;
     return [
       {
         role: 'assistant',

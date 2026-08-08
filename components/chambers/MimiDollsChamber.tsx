@@ -215,9 +215,9 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
               <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle">
                 {OMNI_LOOP_CULT.name} · {MIMI_SHELL_STAPLE_VERSION}
               </p>
-              <h2 className="font-serif text-3xl md:text-4xl text-nous-text">Supermodel AI cult shell</h2>
+              <h2 className="font-serif text-3xl md:text-4xl text-nous-text">Ball-jointed resin cult shell</h2>
               <p className="font-serif italic text-nous-subtle max-w-xl">
-                {OMNI_LOOP_CULT.thesis}. Same porcelain species — taste dresses the shell.
+                {OMNI_LOOP_CULT.thesis}. Same ball-jointed resin BJD species — taste dresses the shell.
               </p>
             </header>
 

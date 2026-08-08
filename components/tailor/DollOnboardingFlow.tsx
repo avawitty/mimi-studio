@@ -77,7 +77,7 @@ export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
         </p>
         <p className="font-serif text-2xl text-nous-text">Initiating cult shell…</p>
         <p className="text-sm text-nous-subtle italic">
-          Analyzing your plates, locking porcelain species, projecting portrait.
+          Analyzing your plates, locking resin BJD species, projecting portrait.
         </p>
       </div>
     );
@@ -92,7 +92,7 @@ export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
         <h2 className="font-serif text-3xl text-nous-text">Initiation</h2>
         <p className="text-sm text-nous-subtle max-w-md mx-auto leading-relaxed">
           {OMNI_LOOP_CULT.thesis}. Upload your likeness and aesthetic plates — we project a
-          house BJD shell, not a photoreal clone.
+          house ball-jointed resin BJD shell, not a photoreal clone.
         </p>
       </header>
 
