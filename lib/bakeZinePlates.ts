@@ -13,6 +13,8 @@ import {
   planAuthoredPageIdsRequiringMedia,
   planCoverRequiresGeneratedMedia,
 } from "./zine/realizeZineContentFromPlan";
+import { fetchTastePromptContext } from "../services/taste/fetchTastePromptContext";
+import type { TasteScope } from "../types";
 
 export interface BakeZinePlatesOptions {
   content: ZineContent;
@@ -34,6 +36,8 @@ export interface BakeZinePlatesOptions {
   issuePlan?: ZineIssuePlan;
   /** Stock vs AI plate resolution for hi-fi bakes. */
   plateMediaMode?: ZinePlateMediaMode;
+  /** Optional taste scope for plate image prompts. */
+  tasteContext?: TasteScope;
 }
 
 export interface BakeZinePlatesResult {
@@ -105,6 +109,13 @@ export async function bakeZineVisualPlates(
   const useStock = shouldResolveStockPlates(plateMediaMode);
   const useAi = shouldAiGeneratePlates(plateMediaMode);
 
+  const tastePromptBlock =
+    options.ownerUid && useAi
+      ? await fetchTastePromptContext(options.tasteContext || "editorial")
+      : "";
+  const withTaste = (prompt: string) =>
+    tastePromptBlock ? `${prompt}\n\n${tastePromptBlock}` : prompt;
+
   if (
     !shouldAutoDevelopPlates({
       isHighFidelity: options.isHighFidelity,
@@ -166,7 +177,7 @@ export async function bakeZineVisualPlates(
     } else if (useAi) {
       try {
         const raw = await generateZineImage(
-          heroPrompt,
+          withTaste(heroPrompt),
           "16:9",
           "2K",
           profile,
@@ -243,7 +254,7 @@ export async function bakeZineVisualPlates(
     if (!useAi) return;
     try {
       const raw = await generateZineImage(
-        prompt,
+        withTaste(prompt),
         "3:4",
         "2K",
         profile,

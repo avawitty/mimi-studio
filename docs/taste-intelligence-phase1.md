@@ -48,6 +48,7 @@ Existing collections **remain** in Phase 1:
 2. **Analyze** — `POST /api/mimi/evidence/analyze` `{ atomId }` (session + funded gateway)
 3. **Client** — `createEvidenceAtom(userId, input)` → schedules analyze via API
 4. **Tailor bridge** — `addEvidenceNode` → `evidenceNodeToAtomInput` → `createEvidenceAtom` (fire-and-forget)
+5. **Pocket bridge** — `addToPocket` → `pocketItemToAtomInput` → `createEvidenceAtom` (fire-and-forget)
 
 ## Generation context
 
@@ -55,16 +56,30 @@ Signed-in requests to these routes receive `TASTE INTELLIGENCE` in the system pr
 
 - `POST /api/mimi/generate-text` (optional `tasteContext` in body)
 - `POST /api/mimi/create-zine` (optional `tasteContext` in body)
+- `POST /api/mimi/synthesize-dossier` (optional `tasteContext` in body)
+- Studio zine bake (`createZine` + `bakeZineVisualPlates`) — fetches `GET /api/mimi/taste-state` client-side
 
 Read path: `GET /api/mimi/taste-state?context=editorial`
 
-## Known debt (Phase 1.5+)
+## Embeddings
 
-- [ ] Post-ingest analysis hook (`analyze-image` / embed) after atom create
+After interpretation, `runEvidenceAtomAnalysis` embeds `semanticDescription` (or `originalSource` fallback) via AI Gateway and stores the vector at:
+
+```
+users/{uid}/evidenceAtomEmbeddings/{atomId}
+```
+
+The atom's `embeddingRef` field stores the stable path `users/{uid}/evidenceAtomEmbeddings/{atomId}`.
+
+## Known debt (Phase 2+)
+
+- [x] Post-ingest analysis hook after atom create
 - [x] `GET /api/mimi/taste-state` for server-side generation
-- [ ] Pocket mirror (like Tailor bridge)
-- [x] Migrate generation routes to inject `tasteStateToPromptContext()`
+- [x] Pocket mirror (like Tailor bridge)
+- [x] Embedding refs on atoms after analysis
+- [x] Taste context in zine bake + dossier synthesis routes
 - [ ] Deprecate duplicate reads from `EvidenceNode` where `EvidenceAtom` supersedes
+- [ ] Semantic retrieval using `embeddingRef` in generation / Floor search
 
 ## Correction loop
 

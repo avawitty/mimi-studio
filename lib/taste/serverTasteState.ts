@@ -10,7 +10,7 @@ import type {
   TasteState,
 } from "../../types";
 import { partitionAssertions, scoreAssertion } from "./tasteStateLogic";
-import { tasteStateToPromptContext } from "../../services/taste/tasteStateService";
+import { tasteStateToPromptContext } from "./tastePromptContext";
 
 const ONE_WEEK_MS = 7 * 86_400_000;
 
