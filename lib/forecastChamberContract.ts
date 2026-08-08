@@ -39,6 +39,9 @@ export const FORECAST_COPY = {
   intakeRequired:
     "Complete intake for this scope to unlock Overview and Content vectors.",
   intakeRecalibrate: "Recalibrate intake",
+  residueProjectionNote:
+    "From your latest Residue run — interpretive scenarios, not live trend scores. Distinct from the content vector.",
+  serverSyncNote: "Server snapshot saved — reload on any device when signed in.",
   driftUncalibrated: "Drift uncalibrated — run GEO Engine or gather more signal.",
   identityRequired: "Identity not established — sign in to read your forecast.",
 } as const;

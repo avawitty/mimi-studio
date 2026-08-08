@@ -1691,6 +1691,8 @@ export interface UserPreferences {
   /** Opt-out list — algos not listed here are enabled by default. */
   disabledAlgos?: string[];
   zineOptions?: ZineGenerationOptions;
+  /** Server-composed forecast snapshot for cross-device sync. */
+  forecastSnapshot?: import("./lib/forecast/serverComposeForecast").ForecastSnapshot;
   agentConfig?: {
     curatorEnabled: boolean;
     sentinelEnabled: boolean;

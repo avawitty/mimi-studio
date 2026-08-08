@@ -39,12 +39,16 @@ import {
 import type { ForecastReport } from "../schemas/collectiveIntelligenceContracts";
 import { ForecastObservedPanel } from "./forecast/ForecastObservedPanel";
 import { ForecastIntakePanel } from "./forecast/ForecastIntakePanel";
+import { ForecastResiduePanel } from "./forecast/ForecastResiduePanel";
 import {
   type ForecastIntakeSnapshot,
   intakeSummaryLabel,
   isForecastScopeReady,
 } from "../lib/forecastIntake";
 import type { UserProfile } from "../types";
+import { composeForecastOnServer } from "../services/forecastApiService";
+import { loadLatestResidueForecastArtifact } from "../services/forecastResidueClient";
+import type { ResidueForecastArtifact } from "../services/residue/adapters/forecastAdapter";
 
 type ForecastScope = "personal" | "company";
 type ForecastVector = "overview" | "content" | "culture";
@@ -82,11 +86,18 @@ export const TheForecast: React.FC<{
   const [isPingingLabs, setIsPingingLabs] = useState(false);
   const [showIntakeEditor, setShowIntakeEditor] = useState(false);
   const [contentQueryKey, setContentQueryKey] = useState(0);
+  const [residueForecast, setResidueForecast] = useState<ResidueForecastArtifact | null>(null);
+  const [isServerSyncing, setIsServerSyncing] = useState(false);
+  const [serverSyncedAt, setServerSyncedAt] = useState<number | null>(
+    profile?.forecastSnapshot?.savedAt ?? null,
+  );
 
   const intakeScope = forecastingScope === "company" ? "brand" : "personal";
   const forecastIntake = profile?.forecastIntake ?? null;
   const scopeReady = isForecastScopeReady(intakeScope, profile, forecastIntake);
   const needsIntake = Boolean(user) && (!scopeReady || showIntakeEditor);
+  const cachedSnapshot =
+    profile?.forecastSnapshot?.scope === intakeScope ? profile.forecastSnapshot : null;
 
   const queryContext = {
     scope: intakeScope,
@@ -104,7 +115,51 @@ export const TheForecast: React.FC<{
     setContentForecast(null);
     setCultureReport(null);
     setContentQueryKey((k) => k + 1);
-  }, [forecastingScope, forecastIntake?.completedAt, intakeScope]);
+    setServerSyncedAt(
+      profile?.forecastSnapshot?.scope === intakeScope
+        ? profile.forecastSnapshot.savedAt
+        : null,
+    );
+  }, [forecastingScope, forecastIntake?.completedAt, intakeScope, profile?.forecastSnapshot?.savedAt, profile?.forecastSnapshot?.scope]);
+
+  useEffect(() => {
+    if (!user?.uid || needsIntake) {
+      setResidueForecast(null);
+      return;
+    }
+    let cancelled = false;
+    void loadLatestResidueForecastArtifact(user.uid).then((artifact) => {
+      if (!cancelled) setResidueForecast(artifact);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, needsIntake, contentQueryKey]);
+
+  useEffect(() => {
+    if (!cachedSnapshot?.report || needsIntake) return;
+    setCultureReport(cachedSnapshot.report);
+  }, [cachedSnapshot?.report, needsIntake]);
+
+  const syncForecastOnServer = async (refreshEvidence = false, force = false) => {
+    if (!user || (!force && needsIntake)) return;
+    setIsServerSyncing(true);
+    try {
+      const result = await composeForecastOnServer(intakeScope, refreshEvidence);
+      if (!result?.snapshot || !profile) return;
+      setCultureReport(result.snapshot.report);
+      setServerSyncedAt(result.snapshot.savedAt);
+      if (result.snapshot.residueForecast) {
+        setResidueForecast(result.snapshot.residueForecast);
+      }
+      await updateProfile({
+        ...profile,
+        forecastSnapshot: result.snapshot,
+      });
+    } finally {
+      setIsServerSyncing(false);
+    }
+  };
 
   useEffect(() => {
     if (!user || selectedVector !== "content" || needsIntake) return;
@@ -188,12 +243,14 @@ export const TheForecast: React.FC<{
     setContentForecast(null);
     setCultureReport(null);
     setContentQueryKey((k) => k + 1);
+    void syncForecastOnServer(true, true);
   };
 
   const refreshContentForecast = () => {
     setContentForecast(null);
     setCultureReport(null);
     setContentQueryKey((k) => k + 1);
+    void syncForecastOnServer(true, false);
   };
 
   const go = (view: string) => {
@@ -345,14 +402,32 @@ export const TheForecast: React.FC<{
                       : intakeLabel
                         ? `Profile intake: ${intakeLabel}`
                         : "Profile signals calibrated"}
+                    {serverSyncedAt
+                      ? ` · ${FORECAST_COPY.serverSyncNote}`
+                      : ""}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowIntakeEditor(true)}
-                    className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle hover:text-nous-text underline underline-offset-4"
-                  >
-                    {FORECAST_COPY.intakeRecalibrate}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => void syncForecastOnServer(true)}
+                      disabled={isServerSyncing}
+                      className="inline-flex items-center gap-1 font-mono text-[8px] uppercase tracking-widest text-nous-subtle hover:text-nous-text disabled:opacity-40"
+                    >
+                      {isServerSyncing ? (
+                        <Loader2 size={10} className="animate-spin" />
+                      ) : (
+                        <RefreshCw size={10} />
+                      )}
+                      Sync server forecast
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowIntakeEditor(true)}
+                      className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle hover:text-nous-text underline underline-offset-4"
+                    >
+                      {FORECAST_COPY.intakeRecalibrate}
+                    </button>
+                  </div>
                 </div>
               ) : null}
 
@@ -602,6 +677,13 @@ export const TheForecast: React.FC<{
                 </div>
               )}
 
+              {user && !needsIntake && selectedVector === "overview" && residueForecast ? (
+                <ForecastResiduePanel
+                  artifact={residueForecast}
+                  onOpenResidue={() => go("residue")}
+                />
+              ) : null}
+
               {user && !needsIntake && selectedVector === "content" && (
                 <div className="flex flex-col gap-4">
                   <div className="border border-nous-border/60 bg-nous-surface/60 px-3 py-2">
@@ -742,10 +824,18 @@ export const TheForecast: React.FC<{
 
               {selectedVector === "culture" && (
                 cultureReport ? (
-                  <ForecastObservedPanel
-                    report={cultureReport}
-                    onOpenObservatory={() => go("observatory")}
-                  />
+                  <>
+                    {residueForecast ? (
+                      <ForecastResiduePanel
+                        artifact={residueForecast}
+                        onOpenResidue={() => go("residue")}
+                      />
+                    ) : null}
+                    <ForecastObservedPanel
+                      report={cultureReport}
+                      onOpenObservatory={() => go("observatory")}
+                    />
+                  </>
                 ) : (
                   <div className="flex items-center gap-3 text-nous-subtle py-8">
                     <Loader2 size={16} className="animate-spin" />

@@ -64,7 +64,8 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const forecastUi = fs.readFileSync(path.join(root, "components/TheForecast.tsx"), "utf8");
 assert.ok(forecastUi.includes("buildForecastReport"), "Forecast UI composes ForecastReport");
 assert.ok(forecastUi.includes("ForecastObservedPanel"), "Forecast culture uses observed panel");
-assert.ok(forecastUi.includes("ForecastIntakePanel"), "Forecast UI includes intake panel");
+assert.ok(forecastUi.includes("ForecastResiduePanel"), "Forecast UI surfaces Residue projections");
+assert.ok(forecastUi.includes("syncForecastOnServer") || forecastUi.includes("composeForecastOnServer"), "Forecast UI can sync server snapshot");
 assert.ok(forecastUi.includes("queryContext"), "Forecast UI passes personalized query context");
 assert.ok(!forecastUi.includes("Math.random"), "Forecast UI has no random drift costume");
 assert.match(

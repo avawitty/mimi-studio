@@ -559,3 +559,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/forecastIntake.ts`, `components/forecast/ForecastIntakePanel.tsx`, `components/TheForecast.tsx`, `services/researchService.ts`
 
+---
+
+## 2026-08-08 — Forecast server compose + Residue handoff
+
+**Decision:** Add `POST /api/forecast` to server-compose `ForecastReport` (You.com/Apify evidence + demonstration MMM), persist on `userPreferences.forecastSnapshot`, and surface latest `ResidueForecastArtifact` in `/forecast` Overview and Cultural vectors.
+
+**Alternatives rejected:** (1) Client-only persistence — no cross-device sync. (2) Merging Residue scenarios into collective cultural trajectories — keep namespaces distinct with explicit provenance.
+
+**Why:** Completes the Residue → Forecast handoff; gives signed-in users a durable snapshot without re-fetching on every device.
+
+**Ref:** `lib/forecast/serverComposeForecast.ts`, `lib/forecastRoute.ts`, `api/forecast.ts`, `components/forecast/ForecastResiduePanel.tsx`
+
