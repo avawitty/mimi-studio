@@ -848,7 +848,6 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 ---
 
-<<<<<<< HEAD
 ## 2026-08-08 — Direct Studio zine path keeps editorial compiler behind the scenes
 
 **Decision:** `createZine` continues the fast direct Studio UX (`enhanceZineGenerationLayout` only in the reveal path) but now runs `applyDirectPathEditorialIntelligence` after layout seeding so earned-page rules, structural compression, plan evaluation, page rationale, and Press readiness still receive a compiled `issuePlan`. Proof UI remains removed from reveal.
@@ -858,7 +857,9 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Preserves creator-facing speed while keeping deterministic editorial intelligence for publication, provenance, and regression tests.
 
 **Ref:** `lib/zine/applyDirectPathEditorialIntelligence.ts`, `services/zineGenerator.ts`, `__tests__/zineDirectPathEditorialIntelligence.test.ts`, `scripts/verifyZineGenerateToPlan.ts`
-=======
+
+---
+
 ## 2026-08-08 — Taste Signature approval vs publication
 
 **Decision:** Split **approved** (durable Mimi memory via `tasteProfile.aestheticSignature.status`) from **published** (explicit public snapshot at `profile.publicSignature`). Public routes (`/u/:handle/signature`, OG, `PublicProfileCard` excerpt) read only the published snapshot — never merely approved private signatures, OAuth photos, bios, or tasteProfile fields.
@@ -868,5 +869,4 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Mirrors Rip publish pattern; keeps fast in-chamber approve flow while requiring deliberate consent for public exposure.
 
 **Ref:** `lib/signature/publishSignature.ts`, `lib/signature/publicSignature.ts`, `lib/publicProfileCard.ts`, `components/SignatureView.tsx`
->>>>>>> 96df4c3 (feat(signature): separate approved memory from published public snapshot)
 
