@@ -48,7 +48,9 @@ export async function applyInlineCorrection(
   targetId: string,
   correction: CorrectionState,
 ): Promise<void> {
-  if (!userId || userId === "ghost") return;
+  if (!userId || userId === "ghost") {
+    throw new Error("Authentication required to apply corrections.");
+  }
 
   if (targetType === "assertion") {
     await applyAssertionCorrection(userId, targetId, correction);

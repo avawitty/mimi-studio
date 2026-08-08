@@ -207,16 +207,14 @@ export async function updateEvidenceAtomReaction(
   reaction: UserCurationStatus,
   stabilityClass?: StabilityClass,
 ): Promise<void> {
-  if (!userId || userId === "ghost") return;
-  try {
-    await updateDoc(evidenceAtomRef(userId, atomId), {
-      userReaction: reaction,
-      ...(stabilityClass ? { stabilityClass } : {}),
-      updatedAt: Date.now(),
-    });
-  } catch (e) {
-    console.warn("MIMI // EvidenceAtom reaction update failed:", e);
+  if (!userId || userId === "ghost") {
+    throw new Error("Authentication required to update evidence atom reactions.");
   }
+  await updateDoc(evidenceAtomRef(userId, atomId), {
+    userReaction: reaction,
+    ...(stabilityClass ? { stabilityClass } : {}),
+    updatedAt: Date.now(),
+  });
 }
 
 /**
