@@ -1,6 +1,18 @@
-import type { UsedContextEntry, ZineCoverVariant } from "../types";
+import type { UsedContextEntry, ZineCoverVariant, ZineMetadata } from "../types";
 
 export const STUDIO_COVER_DRAFT_KEY = "mimi_draft_covers";
+
+/** Resolve contact-sheet variants from an issue doc (coverSpec.covers or legacy meta). */
+export const resolveCoverVariantsFromMetadata = (
+  metadata?: Pick<ZineMetadata, "coverSpec" | "content"> | null,
+): ZineCoverVariant[] => {
+  if (!metadata) return [];
+  const fromCoverSpec = metadata.coverSpec?.covers;
+  if (fromCoverSpec?.length) return fromCoverSpec;
+  const fromMeta = metadata.content?.meta?.studioCoverVariants;
+  if (fromMeta?.length) return fromMeta;
+  return [];
+};
 
 export const parseStoredCoverVariants = (raw: string | null): ZineCoverVariant[] => {
   if (!raw) return [];
