@@ -303,9 +303,7 @@ export async function compileAndSaveTasteModel(
       snapshotDoc(input.userId, 'global'),
       stripUndefined(globalSnapshot as unknown as Record<string, unknown>),
     );
-    await persistSnapshotViaApi(globalSnapshot, {
-      projectId: input.projectId,
-    });
+    await persistSnapshotViaApi(globalSnapshot);
   }
 
   if ((scope === 'project' || scope === 'both') && input.projectId) {
