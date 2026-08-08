@@ -29,19 +29,35 @@ export const StudioNavigation: React.FC<StudioNavigationProps> = ({
       className="studio-os-navigation shrink-0 border-t border-[var(--mimi-rule,#d8d4c9)] bg-[var(--mimi-bone,#f4f1ea)] px-3 pb-[max(0.35rem,env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto grid max-w-md grid-cols-3 items-center">
-        <button type="button" onClick={onMap} className={anchorClass("map")}>
+        <button
+          type="button"
+          onClick={onMap}
+          className={anchorClass("map")}
+          aria-label="Open studio map"
+          title="See your workflow phase and next step"
+        >
           Map
         </button>
         <button
           type="button"
           onClick={onDossier}
-          aria-label="Return to active dossier"
+          aria-label="Open studio desk"
+          title="Return to the studio desk"
           aria-current={active === "dossier" ? "page" : undefined}
-          className="mx-auto flex min-h-12 min-w-12 items-center justify-center text-[var(--mimi-ink,#111110)]"
+          className="mx-auto flex min-h-12 min-w-11 flex-col items-center justify-center gap-0.5 text-[var(--mimi-ink,#111110)]"
         >
           <MimiGlyph name="seal" decorative size={19} weight="regular" />
+          <span className="font-mono text-[7px] uppercase tracking-[0.16em] text-[var(--mimi-pencil,#8a877f)]">
+            Desk
+          </span>
         </button>
-        <button type="button" onClick={onFind} className={anchorClass("find")}>
+        <button
+          type="button"
+          onClick={onFind}
+          className={anchorClass("find")}
+          aria-label="Find a chamber"
+          title="Search all chambers"
+        >
           Find
         </button>
       </div>

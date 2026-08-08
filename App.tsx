@@ -412,6 +412,24 @@ const BinderRing = ({ className }: { className?: string }) => (
   </div>
 );
 
+const GATEWAY_DISMISSED_KEY = "mimi_gateway_dismissed";
+
+function readGatewayDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(GATEWAY_DISMISSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistGatewayDismissed(): void {
+  try {
+    sessionStorage.setItem(GATEWAY_DISMISSED_KEY, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 const NavigationDrawer: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -423,6 +441,9 @@ const NavigationDrawer: React.FC<{
   setUiMode: (mode: "stage" | "control") => void;
   onOpenGuide: () => void;
   isGenerating?: boolean;
+  currentTitle: string;
+  focusSearch?: boolean;
+  onFocusSearchConsumed?: () => void;
 }> = ({
   isOpen,
   onClose,
@@ -434,6 +455,9 @@ const NavigationDrawer: React.FC<{
   setUiMode,
   onOpenGuide,
   isGenerating = false,
+  currentTitle,
+  focusSearch = false,
+  onFocusSearchConsumed,
 }) => {
   const handleNav = (mode: string) => {
     if (isGenerating) return;
@@ -442,6 +466,21 @@ const NavigationDrawer: React.FC<{
   };
   const [searchQuery, setSearchQuery] = React.useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (!isOpen || !focusSearch) return;
+    const timer = window.setTimeout(() => {
+      searchInputRef.current?.focus();
+      onFocusSearchConsumed?.();
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [focusSearch, isOpen, onFocusSearchConsumed]);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery("");
+    }
+  }, [isOpen]);
 
   const hidden = profile?.hiddenMenuItems || [];
   const filteredMenuItems = MENU_STRUCTURE
@@ -503,13 +542,16 @@ const NavigationDrawer: React.FC<{
           >
             {/* Drawer Header */}
             <div className="px-6 py-5 border-b studio-border flex items-start justify-between studio-bg-surface select-none">
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <span className="font-mono text-[9px] uppercase tracking-[0.28em] font-bold leading-none studio-text-muted">
                   Full Menu
                 </span>
                 <span className="font-serif italic text-2xl leading-tight studio-text-ink mt-1.5">
                   All chambers
                 </span>
+                <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400 truncate">
+                  You are in · {currentTitle}
+                </p>
               </div>
               <button
                 type="button"
@@ -526,6 +568,39 @@ const NavigationDrawer: React.FC<{
               onNavigate={handleNav}
               disabled={isGenerating}
             />
+
+            <div className="px-6 py-3 border-b studio-border studio-bg-surface space-y-3">
+              <label className="sr-only" htmlFor="chamber-search">
+                Find a chamber
+              </label>
+              <div className="relative">
+                <Search
+                  size={14}
+                  strokeWidth={1.5}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+                  aria-hidden
+                />
+                <input
+                  id="chamber-search"
+                  ref={searchInputRef}
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Find a chamber…"
+                  className="w-full min-h-11 border studio-border bg-transparent pl-9 pr-3 font-sans text-sm studio-text-ink placeholder:text-stone-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                />
+              </div>
+              {viewMode !== "chamber-map" ? (
+                <button
+                  type="button"
+                  onClick={() => handleNav("chamber-map")}
+                  className="flex w-full min-h-11 items-center justify-center gap-2 border studio-border px-3 font-mono text-[8px] uppercase tracking-[0.2em] font-bold studio-text-ink hover:bg-stone-100 dark:hover:bg-stone-900 transition-colors"
+                >
+                  <Compass size={12} strokeWidth={1.5} className="text-amber-500" />
+                  <span>Open Studio Map</span>
+                </button>
+              ) : null}
+            </div>
 
             {/* High Latency / Generation Guard Banner */}
             {isGenerating && (
@@ -1307,6 +1382,7 @@ export const App: React.FC = () => {
   }), []);
 
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [navFocusSearch, setNavFocusSearch] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isMobileConsoleOpen, setIsMobileConsoleOpen] = useState(false);
   const [commandDrawerOpen, setCommandDrawerOpen] = useState(false);
@@ -1538,7 +1614,13 @@ export const App: React.FC = () => {
   const [showPatronModal, setShowPatronModal] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const [showGateway, setShowGateway] = useState(false);
-  const [hasSeenGateway, setHasSeenGateway] = useState(false);
+  const [hasSeenGateway, setHasSeenGateway] = useState(readGatewayDismissed);
+
+  const dismissGateway = useCallback(() => {
+    setShowGateway(false);
+    setHasSeenGateway(true);
+    persistGatewayDismissed();
+  }, []);
   const [showProfileHover, setShowProfileHover] = useState(false);
 
   useEffect(() => {
@@ -1627,6 +1709,18 @@ export const App: React.FC = () => {
       setHasSeenGateway(true);
     }
   }, [user, authLoading, hasSeenGateway]);
+
+  const openMenuSearch = useCallback(() => {
+    setNavFocusSearch(true);
+    setIsNavOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const onOpenMenuSearch = () => openMenuSearch();
+    window.addEventListener("mimi:open_menu_search", onOpenMenuSearch);
+    return () =>
+      window.removeEventListener("mimi:open_menu_search", onOpenMenuSearch);
+  }, [openMenuSearch]);
 
   const [checkoutPlan, setCheckoutPlan] = useState<
     "core" | "optioning" | "pro" | "lab" | null
@@ -2428,7 +2522,7 @@ export const App: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <MimiGateway isOpen={showGateway} onClose={() => setShowGateway(false)} />
+      <MimiGateway isOpen={showGateway} onClose={dismissGateway} />
       <CoreLoopOnboarding ready={!authLoading && !isElevatorLoading && !showGateway} />
       <ApiKeyShield isOpen={!memoizedHasApiKey} onClose={() => {}} />
 
@@ -2832,7 +2926,7 @@ export const App: React.FC = () => {
                         {viewMode === "chamber-map" && (
                           <ChamberMapView
                             onNavigate={setViewMode}
-                            onOpenFind={() => setCommandDrawerOpen(true)}
+                            onOpenFind={openMenuSearch}
                             onOpenMenu={() => setIsNavOpen(true)}
                           />
                         )}
@@ -2879,7 +2973,10 @@ export const App: React.FC = () => {
       {/* GLOBAL RESPONSIVE RIGHT-SIDE SLIDING DRAWER MENU */}
       <NavigationDrawer
         isOpen={isNavOpen}
-        onClose={() => setIsNavOpen(false)}
+        onClose={() => {
+          setIsNavOpen(false);
+          setNavFocusSearch(false);
+        }}
         viewMode={viewMode}
         setViewMode={setViewMode}
         logout={logout}
@@ -2888,6 +2985,9 @@ export const App: React.FC = () => {
         setUiMode={setUiMode}
         onOpenGuide={() => setIsGuideOpen(true)}
         isGenerating={appState === AppState.THINKING}
+        currentTitle={currentTitle}
+        focusSearch={navFocusSearch}
+        onFocusSearchConsumed={() => setNavFocusSearch(false)}
       />
 
       <GuideModal
