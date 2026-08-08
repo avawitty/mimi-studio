@@ -128,8 +128,13 @@ import { UsedContextColophon } from "./provenance/UsedContextColophon";
 import { CoverContactStrip } from "./studio/CoverContactStrip";
 import {
   StudioInstrumentRail,
-  buildDefaultStudioInstruments,
+  buildStudioFloatingInstruments,
 } from "./studio/StudioInstrumentRail";
+import { StudioCoverComposer } from "./studio/StudioCoverComposer";
+import {
+  StudioCoverPersonalization,
+  type CoverPersonalizationTab,
+} from "./studio/StudioCoverPersonalization";
 import { StudioMediaPolaroidBar } from "./studio/StudioMediaPolaroidBar";
 import {
   compileCoverPromptFromSignals,
@@ -605,9 +610,8 @@ export const InputStudio: React.FC<{
   }, [coverSystemCode]);
 
   const [coverBorder, setCoverBorder] = useState<"thin" | "double" | "none" | "dashed">("thin");
-  const [coverPersonalizationTab, setCoverPersonalizationTab] = useState<
-    "border" | "text" | "image"
-  >("border");
+  const [coverPersonalizationTab, setCoverPersonalizationTab] =
+    useState<CoverPersonalizationTab>("border");
   const [coverOverlay, setCoverOverlay] = useState<boolean>(false);
   const [coverOverlayLayers, setCoverOverlayLayers] = useState<StudioCoverOverlayLayer[]>([]);
   const [isDraggingOverSlot, setIsDraggingOverSlot] = useState<boolean>(false);
@@ -2939,26 +2943,23 @@ ${finalInput}`;
                 </div>
               )}
 
-              {/* Mobile CTA — in-flow, one primary action (no sticky Tools/Shape/Preview wall) */}
+              {/* Mobile workflow — Shape · Preview · Develop */}
               {isMobile && (
-                <div className="flex flex-col items-center gap-3 mt-6 mb-2 select-none shrink-0 z-10 w-full max-w-md">
-                  <button
-                    type="button"
-                    disabled={isThinking}
-                    onClick={() => {
-                      triggerAccession(false);
-                      playClick();
-                    }}
-                    className="w-full min-h-12 flex items-center justify-center gap-2 border studio-border studio-text-ink bg-transparent font-mono text-[10px] uppercase tracking-[0.22em] font-bold active:scale-[0.98] transition-transform disabled:opacity-60"
-                  >
-                    {isThinking ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <span aria-hidden="true">→</span>
-                    )}
-                    {isThinking ? "Developing…" : "Submit to issue"}
-                  </button>
-                  <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center gap-3 mt-6 mb-2 select-none shrink-0 z-10 w-full max-w-md px-1">
+                  <div className="grid grid-cols-3 gap-2 w-full" aria-label="Issue workflow">
+                    <button
+                      type="button"
+                      disabled={isShapingBrief}
+                      onClick={handleShapeBrief}
+                      className="min-h-14 rounded-lg border border-amber-500/50 bg-amber-500/10 px-2 py-2 text-left transition-all active:scale-[0.98] disabled:opacity-60"
+                    >
+                      <span className="block font-mono text-[6px] uppercase tracking-[0.16em] text-amber-600 dark:text-amber-400 font-bold">
+                        Shape
+                      </span>
+                      <span className="block font-serif italic text-[13px] studio-text-ink mt-1">
+                        {isShapingBrief ? "Shaping…" : "Brief"}
+                      </span>
+                    </button>
                     <button
                       type="button"
                       disabled={isThinking}
@@ -2966,19 +2967,35 @@ ${finalInput}`;
                         triggerAccession(true);
                         playClick();
                       }}
-                      className="font-mono text-[9px] uppercase tracking-[0.18em] studio-text-muted hover:studio-text-ink underline underline-offset-4 decoration-dotted"
+                      className="min-h-14 rounded-lg border border-purple-500/40 bg-purple-500/10 px-2 py-2 text-left transition-all active:scale-[0.98] disabled:opacity-60"
                     >
-                      Preview
+                      <span className="block font-mono text-[6px] uppercase tracking-[0.16em] text-purple-600 dark:text-purple-400 font-bold">
+                        Preview
+                      </span>
+                      <span className="block font-serif italic text-[13px] studio-text-ink mt-1">
+                        Quick draft
+                      </span>
                     </button>
                     <button
                       type="button"
-                      disabled={isShapingBrief}
-                      onClick={handleShapeBrief}
-                      className="font-mono text-[9px] uppercase tracking-[0.18em] studio-text-muted hover:studio-text-ink underline underline-offset-4 decoration-dotted"
+                      disabled={isThinking}
+                      onClick={() => {
+                        triggerAccession(false);
+                        playClick();
+                      }}
+                      className="min-h-14 rounded-lg border border-stone-950 dark:border-stone-100 bg-stone-950 dark:bg-stone-100 px-2 py-2 text-left transition-all active:scale-[0.98] disabled:opacity-60"
                     >
-                      {isShapingBrief ? "Shaping…" : "Shape brief"}
+                      <span className="block font-mono text-[6px] uppercase tracking-[0.16em] text-stone-100 dark:text-stone-950 font-bold">
+                        Develop
+                      </span>
+                      <span className="block font-serif italic text-[13px] text-stone-100 dark:text-stone-950 mt-1">
+                        {isThinking ? "Working…" : "Issue"}
+                      </span>
                     </button>
                   </div>
+                  <span className="font-sans text-[10px] text-stone-500 dark:text-stone-400 text-center leading-relaxed px-2">
+                    Shape proposes structure. Nothing is final until you develop the issue.
+                  </span>
                 </div>
               )}
 
@@ -3038,7 +3055,7 @@ ${finalInput}`;
             <div className="space-y-6">
               {renderStudioPager()}
               <p className="font-sans text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
-                Dev · Darkroom
+                Cover plate
               </p>
               {/* Zine Title Input Header */}
               <div>
@@ -3456,287 +3473,59 @@ ${finalInput}`;
                 </div>
               </div>
 
-              {/* Curation Controls */}
-              <div className="space-y-3">
-                <div className="grid grid-cols-3 border-b studio-border" role="tablist" aria-label="Cover personalization">
-                  {(["border", "text", "image"] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      role="tab"
-                      aria-selected={coverPersonalizationTab === tab}
-                      onClick={() => {
-                        setCoverPersonalizationTab(tab);
-                        playClick();
-                      }}
-                      className={`py-2 font-mono text-[7.5px] tracking-[0.22em] uppercase transition-colors border-b-2 ${
-                        coverPersonalizationTab === tab
-                          ? "studio-text-ink border-amber-500 font-bold"
-                          : "studio-text-muted border-transparent hover:studio-text-ink"
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="min-h-[74px] border studio-border studio-bg-surface p-3">
-                  {coverPersonalizationTab === "border" && (
-                    <div>
-                      <p className="font-mono text-[7px] uppercase tracking-widest studio-text-muted mb-2">
-                        Cover frame
-                      </p>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {(["thin", "double", "dashed", "none"] as const).map((border) => (
-                          <button
-                            key={border}
-                            type="button"
-                            onClick={() => {
-                              setCoverBorder(border);
-                              playClick();
-                            }}
-                            className={`py-2 border font-mono text-[7px] uppercase tracking-wider ${
-                              coverBorder === border
-                                ? "bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950 border-stone-950 dark:border-stone-100"
-                                : "studio-border studio-text-muted hover:studio-text-ink"
-                            }`}
-                          >
-                            {border}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {coverPersonalizationTab === "text" && (
-                    <div>
-                      <p className="font-mono text-[7px] uppercase tracking-widest studio-text-muted mb-2">
-                        Title alignment
-                      </p>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {(["left", "center", "right"] as const).map((alignment) => (
-                          <button
-                            key={alignment}
-                            type="button"
-                            onClick={() => {
-                              setCoverAlign(alignment);
-                              playClick();
-                            }}
-                            className={`py-2 border font-mono text-[7px] uppercase tracking-wider ${
-                              coverAlign === alignment
-                                ? "bg-stone-950 text-white dark:bg-stone-100 dark:text-stone-950 border-stone-950 dark:border-stone-100"
-                                : "studio-border studio-text-muted hover:studio-text-ink"
-                            }`}
-                          >
-                            {alignment}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {coverPersonalizationTab === "image" && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-mono text-[7px] uppercase tracking-widest studio-text-muted mb-1.5">
-                            Image treatment
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setActiveTreatmentId("muted")}
-                              title="Muted Chroma"
-                              className="w-5 h-5 rounded-full bg-[#FAF9F6] border border-stone-700/60"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setActiveTreatmentId("terry")}
-                              title="Terry Flash"
-                              className="w-5 h-5 rounded-full bg-[#C8B195] border border-stone-700/60"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => togglePanel("treatments")}
-                              title="Open treatment library"
-                              className="w-5 h-5 rounded-full bg-gradient-to-tr from-rose-400 via-emerald-400 to-indigo-500 border border-stone-700/60"
-                            />
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => togglePanel("treatments")}
-                          className="px-2.5 py-2 border studio-border font-mono text-[7px] uppercase tracking-widest studio-text-ink"
-                        >
-                          Treatment library
-                        </button>
-                      </div>
-                      <label className="block">
-                        <span className="flex justify-between font-mono text-[7px] uppercase tracking-widest studio-text-muted mb-1">
-                          <span>Grain</span>
-                          <span>{grainDensity}%</span>
-                        </span>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={grainDensity}
-                          onChange={(event) => setGrainDensity(Number(event.target.value))}
-                          className="w-full accent-stone-950 dark:accent-stone-100"
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-end">
-                  {/* Overlay toggle — stickers, logos, text layers */}
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={coverOverlay}
-                    aria-label="Toggle cover overlay"
-                    onClick={() => {
-                      setCoverOverlay((current) => !current);
-                      playClick();
-                    }}
-                    className="group flex items-center gap-2 font-mono text-[7.5px] tracking-[0.2em] studio-text-muted uppercase select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2"
-                  >
-                    <span>Overlay</span>
-                    <span
-                      aria-hidden="true"
-                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors duration-200 ${
-                        coverOverlay
-                          ? "bg-emerald-500 border-emerald-500"
-                          : "studio-bg-panel studio-border group-hover:border-stone-500"
-                      }`}
-                    >
-                      <span
-                        className={`block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                          coverOverlay ? "translate-x-[17px]" : "translate-x-[2px]"
-                        }`}
-                      />
-                    </span>
-                    <span className="sr-only">{coverOverlay ? "On" : "Off"}</span>
-                  </button>
-                  </div>
-
-                {coverOverlay && (
-                  <StudioCoverOverlayPanel
-                    layers={coverOverlayLayers}
-                    onChange={setCoverOverlayLayers}
-                    onAddLogo={handleOverlayLogoUpload}
-                  />
-                )}
-
-                {composeCoverError && (
-                  <p className="font-mono text-[7px] text-amber-500/90 leading-snug">{composeCoverError}</p>
-                )}
-              </div>
+              <StudioCoverPersonalization
+                tab={coverPersonalizationTab}
+                onTabChange={(tab) => {
+                  setCoverPersonalizationTab(tab);
+                  playClick();
+                }}
+                coverBorder={coverBorder}
+                onCoverBorderChange={(border) => {
+                  setCoverBorder(border);
+                  playClick();
+                }}
+                coverAlign={coverAlign}
+                onCoverAlignChange={(alignment) => {
+                  setCoverAlign(alignment);
+                  playClick();
+                }}
+                grainDensity={grainDensity}
+                onGrainDensityChange={setGrainDensity}
+                coverOverlay={coverOverlay}
+                onCoverOverlayToggle={() => {
+                  setCoverOverlay((current) => !current);
+                  playClick();
+                }}
+                coverOverlayLayers={coverOverlayLayers}
+                onCoverOverlayLayersChange={setCoverOverlayLayers}
+                onOverlayLogoUpload={handleOverlayLogoUpload}
+                onOpenTreatmentLibrary={() => togglePanel("treatments")}
+                onTreatmentPreset={(id) => {
+                  setActiveTreatmentId(id);
+                  playClick();
+                }}
+                coverIssueIndex={coverIssueIndex}
+                coverSystemCode={coverSystemCode}
+              />
             </div>
 
-            {/* Cover compose — AI image generation / edit */}
-            <div className="mt-8">
-              <div className="studio-bg-surface border studio-border p-1.5 flex flex-col gap-2 rounded-md transition-shadow focus-within:shadow-[0_0_8px_rgba(250,249,246,0.15)] focus-within:border-stone-400 dark:focus-within:border-stone-500">
-                <textarea
-                  id="studio-cover-compose-textarea"
-                  rows={2}
-                  placeholder="Describe the cover to generate or edit with AI..."
-                  value={leftPrompt}
-                  onChange={(e) => setLeftPrompt(e.target.value)}
-                  className="w-full bg-transparent border-none focus:ring-0 text-xs italic placeholder:studio-text-muted studio-text-ink p-2 resize-none min-h-[2.5rem] outline-none no-scrollbar rounded-sm focus:bg-stone-50/5 dark:focus:bg-stone-900/10 transition-colors"
-                />
-                
-                <div className="flex justify-between items-center gap-2 border-t studio-border pt-1.5 px-1">
-                  {/* Interactive Status Indicator Badge */}
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <label className="sr-only" htmlFor="studio-cover-provider">
-                      Cover image provider
-                    </label>
-                    <select
-                      id="studio-cover-provider"
-                      value={coverProvider}
-                      onChange={(event) =>
-                        handleCoverProviderChange(event.target.value as StudioCoverProvider)
-                      }
-                      className="max-w-[8.5rem] bg-transparent border studio-border rounded-sm px-1.5 py-1 font-mono text-[6.5px] font-bold uppercase tracking-wider studio-text-ink outline-none focus:border-stone-400 dark:focus:border-stone-500"
-                      title="Choose the image engine for this cover"
-                    >
-                      {coverProviderOptions.map((provider) => (
-                        <option key={provider.id} value={provider.id}>
-                          {provider.label}{provider.available ? "" : " · not connected"}
-                        </option>
-                      ))}
-                    </select>
-                    {hasLiveAi ? (
-                      <span className="inline-flex items-center gap-1 font-mono text-[6.5px] font-bold tracking-widest text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-sm">
-                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                        COVER CONFIGURED ({activeCoverProvider.shortLabel})
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowImageApiKeyInfo(!showImageApiKeyInfo)}
-                        className="inline-flex items-center gap-1 font-mono text-[6.5px] font-bold tracking-widest text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-sm hover:bg-amber-500/20 transition-all cursor-pointer"
-                        title="Click to learn how to connect live API"
-                      >
-                        ✥ PREVIEW · {activeCoverProvider.shortLabel} NOT CONNECTED
-                        <span className="underline decoration-dotted ml-0.5">(LEARN)</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    id="studio-cover-compose-button"
-                    type="button"
-                    disabled={isComposingCover || approvedStudioContext.length === 0}
-                    onClick={() => void handleComposeCover()}
-                    className="px-4 py-2 bg-stone-950 dark:bg-stone-100 hover:bg-stone-850 dark:hover:bg-white text-stone-100 dark:text-stone-950 hover:text-white dark:hover:text-black font-mono text-[8px] font-extrabold uppercase tracking-widest transition-all shrink-0 disabled:opacity-50 inline-flex items-center gap-1.5 rounded-sm shadow-sm"
-                  >
-                    {isComposingCover ? (
-                      <>
-                        <Loader2 size={10} className="animate-spin text-amber-500" /> Generating
-                      </>
-                    ) : (
-                      "Compose"
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Toggleable informative drawer/panel inside InputStudio cover compose */}
-              <AnimatePresence>
-                {showImageApiKeyInfo && !hasLiveAi && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden mt-2 border studio-border bg-stone-50/50 dark:bg-stone-900/50 p-3 rounded-md shadow-inner"
-                  >
-                    <h5 className="font-serif italic text-xs studio-text-ink mb-1.5">How Live Cover Gen Works</h5>
-                    <p className="font-sans text-[10px] studio-text-muted leading-relaxed mb-2">
-                      Cover Composer uses its own image engine, independently from Mimi's writing model.
-                      Gateway · Flux avoids the blocked Gemini key; OpenAI, Gemini, and Replicate remain available when connected.
-                    </p>
-                    <p className="font-sans text-[10px] studio-text-muted leading-relaxed">
-                      Add the selected provider credential to the server environment, enable server AI, then restart Mimi.
-                      Until that provider is live, Simulated Mirror Mode preserves the layout workflow without claiming a real generation.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setShowImageApiKeyInfo(false)}
-                      className="mt-2.5 font-mono text-[7px] uppercase tracking-widest text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 underline"
-                    >
-                      Dismiss Guidelines
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <p className="font-mono text-[6.5px] uppercase tracking-[0.2em] studio-text-muted mt-2 px-1">
-                Upload a reference, then Compose to generate or AI-edit the cover plate
-              </p>
-            </div>
+            <StudioCoverComposer
+              className="mt-8"
+              prompt={leftPrompt}
+              onPromptChange={setLeftPrompt}
+              provider={coverProvider}
+              onProviderChange={handleCoverProviderChange}
+              providerOptions={coverProviderOptions}
+              activeProvider={activeCoverProvider}
+              hasLiveAi={hasLiveAi}
+              isComposing={isComposingCover}
+              canCompose={approvedStudioContext.length > 0}
+              error={composeCoverError}
+              onCompose={() => void handleComposeCover()}
+              showSetupInfo={showImageApiKeyInfo}
+              onToggleSetupInfo={() => setShowImageApiKeyInfo((v) => !v)}
+              onDismissSetupInfo={() => setShowImageApiKeyInfo(false)}
+            />
             </div>
 
             {/* Always-on Used Context colophon under canvas (PRD-05 / Phase C).
@@ -3881,39 +3670,48 @@ ${finalInput}`;
       {/* Floating cylindrical scrollable toolbar */}
       {!toolsSheetOpen && !moreSheetOpen && (
         <StudioInstrumentRail
-            items={buildDefaultStudioInstruments({
+            items={buildStudioFloatingInstruments({
               onTools: isMobile ? () => setToolsSheetOpen(true) : undefined,
               onAttach: () => mediaInputRef.current?.click(),
               onCompose: () => {
                 setActivePanel(null);
                 setMobileStudioView("editor");
               },
-              onTailor: () => setUseTailorProfile((v) => !v),
               onCover: () => setMobileStudioView("cover"),
-              onGround: () => setUseSearch((v) => !v),
+              onShape: () => {
+                void handleShapeBrief();
+              },
               onMic: () => {
                 void startRecording();
                 playClick();
               },
-              onTreatment: () => togglePanel("treatments"),
-              onContinuum: () => togglePanel("continuum"),
+              onSpark: async () => {
+                setIsGeneratingPrompt(true);
+                try {
+                  const newPrompt = await generateAutoAwesomePrompt();
+                  setInput(newPrompt);
+                } catch (e) {
+                  console.error(e);
+                } finally {
+                  setIsGeneratingPrompt(false);
+                }
+                playClick();
+              },
+              onDeep: () => setDeepThinking((v) => !v),
+              onWeb: () => setUseSearch((v) => !v),
               onPocket: () => togglePanel("procurement"),
-              onTelemetry: () => togglePanel("telemetry"),
-              onAnchors: () => togglePanel("signal"),
               onMore: () => setMoreSheetOpen(true),
               active: {
                 tools: toolsSheetOpen,
                 attach: mediaFiles.length > 0,
                 compose: activePanel === null && mobileStudioView === "editor",
-                tailor: useTailorProfile,
                 cover: mobileStudioView === "cover",
-                ground: useSearch,
+                tailor: isShapingBrief,
                 mic: isRecording || isTranscribing,
-                treatment: activePanel === "treatments",
-                continuum: activePanel === "continuum",
+                spark: isGeneratingPrompt,
+                brain: deepThinking,
+                globe: useSearch,
                 pocket: activePanel === "procurement",
-                telemetry: activePanel === "telemetry",
-                anchors: activePanel === "signal",
                 more: moreSheetOpen,
               },
             })}

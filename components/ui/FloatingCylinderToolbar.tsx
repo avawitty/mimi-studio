@@ -15,7 +15,7 @@ export type FloatingCylinderToolbarItem = {
 type FloatingCylinderToolbarProps = {
   items: FloatingCylinderToolbarItem[];
   ariaLabel: string;
-  /** Zine shows icon + caption; studio is icon-forward inside the cylinder. */
+  /** Zine and studio both show icon + caption inside the scrollable pill. */
   variant?: "zine" | "studio";
   className?: string;
   trailing?: React.ReactNode;
@@ -36,25 +36,26 @@ export const FloatingCylinderToolbar: React.FC<FloatingCylinderToolbarProps> = (
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isZine = variant === "zine";
+  const showLabels = true;
 
   const cylinder = (
     <div
-      className={`floating-cylinder-toolbar-shell pointer-events-auto max-w-[min(calc(100vw-1.25rem),22rem)] ${
-        isZine ? "md:max-w-[min(calc(100vw-2rem),36rem)]" : ""
-      }`}
+      className={`floating-cylinder-toolbar-shell pointer-events-auto max-w-[min(calc(100vw-1.25rem),${
+        isZine ? "36rem" : "40rem"
+      })]`}
     >
       <div
-        className={`floating-cylinder-toolbar rounded-full border shadow-[0_18px_50px_-12px_rgba(0,0,0,0.22)] backdrop-blur-2xl ${
+        className={`floating-cylinder-toolbar rounded-full border shadow-[0_20px_55px_-14px_rgba(0,0,0,0.28)] backdrop-blur-2xl ${
           isZine
             ? "border-white/60 bg-[#F2F1E8]/82 text-[#817D75]"
-            : "studio-border studio-bg-panel studio-text-muted"
+            : "border-[color-mix(in_srgb,var(--studio-border,#d4d4d4)_70%,transparent)] bg-[color-mix(in_srgb,var(--mimi-field,#ffffff)_88%,transparent)] studio-text-muted"
         }`}
       >
         <div
           ref={scrollRef}
           role="toolbar"
           aria-label={ariaLabel}
-          className="floating-cylinder-toolbar-track flex items-center gap-0.5 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth px-2 py-2"
+          className="floating-cylinder-toolbar-track flex items-stretch gap-1 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth px-2.5 py-2 snap-x snap-mandatory"
         >
           {items.map((item) => (
             <button
@@ -65,22 +66,28 @@ export const FloatingCylinderToolbar: React.FC<FloatingCylinderToolbarProps> = (
               aria-label={item.label}
               aria-pressed={item.active || undefined}
               title={item.title ?? item.label}
-              className={`floating-cylinder-toolbar-item shrink-0 flex flex-col items-center justify-center transition-colors disabled:opacity-40 ${
-                isZine
-                  ? "min-w-[3.25rem] gap-1.5 px-1 py-0.5"
-                  : "min-w-11 min-h-11 w-11 h-11"
-              } ${item.active ? (isZine ? "text-[#1A1A1A]" : "studio-text-ink") : isZine ? "hover:text-[#1A1A1A]" : "hover:studio-text-ink"}`}
+              className={`floating-cylinder-toolbar-item shrink-0 snap-start flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-2xl transition-all duration-200 disabled:opacity-40 ${
+                showLabels ? "min-w-[3.35rem]" : "min-w-11 min-h-11 w-11 h-11"
+              } ${
+                item.active
+                  ? isZine
+                    ? "bg-[#1A1A1A]/8 text-[#1A1A1A]"
+                    : "bg-stone-950/90 text-stone-50 dark:bg-stone-100 dark:text-stone-950 shadow-sm"
+                  : isZine
+                    ? "hover:text-[#1A1A1A] hover:bg-black/[0.04]"
+                    : "hover:studio-text-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+              }`}
             >
               {item.icon}
-              {isZine ? (
-                <span className="text-[7px] uppercase tracking-[0.18em] font-black leading-none">
+              {showLabels ? (
+                <span className="text-[6.5px] uppercase tracking-[0.16em] font-bold leading-none max-w-[4.25rem] truncate">
                   {item.label}
                 </span>
               ) : null}
             </button>
           ))}
           {trailing ? (
-            <div className="shrink-0 pl-1 ml-0.5 border-l border-dotted studio-border flex items-center">
+            <div className="shrink-0 pl-1 ml-0.5 border-l border-dotted studio-border flex items-center snap-start">
               {trailing}
             </div>
           ) : null}
