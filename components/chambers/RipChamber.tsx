@@ -10,7 +10,13 @@ import {
   updateRipReading,
   buildPublicRipSnapshot,
 } from "../../services/ripService";
-import type { Doll, RipReading } from "../../types";
+import {
+  listRipInsights,
+  removeRipInsight,
+  saveRipInsight,
+  RIP_INSIGHTS_CHANGED,
+} from "../../services/ripInsightService";
+import type { Doll, RipReading, RipSavableInsight } from "../../types";
 import { RipReadingView } from "../RipReadingView";
 import { canonicalRipOrigin, getSiteSkin } from "../../lib/siteHost";
 
@@ -21,6 +27,7 @@ interface RipChamberProps {
 export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
   const { user, profile, updateProfile } = useUser();
   const [reading, setReading] = useState<RipReading | null>(null);
+  const [insights, setInsights] = useState<RipSavableInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +65,45 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
       setLoading(false);
     }
   }, [user?.uid, profile?.evidenceDossier, profile?.likenessManifest, profile?.tailorDraft]);
+
+  const refreshInsights = useCallback(async () => {
+    if (!user?.uid || user.uid === "ghost") return;
+    const rows = await listRipInsights(user.uid);
+    setInsights(rows);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    void refreshInsights();
+    const onChanged = (): void => {
+      void refreshInsights();
+    };
+    window.addEventListener(RIP_INSIGHTS_CHANGED, onChanged);
+    return () => window.removeEventListener(RIP_INSIGHTS_CHANGED, onChanged);
+  }, [refreshInsights]);
+
+  const handleSaveInsight = async (input: {
+    kind: RipSavableInsight["kind"];
+    label: string;
+    value: string;
+    inverseFunction?: RipSavableInsight["inverseFunction"];
+  }) => {
+    if (!user?.uid || !reading) return;
+    await saveRipInsight(user.uid, {
+      ...input,
+      ripReadingId: reading.id,
+      intent: input.kind === "experiment" ? "experiment_prompt" : "shadow_reference",
+    });
+    window.dispatchEvent(
+      new CustomEvent("mimi:registry_alert", {
+        detail: { message: "Rip insight saved", type: "success" },
+      }),
+    );
+  };
+
+  const handleRemoveInsight = async (insightId: string) => {
+    if (!user?.uid) return;
+    await removeRipInsight(user.uid, insightId);
+  };
 
   useEffect(() => {
     if (!user?.uid || user.uid === "ghost") return;
@@ -225,6 +271,13 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
             publishing={publishing}
             onRegenerate={() => void derive()}
             onTogglePublish={() => void handleTogglePublish()}
+            onSaveInsight={(input) => void handleSaveInsight(input)}
+            onRemoveInsight={(id) => void handleRemoveInsight(id)}
+            savedInsights={insights.map((i) => ({
+              id: i.id,
+              kind: i.kind,
+              value: i.value,
+            }))}
           />
         </div>
       ) : (
