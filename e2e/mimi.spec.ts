@@ -110,10 +110,10 @@ test.describe('Mimi E2E Experience', () => {
     await page.goto('/studio');
     await waitForStableUI(page);
     await expect(
-      page.getByText(/Start with a thought, image, or fragment/i),
+      page.getByText(/Studio worktable · archival desk/i),
     ).toBeVisible({ timeout: 15000 });
 
-    await expect(page).toHaveScreenshot('studio-orientation-entry.png', {
+    await expect(page).toHaveScreenshot('studio-worktable-entry.png', {
       fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.03,
