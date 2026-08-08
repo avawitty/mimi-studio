@@ -8,6 +8,32 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Why-saved sheet hardening (queue + a11y + review state)
+
+**Decision:** Serialize multi-image why-saved prompts through `useWhySavedPrompt` artifact queue (one sheet at a time; Done exits queue; dismiss advances). Per-hypothesis review pending/error state; `epistemicLabelForHypothesis` centralizes Inferred/Observed/Creator labels; `useModalFocus` traps focus in `WhySavedSheet`.
+
+**Alternatives rejected:** (1) Prompting only the final image in a batch (loses per-artifact capture). (2) Global `loading` disabling all hypothesis actions during one review.
+
+**Why:** Prevents racing propose requests and overlapping review state; meets dialog a11y contract without a parallel sheet primitive.
+
+**Ref:** `hooks/useWhySavedPrompt.ts`, `components/pocket/WhySavedSheet.tsx`, `lib/a11y/useModalFocus.ts`, `lib/tasteIntelligence/savedReason.ts`
+
+---
+
+## 2026-08-08 — Pocket why-saved surface (Taste Intelligence #13)
+
+**Decision:** Wire `proposeSavedReasonHypotheses` / `applySavedReasonReview` to Pocket capture via `WhySavedSheet` + `/api/mimi/taste-intelligence/saved-reason/*` routes. Hypotheses persist in Neon `saved_reason_hypotheses`; language distinguishes Inferred / Observed / Creator confirmed / Creator rejected.
+
+**Alternatives rejected:** (1) Reusing legacy `DeltaVerdictCard` as why-saved. (2) Client-only hypotheses without Neon persistence.
+
+**Why:** Completes Capture → Interpret → Approve for Pocket without touching the generation pipeline; bounded post-capture sheet after image stash.
+
+**Ref:** `components/pocket/WhySavedSheet.tsx`, `hooks/useWhySavedPrompt.ts`, `lib/tasteIntelligence/savedReason.ts`
+
+---
+
 ## 2026-08-08 — Studio compiler/critic cards + Tailor v2 contract reconciliation
 
 **Decision:** Ship Studio-facing compiler and critic UI wired through `/api/mimi/taste-intelligence/compiler/compile` and `/critic/critique`, with `mergeGenerationContracts` reconciling Taste Intelligence compiler output against Tailor Profile v2 `generationContract` before prompt injection.
@@ -16,7 +42,7 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 - Client-only compile without persistence (loses audit trail for critiques).
 - Replacing Tailor v2 `generationContract` with TI compiler output (breaks existing zine/Tailor prompt paths).
 
-**Rationale:** Studio needs visible, pre-generation contracts and post-generation critique without forking Tailor’s canonical profile contract. Merge keeps both sources authoritative: Tailor strategic rules + TI evidence-linked compiler modes.
+**Rationale:** Studio needs visible, pre-generation contracts and post-generation critique without forking Tailor's canonical profile contract. Merge keeps both sources authoritative: Tailor strategic rules + TI evidence-linked compiler modes.
 
 ---
 

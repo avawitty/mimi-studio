@@ -10,6 +10,7 @@ import type {
   TasteModelEditOperation,
   TasteRefusal,
   TasteRefusalType,
+  SavedReasonHypothesis,
   GenerationMedium,
   GenerationMode,
   TasteGenerationContract,
@@ -164,6 +165,38 @@ export async function undoTasteModelEdit(input: {
   modelDelta: TasteModelDelta;
 }> {
   return apiFetch("/model-edits/undo", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function proposeSavedReasonHypotheses(input: {
+  artifactId: string;
+  tags?: string[];
+  projectId?: string;
+}): Promise<{
+  hypotheses: SavedReasonHypothesis[];
+  snapshotAvailable: boolean;
+}> {
+  return apiFetch("/saved-reason/propose", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function listSavedReasonHypotheses(artifactId?: string): Promise<{
+  hypotheses: SavedReasonHypothesis[];
+}> {
+  const qs = artifactId ? `?artifactId=${encodeURIComponent(artifactId)}` : "";
+  return apiFetch(`/saved-reason${qs}`);
+}
+
+export async function reviewSavedReasonHypothesis(input: {
+  hypothesis: SavedReasonHypothesis;
+  action: "confirm" | "reject" | "edit" | "skip";
+  editedText?: string;
+}): Promise<{ hypothesis: SavedReasonHypothesis }> {
+  return apiFetch("/saved-reason/review", {
     method: "POST",
     body: JSON.stringify(input),
   });

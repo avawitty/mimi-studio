@@ -23,6 +23,9 @@ import {
   buildTastePassport,
   computePairwiseAccuracy,
   computeBrierScore,
+  proposeSavedReasonHypotheses,
+  applySavedReasonReview,
+  epistemicLabelForHypothesis,
   computeModelDelta,
   applyEditsToSnapshot,
   refusalTypeForRefineOption,
@@ -432,6 +435,89 @@ describe("calibration pair ranking", () => {
       emergingFeatureIds: [],
     });
     expect(fresh[0]!.priority).toBeGreaterThanOrEqual(repeated[0]?.priority ?? 0);
+  });
+});
+
+describe("taste intelligence why saved", () => {
+  it("proposes hypotheses from taste snapshot features", () => {
+    const snapshot = minimalSnapshot();
+    const hypotheses = proposeSavedReasonHypotheses("artifact-1", snapshot, []);
+    expect(hypotheses.length).toBeGreaterThan(0);
+    expect(hypotheses[0]!.artifactId).toBe("artifact-1");
+    expect(hypotheses[0]!.userStatus).toBe("unreviewed");
+  });
+
+  it("confirm marks hypothesis as creator confirmed", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-2", snapshot);
+    expect(hypothesis).toBeTruthy();
+    const reviewed = applySavedReasonReview(hypothesis!, "confirm");
+    expect(reviewed.userStatus).toBe("confirmed");
+    expect(reviewed.source).toBe("creator_authored");
+  });
+
+  it("reject marks not-why-i-saved interpretive rejection", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-3", snapshot);
+    const reviewed = applySavedReasonReview(hypothesis!, "reject");
+    expect(reviewed.userStatus).toBe("rejected");
+  });
+
+  it("edit preserves creator correction text", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-4", snapshot);
+    const reviewed = applySavedReasonReview(
+      hypothesis!,
+      "edit",
+      "Saved for the grain, not the palette.",
+    );
+    expect(reviewed.userStatus).toBe("edited");
+    expect(reviewed.hypothesis).toContain("grain");
+  });
+
+  it("skip does not mutate hypothesis status or source", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-5", snapshot);
+    expect(hypothesis).toBeTruthy();
+    const skipped = applySavedReasonReview(hypothesis!, "skip");
+    expect(skipped).toEqual(hypothesis);
+    expect(skipped.userStatus).toBe("unreviewed");
+    expect(skipped.source).toBe("model_proposed");
+  });
+
+  it("unavailable taste snapshot uses tag-based rule hypotheses only", () => {
+    const hypotheses = proposeSavedReasonHypotheses(
+      "artifact-6",
+      null,
+      ["composition", "image/jpeg"],
+    );
+    expect(hypotheses.every((h) => h.source === "rule_based")).toBe(true);
+    expect(hypotheses.length).toBeGreaterThan(0);
+  });
+
+  it("epistemic labels distinguish inferred, observed, and creator review", () => {
+    const snapshot = minimalSnapshot();
+    const [modelHypothesis, ruleHypothesis] = proposeSavedReasonHypotheses(
+      "artifact-7",
+      snapshot,
+      ["composition"],
+    );
+    expect(modelHypothesis?.source).toBe("model_proposed");
+    expect(epistemicLabelForHypothesis(modelHypothesis!)).toBe("Inferred");
+
+    const ruleOnly = ruleHypothesis?.source === "rule_based"
+      ? ruleHypothesis
+      : proposeSavedReasonHypotheses("artifact-7b", null, ["composition"])[0]!;
+    expect(epistemicLabelForHypothesis(ruleOnly)).toBe("Observed");
+
+    const confirmed = applySavedReasonReview(modelHypothesis!, "confirm");
+    expect(epistemicLabelForHypothesis(confirmed)).toBe("Creator confirmed");
+
+    const rejected = applySavedReasonReview(modelHypothesis!, "reject");
+    expect(epistemicLabelForHypothesis(rejected)).toBe("Creator rejected");
+
+    const edited = applySavedReasonReview(modelHypothesis!, "edit", "My reason");
+    expect(epistemicLabelForHypothesis(edited)).toBe("Creator corrected");
   });
 });
 
