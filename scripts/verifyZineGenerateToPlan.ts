@@ -76,6 +76,21 @@ assert.doesNotMatch(
   "Studio reveal must not mount proof UI",
 );
 
+const firebaseUtils = read("services/firebaseUtils.ts");
+const saveStart = firebaseUtils.indexOf("export const saveZineToProfile");
+const saveEnd = firebaseUtils.indexOf("export const updateTasteGraph");
+const saveBlock = firebaseUtils.slice(saveStart, saveEnd);
+assert.doesNotMatch(
+  saveBlock,
+  /updateTasteGraph\(/,
+  "saveZineToProfile must not auto-mutate taste graph from generated zines",
+);
+assert.doesNotMatch(
+  generator,
+  /scryShadowMemory/,
+  "createZine must not pull unapproved shadow memory into generation",
+);
+
 const bake = read("lib/bakeZinePlates.ts");
 assert.doesNotMatch(
   bake,
@@ -87,3 +102,4 @@ console.log("✓ Mimi zine generation layout verified");
 console.log("  - createZine seeds spread layouts then runs editorial compiler");
 console.log("  - issuePlan + compression + rationale preserved without proof UI");
 console.log("  - hi-fi bake develops pages with image prompts directly");
+console.log("  - generated zines do not silently write taste graph vectors");

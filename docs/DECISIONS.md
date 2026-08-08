@@ -6,6 +6,7 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+<<<<<<< HEAD
 ## 2026-08-08 — Studio floating pill + funded gateway credit heal
 
 **Decision:** Consolidate Studio compose chrome into one scrollable floating pill (`buildDefaultStudioInstruments`) with a universal Tools drawer (Anchors, Continuum, Treatments, Used Context, noise). Retire desktop footer tabs and vertical rail. Cover composer uses compact `UsedContextColophon`. Funded gateway heals patron seats (`isPatron` + `patronActivatedAt`) without Stripe verify; assessment trial users get initial 150-credit grant and skip day-pass drip reset.
@@ -15,6 +16,17 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Mobile UX was cluttered; signed-in patrons and assessment trials were falsely hitting `credits_exhausted`. Promo patrons with `isPatron`/`patronKey` or `billing.source=promo` now route through membership credits even when plan fields still read free/trial.
 
 **Ref:** `components/InputStudio.tsx`, `lib/mimiFundedGateway.ts`, `functions/src/index.ts`, `components/provenance/UsedContextColophon.tsx`, `metadata.json`
+=======
+## 2026-08-08 — Zine save taste boundaries + legacy /@ redirect
+
+**Decision:** Stop auto-calling `updateTasteGraph` from `saveZineToProfile`; remove `scryShadowMemory` from `createZine` prompts (approved Used Context + recent zines only). Upload `data:` cover URLs via `archiveManager` before Firestore persist (fail closed). Legacy `/@:handle` redirects to `/u/:handle` without rendering private `tasteProfile` fields.
+
+**Alternatives rejected:** (1) Silent taste graph mutation on every zine save. (2) Shadow-memory injection without explicit approval. (3) Keeping legacy share page that leaked `semantic_signature`.
+
+**Why:** Inference/memory/publication consents must stay separate; public routes fail closed.
+
+**Ref:** `services/firebaseUtils.ts`, `services/zineGenerator.ts`, `components/PublicSharePage.tsx`, `__tests__/stabilizationInvariants.test.ts`
+>>>>>>> c0cf2d6 (fix(stabilization): taste boundaries + legacy /@ redirect)
 
 ---
 
