@@ -29,6 +29,8 @@ export const OBSERVATORY_COPY = {
     "Demonstration specimens — not live collective data. Publishing to The Proscenium with disclosure is the consent moment for live contribution.",
   emptyBanner:
     "Not enough consented public signals in this window. Stage work on The Proscenium to contribute anonymized structure to Mean Median Mode.",
+  fetchErrorBanner:
+    "Collective readout is temporarily unavailable — the live report could not be loaded. This is not the same as an empty corpus.",
   mesopicComingSoon:
     "Mesopic Lens (Starry-Eyed · Shadow Fields) holds faint signals below Mean Median Mode thresholds — never as certainty.",
   mesopicThesis:
@@ -39,4 +41,11 @@ export const OBSERVATORY_COPY = {
     "Demonstration faint signals — not live Mesopic aggregates. Weak structure is labeled, never sold as atmosphere.",
   mesopicEmptyBanner:
     "No below-threshold consented signals in this window. Faint structure will appear here before it clears Mean Median Mode.",
+  mesopicPersonalDisambiguation:
+    "This Mesopic Lens reads collective faint signals from consented public work. For personal twilight questions — profile, celestial calibration, and web grounding — open Mesopic Lens in Studio.",
+} as const;
+
+export const OBSERVATORY_MESOPIC_HANDOFF = {
+  view: "mesopic-lens",
+  label: "Personal Mesopic Lens",
 } as const;

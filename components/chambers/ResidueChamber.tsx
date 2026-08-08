@@ -86,6 +86,13 @@ export const ResidueChamber: React.FC<ResidueChamberProps> = ({ navigate }) => {
     engineTab === "emotional" || activeRun?.mode === "emotional";
 
   useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get("q");
+    if (param?.trim()) {
+      setQuery(param.trim());
+    }
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {

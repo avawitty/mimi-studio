@@ -13,6 +13,12 @@ export const SPIKE_MEAN_MEDIAN_RATIO = 1.35;
 /** Share gap between top two labels below this → multimodal / contested. */
 export const MODE_DOMINANCE_SHARE_GAP = 0.12;
 
+/** Minimum observations per label to promote into Mean Median Mode. */
+export const MMM_PROMOTION_MIN_GROUP_SIZE = 3;
+
+/** Mesopic Lens reads labels below promotion threshold (1–2 observations). */
+export const MESOPIC_MAX_GROUP_SIZE = 2;
+
 export const CONFIDENCE_THRESHOLDS = {
   /** sampleSize < 5 → insufficient (spec default). */
   insufficientMaxSampleSize: 4,

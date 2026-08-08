@@ -13,6 +13,9 @@
     "api/sovereign/community.ts": {
       "maxDuration": 30
     },
+    "api/collective/mmm-report.ts": {
+      "maxDuration": 30
+    },
     "api/sovereign/zine.ts": {
       "maxDuration": 30
     },

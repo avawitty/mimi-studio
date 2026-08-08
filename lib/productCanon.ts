@@ -1189,11 +1189,11 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow:
       "Open The Observatory to read Mean Median Mode — mean, median, mode, and their joint profile over consented public signals. Per-run M/M/M stays in Residue.",
     notes:
-      "Prototype may show labeled demonstration aggregates. Live contribution requires Proscenium publish disclosure. Do not alias this module as MMM (Residue keeps that short alias).",
+      "Live aggregates from consented Proscenium publishes; demonstration specimens are opt-in preview only. Do not alias this module as MMM (Residue keeps that short alias).",
     family: "intelligence",
     phase: "understand",
     visibility: "contextual",
-    atmosphere: ["specimen", "signal-dense"],
+    atmosphere: ["dark-plate", "specimen", "signal-dense"],
     primaryAction: {
       label: "Observe the present atmosphere",
       intent: { type: "research" },
