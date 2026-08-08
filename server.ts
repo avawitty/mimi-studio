@@ -49,6 +49,7 @@ import { searchShopifyGlobalCatalog } from "./lib/shopifyCatalog";
 import { verifyMimiSession } from "./lib/serverFirebaseAdmin";
 import { handleCreatorFeedRequest } from "./api/feed";
 import youSearchHandler from "./api/you-search";
+import forecastHandler from "./api/forecast";
 import celestialGeocodeHandler from "./api/celestial/geocode";
 import residueAcquireHandler from "./api/residue-acquire";
 import liveTokenHandler from "./api/live/token";
@@ -1501,6 +1502,10 @@ async function startServer() {
 
   app.post("/api/you-search", async (req, res) => {
     await youSearchHandler(req, res);
+  });
+
+  app.post("/api/forecast", async (req, res) => {
+    await forecastHandler(req, res);
   });
 
   app.post("/api/celestial/geocode", async (req, res) => {

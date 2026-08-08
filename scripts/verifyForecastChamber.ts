@@ -40,7 +40,9 @@ assert.ok(FORECAST_COPY.driftUncalibrated.length > 0);
 assert.ok(FORECAST_COPY.contentLiveBanner.length > 0);
 assert.ok(FORECAST_COPY.contentUnavailableBanner.length > 0);
 assert.ok(FORECAST_COPY.cultureObserved.length > 0);
-assert.ok(FORECAST_COPY.cultureDemoBanner.length > 0);
+assert.ok(FORECAST_COPY.intakePersonalTitle.length > 0);
+assert.ok(FORECAST_COPY.intakeBrandTitle.length > 0);
+assert.ok(/Apify/i.test(FORECAST_COPY.contentLiveBanner));
 assert.ok(!/Math\.random/.test(FORECAST_COPY.thesis));
 assert.ok(
   !/simulated until a live gateway/i.test(FORECAST_COPY.contentLiveBanner),
@@ -62,11 +64,14 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const forecastUi = fs.readFileSync(path.join(root, "components/TheForecast.tsx"), "utf8");
 assert.ok(forecastUi.includes("buildForecastReport"), "Forecast UI composes ForecastReport");
 assert.ok(forecastUi.includes("ForecastObservedPanel"), "Forecast culture uses observed panel");
+assert.ok(forecastUi.includes("ForecastResiduePanel"), "Forecast UI surfaces Residue projections");
+assert.ok(forecastUi.includes("syncForecastOnServer") || forecastUi.includes("composeForecastOnServer"), "Forecast UI can sync server snapshot");
+assert.ok(forecastUi.includes("queryContext"), "Forecast UI passes personalized query context");
 assert.ok(!forecastUi.includes("Math.random"), "Forecast UI has no random drift costume");
 assert.match(
   forecastUi,
-  /if \(contentForecast \|\| !user\)/,
-  "culture vector must skip live synthesis for anonymous users",
+  /if \(contentForecast \|\| !user \|\| needsIntake\)/,
+  "culture vector must skip live synthesis for anonymous users or pending intake",
 );
 
 console.log("verifyForecastChamber: ok");
