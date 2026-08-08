@@ -25,17 +25,10 @@
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab; Export Chamber wired from Publisher Console destinations |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
-<<<<<<< HEAD
 | **Taste Signature** | `/signature` | shipped | Expanded reading + public `/u/:handle/signature` OG; incremental evidence patch; approve → `mark_signature` | Public-face mobile review |
-| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; embedding centroid on compile; Studio/Scry auto-embed; Pocket/Scribe/Floor/Darkroom ingest mirrors; Used Context conflict UI | Run `npm run taste:backfill-floor-atoms` + `taste:backfill-darkroom-treatments` |
+| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; embedding centroid; Studio/Scry auto-embed; Pocket/Scribe/Floor/Darkroom ingest mirrors; Used Context conflict UI | Ops: `taste:backfill-floor-atoms`, `taste:backfill-darkroom-treatments`, `taste:backfill-floor-sovereign`, `taste:analyze-evidence-atoms` |
 | **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring; map reads snapshot projection | Server-side recompile trigger on ingest |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context merge hydrate | Semantic retrieval (#223); batch analyze backfill |
-=======
-| **Taste Signature** | `/signature` | shipped | Expanded reading (thesis, touchpoints, directions, recommendations); approve → `mark_signature` taste event | Public-face mobile review after chrome changes |
-| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; embedding centroid; Studio/Scry auto-embed | Ops: `taste:backfill-floor-sovereign`, `taste:analyze-evidence-atoms` |
-| **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring | Wire candidate embeddings from Scry/Studio paths |
-| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor publish mirrors; embed on analyze; Used Context conflict UI | Semantic retrieval (#223); historical floor backfill job |
->>>>>>> ab6975b (feat(taste): sovereign Floor backfill + batch evidence analyze scripts)
 | **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
 
 ---
