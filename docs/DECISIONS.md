@@ -6,6 +6,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Studio floating pill + funded gateway credit heal
+
+**Decision:** Consolidate Studio compose chrome into one scrollable floating pill (`buildDefaultStudioInstruments`) with a universal Tools drawer (Anchors, Continuum, Treatments, Used Context, noise). Retire desktop footer tabs and vertical rail. Cover composer uses compact `UsedContextColophon`. Funded gateway heals patron seats (`isPatron` + `patronActivatedAt`) without Stripe verify; assessment trial users get initial 150-credit grant and skip day-pass drip reset.
+
+**Alternatives rejected:** (1) Keeping three parallel toolbars (rail + footer + pill). (2) Minting paid credits from client-writable plan fields alone. (3) Daily 4/12 reload overwriting assessment trial pools.
+
+**Why:** Mobile UX was cluttered; signed-in patrons and assessment trials were falsely hitting `credits_exhausted`. Promo patrons with `isPatron`/`patronKey` or `billing.source=promo` now route through membership credits even when plan fields still read free/trial.
+
+**Ref:** `components/InputStudio.tsx`, `lib/mimiFundedGateway.ts`, `functions/src/index.ts`, `components/provenance/UsedContextColophon.tsx`, `metadata.json`
+
+---
+
 ## 2026-08-08 — Observatory follow-up: Mesopic live, cycles, withdraw, windows
 
 **Decision:** Extend `/api/collective/mmm-report` to return **Mesopic** findings from below-threshold consented signals; infer **cycle notes** from window-half velocity on promoted profiles; add **7/14/30/90d** window selector in UI; enable **in-chamber withdraw** (`withdrawMmmContributionFields`) and unpublish without Pocket.
@@ -836,7 +848,6 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 ---
 
-<<<<<<< HEAD
 ## 2026-08-08 — Direct Studio zine path keeps editorial compiler behind the scenes
 
 **Decision:** `createZine` continues the fast direct Studio UX (`enhanceZineGenerationLayout` only in the reveal path) but now runs `applyDirectPathEditorialIntelligence` after layout seeding so earned-page rules, structural compression, plan evaluation, page rationale, and Press readiness still receive a compiled `issuePlan`. Proof UI remains removed from reveal.
@@ -846,7 +857,9 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Preserves creator-facing speed while keeping deterministic editorial intelligence for publication, provenance, and regression tests.
 
 **Ref:** `lib/zine/applyDirectPathEditorialIntelligence.ts`, `services/zineGenerator.ts`, `__tests__/zineDirectPathEditorialIntelligence.test.ts`, `scripts/verifyZineGenerateToPlan.ts`
-=======
+
+---
+
 ## 2026-08-08 — Taste Signature approval vs publication
 
 **Decision:** Split **approved** (durable Mimi memory via `tasteProfile.aestheticSignature.status`) from **published** (explicit public snapshot at `profile.publicSignature`). Public routes (`/u/:handle/signature`, OG, `PublicProfileCard` excerpt) read only the published snapshot — never merely approved private signatures, OAuth photos, bios, or tasteProfile fields.
@@ -856,5 +869,4 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Mirrors Rip publish pattern; keeps fast in-chamber approve flow while requiring deliberate consent for public exposure.
 
 **Ref:** `lib/signature/publishSignature.ts`, `lib/signature/publicSignature.ts`, `lib/publicProfileCard.ts`, `components/SignatureView.tsx`
->>>>>>> 96df4c3 (feat(signature): separate approved memory from published public snapshot)
 

@@ -3,6 +3,7 @@ import { getServerAiGatewayKey } from "./aiGatewayCompat.js";
 import { extractMimiSessionToken } from "./mimiSessionToken.js";
 import {
   buildCreditGrant,
+  entitlementForPlan,
   isPaidMimiPlan,
   normalizeMimiPlan,
   type MimiBillingInterval,
@@ -87,6 +88,58 @@ export function isPaidSubscriptionActive(subscriptionStatus: unknown): boolean {
  */
 export function hasTrustedPaidBillingSignal(data: Record<string, unknown>): boolean {
   return String(data.stripeCustomerId || "").trim().startsWith("cus_");
+}
+
+/** Admin / promo-granted patron seat — only server routes may write these fields. */
+export function hasAdminGrantedPatronSeat(data: Record<string, unknown>): boolean {
+  const activatedAt = Number(data.patronActivatedAt ?? 0);
+  if (activatedAt <= 0) return false;
+  if (data.isPatron === true) return true;
+  // Promo redemption writes patronKey from Admin routes.
+  return String(data.patronKey || "").trim().length > 0;
+}
+
+/** billing/subscription doc stamped by POST /api/apply-promo (Admin-only write). */
+export function hasPromoGrantedBilling(
+  billingData: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!billingData) return false;
+  return String(billingData.source || "").trim().toLowerCase() === "promo";
+}
+
+function hasFundedGatewayPatronSeat(
+  userData: Record<string, unknown>,
+  billingData: Record<string, unknown>,
+): boolean {
+  return hasAdminGrantedPatronSeat(userData) || hasPromoGrantedBilling(billingData);
+}
+
+async function resolveTrustedBillingForHeal(opts: {
+  uid: string;
+  email?: string | null;
+  sources: Array<Record<string, unknown> | null | undefined>;
+  userData: Record<string, unknown>;
+}): Promise<boolean> {
+  if (hasAdminGrantedPatronSeat(opts.userData)) return true;
+  for (const source of opts.sources) {
+    if (source && hasPromoGrantedBilling(source)) return true;
+  }
+  return resolveTrustedPaidBilling({
+    uid: opts.uid,
+    email: opts.email,
+    sources: opts.sources,
+  });
+}
+
+function trialDayPassBaseline(plan: string, planStatus: unknown): number {
+  if (plan === "free" || planStatus === "ghost") return 4;
+  return 12;
+}
+
+function isTrialDayPassTier(plan: string, planStatus: unknown, grantedBaseline: number): boolean {
+  if (plan === "free" || planStatus === "ghost") return true;
+  // Assessment / paid trial pools are not reset to the day-pass drip.
+  return plan === "trial" && grantedBaseline <= 12;
 }
 
 /** Roll an expired grant forward without re-deriving allowance from client plan. */
@@ -246,10 +299,24 @@ export const resolveMimiFundedGatewayAccess = async (
       const [userDoc, profileDoc] = await Promise.all([userRef.get(), profileRef.get()]);
       const data = { ...(profileDoc.data() || {}), ...(userDoc.data() || {}) };
 
+      const userData = data as Record<string, unknown>;
+
+      // Stripe customer id often lives on billing/subscription, not the user root.
+      let billingData: Record<string, unknown> = {};
+      try {
+        const billingSnap = await userRef.collection("billing").doc("subscription").get();
+        billingData = (billingSnap.data() || {}) as Record<string, unknown>;
+      } catch (err) {
+        console.warn("MIMI // billing/subscription read failed during credit heal:", err);
+      }
+
+      const isPatronSeat = hasFundedGatewayPatronSeat(userData, billingData);
       const plan = normalizeMimiPlan(
         data.plan || data.planStatus || data.mimiPlan || data.membershipPlan,
       );
-      const isPaid = isPaidMimiPlan(plan);
+      const membershipPlan =
+        isPatronSeat && !isPaidMimiPlan(plan) ? normalizeMimiPlan("lab") : plan;
+      const isPaid = isPaidMimiPlan(plan) || isPatronSeat;
       let remaining = 0;
 
       if (isPaid) {
@@ -260,15 +327,6 @@ export const resolveMimiFundedGatewayAccess = async (
           return { allowed: false, billable: false, uid: decoded.uid, cost };
         }
 
-        // Stripe customer id often lives on billing/subscription, not the user root.
-        let billingData: Record<string, unknown> = {};
-        try {
-          const billingSnap = await userRef.collection("billing").doc("subscription").get();
-          billingData = (billingSnap.data() || {}) as Record<string, unknown>;
-        } catch (err) {
-          console.warn("MIMI // billing/subscription read failed during credit heal:", err);
-        }
-
         // Never trust top-level `subscription.credits` — owners can forge that
         // object. Only Admin-written membershipCredits + billing/** credits.
         let grant = data.membershipCredits || billingData.credits;
@@ -277,22 +335,25 @@ export const resolveMimiFundedGatewayAccess = async (
         // Only hit Stripe when a heal would actually run.
         const trustedBilling =
           shouldReloadPeriod || needsMint
-            ? await resolveTrustedPaidBilling({
+            ? await resolveTrustedBillingForHeal({
                 uid: decoded.uid,
                 email: decoded.email,
-                sources: [billingData, data as Record<string, unknown>],
+                sources: [billingData, userData],
+                userData,
               })
             : false;
         const shouldMintMissing = needsMint && trustedBilling;
 
         if ((shouldReloadPeriod && trustedBilling) || shouldMintMissing) {
-          const interval = (data.subscriptionInterval || "month") as MimiBillingInterval;
-          const existingPeriodEnd = Number(grant?.periodEndsAt ?? 0);
+          const interval = (data.subscriptionInterval ||
+            billingData.interval ||
+            (isPatronSeat ? "year" : "month")) as MimiBillingInterval;
+          const existingPeriodEnd = Number(grant?.periodEndsAt ?? billingData.currentPeriodEnd ?? 0);
           // Period reload preserves stored allowance; mint derives from plan.
           const credits = shouldReloadPeriod
             ? rollForwardMembershipGrant(grant, interval)
             : buildCreditGrant({
-                plan,
+                plan: membershipPlan,
                 interval,
                 // Preserve a still-valid period window when minting a partial grant.
                 currentPeriodEnd:
@@ -301,7 +362,16 @@ export const resolveMimiFundedGatewayAccess = async (
           const healPatch = {
             membershipCredits: credits,
             subscriptionStatus: data.subscriptionStatus || "active",
-            mimiPlan: plan,
+            mimiPlan: membershipPlan,
+            ...(isPatronSeat
+              ? {
+                  plan: "lab",
+                  planStatus: "lab",
+                  membershipPlan: "lab",
+                  isPatron: true,
+                  patronActivatedAt: Number(userData.patronActivatedAt ?? Date.now()),
+                }
+              : {}),
           };
           await Promise.all([
             userRef.set(healPatch, { merge: true }),
@@ -310,9 +380,10 @@ export const resolveMimiFundedGatewayAccess = async (
           grant = credits;
           console.info("MIMI // Healed membership credits for funded gateway", {
             uid: decoded.uid,
-            plan,
+            plan: membershipPlan,
             remaining: credits.remaining,
             reason: shouldReloadPeriod ? "period_reload" : "trusted_mint",
+            patronSeat: isPatronSeat,
           });
         }
         // Expired period without Stripe verify: do not refill, but still allow
@@ -323,16 +394,44 @@ export const resolveMimiFundedGatewayAccess = async (
           return { allowed: false, billable: false, uid: decoded.uid, cost };
         }
       } else {
-        let trialCredits = Number(data.trial?.remainingCredits ?? 0);
-        const lastReload = Number(data.trial?.lastReloadedAt ?? 0);
+        const trial = (data.trial || {}) as Record<string, unknown>;
+        let trialCredits = Number(trial.remainingCredits ?? 0);
+        const lastReload = Number(trial.lastReloadedAt ?? 0);
+        const grantedBaseline = Number(trial.grantedCredits ?? 0);
         const now = Date.now();
-        const baseline = plan === "free" || data.planStatus === "ghost" ? 4 : 12;
+        const baseline = trialDayPassBaseline(plan, data.planStatus);
 
-        if (now - lastReload > 24 * 60 * 60 * 1000) {
+        // First-time assessment grant for signed-in trial users missing a pool.
+        if (
+          plan === "trial" &&
+          grantedBaseline <= 0 &&
+          trialCredits <= 0 &&
+          data.planStatus !== "ghost"
+        ) {
+          const assessmentCredits = entitlementForPlan("trial").monthlyCredits;
+          trialCredits = assessmentCredits;
+          const initialTrial = {
+            ...trial,
+            grantedCredits: assessmentCredits,
+            remainingCredits: assessmentCredits,
+            usedCredits: Number(trial.usedCredits ?? 0),
+            lastReloadedAt: now,
+            startedAt: Number(trial.startedAt ?? now),
+            endsAt: Number(trial.endsAt ?? now + 7 * 24 * 60 * 60 * 1000),
+          };
+          await Promise.all([
+            userRef.set({ trial: initialTrial }, { merge: true }),
+            profileRef.set({ trial: initialTrial }, { merge: true }),
+          ]);
+        } else if (
+          isTrialDayPassTier(plan, data.planStatus, grantedBaseline) &&
+          now - lastReload > 24 * 60 * 60 * 1000
+        ) {
           trialCredits = baseline;
           const reloadUpdate = {
             "trial.remainingCredits": baseline,
             "trial.lastReloadedAt": now,
+            ...(grantedBaseline <= 0 ? { "trial.grantedCredits": baseline } : {}),
           };
           await Promise.all([
             userRef.set(reloadUpdate, { merge: true }),
@@ -389,7 +488,8 @@ export const chargeMimiFundedGateway = async (
     const plan = normalizeMimiPlan(
       userData.plan || userData.planStatus || userData.mimiPlan || userData.membershipPlan,
     );
-    const isPaid = isPaidMimiPlan(plan);
+    const isPatronSeat = hasAdminGrantedPatronSeat(userData as Record<string, unknown>);
+    const isPaid = isPaidMimiPlan(plan) || isPatronSeat;
 
     const creditUpdate: Record<string, unknown> = isPaid
       ? {

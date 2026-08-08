@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import type { TasteGenerationContract } from "../../schemas/tasteIntelligenceContracts";
 import type { GenerationContractReconciliation } from "../../lib/tasteIntelligence/mergeGenerationContracts";
+import { StudioCompactToggle } from "../ui/StudioCompactToggle";
 
 type TasteGenerationContractCardProps = {
   contract: TasteGenerationContract | null;
@@ -69,15 +70,11 @@ export const TasteGenerationContractCard: React.FC<TasteGenerationContractCardPr
             className={`ml-auto text-mimi-stone transition-transform ${expanded ? "rotate-180" : ""}`}
           />
         </button>
-        <label className="inline-flex items-center gap-1.5 font-mono text-[7px] uppercase tracking-wider text-mimi-stone">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => onToggleEnabled(e.target.checked)}
-            className="accent-mimi-olive"
-          />
-          On
-        </label>
+        <StudioCompactToggle
+          checked={enabled}
+          onChange={onToggleEnabled}
+          label={enabled ? "On" : "Off"}
+        />
       </div>
 
       {expanded && (

@@ -21,6 +21,8 @@ interface UsedContextColophonProps {
   className?: string;
   /** Start expanded (publish review screens) */
   defaultExpanded?: boolean;
+  /** Quiet single-line bar for cover composer scrollports */
+  variant?: "default" | "compact";
   onOpenScribe?: () => void;
 }
 
@@ -32,6 +34,7 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
   target = "studio",
   className = "",
   defaultExpanded = false,
+  variant = "default",
   onOpenScribe,
 }) => {
   const { user, profile } = useUser();
@@ -85,6 +88,70 @@ export const UsedContextColophon: React.FC<UsedContextColophonProps> = ({
       setCommittingId(null);
     }
   };
+
+  if (variant === "compact") {
+    return (
+      <aside
+        className={`mimi-colophon border-t border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-field,#ffffff)] text-[var(--mimi-ink,#0a0a0a)] ${className}`}
+        aria-label="Used Context colophon"
+      >
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full text-left px-3 py-2 flex items-center justify-between gap-3 hover:bg-black/[0.02] transition-colors"
+        >
+          <div className="min-w-0 flex items-center gap-2">
+            <span className="font-mono text-[7px] uppercase tracking-[0.2em] text-[var(--mimi-olive,#5A5A40)] shrink-0">
+              Used Context
+            </span>
+            <span className="font-serif italic text-[11px] text-[var(--mimi-stone,#78716c)] truncate">
+              {italicLine}
+            </span>
+          </div>
+          <span className="font-mono text-[7px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)] shrink-0">
+            {expanded ? "Close" : "Review"}
+          </span>
+        </button>
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              initial={reduceMotion ? sheet.initial : { height: 0, opacity: 0 }}
+              animate={reduceMotion ? sheet.animate : { height: "auto", opacity: 1 }}
+              exit={reduceMotion ? sheet.exit : { height: 0, opacity: 0 }}
+              transition={sheet.transition}
+              className="overflow-hidden border-t border-[var(--mimi-hairline,#d4d4d4)]"
+            >
+              <div className="px-3 py-3 max-h-48 overflow-y-auto">
+                {entries.length === 0 ? (
+                  <p className="font-sans text-[11px] text-[var(--mimi-stone,#78716c)]">
+                    Send atoms from Scribe or Pocket, then approve before compose.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {entries.map((entry) => (
+                      <li
+                        key={`${entry.atomId}-${entry.target}`}
+                        className="flex items-center justify-between gap-2 text-[11px]"
+                      >
+                        <span className="font-serif italic truncate">{entry.title}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(entry.atomId, !entry.approved)}
+                          className="font-mono text-[7px] uppercase tracking-wider shrink-0"
+                        >
+                          {entry.approved ? "Revoke" : "Approve"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </aside>
+    );
+  }
 
   return (
     <aside

@@ -20,27 +20,16 @@
 | **Scribe** | `/scribe` | shipped | ResearchMemory nested in Atomize tab | Mobile density pass on long capture sessions |
 | **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes; **Owner Slide Templates** UI; 10 editorial calibration plates (incl. Used Context, contact sheet, material specimen, forecast drift) | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
 | **Studio (orientation intake)** | `/studio` | shipped | Imagen-first toolbar (Stock / References toggles); inspo carousel + “Publish my rendition”; Unsplash via `/api/inspo/search`; Pinterest board import | Promote compose shell (instrument rail + footnote dock) from legacy console after intake |
-| **Studio (compose console)** | `/studio?console=1` | partial | `InputStudio` escape hatch from orientation; legacy archival desk at `/studio/worktable-legacy` | Promote instrument rail + footnote dock post-intake without full console density on primary route |
+| **Studio (compose console)** | `/studio?console=1` | **partial** | Unified floating pill toolbar + Tools drawer (Anchors, Continuum, Treatments, Context, noise); compact cover colophon; funded gateway patron/trial credit heal; `InputStudio` escape hatch from orientation; legacy archival desk at `/studio/worktable-legacy` | Live telemetry beyond decorative dash; promote instrument rail + footnote dock post-intake without full console density on primary route |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab; Export Chamber wired from Publisher Console destinations |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
-<<<<<<< HEAD
-<<<<<<< HEAD
-| **Taste Signature** | `/signature` | shipped | Expanded reading + public `/u/:handle/signature` OG; incremental evidence patch; approve → `mark_signature` | Public-face mobile review |
-| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; ingest mirrors + Used Context conflict UI; merge/split behind `TASTE_GRAPH_MERGE_SPLIT` | Ops backfill/analyze scripts |
-| **Computational Taste Model** | — (derived) | **shipped** | Centroid blend + embedding similarity in candidate score (hash fallback + vectors); server-side recompile on ingest | Embedding space migrations on model change |
-| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context merge hydrate | Semantic retrieval (#223); batch analyze backfill |
-| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; negative taste + graph editing (merge/split when flagged); Scry rerank; Studio compiler + post-generation critic with embedding-aware alignment | Collaborative contract UI; evaluation dashboard |
-=======
-=======
->>>>>>> 96df4c3 (feat(signature): separate approved memory from published public snapshot)
 | **Taste Signature** | `/signature` | shipped | Expanded reading; **approved** (memory) vs **published** (public snapshot) split; public `/u/:handle/signature` reads published snapshot only; incremental evidence patch | Publish/unpublish UX polish |
 | **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; Phase 1 `EvidenceAtom` layer + correction UI; embedding centroid; Studio/Scry auto-embed; ingest mirrors + Used Context conflict UI | Ops backfill/analyze scripts; shadow audit after Gateway model bumps |
 | **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring (label + cosine); server-side recompile on ingest | Embedding space migrations on model change |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context merge hydrate; legacy graph coexists | Semantic retrieval (#223) |
 | **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
->>>>>>> 49986d1 (feat(zine): restore editorial compiler behind direct Studio path)
 
 ---
 
