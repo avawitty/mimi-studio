@@ -1,6 +1,6 @@
 # Mimi Studio — Module State
 
-**Last updated:** 2026-08-05  
+**Last updated:** 2026-08-08  
 **Source of truth for routes:** `lib/productCanon.ts` · **Validation:** `npm run validate:canon`
 
 ## Status legend
@@ -27,6 +27,7 @@
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
 | **Taste Graph** | `/taste-graph` | shipped | Embedding space migrations on model change | Run shadow audit after Gateway model bumps |
+| **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
 
 ---
 

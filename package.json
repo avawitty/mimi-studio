@@ -17,6 +17,7 @@
     "verify:tailor-contract": "tsx scripts/verifyTailorProfileContract.ts",
     "verify:tailor-intake": "tsx scripts/verifyTailorEvidenceIntake.ts",
     "verify:tailor-foundation": "tsx scripts/verifyTailorFoundation.ts",
+    "verify:taste-model": "tsx scripts/verifyTasteModel.ts",
     "verify:shopify-pack": "tsx scripts/verifyShopifyProductPack.ts",
     "verify:shopify-integration": "tsx scripts/verifyShopifyIntegration.ts",
     "verify:ingest-client": "tsx scripts/verifyIngestClient.ts",

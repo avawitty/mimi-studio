@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Observation, EvidenceNode, ClaimType, UserWeight } from '../../types';
+import type { TasteModelSnapshot } from '../../lib/tasteModel';
 import { ProofMode } from '../ProofMode';
+import { TasteModelInspector } from '../taste/TasteModelInspector';
+import { TasteTrajectorySummary } from '../taste/TasteTrajectorySummary';
 
 const CLAIM_BADGE: Record<ClaimType, string> = {
   observed: 'Observed',
@@ -39,6 +42,10 @@ interface PatternGraphScreenProps {
     name?: string,
   ) => void;
   onContinue: () => void;
+  tasteSnapshot?: TasteModelSnapshot | null;
+  tasteLoading?: boolean;
+  tasteStale?: boolean;
+  onRecompileTasteModel?: () => void;
 }
 
 export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
@@ -47,8 +54,13 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
   observations,
   onCurate,
   onContinue,
+  tasteSnapshot,
+  tasteLoading,
+  tasteStale,
+  onRecompileTasteModel,
 }) => {
   const [expanded, setExpanded] = useState<string | null>(clusters[0]?.id ?? null);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   const [draftNames, setDraftNames] = useState<Record<string, string>>({});
   const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
   const [draftWeights, setDraftWeights] = useState<Record<string, UserWeight>>({});
@@ -57,14 +69,35 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
   const acceptedCount = clusters.filter((cluster) => cluster.userStatus === 'accepted' || cluster.userStatus === 'renamed').length;
   const rejectedCount = clusters.filter((cluster) => cluster.userStatus === 'rejected').length;
 
+  const handleExpand = (clusterId: string, isOpen: boolean) => {
+    setExpanded(isOpen ? null : clusterId);
+    setSelectedFeatureId(`pattern_cluster:${clusterId}`);
+  };
+
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="max-w-7xl mx-auto">
+      <div className="flex flex-col lg:flex-row">
+        <div className="flex-1 px-6 py-10 min-w-0">
       <p className="text-[10px] uppercase tracking-[0.3em] text-nous-subtle mb-2">Pattern Graph</p>
       <h2 className="font-serif text-2xl text-nous-text mb-2">Curate the evidence before it becomes taste memory</h2>
-      <p className="text-sm text-nous-subtle mb-8">
+      <p className="text-sm text-nous-subtle mb-4">
         Mimi separates observations from interpretation. Keep, reject, rename, or weight each signal before saving it
         into the Taste Graph.
       </p>
+
+      {tasteSnapshot && (
+        <div className="mb-6">
+          <TasteTrajectorySummary
+            snapshot={tasteSnapshot}
+            onSelectFeature={(fid) => {
+              setSelectedFeatureId(fid);
+              const clusterId = fid.replace('pattern_cluster:', '');
+              if (clusters.some((c) => c.id === clusterId)) setExpanded(clusterId);
+            }}
+            compact
+          />
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3 mb-8">
         <div className="border border-nous-border/30 p-4">
@@ -95,7 +128,7 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
               <button
                 type="button"
                 className="w-full flex items-center justify-between px-5 py-4 text-left"
-                onClick={() => setExpanded(isOpen ? null : cluster.id)}
+                onClick={() => handleExpand(cluster.id, isOpen)}
               >
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-nous-subtle mr-2">
@@ -237,6 +270,18 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
       >
         Save curated signals and continue to Creative Laws
       </button>
+        </div>
+
+        <div className="lg:w-80 xl:w-96 shrink-0">
+          <TasteModelInspector
+            snapshot={tasteSnapshot ?? null}
+            selectedFeatureId={selectedFeatureId}
+            loading={tasteLoading}
+            stale={tasteStale}
+            onRecompile={onRecompileTasteModel}
+          />
+        </div>
+      </div>
     </div>
   );
 };

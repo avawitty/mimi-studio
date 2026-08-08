@@ -6,7 +6,17 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-05 — Studio plate media mode + Unsplash stock resolver (v1)
+## 2026-08-08 — Computational Taste Model (derived snapshot, v1)
+
+**Decision:** Introduce `TasteModelSnapshot` as a **derived cache** compiled deterministically from canonical Tailor graph entities (`EvidenceNode`, `Observation`, `PatternCluster`, `CreativeLaw`) plus immutable `TasteEventV2` learning events. Pure compilation in `lib/tasteModel/`; persistence at `users/{uid}/tasteLearningEvents` and `users/{uid}/tasteModelSnapshots/{global|project-{id}}`. Legacy `TasteEvent` normalized additively via `normalizeTasteEvent()`. Candidate scoring returns fit score (0–100, not probability), confidence, and evidence-linked explanation — no LLM in the scoring path.
+
+**Alternatives rejected:** (1) A third canonical taste source separate from the WO-7 graph. (2) Replacing Tailor Profile v2. (3) LLM-generated scores without provenance. (4) Silent migration of existing Firestore documents. (5) Making TasteGraphNode/Edge canonical.
+
+**Why:** Closes the product loop: evidence → curation → explainable taste model → candidate scoring → user correction. Deterministic, versioned, and correctable beats a black-box classifier. Presentation projection via `projectTasteModelToGraph()` keeps existing Taste Graph UI compatible.
+
+**Ref:** `lib/tasteModel/`, `services/tasteModelService.ts`, `docs/computational-taste-model.md`, `components/taste/TasteModelInspector.tsx`
+
+---
 
 **Decision:** Add `plateMediaMode` on Studio orientation intake (`photography-first` | `generated` | `references-only`). Hi-fi `bakeZineVisualPlates` resolves Unsplash stock via server `/api/inspo/search` when mode is photography-first; skips AI generation for `references-only`. Stock attribution lands on `ZinePageSpec` and `SpecimenPage` footer.
 
