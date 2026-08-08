@@ -21,6 +21,11 @@ import {
   toEvidenceUploadPayload,
   type TailorEvidenceItem,
 } from '../services/tailorEvidenceIntake';
+import {
+  mergeEvidenceWithLocal,
+  slimEvidenceForFirestore,
+} from '../services/tailorEvidenceLocalStore';
+import { toUserFacingError, isFirestoreQuotaError } from '../lib/formatUserError';
 import type { EvidenceNode } from '../types';
 import { resolveLetterboxdFeedUrl } from '../lib/letterboxdFeed';
 import { normalizeLetterboxdInput, importFromLink } from '../services/tasteImportService';
@@ -295,5 +300,61 @@ const payload = toEvidenceUploadPayload(
 assert(payload.extractedMetadata.intakeScope === 'persistent', 'intakeScope persisted');
 assert(payload.extractedMetadata.scope === 'profile', 'legacy scope for firestore');
 assert(payload.extractedMetadata.intakeId === 'ev_1', 'intake id retained');
+
+// --- Local evidence slim + friendly errors ---
+assert(
+  isFirestoreQuotaError('Free daily read units per project (free tier database) per day'),
+  'quota phrase detected',
+);
+const friendly = toUserFacingError(
+  '{"error":"quota exceeded","authInfo":{"userId":"x","email":"a@b.com"}}',
+);
+assert(!friendly.includes('authInfo'), 'JSON auth blob not shown to user');
+assert(friendly.includes('device') || friendly.includes('Cloud'), 'friendly quota copy');
+
+const hugeUrl = `data:image/png;base64,${'A'.repeat(15000)}`;
+const slim = slimEvidenceForFirestore({
+  id: 'ev_big',
+  userId: 'u1',
+  projectId: 'p1',
+  sourceType: 'image',
+  title: 'Big',
+  uploadedFileUrl: hugeUrl,
+  thumbnailUrl: hugeUrl,
+  analysisStatus: 'pending',
+  createdAt: 1,
+  updatedAt: 1,
+});
+assert(!slim.uploadedFileUrl, 'oversized upload stripped for cloud');
+assert(slim.extractedMetadata?.localMediaKey === 'ev_big', 'local media key on slim node');
+
+const merged = mergeEvidenceWithLocal(
+  [
+    {
+      id: 'ev_big',
+      userId: 'u1',
+      projectId: 'p1',
+      sourceType: 'image',
+      title: 'Big',
+      analysisStatus: 'pending',
+      createdAt: 1,
+      updatedAt: 1,
+    },
+  ],
+  [
+    {
+      id: 'ev_big',
+      userId: 'u1',
+      projectId: 'p1',
+      sourceType: 'image',
+      title: 'Big',
+      uploadedFileUrl: hugeUrl,
+      analysisStatus: 'pending',
+      createdAt: 1,
+      updatedAt: 1,
+    },
+  ],
+);
+assert(merged[0].uploadedFileUrl === hugeUrl, 'local blobs hydrate cloud metadata');
 
 console.log('verify:tailor-intake — all checks passed');

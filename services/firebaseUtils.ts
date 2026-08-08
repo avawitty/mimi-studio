@@ -4,6 +4,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, linkWithPopup, linkWithRedirect, signInAnonymously, ActionCodeSettings, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 import { auth, db, storage } from "./firebaseInit";
 import { devLog } from "../lib/devLog";
+import { toUserFacingError, isFirestoreQuotaError } from "../lib/formatUserError";
 
 export const isFullyAuthenticated = () => {
   devLog.info("MIMI // isFullyAuthenticated check:", auth.currentUser ? "(authenticated)" : "null", auth.currentUser ? "isAnonymous: " + auth.currentUser.isAnonymous : "");
@@ -154,6 +155,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
         message: 'Network disconnected. Operating in offline mode.'
       }
     }));
+  } else if (isFirestoreQuotaError(errorMessage)) {
+    window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+      detail: {
+        type: 'error',
+        message: toUserFacingError(errorMessage),
+      }
+    }));
   }
 
   const errInfo: FirestoreErrorInfo = {
@@ -187,8 +195,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
       }));
       return;
   }
-  
-  throw new Error(JSON.stringify(errInfo));
+
+  throw new Error(toUserFacingError(errorMessage));
 }
 
 export function logFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
