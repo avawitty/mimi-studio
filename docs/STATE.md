@@ -46,7 +46,7 @@
 | **Mean Median Mode** | `/mean-median-mode` | **partial** | In-chamber segment (same shell as Observatory) | Route alias only — no separate UI fork |
 | **Forecast** | `/forecast` | partial | Intake + Apify queries + **POST /api/forecast** snapshot + Residue artifact panel; cultural vector uses **live** MMM API (empty when no corpus) | Remove residual costume metrics; approved RSS ingest |
 | **Celestial Calibration** | `/celestial-calibration` | shipped | Rising/houses need time + geocoded place | — |
-| **Oracle** | `/oracle` | **partial** | Cyberdeck voice overlay shipped; chamber reports + theme analysis now local-first (`oracleChamberService`); not in `CANON_MODULES` yet; celestial readings ephemeral | Register in canon; optional Neon sync for cross-device reports |
+| **Oracle** | `/oracle` | **partial** | Cyberdeck sessions (`oracleChamberService`) + Pocket/Memory chamber archive merged in reports UI; theme matrix spans both sources | Register in canon; optional Neon sync for cross-device reports |
 
 ---
 

@@ -656,6 +656,18 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 ---
 
+## 2026-08-08 — Oracle chamber archive merged into reports (#247 → #248)
+
+**Decision:** Ship `lib/oracleChamberArchive.ts` to load Pocket + Scribe memory transmissions as chamber reports, merged into `OracleChamberReports` alongside local Cyberdeck sessions from `oracleChamberService`. Theme frequency combines both sources. Archive rows are read-only in UI (no local delete).
+
+**Alternatives rejected:** (1) Replacing #248 cyberdeck UX with duplicate `OracleCyberdeckPanels` layout. (2) Leaving archive-only PR #247 open with conflicting `TheOracle.tsx` rewrite.
+
+**Why:** #248 already shipped deck + session reports; archive adds durable Pocket/Memory provenance without a second Oracle chrome system.
+
+**Ref:** `lib/oracleChamberArchive.ts`, `components/oracle/OracleChamberReports.tsx`, `__tests__/oracleChamberArchive.test.ts`
+
+---
+
 ## 2026-08-07 — Lovable parallel track phased advisory (menu, toolbar, Tailor, Scry, Press)
 
 **Decision:** Execute product expansion on Lovable project `82416757-f4d9-45c3-9665-4f043ec226e8` in phases: P0 menu + functional Studio toolbar + `/tailor` chamber with generation-contract wiring; P1 Profile/public card + Edit/Pocket/fish-rip; P2 Dolls onboarding + Omni Loop + Mesopic; P3 Scry curiosity profile + Used Context colophon + `/the-press` export chamber. Persist build canon via Lovable `set_project_knowledge`. Track queue status in `docs/STATE.md`.
