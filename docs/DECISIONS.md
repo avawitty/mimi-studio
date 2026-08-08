@@ -882,3 +882,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/signature/publishSignature.ts`, `lib/signature/publicSignature.ts`, `lib/publicProfileCard.ts`, `components/SignatureView.tsx`
 
+---
+
+## 2026-08-08 — Tailor local archive when Firestore quota is exhausted
+
+**Decision:** When Firestore hits free-tier daily read/write quota (`resource-exhausted` / “Quota limit exceeded”), `handleFirestoreError` no longer throws — it surfaces a one-time announcement and allows local fallback. Tailor chamber data (projects, evidence nodes, observations, pattern clusters, creative laws, taste graphs) mirrors to IndexedDB (`services/tailorLocalArchive.ts`) on successful cloud reads and writes locally when cloud is blocked.
+
+**Alternatives rejected:** (1) Hard crash + System Dissonance JSON toast — blocked all Tailor work until quota reset. (2) Migrate Tailor subgraph to Neon in this pass — broader scope; local archive matches existing Pocket ghost pattern.
+
+**Why:** Unblocks creators on exhausted Firebase free tier until daily quota resets; preserves work on-device without requiring billing upgrade on a capped free database.
+
+**Ref:** `services/firebaseUtils.ts`, `services/tailorLocalArchive.ts`, `services/tailorService.ts`, `__tests__/tailorLocalArchive.test.ts`
+
