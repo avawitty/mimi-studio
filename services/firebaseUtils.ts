@@ -531,6 +531,24 @@ type ZineConsentFields = {
 export const saveZineToProfile = async (uid: string, handle: string, avatar: string | undefined, zine: ZineContent, tone: ToneTag, coverUrl?: string, deep?: boolean, isPublic?: boolean, isLite?: boolean, artifacts?: MediaFile[], originalInput?: string, transmissionsUsed?: any[], isHighFidelity?: boolean, tags?: string[], treatmentId?: string, fragmentsUsed?: string[], usedContextSnapshots?: UsedContextSnapshot[], lineage?: string[], mmmPublishConsent?: SaveZineMmmConsent | null): Promise<string> => {
   const targetUid = uid || 'ghost';
   const targetId = `zine_${targetUid}_${Date.now()}`;
+
+  let resolvedCoverUrl = coverUrl || null;
+  if (resolvedCoverUrl?.startsWith("data:") && uid && uid !== "ghost") {
+    try {
+      const { archiveManager } = await import("./archiveManager");
+      const uploaded = await archiveManager.uploadMedia(
+        uid,
+        resolvedCoverUrl,
+        `zines/covers/${targetId}`,
+        { allowStorageFallback: false },
+      );
+      if (uploaded) resolvedCoverUrl = uploaded;
+      else resolvedCoverUrl = null;
+    } catch (e) {
+      console.warn("MIMI // saveZineToProfile: cover upload failed — not persisting base64", e);
+      resolvedCoverUrl = null;
+    }
+  }
   
   // Ensure we capture the original thought properly, falling back to metadata if arg is missing
   const rawInput = originalInput || zine.meta?.intent || "";
@@ -570,7 +588,7 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
 
   let meta: ZineMetadata = {
     id: targetId, userId: uid, userHandle: handle, userAvatar: avatar || null,
-    title: zine.title, tone, coverImageUrl: coverUrl || null, timestamp: Date.now(), likes: 0,
+    title: zine.title, tone, coverImageUrl: resolvedCoverUrl || null, timestamp: Date.now(), likes: 0,
     content: zineWithoutThreadData, isDeepThinking: !!deep, isPublic: stagedPublic, isLite: !!isLite, isHighFidelity: !!isHighFidelity,
     publishedAt: stagedPublic ? (consentFields?.publishedAt ?? Date.now()) : undefined,
     ...(consentFields
@@ -615,7 +633,7 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
       content: {
         zineId: targetId,
         title: zine.title,
-        coverUrl: coverUrl || null,
+        coverUrl: resolvedCoverUrl || null,
         tone,
         timestamp: Date.now(),
         meta
@@ -690,17 +708,13 @@ export const saveZineToProfile = async (uid: string, handle: string, avatar: str
         timestamp: Date.now()
       });
       
-      // Update taste graph with the generated zine content
-      console.info("MIMI // saveZineToProfile: Calling updateTasteGraph...");
-      updateTasteGraph(uid, 'text', { content: `${zine.title} - ${zine.meta?.intent || ''} - ${zine.pages?.map(p => p.bodyCopy).join(' ')}` });
-
       if (stagedPublic && consentFields) {
         const { transmission } = buildConsentAwareTransmission(
           {
             userId: uid,
             userHandle: handle,
             content: zine.title,
-            imageUrl: coverUrl || (zine.pages && zine.pages[0]?.image_url) || '',
+            imageUrl: resolvedCoverUrl || (zine.pages && zine.pages[0]?.image_url) || '',
             type: 'manifest',
             likes: 0,
             zineData: meta,
