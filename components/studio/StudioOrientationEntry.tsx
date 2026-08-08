@@ -69,9 +69,8 @@ export type StudioOrientationEntryProps = {
 };
 
 /**
- * Primary /studio entry — calm orientation + multimodal intake.
- * Not a wrapper around StudioWorktable; the archival desk lives only on
- * /studio/worktable-legacy during migration.
+ * Alternate /studio/orientation entry — calm orientation + multimodal intake.
+ * Primary /studio mounts the archival StudioWorktable desk.
  */
 export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
   onRefine,
@@ -428,12 +427,12 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
               type="button"
               onClick={() => {
                 if (onNavigatePath) {
-                  onNavigatePath("/studio/worktable-legacy?console=1");
+                  onNavigatePath("/studio?console=1");
                   return;
                 }
                 window.dispatchEvent(
                   new CustomEvent("mimi:route-request", {
-                    detail: { path: "/studio/worktable-legacy?console=1" },
+                    detail: { path: "/studio?console=1" },
                   }),
                 );
               }}
@@ -519,22 +518,22 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
               ))}
               <li>
                 <a
-                  href="/studio/worktable-legacy"
+                  href="/studio"
                   onClick={(e) => {
                     e.preventDefault();
                     if (onNavigatePath) {
-                      onNavigatePath("/studio/worktable-legacy");
+                      onNavigatePath("/studio");
                       return;
                     }
                     window.dispatchEvent(
                       new CustomEvent("mimi:route-request", {
-                        detail: { path: "/studio/worktable-legacy" },
+                        detail: { path: "/studio" },
                       }),
                     );
                   }}
                   className="flex min-h-11 w-full items-center justify-between gap-3 px-1 py-2 text-left font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--mimi-stone,#78716c)] underline decoration-dotted underline-offset-4 hover:text-[var(--mimi-ink,#0a0a0a)]"
                 >
-                  <span>Legacy worktable (experimental)</span>
+                  <span>Archival worktable desk</span>
                   <span aria-hidden>→</span>
                 </a>
               </li>

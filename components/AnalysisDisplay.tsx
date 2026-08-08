@@ -47,6 +47,8 @@ import {
 import { logProductTasteEvent } from '../services/tasteLogger';
 import { getFishShareUrl } from '../lib/siteHost';
 import { ZineLayoutEditor } from './ZineLayoutEditor';
+import { TasteCritiqueCard } from './studio/TasteCritiqueCard';
+import type { TasteCritique } from '../schemas/tasteIntelligenceContracts';
 import { FloatingCylinderToolbar, type FloatingCylinderToolbarItem } from './ui/FloatingCylinderToolbar';
 import { ZineSpreadCanvas } from './ZineSpreadCanvas';
 import {
@@ -188,8 +190,11 @@ export const AnalysisDisplay: React.FC<{
  metadata: ZineMetadata, 
  onReset: () => void, 
  onUpdateMetadata: (updatedMetadata: ZineMetadata) => void,
- onExtractTailorLogic?: (logic: any) => void
-}> = ({ metadata, onReset, onUpdateMetadata, onExtractTailorLogic }) => {
+ onExtractTailorLogic?: (logic: any) => void,
+ tasteCritique?: TasteCritique | null,
+ tasteCritiqueLoading?: boolean,
+ tasteCritiqueUnavailable?: boolean,
+}> = ({ metadata, onReset, onUpdateMetadata, onExtractTailorLogic, tasteCritique, tasteCritiqueLoading, tasteCritiqueUnavailable }) => {
  const { user, profile, activePersona, toggleZineStar } = useUser();
   const isOwner = user?.uid === metadata.userId;
 
@@ -1627,6 +1632,16 @@ export const AnalysisDisplay: React.FC<{
       >
         Generate Full High-Fi Zine
       </button>
+    </div>
+  )}
+
+  {isOwner && (tasteCritiqueLoading || tasteCritique || tasteCritiqueUnavailable) && (
+    <div className="shrink-0 px-4 py-3 border-b border-stone-700/20 bg-stone-950/40 relative z-[10001]">
+      <TasteCritiqueCard
+        critique={tasteCritique ?? null}
+        loading={tasteCritiqueLoading}
+        unavailable={tasteCritiqueUnavailable}
+      />
     </div>
   )}
 

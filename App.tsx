@@ -59,6 +59,9 @@ import { ZineConfiguration } from "./components/ZineConfiguration";
 import { ApiKeyShield } from "./components/ApiKeyShield";
 import { ZineGenerationOptions } from "./types";
 import { InputStudio } from "./components/InputStudio";
+import { critiqueTasteCandidate } from "./services/tasteIntelligenceClient";
+import { zineMetadataToGeneratedArtifact } from "./lib/tasteIntelligence/generatedArtifact";
+import type { TasteCritique } from "./schemas/tasteIntelligenceContracts";
 import { StudioOrientationEntry } from "./components/studio/StudioOrientationEntry";
 import { StudioWorktable } from "./components/worktable/StudioWorktable";
 import { StudioChrome } from "./components/studio/StudioChrome";
@@ -1436,7 +1439,10 @@ export const App: React.FC = () => {
       : null;
   const rawViewMode = pathParts[0] || "studio";
   const viewMode = isZineRoute ? "studio" : canonicalizeMimiRoute(rawViewMode);
-  /** Explicit migration surface — archival desk is not the /studio entry. */
+  /** Calm orientation intake — optional alternate /studio entry. */
+  const isStudioOrientation =
+    viewMode === "studio" && pathParts[1] === "orientation";
+  /** Legacy alias — redirects to /studio (archival worktable is the default). */
   const isStudioWorktableLegacy =
     viewMode === "studio" && pathParts[1] === "worktable-legacy";
   const isLegacyStyleLabRoute = [
@@ -1618,6 +1624,9 @@ export const App: React.FC = () => {
 
   const [showQuotaShield, setShowQuotaShield] = useState(false);
   const [zineMetadata, setZineMetadata] = useState<ZineMetadata | null>(null);
+  const [tasteCritique, setTasteCritique] = useState<TasteCritique | null>(null);
+  const [tasteCritiqueLoading, setTasteCritiqueLoading] = useState(false);
+  const [tasteCritiqueUnavailable, setTasteCritiqueUnavailable] = useState(false);
   const [zineOptions, setZineOptions] = useState<ZineGenerationOptions>({
     style: "balanced",
     theme: "organic",
@@ -1634,16 +1643,22 @@ export const App: React.FC = () => {
   const [studioConsoleOpen, setStudioConsoleOpen] = useState(false);
 
   useEffect(() => {
-    if (!isStudioWorktableLegacy) setStudioConsoleOpen(false);
-  }, [isStudioWorktableLegacy]);
+    if (viewMode !== "studio") setStudioConsoleOpen(false);
+  }, [viewMode]);
 
   useEffect(() => {
-    if (!isStudioWorktableLegacy) return;
+    if (viewMode !== "studio") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("console") === "1") {
       setStudioConsoleOpen(true);
     }
-  }, [isStudioWorktableLegacy]);
+  }, [viewMode, path]);
+
+  useEffect(() => {
+    if (isStudioWorktableLegacy) {
+      navigate("/studio", { replace: true });
+    }
+  }, [isStudioWorktableLegacy, navigate]);
   const [showCaptiveSentinel, setShowCaptiveSentinel] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isHeaderTranslucent, setIsHeaderTranslucent] = useState(false);
@@ -2284,8 +2299,7 @@ export const App: React.FC = () => {
         if (fragmentIds.length > 0) {
           clearApprovedUsedContext("studio", targetUid);
         }
-        navigate("/zine/" + id);
-        setZineMetadata({
+        const zineRecord: ZineMetadata = {
           id,
           userId: targetUid,
           userHandle: profile?.handle || "Ghost",
@@ -2313,7 +2327,35 @@ export const App: React.FC = () => {
           createdAt: Date.now(),
           theme: opts.zineOptions?.theme || "Editorial Stillness",
           aestheticVector: {},
-        });
+        };
+        navigate("/zine/" + id);
+        setZineMetadata(zineRecord);
+        setTasteCritique(null);
+        setTasteCritiqueUnavailable(false);
+
+        if (opts.tasteContractId) {
+          setTasteCritiqueLoading(true);
+          const artifact = zineMetadataToGeneratedArtifact(
+            zineRecord,
+            opts.sourcePromptTags,
+          );
+          void critiqueTasteCandidate({
+            contractId: opts.tasteContractId,
+            artifact,
+            projectId: opts.projectId,
+            persist: true,
+          })
+            .then((result) => {
+              setTasteCritique(result.critique);
+            })
+            .catch(() => {
+              setTasteCritiqueUnavailable(true);
+            })
+            .finally(() => {
+              setTasteCritiqueLoading(false);
+            });
+        }
+
         window.dispatchEvent(
           new CustomEvent("mimi:sound", { detail: { type: "success" } }),
         );
@@ -2741,9 +2783,14 @@ export const App: React.FC = () => {
                 {appState === AppState.REVEALED && zineMetadata ? (
                   <AnalysisDisplay
                     metadata={zineMetadata}
+                    tasteCritique={tasteCritique}
+                    tasteCritiqueLoading={tasteCritiqueLoading}
+                    tasteCritiqueUnavailable={tasteCritiqueUnavailable}
                     onReset={() => {
                       navigate("/studio");
                       setZineMetadata(null);
+                      setTasteCritique(null);
+                      setTasteCritiqueUnavailable(false);
                       setAppState(AppState.IDLE);
                     }}
                     onUpdateMetadata={(updated) => {
@@ -2760,64 +2807,33 @@ export const App: React.FC = () => {
                 ) : (
                   <>
                     {viewMode === "studio" &&
-                      (isStudioWorktableLegacy ? (
-                        studioConsoleOpen ? (
-                          <div className="relative h-full min-h-0 flex flex-col">
-                            <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-worktable,#fafafa)]">
-                              <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
-                                Full console · legacy
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setStudioConsoleOpen(false)}
-                                className="min-h-10 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-ink,#0a0a0a)] border border-[var(--mimi-hairline,#d4d4d4)]"
-                              >
-                                Back to legacy desk
-                              </button>
-                            </div>
-                            <div className="flex-1 min-h-0">
-                              <InputStudio
-                                onRefine={handleRefine}
-                                isThinking={appState === AppState.THINKING}
-                                initialValue={threadValue}
-                                initialMedia={threadMedia}
-                                initialHighFidelity={threadHighFidelity}
-                                zineOptions={zineOptions}
-                                setZineOptions={setZineOptions}
-                              />
-                            </div>
+                      (studioConsoleOpen ? (
+                        <div className="relative h-full min-h-0 flex flex-col">
+                          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-worktable,#fafafa)]">
+                            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
+                              Full console
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setStudioConsoleOpen(false)}
+                              className="min-h-10 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-ink,#0a0a0a)] border border-[var(--mimi-hairline,#d4d4d4)]"
+                            >
+                              Back to worktable
+                            </button>
                           </div>
-                        ) : (
-                          <div className="relative h-full min-h-0 flex flex-col">
-                            <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-worktable,#fafafa)]">
-                              <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
-                                Legacy worktable · experimental
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => navigate("/studio")}
-                                className="min-h-10 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-ink,#0a0a0a)] border border-[var(--mimi-hairline,#d4d4d4)]"
-                              >
-                                Back to Studio
-                              </button>
-                            </div>
-                            <div className="flex-1 min-h-0">
-                              <StudioWorktable
-                                onRefine={handleRefine}
-                                isThinking={appState === AppState.THINKING}
-                                initialValue={threadValue}
-                                initialMedia={threadMedia}
-                                initialHighFidelity={threadHighFidelity}
-                                zineOptions={zineOptions}
-                                setZineOptions={setZineOptions}
-                                onOpenConsole={() => setStudioConsoleOpen(true)}
-                                onOpenMenu={() => setIsNavOpen(true)}
-                                onNavigate={setViewMode}
-                              />
-                            </div>
+                          <div className="flex-1 min-h-0">
+                            <InputStudio
+                              onRefine={handleRefine}
+                              isThinking={appState === AppState.THINKING}
+                              initialValue={threadValue}
+                              initialMedia={threadMedia}
+                              initialHighFidelity={threadHighFidelity}
+                              zineOptions={zineOptions}
+                              setZineOptions={setZineOptions}
+                            />
                           </div>
-                        )
-                      ) : (
+                        </div>
+                      ) : isStudioOrientation ? (
                         <StudioOrientationEntry
                           onRefine={handleRefine}
                           isThinking={appState === AppState.THINKING}
@@ -2829,6 +2845,19 @@ export const App: React.FC = () => {
                           onNavigate={setViewMode}
                           onNavigatePath={navigate}
                           onOpenGuide={() => setIsGuideOpen(true)}
+                        />
+                      ) : (
+                        <StudioWorktable
+                          onRefine={handleRefine}
+                          isThinking={appState === AppState.THINKING}
+                          initialValue={threadValue}
+                          initialMedia={threadMedia}
+                          initialHighFidelity={threadHighFidelity}
+                          zineOptions={zineOptions}
+                          setZineOptions={setZineOptions}
+                          onOpenConsole={() => setStudioConsoleOpen(true)}
+                          onOpenMenu={() => setIsNavOpen(true)}
+                          onNavigate={setViewMode}
                         />
                       ))}
                     {viewMode !== "studio" && (

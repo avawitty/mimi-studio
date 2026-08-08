@@ -13,12 +13,16 @@ import {
   compileTasteGenerationContract,
   critiqueAgainstContract,
   extractCandidateFeatures,
+  mergeGenerationContracts,
+  formatGenerationContractPrompt,
   computeSaturationState,
   buildTastePassport,
   detectContradictions,
   computePairwiseAccuracy,
   explanationCoverage,
   TASTE_PLAN_ENTITLEMENTS,
+  proposeSavedReasonHypotheses,
+  applySavedReasonReview,
 } from "../lib/tasteIntelligence/index.js";
 import {
   tasteCalibrationSessionSchema,
@@ -160,6 +164,23 @@ const critique = critiqueAgainstContract({
 });
 assert(typeof critique.alignmentScore === "number", "critique score");
 
+const merged = mergeGenerationContracts(aligned, {
+  objective: "Editorial test objective",
+  preserve: ["Tailor preserve"],
+  emphasize: [],
+  transform: [],
+  avoid: ["Tailor avoid"],
+  globalRefusals: ["Global refusal"],
+  projectConstraints: ["Project constraint"],
+});
+assert(
+  merged.reconciliation.sources.includes("tailor_profile_v2"),
+  "tailor reconciliation",
+);
+assert(merged.contract.avoid.includes("Global refusal"), "global refusals merged");
+const prompt = formatGenerationContractPrompt(merged.contract, merged.reconciliation);
+assert(prompt.includes("TASTE GENERATION CONTRACT"), "prompt block");
+
 const sat = computeSaturationState("f1", [
   {
     id: "ex1",
@@ -206,6 +227,11 @@ tasteCalibrationSessionSchema.parse({
   createdAt: NOW,
   updatedAt: NOW,
 });
+
+const [whyHypothesis] = proposeSavedReasonHypotheses("verify-artifact", snapshot, ["composition"]);
+assert(whyHypothesis?.artifactId === "verify-artifact", "saved reason propose");
+const confirmedWhy = applySavedReasonReview(whyHypothesis!, "confirm");
+assert(confirmedWhy.userStatus === "confirmed", "saved reason confirm");
 
 console.log("verify:taste-intelligence — OK", {
   pairReason: pair.selectionReason,

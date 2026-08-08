@@ -10,9 +10,18 @@ import type {
   TasteModelEditOperation,
   TasteRefusal,
   TasteRefusalType,
+  SavedReasonHypothesis,
+  GenerationMedium,
+  GenerationMode,
+  TasteGenerationContract,
+  TasteCritique,
 } from "../schemas/tasteIntelligenceContracts.js";
 import type { TasteModelSnapshot } from "../lib/tasteModel/contracts.js";
 import type { TasteModelDelta } from "../lib/tasteIntelligence/computeModelDelta.js";
+import type {
+  GenerationContractReconciliation,
+  TailorGenerationContractInput,
+} from "../lib/tasteIntelligence/mergeGenerationContracts.js";
 
 async function authHeaders(): Promise<HeadersInit> {
   const { auth } = await import("./firebaseInit");
@@ -161,12 +170,118 @@ export async function undoTasteModelEdit(input: {
   });
 }
 
+export async function proposeSavedReasonHypotheses(input: {
+  artifactId: string;
+  tags?: string[];
+  projectId?: string;
+}): Promise<{
+  hypotheses: SavedReasonHypothesis[];
+  snapshotAvailable: boolean;
+}> {
+  return apiFetch("/saved-reason/propose", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function listSavedReasonHypotheses(artifactId?: string): Promise<{
+  hypotheses: SavedReasonHypothesis[];
+}> {
+  const qs = artifactId ? `?artifactId=${encodeURIComponent(artifactId)}` : "";
+  return apiFetch(`/saved-reason${qs}`);
+}
+
+export async function reviewSavedReasonHypothesis(input: {
+  hypothesis: SavedReasonHypothesis;
+  action: "confirm" | "reject" | "edit" | "skip";
+  editedText?: string;
+}): Promise<{ hypothesis: SavedReasonHypothesis }> {
+  return apiFetch("/saved-reason/review", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function persistTasteModelSnapshot(input: {
   snapshot: TasteModelSnapshot;
   projectId?: string;
   workspaceId?: string;
 }): Promise<{ ok: true }> {
   return apiFetch("/snapshot/persist", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function compileTasteGenerationContract(input: {
+  medium: GenerationMedium;
+  mode: GenerationMode;
+  projectId?: string;
+  workspaceId?: string;
+  modelSnapshotId?: string;
+  persist?: boolean;
+  tailorGenerationContract?: TailorGenerationContractInput;
+}): Promise<{
+  contract: TasteGenerationContract;
+  reconciliation: GenerationContractReconciliation;
+  snapshotId: string;
+  promptBlock: string;
+}> {
+  return apiFetch("/compiler/compile", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function critiqueTasteCandidate(input: {
+  contractId?: string;
+  contract?: TasteGenerationContract;
+  artifact: {
+    id: string;
+    medium:
+      | "editorial"
+      | "image"
+      | "writing"
+      | "ui"
+      | "brand"
+      | "fashion"
+      | "product";
+    text?: string;
+    imageRefs?: string[];
+    pages?: Array<{
+      text?: string;
+      imageRef?: string;
+      layoutMetadata?: Record<string, unknown>;
+    }>;
+    generationMetadata?: Record<string, unknown>;
+    sourcePromptTags?: string[];
+  };
+  candidate?: {
+    id: string;
+    featureIds?: string[];
+    tags?: string[];
+  };
+  persist?: boolean;
+  projectId?: string;
+  allowAiExtraction?: boolean;
+}): Promise<{
+  critique: TasteCritique;
+  extracted: {
+    featureIds: string[];
+    labels: string[];
+    tags: string[];
+    evidenceIds: string[];
+    completeness: "full" | "partial" | "failed";
+    partialReason?: string;
+    provenance: Array<{
+      source: "deterministic" | "ai";
+      provider?: string;
+      model?: string;
+      featureCount: number;
+    }>;
+  };
+}> {
+  return apiFetch("/critic/critique", {
     method: "POST",
     body: JSON.stringify(input),
   });

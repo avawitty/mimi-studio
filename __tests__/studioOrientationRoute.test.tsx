@@ -4,8 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { StudioOrientationEntry } from "../components/studio/StudioOrientationEntry";
+import { StudioWorktable } from "../components/worktable/StudioWorktable";
 
-const FORBIDDEN_ON_STUDIO = [
+const FORBIDDEN_ON_ORIENTATION = [
   "FIG. 01",
   "fig. 01",
   "SPARK · GENERATE",
@@ -18,34 +19,22 @@ const FORBIDDEN_ON_STUDIO = [
   "ISSUE",
 ] as const;
 
-describe("/studio orientation entry route", () => {
+describe("/studio routing", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("wires App.tsx so /studio mounts StudioOrientationEntry, not StudioWorktable", () => {
+  it("wires App.tsx so /studio mounts StudioWorktable by default", () => {
     const appSource = readFileSync(resolve(process.cwd(), "App.tsx"), "utf8");
 
     expect(appSource).toMatch(
-      /import\s+\{\s*StudioOrientationEntry\s*\}\s+from\s+"\.\/components\/studio\/StudioOrientationEntry"/,
+      /import\s+\{\s*StudioWorktable\s*\}\s+from\s+"\.\/components\/worktable\/StudioWorktable"/,
     );
-    expect(appSource).toMatch(/pathParts\[1\] === "worktable-legacy"/);
-    expect(appSource).toMatch(/isStudioWorktableLegacy/);
+    expect(appSource).toMatch(/pathParts\[1\] === "orientation"/);
+    expect(appSource).toMatch(/isStudioOrientation/);
 
-    // Primary branch renders the new entry
-    expect(appSource).toMatch(/<StudioOrientationEntry[\s\S]*?\/>/);
-
-    // Worktable only appears inside the legacy branch
-    const legacyBlock = appSource.match(
-      /isStudioWorktableLegacy\s*\?\s*\([\s\S]*?\)\s*:\s*\(\s*<StudioOrientationEntry/,
-    );
-    expect(legacyBlock).toBeTruthy();
-    expect(legacyBlock?.[0]).toMatch(/<StudioWorktable/);
-    expect(legacyBlock?.[0]).toMatch(/Legacy worktable · experimental/);
-
-    // Ensure the studio mount branch prefers orientation entry
     const studioMountIdx = appSource.indexOf(
-      '{viewMode === "studio" &&\n                      (isStudioWorktableLegacy',
+      '{viewMode === "studio" &&\n                      (studioConsoleOpen',
     );
     expect(studioMountIdx).toBeGreaterThan(-1);
     const afterStudioMount = appSource.slice(studioMountIdx);
@@ -56,25 +45,54 @@ describe("/studio orientation entry route", () => {
       nextSiblingIdx === -1
         ? afterStudioMount.slice(0, 8000)
         : afterStudioMount.slice(0, nextSiblingIdx);
-    expect(studioMountSection).toContain("StudioOrientationEntry");
     expect(studioMountSection).toContain("StudioWorktable");
-    expect(studioMountSection).toContain("Legacy worktable · experimental");
+    expect(studioMountSection).toContain("onOpenMenu={() => setIsNavOpen(true)}");
+    expect(studioMountSection).toContain("isStudioOrientation");
+    expect(studioMountSection).toContain("StudioOrientationEntry");
   });
 
-  it("points LAZY_CHAMBERS.studio at StudioOrientationEntry", () => {
+  it("points LAZY_CHAMBERS.studio at StudioWorktable", () => {
     const routesSource = readFileSync(
       resolve(process.cwd(), "lib/routes.tsx"),
       "utf8",
     );
     expect(routesSource).toMatch(
-      /studio:\s*lazy\(\(\)\s*=>\s*import\("\.\.\/components\/studio\/StudioOrientationEntry"\)\)/,
+      /studio:\s*lazy\(\(\)\s*=>\s*import\("\.\.\/components\/worktable\/StudioWorktable"\)\)/,
     );
     expect(routesSource).toMatch(
-      /"studio-worktable-legacy":\s*lazy\(\s*\(\)\s*=>\s*import\("\.\.\/components\/worktable\/StudioWorktable"\)/,
+      /"studio-orientation":\s*lazy\([\s\S]*?StudioOrientationEntry/,
     );
   });
 
-  it("does not render archival desk chrome on the /studio entry", () => {
+  it("renders archival worktable desk chrome on the primary worktable", () => {
+    render(<StudioWorktable onOpenMenu={() => {}} />);
+
+    expect(screen.getByRole("heading", { name: "Mimi" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Studio worktable · archival desk/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Open full chambers menu/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Spark · Generate/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/FIG\. 01/i)).toBeInTheDocument();
+  });
+
+  it("aligns prompt cycle invitation with textarea placeholder", () => {
+    render(<StudioWorktable />);
+
+    const invitation = screen.getByText(
+      /Right now, the material anchoring me is/i,
+    );
+    expect(invitation).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/Right now, the material anchoring me is/i),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render archival desk chrome on the orientation entry", () => {
     render(<StudioOrientationEntry />);
 
     expect(screen.getByRole("heading", { name: "Mimi" })).toBeInTheDocument();
@@ -85,20 +103,19 @@ describe("/studio orientation entry route", () => {
       screen.getByRole("button", { name: /Begin with this/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Legacy worktable \(experimental\)/i }),
+      screen.getByRole("link", { name: /Archival worktable desk/i }),
     ).toBeInTheDocument();
 
     const bodyText = document.body.textContent || "";
-    for (const forbidden of FORBIDDEN_ON_STUDIO) {
+    for (const forbidden of FORBIDDEN_ON_ORIENTATION) {
       expect(bodyText).not.toContain(forbidden);
     }
 
-    // Six-folder mobile nav labels must not appear as a set
     expect(screen.queryByLabelText(/Dossier folders/i)).toBeNull();
     expect(screen.queryByLabelText(/Explore chambers/i)).toBeNull();
   });
 
-  it("submits nested zineOptions with lowercase editorial tone", () => {
+  it("submits nested zineOptions with lowercase editorial tone from orientation", () => {
     const onRefine = vi.fn();
     render(<StudioOrientationEntry onRefine={onRefine} />);
 
