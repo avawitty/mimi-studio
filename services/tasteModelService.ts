@@ -301,6 +301,23 @@ async function enrichSnapshotEmbeddings(
   };
 }
 
+async function patchCompileInputWithPersistedEdits(
+  projectId: string | undefined,
+  compileInput: CompileTasteModelInput,
+): Promise<CompileTasteModelInput> {
+  try {
+    const { listTasteModelEdits } = await import('./tasteIntelligenceClient');
+    const { applyEditsToCompileInput } = await import(
+      '../lib/tasteIntelligence/modelEdits.js'
+    );
+    const { edits } = await listTasteModelEdits(projectId);
+    if (edits.length === 0) return compileInput;
+    return applyEditsToCompileInput(compileInput, edits);
+  } catch {
+    return compileInput;
+  }
+}
+
 export async function compileAndSaveTasteModel(
   input: CompileAndSaveInput,
 ): Promise<{ global?: TasteModelSnapshot; project?: TasteModelSnapshot }> {
@@ -324,7 +341,11 @@ export async function compileAndSaveTasteModel(
       events: globalEvents,
     };
 
-    globalSnapshot = compileTasteModel(globalInput);
+    const patchedGlobalInput = await patchCompileInputWithPersistedEdits(
+      undefined,
+      globalInput,
+    );
+    globalSnapshot = compileTasteModel(patchedGlobalInput);
     globalSnapshot = await enrichSnapshotEmbeddings(input.userId, globalSnapshot);
     await setDoc(
       snapshotDoc(input.userId, 'global'),
@@ -371,7 +392,11 @@ export async function compileAndSaveTasteModel(
       globalSnapshot: priorGlobal,
     };
 
-    projectSnapshot = compileTasteModel(projectInput);
+    const patchedProjectInput = await patchCompileInputWithPersistedEdits(
+      input.projectId,
+      projectInput,
+    );
+    projectSnapshot = compileTasteModel(patchedProjectInput);
     projectSnapshot = await enrichSnapshotEmbeddings(input.userId, projectSnapshot);
     await setDoc(
       snapshotDoc(input.userId, `project-${input.projectId}`),
