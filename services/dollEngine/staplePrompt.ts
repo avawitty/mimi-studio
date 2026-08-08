@@ -44,7 +44,7 @@ export const MIMI_SHELL_STAPLE = {
   mood:
     "Omni Loop Cult — serene superintelligent cult mind, composed editorial supermodel AI resin BJD, slightly uncanny intelligence, manufactured art-doll presence, not horror, not photoreal human",
   negatives:
-    "photoreal human skin pores, seamless limbs without visible ball joints, action figure, Barbie doll, vinyl toy, short thick neck, cartoon anime, heavy glam contour makeup, text, watermarks, logos, busy backgrounds, grotesque distortion, horror gore",
+    "photoreal human skin pores, seamless limbs without visible ball joints, action figure, Barbie doll, vinyl toy, short thick neck, cartoon anime, heavy glam contour makeup, back turned to camera, rear view, from behind, face away from lens, text, watermarks, logos, busy backgrounds, grotesque distortion, horror gore",
 } as const;
 
 export type DollShellView = "portrait" | "full_body" | "profile";
@@ -75,11 +75,11 @@ function hairFromDoll(doll: Pick<Doll, "visualLanguage" | "silhouette">): string
 function framingFor(view: DollShellView): string {
   switch (view) {
     case "full_body":
-      return "full-body standing pose, complete resin BJD silhouette and wardrobe readable, ball joints at neck, shoulders, elbows, wrists and hips clearly visible, soft studio floor shadow, elongated neck still legible";
+      return "full-body standing pose facing the camera, front or subtle three-quarter toward lens, face and eyes visible, complete resin BJD silhouette and wardrobe readable, ball joints at neck, shoulders, elbows, wrists and hips clearly visible, soft studio floor shadow, elongated neck still legible, never back-turned or rear-facing";
     case "profile":
-      return "three-quarter profile emphasizing elongated neck line, resin ball joint at neck and shoulder, ear line, joint cups, and hairstyle continuity";
+      return "three-quarter side profile toward camera with face partially visible (cheek, eye, lips readable), emphasizing elongated neck line, resin ball joint at neck and shoulder, ear line, joint cups, and hairstyle continuity, never rear-facing or back turned away from lens";
     case "portrait":
-      return "tight editorial head-and-shoulders portrait, face clearly readable, elongated neck visible with neck ball joint cup visible, chin slightly lifted";
+      return "tight editorial head-and-shoulders portrait facing camera directly, eyes toward lens, front-facing head-on, face clearly readable, elongated neck visible with neck ball joint cup visible, chin slightly lifted, not turned away, not back view";
     default: {
       const _exhaustive: never = view;
       return _exhaustive;

@@ -270,7 +270,7 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
                         <img
                           src={shellUrl}
                           alt=""
-                          className="absolute inset-0 w-full h-full object-cover"
+                          className="absolute inset-0 w-full h-full object-cover object-[center_18%]"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
