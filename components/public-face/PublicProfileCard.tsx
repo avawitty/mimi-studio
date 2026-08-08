@@ -114,6 +114,11 @@ export const PublicProfileCard: React.FC<PublicProfileCardProps> = ({
                   </p>
                 </div>
               )}
+              {identity.avatarIsDoll && identity.dollLabel ? (
+                <p className="absolute bottom-0 inset-x-0 font-mono text-[7px] uppercase tracking-widest text-center py-1 bg-[var(--mimi-ink,#0a0a0a)]/55 text-[var(--mimi-field,#ffffff)]">
+                  {identity.dollLabel}
+                </p>
+              ) : null}
             </div>
 
             <div className="min-w-0 flex-1 space-y-3">
@@ -140,29 +145,17 @@ export const PublicProfileCard: React.FC<PublicProfileCardProps> = ({
             </div>
           </div>
 
-          {showcase?.dollPortraitUrl && showcase.dollPortraitUrl !== identity.avatarUrl ? (
+          {showcase && !identity.avatarIsDoll && !showcase.dollPortraitUrl ? (
             <div
-              className="shrink-0 w-28 h-28 md:w-32 md:h-32 border-2 overflow-hidden relative self-end"
-              style={{ borderColor: identity.accentHex, backgroundColor: `${identity.accentHex}18` }}
-            >
-              <img
-                src={showcase.dollPortraitUrl}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <p className="absolute bottom-0 inset-x-0 font-mono text-[7px] uppercase tracking-widest text-center py-1 bg-[var(--mimi-ink,#0a0a0a)]/55 text-[var(--mimi-field,#ffffff)]">
-                {showcase.dollLabel}
-              </p>
-            </div>
-          ) : showcase && !identity.avatarUrl ? (
-            <div
-              className="shrink-0 w-28 h-28 md:w-32 md:h-32 border-2 flex flex-col items-center justify-center text-center"
+              className="shrink-0 w-28 h-28 md:w-32 md:h-32 border-2 flex flex-col items-center justify-center text-center self-end"
               style={{ borderColor: identity.accentHex, backgroundColor: `${identity.accentHex}18` }}
             >
               <Sparkles size={18} style={{ color: identity.accentHex }} />
               <p className="font-mono text-[7px] uppercase tracking-widest mt-2 leading-tight px-2">
                 {showcase.dollLabel}
+              </p>
+              <p className="font-mono text-[6px] uppercase tracking-widest mt-2 text-[var(--mimi-stone,#78716c)] px-2">
+                Doll likeness pending
               </p>
             </div>
           ) : null}

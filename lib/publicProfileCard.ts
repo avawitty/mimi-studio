@@ -19,6 +19,9 @@ export type PublicProfileIdentity = {
   displayName?: string;
   bio?: string;
   avatarUrl?: string;
+  /** Public identity uses the published doll likeness when available. */
+  avatarIsDoll: boolean;
+  dollLabel?: string;
   accentHex: string;
 };
 
@@ -27,11 +30,18 @@ export const resolvePublicProfileIdentity = (
   showcase: PublicShowcaseSnapshot | null,
 ): PublicProfileIdentity => {
   const handle = profile.handle || "creator";
+  const dollPortrait = showcase?.dollPortraitUrl;
+  // Doll likeness is the canonical public avatar; photoURL is interim until publish.
+  const avatarUrl = dollPortrait || profile.photoURL || undefined;
+  const avatarIsDoll = Boolean(dollPortrait && avatarUrl === dollPortrait);
+
   return {
     handle,
     displayName: profile.displayName?.trim() || showcase?.dollLabel || undefined,
     bio: profile.bio?.trim() || undefined,
-    avatarUrl: profile.photoURL || showcase?.dollPortraitUrl || undefined,
+    avatarUrl,
+    avatarIsDoll,
+    dollLabel: showcase?.dollLabel,
     accentHex: showcase?.accentHex || "#5A5A40",
   };
 };

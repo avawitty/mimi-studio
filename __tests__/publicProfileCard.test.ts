@@ -22,11 +22,12 @@ const showcase: PublicShowcaseSnapshot = {
   accentHex: "#5A5A40",
   voiceAdjectives: ["precise"],
   motifCandidates: ["lace", "grain"],
+  dollPortraitUrl: "https://example.com/doll.jpg",
   updatedAt: Date.now(),
 };
 
 describe("publicProfileCard helpers", () => {
-  it("resolves identity with avatar, display name, and bio", () => {
+  it("resolves identity with doll portrait as public avatar", () => {
     const identity = resolvePublicProfileIdentity(
       baseProfile({
         displayName: "Atelier",
@@ -39,7 +40,19 @@ describe("publicProfileCard helpers", () => {
     expect(identity.handle).toBe("atelier");
     expect(identity.displayName).toBe("Atelier");
     expect(identity.bio).toBe("Editorial studio.");
+    expect(identity.avatarUrl).toBe("https://example.com/doll.jpg");
+    expect(identity.avatarIsDoll).toBe(true);
+    expect(identity.dollLabel).toBe("Studio Doll");
+  });
+
+  it("falls back to photoURL only before doll likeness is published", () => {
+    const identity = resolvePublicProfileIdentity(
+      baseProfile({ photoURL: "https://example.com/avatar.jpg" }),
+      { ...showcase, dollPortraitUrl: undefined },
+    );
+
     expect(identity.avatarUrl).toBe("https://example.com/avatar.jpg");
+    expect(identity.avatarIsDoll).toBe(false);
   });
 
   it("prefers aesthetic signature for public excerpt", () => {
