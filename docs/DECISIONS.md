@@ -6,18 +6,6 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
----
-
----
-
----
-
----
-
----
-
----
-
 ## 2026-08-08 — Observatory follow-up: Mesopic live, cycles, withdraw, windows
 
 **Decision:** Extend `/api/collective/mmm-report` to return **Mesopic** findings from below-threshold consented signals; infer **cycle notes** from window-half velocity on promoted profiles; add **7/14/30/90d** window selector in UI; enable **in-chamber withdraw** (`withdrawMmmContributionFields`) and unpublish without Pocket.
@@ -85,6 +73,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Product canon places Signature in the **Approve** phase; creators need a sufficient, citable reading they can approve or repair before it becomes durable taste memory. Plate stays shareable; reading stays honest about confidence and evidence.
 
 **Ref:** `services/signatureService.ts`, `lib/signature/signatureSchema.ts`, `components/SignatureView.tsx`, `components/signature/SignatureReading.tsx`, `types.ts` (`AestheticSignature`)
+
+---
+
+---
+
+## 2026-08-08 — Public signature route + incremental evidence patch
+
+**Decision:** Ship `/u/:handle/signature` as a public plate surface (approved signatures only) with server-visible OG HTML on Express (`server.ts`) and Vercel crawler rewrite (`api/og/signature.ts`). Share links point to this URL. When only approved Used Context atoms change, `patchSignatureFromEvidence` updates the reading in-place (debounced) and resets approval to draft; full Re-sync remains for zine/Tailor/taste-model changes.
+
+**Alternatives rejected:** (1) Publishing draft signatures publicly. (2) Full gateway re-generation on every atom toggle. (3) Client-only OG (no crawlable meta).
+
+**Why:** Share cards need a stable public URL and honest visibility (approved only). Evidence approval is frequent enough that full re-sync felt heavy; fingerprint-gated patches keep the reading current without recomputing the whole signature.
+
+**Ref:** `components/PublicSignaturePage.tsx`, `lib/signature/publicSignature.ts`, `lib/signature/signatureFingerprint.ts`, `api/og/signature.ts`, `vercel.json`, `server.ts`, `components/SignatureView.tsx`
 
 ---
 

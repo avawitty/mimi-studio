@@ -84,6 +84,57 @@ describe("publicProfileCard helpers", () => {
     expect(excerpt?.motifs).toEqual(["parchment", "olive"]);
   });
 
+  it("links to full signature page only when approved", () => {
+    const draft = buildPublicSignatureExcerpt(
+      baseProfile({
+        handle: "atelier",
+        tasteProfile: {
+          semantic_signature: "",
+          archetype_weights: {},
+          color_frequency: {},
+          aestheticSignature: {
+            primaryAxis: "Draft axis",
+            secondaryAxis: "",
+            motifs: [],
+            moodCluster: "Quiet",
+            generatedAt: Date.now(),
+            influenceLineage: [],
+            creativeCycles: [],
+            motifEvolution: [],
+            status: "draft",
+          },
+        },
+      }),
+      showcase,
+    );
+    expect(draft?.fullPagePath).toBeUndefined();
+
+    const approved = buildPublicSignatureExcerpt(
+      baseProfile({
+        handle: "atelier",
+        tasteProfile: {
+          semantic_signature: "",
+          archetype_weights: {},
+          color_frequency: {},
+          aestheticSignature: {
+            primaryAxis: "Archival restraint",
+            secondaryAxis: "",
+            motifs: [],
+            moodCluster: "Quiet",
+            generatedAt: Date.now(),
+            influenceLineage: [],
+            creativeCycles: [],
+            motifEvolution: [],
+            status: "approved",
+            approvedAt: Date.now(),
+          },
+        },
+      }),
+      showcase,
+    );
+    expect(approved?.fullPagePath).toBe("/u/atelier/signature");
+  });
+
   it("detects published rip snapshots", () => {
     const rip: PublicRipSnapshot = {
       handle: "atelier",

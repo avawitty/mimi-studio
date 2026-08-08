@@ -11,6 +11,10 @@ import {
   parseSignatureJson,
   type ParsedAestheticSignature,
 } from "../lib/signature/signatureSchema";
+import {
+  computeSignatureFingerprint,
+  fingerprintKey,
+} from "../lib/signature/signatureFingerprint";
 
 export interface SignatureGenerationContext {
   zines: ZineMetadata[];
@@ -152,13 +156,18 @@ function buildSignaturePrompt(ctx: SignatureGenerationContext, zineSummaries: un
 function normalizeSignature(
   parsed: ParsedAestheticSignature,
   ctx: SignatureGenerationContext,
+  opts?: { preserveVersion?: boolean; resetApproval?: boolean },
 ): AestheticSignature {
   const priorVersion = ctx.priorSignature?.version ?? 0;
+  const fingerprint = fingerprintKey(computeSignatureFingerprint(ctx));
+  const prior = ctx.priorSignature;
   return {
     ...parsed,
     generatedAt: Date.now(),
-    status: "draft",
-    version: priorVersion + 1,
+    status: opts?.resetApproval === false && prior?.status === "approved" ? "approved" : "draft",
+    approvedAt: opts?.resetApproval === false ? prior?.approvedAt : undefined,
+    version: opts?.preserveVersion ? priorVersion : priorVersion + 1,
+    contextFingerprint: fingerprint,
     evidenceRefs:
       parsed.evidenceRefs?.length
         ? parsed.evidenceRefs
@@ -244,4 +253,107 @@ export async function generateSignature(
   }
 
   return { ...EMPTY_SIGNATURE, generatedAt: Date.now() };
+}
+
+const PATCH_SYSTEM = `You are Mimi, updating an existing Taste Signature reading after a small evidence change (approved Used Context atoms added, removed, or toggled).
+
+Rules:
+- Preserve stable identity axes and motifs unless the new evidence clearly contradicts them.
+- Update reading, semioticTouchpoints, recommendations, evidenceRefs, and confidence to reflect the delta.
+- Do NOT invent evidence IDs — only use IDs from the provided bundles.
+- Return JSON with ONLY these keys:
+  reading, semioticTouchpoints, recommendations, evidenceRefs, antiSignature (optional), creativeDirections (optional)
+- No markdown wrappers.`;
+
+export async function patchSignatureFromEvidence(
+  current: AestheticSignature,
+  ctx: SignatureGenerationContext,
+  delta: {
+    addedApproved: UsedContextEntry[];
+    removedAtomIds: string[];
+  },
+): Promise<AestheticSignature> {
+  const approved = (ctx.approvedUsedContext ?? []).filter((e) => e.approved);
+  const prompt = `CURRENT SIGNATURE (preserve plate identity unless contradicted):
+${JSON.stringify({
+  primaryAxis: current.primaryAxis,
+  secondaryAxis: current.secondaryAxis,
+  motifs: current.motifs,
+  moodCluster: current.moodCluster,
+  reading: current.reading,
+})}
+
+EVIDENCE DELTA:
+Added or newly approved atoms: ${JSON.stringify(delta.addedApproved.map((e) => ({ id: e.atomId, title: e.title, excerpt: e.content.slice(0, 200) })))}
+Removed atom IDs: ${JSON.stringify(delta.removedAtomIds)}
+
+FULL APPROVED CONTEXT NOW (${approved.length}):
+${JSON.stringify(approved.slice(0, 24).map((e) => ({ id: e.atomId, title: e.title, excerpt: e.content.slice(0, 160) })))}
+
+Known evidence atom IDs: ${JSON.stringify(approved.map((e) => e.atomId))}
+
+Return updated reading sections only.`;
+
+  const applyPatch = (parsed: Record<string, unknown>): AestheticSignature => {
+    const fingerprint = fingerprintKey(computeSignatureFingerprint(ctx));
+    return {
+      ...current,
+      reading: (parsed.reading as AestheticSignature["reading"]) ?? current.reading,
+      semioticTouchpoints:
+        (parsed.semioticTouchpoints as AestheticSignature["semioticTouchpoints"]) ??
+        current.semioticTouchpoints,
+      recommendations:
+        (parsed.recommendations as AestheticSignature["recommendations"]) ??
+        current.recommendations,
+      creativeDirections:
+        (parsed.creativeDirections as AestheticSignature["creativeDirections"]) ??
+        current.creativeDirections,
+      antiSignature:
+        (parsed.antiSignature as AestheticSignature["antiSignature"]) ?? current.antiSignature,
+      evidenceRefs:
+        (parsed.evidenceRefs as AestheticSignature["evidenceRefs"]) ?? current.evidenceRefs,
+      generatedAt: Date.now(),
+      status: "draft",
+      approvedAt: undefined,
+      contextFingerprint: fingerprint,
+    };
+  };
+
+  try {
+    const gateway = await generateViaGateway({
+      prompt,
+      system: PATCH_SYSTEM,
+      role: "textFast",
+      temperature: 0.45,
+    });
+    if (gateway?.text) {
+      let cleaned = gateway.text.trim();
+      if (cleaned.startsWith("```json")) {
+        cleaned = cleaned.replace(/```json\n?/, "").replace(/```$/, "");
+      } else if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/```\n?/, "").replace(/```$/, "");
+      }
+      try {
+        const raw = JSON.parse(cleaned) as Record<string, unknown>;
+        return applyPatch(raw);
+      } catch {
+        /* fall through */
+      }
+    }
+  } catch (e) {
+    console.warn("MIMI // patchSignatureFromEvidence gateway failed:", e);
+  }
+
+  return {
+    ...current,
+    generatedAt: Date.now(),
+    status: "draft",
+    approvedAt: undefined,
+    contextFingerprint: fingerprintKey(computeSignatureFingerprint(ctx)),
+    evidenceRefs: approved.slice(0, 8).map((e) => ({
+      id: e.atomId,
+      title: e.title,
+      source: e.source,
+    })),
+  };
 }

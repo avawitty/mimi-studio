@@ -14,6 +14,7 @@ import { PublicSharePage } from "./components/PublicSharePage";
 import { PublicZineSharePage } from "./components/PublicZineSharePage";
 import { PublicDnaBadge } from "./components/PublicDnaBadge";
 import { MimiYouPublicRoute } from "./components/MimiYouPublicRoute";
+import { PublicSignaturePage } from "./components/PublicSignaturePage";
 import { RipPublicRoute } from "./components/RipPublicRoute";
 import { RipLandingPage } from "./components/RipLandingPage";
 import { FishLandingPage } from "./components/FishLandingPage";
@@ -2489,10 +2490,18 @@ export const App: React.FC = () => {
     }
   }
 
+  if (/^\/u\/[^/]+\/signature\/?$/i.test(window.location.pathname)) {
+    const handle = window.location.pathname.split("/u/")[1]?.split("/")[0];
+    if (handle) {
+      return <PublicSignaturePage handle={handle} navigate={navigate} />;
+    }
+  }
+
   if (
     window.location.pathname.startsWith("/u/") &&
     !window.location.pathname.endsWith("/dna") &&
-    !/^\/u\/[^/]+\/feed\.xml$/i.test(window.location.pathname)
+    !/^\/u\/[^/]+\/feed\.xml$/i.test(window.location.pathname) &&
+    !/^\/u\/[^/]+\/signature\/?$/i.test(window.location.pathname)
   ) {
     const handle = window.location.pathname.split("/u/")[1]?.split("/")[0];
     if (handle) {

@@ -125,6 +125,17 @@
       "destination": "/api/og/zine?id=:id"
     },
     {
+      "source": "/u/:handle/signature",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|TelegramBot|Pinterest|Googlebot|bingbot|Applebot|Embedly|Slack-ImgProxy).*"
+        }
+      ],
+      "destination": "/api/og/signature?handle=:handle"
+    },
+    {
       "source": "/u/:handle",
       "has": [
         {

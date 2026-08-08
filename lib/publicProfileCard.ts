@@ -12,6 +12,8 @@ export type PublicSignatureExcerpt = {
   motifs: string[];
   semanticLine?: string;
   moodCluster?: string;
+  /** Present when an approved signature plate is published at /u/:handle/signature */
+  fullPagePath?: string;
 };
 
 export type PublicProfileIdentity = {
@@ -24,6 +26,14 @@ export type PublicProfileIdentity = {
   dollLabel?: string;
   accentHex: string;
 };
+
+export const getPublicSignaturePagePath = (handle: string): string => {
+  const normalized = handle.trim().toLowerCase().replace(/^@/, "");
+  return `/u/${normalized}/signature`;
+};
+
+export const hasApprovedPublicSignature = (profile: UserProfile): boolean =>
+  profile.tasteProfile?.aestheticSignature?.status === "approved";
 
 export const resolvePublicProfileIdentity = (
   profile: UserProfile,
@@ -56,12 +66,16 @@ export const buildPublicSignatureExcerpt = (
 
   if (signature) {
     const title = signature.primaryAxis || signature.motifs?.[0] || "Taste signature";
+    const handle = profile.handle || showcase?.handle || "creator";
     return {
       title,
       subtitle: signature.secondaryAxis || undefined,
       motifs: (signature.motifs || signature.core_keywords || []).slice(0, 6),
       semanticLine: semantic || signature.moodCluster || undefined,
       moodCluster: signature.moodCluster || undefined,
+      fullPagePath: hasApprovedPublicSignature(profile)
+        ? getPublicSignaturePagePath(handle)
+        : undefined,
     };
   }
 
