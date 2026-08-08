@@ -170,6 +170,11 @@ async function dismissBlockingOverlays(page: Page) {
   if (await essential.count()) {
     await essential.first().click({ force: true }).catch(() => {});
   }
+  const guest = page.getByRole("button", { name: /explore as guest/i });
+  if (await guest.count()) {
+    await guest.first().click({ force: true }).catch(() => {});
+    await page.waitForTimeout(500);
+  }
   const gateway = page.locator("div.fixed.inset-0.z-\\[200\\]");
   if (await gateway.count()) {
     const close = gateway.locator("button").first();

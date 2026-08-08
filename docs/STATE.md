@@ -19,7 +19,7 @@
 | --- | --- | --- | --- | --- |
 | **Scribe** | `/scribe` | shipped | ResearchMemory nested in Atomize tab | Mobile density pass on long capture sessions |
 | **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes; **Owner Slide Templates** UI; 10 editorial calibration plates (incl. Used Context, contact sheet, material specimen, forecast drift); evidence intake **local-first** (IndexedDB blobs + `tailorLocalArchive` when Firestore quota/offline); Let Mimi Read You flow simplified | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
-| **Studio (compose console)** | `/studio` | **partial** | Unified floating pill toolbar + Tools drawer (Anchors, Continuum, Treatments, Context, noise); cover composer + compact Used Context colophon; funded gateway patron/trial credit heal | Live telemetry beyond decorative dash |
+| **Studio (compose console)** | `/studio` | **partial** | Unified floating pill toolbar + Tools drawer; cover composer on desktop; E2E asserts `Cover image composer` (not mobile-only Studio pager); funded gateway patron/trial credit heal | Live telemetry beyond decorative dash |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab; Export Chamber wired from Publisher Console destinations |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
@@ -28,7 +28,7 @@
 | **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; Phase 1 `EvidenceAtom` layer + correction UI; embedding centroid; Studio/Scry auto-embed; ingest mirrors + Used Context conflict UI | Ops backfill/analyze scripts; shadow audit after Gateway model bumps |
 | **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring (label + cosine); server-side recompile on ingest | Embedding space migrations on model change |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context merge hydrate; legacy graph coexists | Semantic retrieval (#223) |
-| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
+| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab: global sessions scoped with `project_id IS NULL`; pair target capped to `n(n−1)/2`; skip/exhaustion complete locally; taste load errors retryable; Pocket why-saved sheet shipped | merge/split graph ops; embedding similarity in critic score |
 
 ---
 

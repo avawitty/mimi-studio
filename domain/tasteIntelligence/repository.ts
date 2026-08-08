@@ -94,6 +94,10 @@ export interface TasteIntelligenceRepository {
   createCalibrationSession(
     input: CreateCalibrationSessionInput,
   ): Promise<TasteCalibrationSession>;
+  getCalibrationSessionById(
+    ownerId: string,
+    sessionId: string,
+  ): Promise<TasteCalibrationSession | null>;
   getActiveCalibrationSession(
     ownerId: string,
     projectId?: string,

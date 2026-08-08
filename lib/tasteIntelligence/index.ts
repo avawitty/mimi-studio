@@ -1,4 +1,5 @@
 export * from "./constants.js";
+export * from "./calibrationSession.js";
 export * from "./selectCalibrationPair.js";
 export * from "./pairwisePreference.js";
 export * from "./refusals.js";

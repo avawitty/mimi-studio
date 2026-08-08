@@ -12,6 +12,7 @@ import {
   DEFAULT_CALIBRATION_QUESTION_COUNT,
   applyPairwiseJudgment,
   selectNextCalibrationPair,
+  capCalibrationTargetCount,
   createModelEdit,
   createUndoEdit,
   computeModelDelta,
@@ -362,7 +363,7 @@ async function handleCalibrationStart(req: any, res: any) {
     const idempotencyKey =
       body.data.idempotencyKey ?? `calibration-start:${decoded.uid}:${Date.now()}`;
 
-    const session = await uow.transaction(async (repositories) => {
+    let session = await uow.transaction(async (repositories) => {
       const existing = await repositories.tasteIntelligence.getActiveCalibrationSession(
         decoded.uid,
         body.data.projectId,
@@ -396,6 +397,23 @@ async function handleCalibrationStart(req: any, res: any) {
       return;
     }
 
+    const cappedTarget = capCalibrationTargetCount(
+      candidates.length,
+      body.data.targetQuestionCount ?? DEFAULT_CALIBRATION_QUESTION_COUNT,
+    );
+    if (cappedTarget <= 0) {
+      sendJson(res, 200, { session, pair: null, message: "Not enough candidates for pairs." });
+      return;
+    }
+    if (cappedTarget !== session.targetQuestionCount) {
+      session = await uow.transaction(async (repositories) => {
+        return repositories.tasteIntelligence.updateCalibrationSession({
+          ...session,
+          targetQuestionCount: cappedTarget,
+        });
+      });
+    }
+
     const askedPairs = await repo.listCalibrationPairs(session.id);
     const askedKeys = new Set(
       askedPairs.map((p) =>
@@ -420,7 +438,17 @@ async function handleCalibrationStart(req: any, res: any) {
     });
 
     if (!next) {
-      sendJson(res, 200, { session, pair: null });
+      const completedSession =
+        session.status === "active"
+          ? await uow.transaction(async (repositories) =>
+              repositories.tasteIntelligence.updateCalibrationSession({
+                ...session,
+                status: "completed",
+                completedAt: Date.now(),
+              }),
+            )
+          : session;
+      sendJson(res, 200, { session: completedSession, pair: null });
       return;
     }
 
@@ -494,8 +522,9 @@ async function handleCalibrationJudgment(req: any, res: any) {
           `judgment:${body.data.sessionId}:${body.data.pairId}`,
       });
 
-      const sessions = await repositories.tasteIntelligence.getActiveCalibrationSession(
+      const sessions = await repositories.tasteIntelligence.getCalibrationSessionById(
         decoded.uid,
+        body.data.sessionId,
       );
       if (sessions && sessions.id === body.data.sessionId) {
         const answered = sessions.answeredQuestionCount + 1;

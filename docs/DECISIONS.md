@@ -8,6 +8,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Calibration Lab session scope + pair exhaustion hotfix
+
+**Decision:** Global `/tailor/calibrate` sessions resolve only rows with `project_id IS NULL` (not a wildcard over project sessions). Cap `targetQuestionCount` to `n(n−1)/2` unique candidate pairs; mark sessions completed when no next pair exists. Client marks skip/exhaustion complete without reload. Distinguish taste model load errors from empty evidence.
+
+**Alternatives rejected:** (1) `projectId === undefined` matching any active session. (2) Leaving active sessions with `pair: null` rendering a blank panel. (3) Telling users to add evidence when the model failed to load.
+
+**Why:** #281 introduced global/project session bleed and pair-cap bugs; #280 E2E waited on mobile-only Studio pager on desktop Chromium.
+
+**Ref:** `infrastructure/database/neon/tasteIntelligenceRepository.ts`, `lib/tasteIntelligence/calibrationSession.ts`, `components/tailor/CalibrationLab.tsx`, `__tests__/calibrationLab.test.ts`, `e2e/mimi.spec.ts`
+
+---
+
 ## 2026-08-08 — Installed PWA edge-to-edge viewport shell
 
 **Decision:** Harden the installed-PWA frame for any screen size: pre-paint `mimi-pwa-shell` class on `<html>`, `lib/pwaShell.ts` bootstrap syncing `--mimi-viewport-height` from `visualViewport`, layered `100dvh` / `-webkit-fill-available` fallbacks, fixed `inset: 0` shell in standalone/fullscreen display modes, manifest `orientation: any` + `scope: /`, and `interactive-widget=resizes-content` on the viewport meta.
