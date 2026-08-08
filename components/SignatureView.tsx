@@ -18,7 +18,11 @@ import {
 } from "recharts";
 import * as htmlToImage from "html-to-image";
 import { SignaturePlate } from "./signature/SignaturePlate";
-import { SignatureApproveBar, SignatureReading } from "./signature/SignatureReading";
+import { SignatureApproveBar, SignaturePublishBar, SignatureReading } from "./signature/SignatureReading";
+import {
+  buildPublicSignatureSnapshot,
+  canPublishSignature,
+} from "../lib/signature/publishSignature";
 import { PublicField, PublicCTA } from "./public-face";
 import { PressReveal } from "./motion/PressReveal";
 import {
@@ -302,8 +306,47 @@ export const SignatureView: React.FC = () => {
     }
   };
 
+  const handlePublish = async () => {
+    if (!user || !signature || !profile?.handle || !canPublishSignature(signature)) return;
+    setBusy(true);
+    try {
+      const snapshot = buildPublicSignatureSnapshot(profile.handle, signature);
+      await updateProfile({ ...profile, publicSignature: snapshot });
+      window.dispatchEvent(
+        new CustomEvent("mimi:toast", {
+          detail: { message: "Signature published publicly", type: "success" },
+        }),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    if (!user || !profile) return;
+    setBusy(true);
+    try {
+      await updateProfile({ ...profile, publicSignature: null });
+      window.dispatchEvent(
+        new CustomEvent("mimi:toast", {
+          detail: { message: "Public signature withdrawn", type: "success" },
+        }),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleCopyShareLink = async () => {
     const handle = profile?.handle;
+    if (!handle || !profile?.publicSignature?.publishedAt) {
+      window.dispatchEvent(
+        new CustomEvent("mimi:toast", {
+          detail: { message: "Publish your signature before sharing the public plate.", type: "info" },
+        }),
+      );
+      return;
+    }
     const url = handle
       ? `${window.location.origin}/u/${handle}/signature`
       : `${window.location.origin}/signature`;
@@ -444,6 +487,14 @@ export const SignatureView: React.FC = () => {
           status={signature.status}
           onApprove={() => void handleApprove()}
           onRepair={handleRepair}
+          busy={busy}
+        />
+
+        <SignaturePublishBar
+          approved={signature.status === "approved"}
+          published={Boolean(profile?.publicSignature?.publishedAt)}
+          onPublish={() => void handlePublish()}
+          onUnpublish={() => void handleUnpublish()}
           busy={busy}
         />
 

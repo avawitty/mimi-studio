@@ -11,16 +11,18 @@ export type PublicSignatureSeo = {
   pageUrl: string;
 };
 
-/** Approved signatures only — draft readings stay private. */
-export function extractApprovedPublicSignature(
-  profile: Pick<UserProfile, "tasteProfile"> | Record<string, unknown> | null | undefined,
+/** Published signatures only — approved private readings stay off public routes. */
+export function extractPublishedPublicSignature(
+  profile: Pick<UserProfile, "publicSignature"> | Record<string, unknown> | null | undefined,
 ): AestheticSignature | null {
   if (!profile) return null;
-  const tasteProfile = (profile as UserProfile).tasteProfile;
-  const sig = tasteProfile?.aestheticSignature;
-  if (!sig || sig.status !== "approved") return null;
-  return sig;
+  const snapshot = (profile as UserProfile).publicSignature;
+  if (!snapshot?.signature || !snapshot.publishedAt) return null;
+  return snapshot.signature;
 }
+
+/** @deprecated Use extractPublishedPublicSignature — approval alone is not publication. */
+export const extractApprovedPublicSignature = extractPublishedPublicSignature;
 
 export function publicSignaturePlateTitle(sig: AestheticSignature): string {
   return sig.primaryAxis || sig.motifs?.[0] || "Aesthetic signature";

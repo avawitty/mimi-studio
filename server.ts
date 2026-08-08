@@ -2070,9 +2070,9 @@ async function startServer() {
 
       let html = fs.readFileSync(htmlPath, "utf8");
       const profile = await fetchPublicProfileByHandleServer(handle);
-      const { extractApprovedPublicSignature, buildPublicSignatureSeo, injectSignatureSeoIntoIndexHtml } =
+      const { extractPublishedPublicSignature, buildPublicSignatureSeo, injectSignatureSeoIntoIndexHtml } =
         await import("./lib/signature/publicSignature.js");
-      const signature = extractApprovedPublicSignature(profile);
+      const signature = extractPublishedPublicSignature(profile);
       const showcase = (profile?.publicShowcase || {}) as Record<string, unknown>;
       const pageUrl = `https://${req.get("host")}/u/${handle.toLowerCase()}/signature`;
       const seo = buildPublicSignatureSeo(handle, signature, {

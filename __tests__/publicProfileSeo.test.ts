@@ -20,10 +20,10 @@ const profile = {
 } as UserProfile;
 
 describe("publicProfileSeo", () => {
-  it("builds SEO from bio and doll portrait", () => {
+  it("builds SEO from published showcase fields only", () => {
     const seo = buildPublicProfileSeoData(profile, "https://mimi.you");
-    expect(seo.title).toBe("Atelier (@atelier)");
-    expect(seo.description).toBe("Editorial studio for quiet evidence.");
+    expect(seo.title).toBe("Studio Doll (@atelier)");
+    expect(seo.description).toBe("Quiet evidence over noise.");
     expect(seo.imageUrl).toBe("https://example.com/doll.jpg");
     expect(seo.pageUrl).toBe("https://mimi.you/u/atelier");
   });
