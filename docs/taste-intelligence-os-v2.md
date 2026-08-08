@@ -164,7 +164,7 @@ npm run verify:collective
 
 - Full Scry UI “why matched” panels not yet wired in `ScryView`.
 - AI-assisted critic feature extraction route pending dedicated operation registration.
-- Graph editor UI for merge/split/connect is partial — merge/split behind `TASTE_GRAPH_MERGE_SPLIT=1`; connect/disconnect/rename/refine shipped in Pattern Graph.
+- Graph editor UI for merge/split/connect — merge/split behind `TASTE_GRAPH_MERGE_SPLIT=1` / `VITE_TASTE_GRAPH_MERGE_SPLIT=1`; connect/disconnect/rename/refine shipped in Pattern Graph.
 - Collaborative contract workspace UI is API-ready, not a full chamber yet.
 - Neon required for Calibration Lab persistence in production; local dev falls back gracefully.
 

@@ -69,6 +69,12 @@ export function createUndoEdit(original: TasteModelEdit): TasteModelEdit {
   };
 }
 
+/** Map compiled feature id to Tailor pattern cluster id when applicable. */
+function clusterIdFromFeatureId(featureId: string): string | null {
+  const prefix = "pattern_cluster:";
+  return featureId.startsWith(prefix) ? featureId.slice(prefix.length) : null;
+}
+
 /** Apply edit deltas to compile input clusters/laws metadata before recompilation. */
 export function applyEditsToCompileInput(
   input: CompileTasteModelInput,
@@ -80,16 +86,18 @@ export function applyEditsToCompileInput(
   for (const edit of edits) {
     switch (edit.operation) {
       case "rename": {
-        const clusterId = edit.targetIds[0];
-        const cluster = clusters.find((c) => c.id === clusterId);
+        const featureId = edit.targetIds[0];
+        const clusterId = featureId ? clusterIdFromFeatureId(featureId) ?? featureId : null;
+        const cluster = clusterId ? clusters.find((c) => c.id === clusterId) : undefined;
         if (cluster && typeof edit.after.label === "string") {
           cluster.name = edit.after.label;
         }
         break;
       }
       case "set_weight": {
-        const clusterId = edit.targetIds[0];
-        const cluster = clusters.find((c) => c.id === clusterId);
+        const featureId = edit.targetIds[0];
+        const clusterId = featureId ? clusterIdFromFeatureId(featureId) ?? featureId : null;
+        const cluster = clusterId ? clusters.find((c) => c.id === clusterId) : undefined;
         if (cluster && typeof edit.after.userWeight === "string") {
           cluster.userWeight = edit.after.userWeight as typeof cluster.userWeight;
         }
@@ -103,8 +111,69 @@ export function applyEditsToCompileInput(
         }
         break;
       }
-      case "merge":
-      case "split":
+      case "merge": {
+        const [survivorFeatureId, absorbedFeatureId] = edit.targetIds;
+        if (!survivorFeatureId || !absorbedFeatureId) break;
+        const survivorClusterId = clusterIdFromFeatureId(survivorFeatureId);
+        const absorbedClusterId = clusterIdFromFeatureId(absorbedFeatureId);
+        if (!survivorClusterId || !absorbedClusterId) break;
+        const survivor = clusters.find((c) => c.id === survivorClusterId);
+        const absorbed = clusters.find((c) => c.id === absorbedClusterId);
+        if (!survivor || !absorbed) break;
+        if (typeof edit.after.label === "string") {
+          survivor.name = edit.after.label;
+        }
+        survivor.observationIds = [
+          ...new Set([...survivor.observationIds, ...absorbed.observationIds]),
+        ];
+        survivor.supportingEvidenceNodeIds = [
+          ...new Set([
+            ...survivor.supportingEvidenceNodeIds,
+            ...absorbed.supportingEvidenceNodeIds,
+          ]),
+        ];
+        const absorbedIndex = clusters.findIndex((c) => c.id === absorbedClusterId);
+        if (absorbedIndex >= 0) clusters.splice(absorbedIndex, 1);
+        break;
+      }
+      case "split": {
+        const parentFeatureId = edit.targetIds[0];
+        if (!parentFeatureId) break;
+        const parentClusterId = clusterIdFromFeatureId(parentFeatureId);
+        if (!parentClusterId) break;
+        const parent = clusters.find((c) => c.id === parentClusterId);
+        if (!parent) break;
+        const newClusterId =
+          typeof edit.after.newFeatureId === "string"
+            ? clusterIdFromFeatureId(edit.after.newFeatureId) ??
+              edit.after.newFeatureId.replace(/^pattern_cluster:/, "")
+            : `${parentClusterId}:split:${edit.id.slice(0, 8)}`;
+        const newLabel =
+          typeof edit.after.label === "string"
+            ? edit.after.label
+            : `${parent.name} (variant)`;
+        const ratio =
+          typeof edit.after.splitRatio === "number"
+            ? Math.max(0.1, Math.min(0.9, edit.after.splitRatio))
+            : 0.5;
+        const childObs = parent.observationIds.slice(
+          0,
+          Math.max(1, Math.floor(parent.observationIds.length * ratio)),
+        );
+        clusters.push({
+          ...parent,
+          id: newClusterId,
+          name: newLabel,
+          observationIds: childObs,
+          supportingEvidenceNodeIds: [...parent.supportingEvidenceNodeIds],
+          createdAt: edit.createdAt,
+          updatedAt: edit.createdAt,
+        });
+        parent.observationIds = parent.observationIds.filter(
+          (id) => !childObs.includes(id),
+        );
+        break;
+      }
       case "connect":
       case "disconnect":
       case "set_alias":

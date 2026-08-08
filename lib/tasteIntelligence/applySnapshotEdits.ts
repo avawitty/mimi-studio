@@ -39,6 +39,116 @@ function applyFeaturePatch(
   );
 }
 
+function dedupeInteractionRules(
+  rules: TasteInteractionRule[],
+): TasteInteractionRule[] {
+  const seen = new Set<string>();
+  const next: TasteInteractionRule[] = [];
+  for (const rule of rules) {
+    const pair = [...rule.featureIds].sort().join("|");
+    if (rule.featureIds[0] === rule.featureIds[1] || seen.has(pair)) continue;
+    seen.add(pair);
+    next.push(rule);
+  }
+  return next;
+}
+
+function remapInteractionRules(
+  rules: TasteInteractionRule[],
+  fromId: string,
+  toId: string,
+): TasteInteractionRule[] {
+  return dedupeInteractionRules(
+    rules.map((rule) => ({
+      ...rule,
+      featureIds: rule.featureIds.map((id) =>
+        id === fromId ? toId : id,
+      ) as [string, string],
+    })),
+  );
+}
+
+function mergeFeatureWeights(
+  survivor: TasteFeatureWeight,
+  absorbed: TasteFeatureWeight,
+  mergedLabel: string,
+): TasteFeatureWeight {
+  const totalMass = survivor.evidenceMass + absorbed.evidenceMass;
+  const mergedWeight =
+    totalMass > 0
+      ? (survivor.signedWeight * survivor.evidenceMass +
+          absorbed.signedWeight * absorbed.evidenceMass) /
+        totalMass
+      : (survivor.signedWeight + absorbed.signedWeight) / 2;
+
+  return {
+    ...survivor,
+    label: mergedLabel,
+    signedWeight: mergedWeight,
+    confidence: Math.max(survivor.confidence, absorbed.confidence),
+    evidenceMass: survivor.evidenceMass + absorbed.evidenceMass,
+    explicitMass: survivor.explicitMass + absorbed.explicitMass,
+    implicitMass: survivor.implicitMass + absorbed.implicitMass,
+    sourceIds: [...new Set([...survivor.sourceIds, ...absorbed.sourceIds])],
+    contextScopes: [
+      ...new Set([...survivor.contextScopes, ...absorbed.contextScopes]),
+    ],
+    firstSeenAt: Math.min(
+      survivor.firstSeenAt ?? Date.now(),
+      absorbed.firstSeenAt ?? Date.now(),
+    ),
+    lastSeenAt: Math.max(
+      survivor.lastSeenAt ?? 0,
+      absorbed.lastSeenAt ?? 0,
+    ),
+  };
+}
+
+/** Keep trajectory buckets aligned with surviving feature IDs after structural edits. */
+function syncTrajectoryFromFeatures(
+  snapshot: TasteModelSnapshot,
+): TasteModelSnapshot {
+  const featureIds = new Set(snapshot.featureWeights.map((f) => f.featureId));
+  const filterBucket = (ids: string[]) => ids.filter((id) => featureIds.has(id));
+
+  const trajectory = {
+    emergingFeatureIds: filterBucket(snapshot.trajectory.emergingFeatureIds),
+    strengtheningFeatureIds: filterBucket(
+      snapshot.trajectory.strengtheningFeatureIds,
+    ),
+    stableFeatureIds: filterBucket(snapshot.trajectory.stableFeatureIds),
+    decliningFeatureIds: filterBucket(snapshot.trajectory.decliningFeatureIds),
+  };
+
+  const placed = new Set([
+    ...trajectory.emergingFeatureIds,
+    ...trajectory.strengtheningFeatureIds,
+    ...trajectory.stableFeatureIds,
+    ...trajectory.decliningFeatureIds,
+  ]);
+
+  for (const fw of snapshot.featureWeights) {
+    if (placed.has(fw.featureId)) continue;
+    switch (fw.trend) {
+      case "emerging":
+        trajectory.emergingFeatureIds.push(fw.featureId);
+        break;
+      case "strengthening":
+        trajectory.strengtheningFeatureIds.push(fw.featureId);
+        break;
+      case "declining":
+        trajectory.decliningFeatureIds.push(fw.featureId);
+        break;
+      default:
+        trajectory.stableFeatureIds.push(fw.featureId);
+        break;
+    }
+    placed.add(fw.featureId);
+  }
+
+  return { ...snapshot, trajectory };
+}
+
 function applyEditToSnapshot(
   snapshot: TasteModelSnapshot,
   edit: TasteModelEdit,
@@ -164,9 +274,107 @@ function applyEditToSnapshot(
       );
       break;
     }
-    case "merge":
-    case "split":
-      break;
+    case "merge": {
+      const [survivorId, absorbedId] = edit.targetIds;
+      if (!survivorId || !absorbedId) break;
+
+      const undoSurvivor = edit.after.survivor as TasteFeatureWeight | undefined;
+      const undoAbsorbed = edit.after.absorbed as TasteFeatureWeight | undefined;
+      const preMergeRules = edit.after.preMergeRules as
+        | TasteInteractionRule[]
+        | undefined;
+      if (undoSurvivor && undoAbsorbed) {
+        next.featureWeights = next.featureWeights
+          .filter((f) => f.featureId !== survivorId && f.featureId !== absorbedId)
+          .concat([undoSurvivor, undoAbsorbed]);
+        next.interactionRules = preMergeRules
+          ? dedupeInteractionRules(preMergeRules.map((rule) => ({ ...rule })))
+          : dedupeInteractionRules(next.interactionRules);
+        return syncTrajectoryFromFeatures(next);
+      }
+
+      const survivor = next.featureWeights.find(
+        (f) => f.featureId === survivorId,
+      );
+      const absorbed = next.featureWeights.find(
+        (f) => f.featureId === absorbedId,
+      );
+      if (!survivor || !absorbed) break;
+
+      const mergedLabel =
+        typeof edit.after.label === "string"
+          ? edit.after.label
+          : `${survivor.label} + ${absorbed.label}`;
+      const merged = mergeFeatureWeights(survivor, absorbed, mergedLabel);
+
+      next.featureWeights = next.featureWeights
+        .filter((f) => f.featureId !== absorbedId)
+        .map((f) => (f.featureId === survivorId ? merged : f));
+      next.interactionRules = remapInteractionRules(
+        next.interactionRules,
+        absorbedId,
+        survivorId,
+      );
+      return syncTrajectoryFromFeatures(next);
+    }
+    case "split": {
+      const parentId = edit.targetIds[0];
+      if (!parentId) break;
+
+      const undoParent = edit.after.parent as TasteFeatureWeight | undefined;
+      const childId =
+        typeof edit.before.newFeatureId === "string"
+          ? edit.before.newFeatureId
+          : undefined;
+      if (undoParent && childId) {
+        next.featureWeights = next.featureWeights
+          .filter((f) => f.featureId !== childId)
+          .map((f) => (f.featureId === parentId ? undoParent : f));
+        next.interactionRules = next.interactionRules.filter(
+          (rule) => !rule.featureIds.includes(childId),
+        );
+        return syncTrajectoryFromFeatures(next);
+      }
+
+      const parent = next.featureWeights.find((f) => f.featureId === parentId);
+      if (!parent) break;
+
+      const newFeatureId =
+        typeof edit.after.newFeatureId === "string"
+          ? edit.after.newFeatureId
+          : `${parentId}:split:${edit.id.slice(0, 8)}`;
+      const newLabel =
+        typeof edit.after.label === "string"
+          ? edit.after.label
+          : `${parent.label} (variant)`;
+      const ratio =
+        typeof edit.after.splitRatio === "number"
+          ? Math.max(0.1, Math.min(0.9, edit.after.splitRatio))
+          : 0.5;
+
+      const child: TasteFeatureWeight = {
+        ...parent,
+        featureId: newFeatureId,
+        label: newLabel,
+        signedWeight: parent.signedWeight * ratio,
+        evidenceMass: parent.evidenceMass * ratio,
+        explicitMass: parent.explicitMass * ratio,
+        implicitMass: parent.implicitMass * ratio,
+        sourceIds: [...parent.sourceIds],
+      };
+      const updatedParent: TasteFeatureWeight = {
+        ...parent,
+        signedWeight: parent.signedWeight * (1 - ratio),
+        evidenceMass: parent.evidenceMass * (1 - ratio),
+        explicitMass: parent.explicitMass * (1 - ratio),
+        implicitMass: parent.implicitMass * (1 - ratio),
+      };
+
+      next.featureWeights = next.featureWeights
+        .map((f) => (f.featureId === parentId ? updatedParent : f))
+        .concat(child);
+      return syncTrajectoryFromFeatures(next);
+    }
     default: {
       const _exhaustive: never = edit.operation;
       void _exhaustive;

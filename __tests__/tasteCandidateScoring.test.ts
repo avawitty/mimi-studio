@@ -236,7 +236,7 @@ describe('scoreTasteCandidate', () => {
     expect(score.confidence).toBeLessThanOrEqual(0.95);
   });
 
-  it('blends embedding similarity when centroid is available', () => {
+  it('blends embedding centroid when snapshot centroid is available', () => {
     const centroid = [1, 0, 0];
     const withCentroid = {
       ...snapshot,
@@ -252,5 +252,44 @@ describe('scoreTasteCandidate', () => {
       withCentroid,
     );
     expect(withEmbed.fitScore).toBeGreaterThan(labelOnly.fitScore);
+  });
+
+  it('embedding similarity boosts aligned label overlap', () => {
+    const aligned = scoreTasteCandidate(
+      { id: 'aligned', tags: ['minimal', 'sparse forms'] },
+      snapshot,
+    );
+    const unrelated = scoreTasteCandidate(
+      { id: 'unrelated', tags: ['neon', 'corporate sports'] },
+      snapshot,
+    );
+    expect(aligned.components.embeddingSimilarity).toBeGreaterThan(
+      unrelated.components.embeddingSimilarity,
+    );
+  });
+
+  it('real embedding vectors increase similarity for aligned candidates', () => {
+    const baseVec = [1, 0, 0, 0];
+    const nearVec = [0.95, 0.05, 0, 0];
+    const farVec = [0, 1, 0, 0];
+    const snapshotWithEmb = {
+      ...snapshot,
+      featureWeights: snapshot.featureWeights.map((fw, index) =>
+        index === 0
+          ? { ...fw, signedWeight: 1, embeddingVector: baseVec }
+          : fw,
+      ),
+    };
+    const near = scoreTasteCandidate(
+      { id: 'near', embeddingVector: nearVec },
+      snapshotWithEmb,
+    );
+    const far = scoreTasteCandidate(
+      { id: 'far', embeddingVector: farVec },
+      snapshotWithEmb,
+    );
+    expect(near.components.embeddingSimilarity).toBeGreaterThan(
+      far.components.embeddingSimilarity,
+    );
   });
 });

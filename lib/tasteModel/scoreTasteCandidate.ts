@@ -11,6 +11,7 @@ import {
   SCORE_COEFFICIENTS,
   VERDICT_THRESHOLDS,
 } from './constants';
+import { computeEmbeddingSimilarity } from './embeddingSimilarity';
 
 export interface ScoreContext {
   projectId?: string;
@@ -272,7 +273,14 @@ export function scoreTasteCandidate(
   const candidateFeatures = extractCandidateFeatures(candidate);
 
   const affinity = semanticAffinity(candidateFeatures, snapshot);
-  const blendedAffinity = blendSemanticAffinity(affinity.score, candidate, snapshot);
+  const semanticScore = blendSemanticAffinity(affinity.score, candidate, snapshot);
+  const embedding = computeEmbeddingSimilarity(
+    {
+      ...candidate,
+      embeddingVector: candidate.embeddingVector ?? candidate.embedding,
+    },
+    snapshot,
+  );
   const rule = ruleFit(candidateFeatures, snapshot);
   const ctx = contextFit(snapshot, context);
   const traj = trajectoryFit(candidateFeatures, snapshot);
@@ -282,7 +290,8 @@ export function scoreTasteCandidate(
 
   const coeffs = SCORE_COEFFICIENTS;
   const rawFit =
-    blendedAffinity * coeffs.semanticAffinity +
+    semanticScore * coeffs.semanticAffinity +
+    embedding * coeffs.embeddingSimilarity +
     rule * coeffs.ruleFit +
     ctx * coeffs.contextFit +
     traj * coeffs.trajectoryFit +
@@ -325,6 +334,7 @@ export function scoreTasteCandidate(
     verdict,
     components: {
       semanticAffinity: affinity.score,
+      embeddingSimilarity: embedding,
       ruleFit: rule,
       contextFit: ctx,
       trajectoryFit: traj,

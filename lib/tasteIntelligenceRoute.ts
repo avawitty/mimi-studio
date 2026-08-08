@@ -277,6 +277,10 @@ export async function handleTasteIntelligenceRoute(req: any, res: any) {
     return handleUndoModelEdit(req, res);
   }
   if (action === "model-edits") {
+    if (req.method === "GET") {
+      if (!requireOperationalMethod(req, res, "GET")) return;
+      return handleListModelEdits(req, res);
+    }
     if (!requireOperationalMethod(req, res, "POST")) return;
     return handleCreateModelEdit(req, res);
   }
@@ -706,6 +710,37 @@ async function handleCreateRefusal(req: any, res: any) {
   }
 }
 
+async function handleListModelEdits(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const projectId =
+      typeof req.query?.projectId === "string" ? req.query.projectId : undefined;
+    const limitRaw =
+      typeof req.query?.limit === "string" ? Number(req.query.limit) : 100;
+
+    const { getNeonUnitOfWork } = await import(
+      "../infrastructure/database/neon/unitOfWork.js"
+    );
+    const uow = getNeonUnitOfWork();
+    const edits = await uow.repositories.tasteIntelligence.listModelEdits(
+      decoded.uid,
+      { projectId, limit: Number.isFinite(limitRaw) ? limitRaw : 100 },
+    );
+    sendJson(res, 200, { edits });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "MODEL_EDITS_LIST_FAILED",
+      publicOperationalMessage(
+        500,
+        "Model edits could not be loaded.",
+        String(error),
+      ),
+    );
+  }
+}
+
 async function handleCreateModelEdit(req: any, res: any) {
   try {
     const decoded = await verifyMimiSession(req.headers || {});
@@ -733,7 +768,19 @@ async function handleCreateModelEdit(req: any, res: any) {
       projectId: body.data.projectId,
       operation: body.data.operation,
       targetIds: body.data.targetIds,
-      before: body.data.before,
+      before:
+        body.data.operation === "merge" && body.data.snapshot
+          ? (() => {
+              const [survivorId, absorbedId] = body.data.targetIds;
+              if (!survivorId || !absorbedId) return body.data.before;
+              const preMergeRules = body.data.snapshot.interactionRules.filter(
+                (rule) =>
+                  rule.featureIds.includes(survivorId) ||
+                  rule.featureIds.includes(absorbedId),
+              );
+              return { ...body.data.before, preMergeRules };
+            })()
+          : body.data.before,
       after: body.data.after,
       rationale: body.data.rationale,
     });
