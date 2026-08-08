@@ -40,7 +40,7 @@ export const ObservatoryContributionPanel: React.FC<{
     }
     setLoading(true);
     try {
-      const rows = await fetchUserZines(user.uid);
+      const rows = await fetchUserZines(user.uid, true);
       setZines(rows);
     } finally {
       setLoading(false);
@@ -88,12 +88,16 @@ export const ObservatoryContributionPanel: React.FC<{
     window.location.assign(path);
   };
 
-  const mirrorSovereign = async (zine: ZineMetadata, patch: Record<string, unknown>) => {
+  const mirrorSovereign = async (
+    zine: ZineMetadata,
+    patch: Record<string, unknown>,
+  ): Promise<boolean> => {
     try {
       const { mirrorZineToSovereign } = await import("../../services/sovereignClient");
-      void mirrorZineToSovereign({ ...zine, ...patch });
+      return await mirrorZineToSovereign({ ...zine, ...patch } as ZineMetadata);
     } catch (mirrorErr) {
       console.warn("MIMI // Sovereign contribution mirror failed", mirrorErr);
+      return false;
     }
   };
 
@@ -104,7 +108,10 @@ export const ObservatoryContributionPanel: React.FC<{
     try {
       const patch = withdrawMmmContributionFields();
       await updateDoc(doc(db, "zines", zine.id), patch);
-      await mirrorSovereign(zine, patch);
+      const mirrored = await mirrorSovereign(zine, patch);
+      if (!mirrored) {
+        throw new Error("Sovereign archive did not confirm withdrawal.");
+      }
       feedback.trigger("artifact.saved");
       window.dispatchEvent(new CustomEvent("mimi:artifact_finalized"));
       await reloadZines();
@@ -124,7 +131,10 @@ export const ObservatoryContributionPanel: React.FC<{
     try {
       const patch = unpublishFieldsForZine();
       await updateDoc(doc(db, "zines", zine.id), patch);
-      await mirrorSovereign(zine, patch);
+      const mirrored = await mirrorSovereign(zine, patch);
+      if (!mirrored) {
+        throw new Error("Sovereign archive did not confirm unpublish.");
+      }
       feedback.trigger("artifact.saved");
       window.dispatchEvent(new CustomEvent("mimi:artifact_finalized"));
       await reloadZines();

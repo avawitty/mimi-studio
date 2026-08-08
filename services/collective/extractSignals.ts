@@ -26,6 +26,9 @@ export interface ExtractablePublicZine {
   mmmContributionStatus?: "active" | "withdrawn" | "never" | string;
   /** Owner uid — hashed into opaqueContributorKey; never stored raw on the signal. */
   userId?: string;
+  /** Publication / disclosure time for windowing (not extraction time). */
+  publishedAt?: number;
+  timestamp?: number;
 }
 
 /** Stable opaque contributor key — not reversible presentation of the uid. */
@@ -40,7 +43,7 @@ export function opaqueContributorKeyFromUserId(userId: string): string {
 
 export function extractSignalsFromPublicZine(
   zine: ExtractablePublicZine,
-  now = Date.now(),
+  observedAt = zine.disclosedAt ?? zine.publishedAt ?? zine.timestamp ?? Date.now(),
 ): CollectiveSignal[] {
   // Hard gate: public stage + disclosure version/timestamp + contribute flag.
   // Callers must not extract from silent isPublic toggles.
@@ -60,6 +63,7 @@ export function extractSignalsFromPublicZine(
     ? opaqueContributorKeyFromUserId(zine.userId)
     : undefined;
 
+  const extractedAt = Date.now();
   const signals: CollectiveSignal[] = [];
   const tags = (zine.tags ?? []).map((t) => t.trim()).filter(Boolean);
 
@@ -72,8 +76,8 @@ export function extractSignalsFromPublicZine(
         category: "motif",
         sourceArtifactId: zine.id,
         sourceType: "public_zine",
-        observedAt: now,
-        extractedAt: now,
+        observedAt,
+        extractedAt,
         extractionMethod: "user_tagged",
         opaqueContributorKey,
         publicContributionAllowed: true,
@@ -97,8 +101,8 @@ export function extractSignalsFromPublicZine(
         category: "topic",
         sourceArtifactId: zine.id,
         sourceType: "public_zine",
-        observedAt: now,
-        extractedAt: now,
+        observedAt,
+        extractedAt,
         extractionMethod: "rule_based",
         opaqueContributorKey,
         publicContributionAllowed: true,
@@ -122,8 +126,8 @@ export function extractSignalsFromPublicZine(
         category: "artifact_form",
         sourceArtifactId: zine.id,
         sourceType: "public_zine",
-        observedAt: now,
-        extractedAt: now,
+        observedAt,
+        extractedAt,
         extractionMethod: "rule_based",
         opaqueContributorKey,
         publicContributionAllowed: true,

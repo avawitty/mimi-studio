@@ -120,7 +120,10 @@ export const TheForecast: React.FC<{
     void (async () => {
       const { fetchLiveMeanMedianModeReport } = await import("../services/collective");
       const live = await fetchLiveMeanMedianModeReport({ days: 7 });
-      const observed = live?.report ?? loadMeanMedianModeReport("empty");
+      const observed =
+        live.kind === "success"
+          ? live.data.report
+          : loadMeanMedianModeReport("empty");
       composeCulture(observed, contentForecast);
 
       if (contentForecast || !user) return;

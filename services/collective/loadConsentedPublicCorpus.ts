@@ -26,6 +26,8 @@ export function zineToExtractable(zine: ZineMetadata): ExtractablePublicZine {
     disclosureVersion: zine.disclosureVersion,
     mmmContributionStatus: zine.mmmContributionStatus,
     userId: zine.userId,
+    publishedAt: zine.publishedAt,
+    timestamp: zine.timestamp,
   };
 }
 
