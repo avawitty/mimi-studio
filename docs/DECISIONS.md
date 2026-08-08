@@ -300,6 +300,26 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 
 ---
 
+## 2026-08-07 — mimi.fish / mimi.rip host skins (product intent)
+
+**Decision:** One SPA, three public skins keyed by hostname (`lib/siteHost.ts`):
+
+| Skin | Host | Job |
+| --- | --- | --- |
+| `you` | `mimi.you`, localhost, `*.vercel.app` | Full studio — capture, approve, remember |
+| `fish` | `mimi.fish` | **Share / attention plane** — anything shareable (“fishing for compliments”): public zine plates, token shares, creator shelves; canonical outbound URL `https://mimi.fish/s/:zineId` |
+| `rip` | `mimi.rip` | **Inversion plane** — mirrors `mimi.you` structure but surfaces **opt-in inverted** user data (inverse readings, dark diagnostic plates); not canonical identity |
+
+Fish and Rip are public faces, not separate products. Identity and studio chrome stay on `mimi.you`. Local QA: `?skin=fish|rip` or `localStorage.mimi_site_skin`.
+
+**Alternatives rejected:** Separate deploys per domain; routing all shares through `mimi.you/s/:id`; treating Rip as anonymous-only with no studio chamber.
+
+**Why:** Distinct crawl/share URLs and inverted aesthetic without forking the codebase; fish OG must not leak studio chrome in previews.
+
+**Ref:** `lib/siteHost.ts`, `App.tsx` host branches, `scripts/setupMimiFishDomains.mjs`, `scripts/setupMimiRipDomains.mjs`, Lovable parallel project (host routing queued 2026-08-07).
+
+---
+
 ## 2026-08-04 — Cursor Cloud secrets → `.env.local` bridge
 
 **Decision:** Cloud Agent installs run `npm run sync:cloud-env`, which copies dashboard-injected secrets (notably `AI_GATEWAY_API_KEY`, alias `AI_GATEWAY_KEY`) into git-ignored `.env.local` so `npm run dev` and verify scripts share the same credentials as the agent shell.
@@ -357,6 +377,18 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 **Why:** Matches the elevated-notes mockup: one **floating cylindrical toolbar** scrolls all compose/zine tools inside a single pill — not a modular footnote dock + edge rail.
 
 **Ref:** `components/ui/FloatingCylinderToolbar.tsx`, `components/studio/StudioInstrumentRail.tsx`, `AnalysisDisplay.tsx`
+
+---
+
+## 2026-08-07 — Lovable parallel track phased advisory (menu, toolbar, Tailor, Scry, Press)
+
+**Decision:** Execute product expansion on Lovable project `82416757-f4d9-45c3-9665-4f043ec226e8` in phases: P0 menu + functional Studio toolbar + `/tailor` chamber with generation-contract wiring; P1 Profile/public card + Edit/Pocket/fish-rip; P2 Dolls onboarding + Omni Loop + Mesopic; P3 Scry curiosity profile + Used Context colophon + `/the-press` export chamber. Persist build canon via Lovable `set_project_knowledge`. Track queue status in `docs/STATE.md`.
+
+**Alternatives rejected:** (1) Blocking all Lovable work until queue drains to one message. (2) Requiring Perplexity for Scry v1. (3) Folding Tailor only into `/mimi-you` without dedicated chamber and contract injection.
+
+**Why:** Lovable queue is long but parallel messages preserve phased delivery; production canon (Tailor contract, colophon, Press, Scry lanes) maps cleanly onto TanStack stack; Scry can use existing research.server + credits.
+
+**Ref:** Lovable messages `umsg_01kzetkx9…` (P0), `umsg_01kzetm5…` (P2), `umsg_01kzetrb0…` (P3 Scry/colophon), `umsg_01kzetra4…` (P3 Press); `prd/aesthetic-05-provenance-colophon.md`, `prd/doll-staple-shell.md`
 
 ---
 

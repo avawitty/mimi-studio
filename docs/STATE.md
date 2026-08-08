@@ -96,10 +96,13 @@
 
 ## Public / infrastructure routes
 
-| Route | Status | Notes |
+| Route / host | Status | Notes |
 | --- | --- | --- |
-| `/u/:handle` | shipped | Public doll/profile cards |
-| `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`) |
+| `mimi.you` (skin `you`) | shipped | Full app; canonical identity |
+| `mimi.fish` (skin `fish`) | partial | Share plates + creator shelf; domains attached — run `setup:mimi-fish-domains` for Firebase Auth |
+| `mimi.rip` (skin `rip`) | partial | Inverse public plates + `/rip` chamber; domains attached — run `setup:mimi-rip-domains` |
+| `/u/:handle` | shipped | Public doll/profile cards (skin selects rip/fish/you variant on host) |
+| `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`); canonical share origin `mimi.fish` |
 | `/u/:handle/feed.xml` | shipped | Keep Tabs RSS |
 | `/api/feed` | shipped | Creator feed API |
 
@@ -145,3 +148,30 @@ npm run build
 ```
 
 When status changes, update this file and append rationale to [`DECISIONS.md`](./DECISIONS.md).
+
+---
+
+## Lovable parallel track (Mimi Studios)
+
+**Project:** `82416757-f4d9-45c3-9665-4f043ec226e8` · TanStack Start + Supabase (not production Express host).  
+**Preview:** `https://id-preview--82416757-f4d9-45c3-9665-4f043ec226e8.lovable.app`
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| P0 | Unified menu, Studio toolbar instruments, `/tailor` + contract wiring, `/scry` + `/mesopic` stubs | **queued** (Lovable build queue) |
+| P1 | Profile identity + `/u/$handle`, Pocket polish, The Edit chamber, fish/rip hosts | **queued** |
+| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **queued** |
+| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **queued** |
+| P4a | Workflow bar wired to issue pipeline (COLLECT→SAVE) | **queued** |
+| P4b | Registry completion + handoff chips + chamber map | **queued** |
+| P4c | Identity strip (Dolls↔Rip↔Tailor), Rip doll picker | **queued** |
+| P4d | Observatory + Forecast perception loop (honest demo) | **queued** |
+| P5 | Darkroom: Pinterest board + multi-image extract + `imageEditingRules` / `applicationLogic` | **queued** |
+| P5b | Thimble / Brief / Darkroom Studio handoffs | **queued** |
+| P5c | Aesthetic entry plates + mobile Studio layout | **queued** |
+| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **queued** |
+| **Platform** | Lovable Cloud + Lovable AI as default stack; migrate AI to edge fns | **queued** |
+| **Refactor** | Align P0–P6 AI paths with Lovable AI + Cloud (no BYOK /api) | **queued** |
+| P7 | Scribe, Stand, Signature, Residue/Proscenium stubs, Find anchor, OG/RSS, notifications | **queued** |
+
+Project + workspace knowledge on Lovable encodes Cloud/AI platform rules and product canon. Production `mimi.you` remains separate (Express/Firebase/Neon); merge or port after Lovable phases land.
