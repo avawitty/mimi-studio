@@ -13,6 +13,7 @@ import {
   type IntelCatalogCandidate,
 } from "../lib/intelHubWorkflow";
 import { formatAtelierTasteContextForPrompt } from "./atelierService";
+import { fetchTastePromptContext } from "./taste/fetchTastePromptContext";
 import {
   fetchDollImageReferencesAsMedia,
   type DollImageReference,
@@ -224,6 +225,10 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                 profile?.uid || opts.atelierOwnerUid,
             );
 
+            const tasteIntelligenceContext = await fetchTastePromptContext(
+                opts.tasteContext || "editorial",
+            );
+
             const dollContext = opts.dollPromptContext
                 ? `\n${opts.dollPromptContext}`
                 : '';
@@ -295,6 +300,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             ${memoryContext}
             ${scribeUsedContext}
             ${atelierTasteContext}
+            ${tasteIntelligenceContext ? `\n${tasteIntelligenceContext}` : ""}
             ${dollContext}
             
             CORE DIRECTIVE:

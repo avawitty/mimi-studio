@@ -32,6 +32,8 @@ import {
 } from "../lib/taste/tasteStateLogic";
 import { buildEvidenceAtomFromInput } from "../lib/taste/buildEvidenceAtom";
 import { evidenceNodeToAtomInput } from "../lib/taste/evidenceNodeBridge";
+import { pocketItemToAtomInput } from "../lib/taste/pocketItemBridge";
+import { evidenceAtomEmbeddingRef } from "../lib/taste/evidenceAtomEmbedding";
 import {
   tasteStateToPromptContext,
   tasteConfidenceLabel,
@@ -390,6 +392,49 @@ describe("evidenceNodeToAtomInput", () => {
     expect(input.ingestSource).toBe("tailor");
     expect(input.kind).toBe("image");
     expect(input.sourceMetadata?.tailorEvidenceNodeId).toBe("ev-1");
+  });
+});
+
+describe("pocketItemToAtomInput", () => {
+  it("mirrors pocket link items into atom ingest shape", () => {
+    const input = pocketItemToAtomInput({
+      id: "item_1",
+      userId: "u1",
+      title: "",
+      source: "",
+      timestamp: Date.now(),
+      type: "link",
+      savedAt: Date.now(),
+      content: { url: "https://example.com/article", title: "Editorial ref" },
+      tags: ["editorial"],
+    });
+    expect(input.ingestSource).toBe("pocket");
+    expect(input.kind).toBe("url");
+    expect(input.originalSource).toBe("https://example.com/article");
+    expect((input.sourceMetadata as { pocketItemId?: string }).pocketItemId).toBe("item_1");
+  });
+
+  it("maps pocket images to http asset urls", () => {
+    const input = pocketItemToAtomInput({
+      id: "item_2",
+      userId: "u1",
+      title: "",
+      source: "",
+      timestamp: Date.now(),
+      type: "image",
+      savedAt: Date.now(),
+      content: { imageUrl: "https://cdn.example.com/plate.jpg" },
+    });
+    expect(input.kind).toBe("image");
+    expect(input.assetUrl).toBe("https://cdn.example.com/plate.jpg");
+  });
+});
+
+describe("evidenceAtomEmbeddingRef", () => {
+  it("returns a stable users-scoped path", () => {
+    expect(evidenceAtomEmbeddingRef("u1", "atom-1")).toBe(
+      "users/u1/evidenceAtomEmbeddings/atom-1",
+    );
   });
 });
 

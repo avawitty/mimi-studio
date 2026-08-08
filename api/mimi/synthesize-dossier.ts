@@ -18,6 +18,17 @@ const dossierSchema = z.object({
   userBlurb: z.string().optional(),
   blueprintDigest: z.string().optional(),
   priorMemoryDigest: z.string().optional(),
+  tasteContext: z
+    .enum([
+      "global",
+      "project",
+      "brand",
+      "fashion",
+      "interface",
+      "editorial",
+      "experimental",
+    ])
+    .optional(),
 });
 
 /**
@@ -62,6 +73,26 @@ export default async function handler(req: any, res: any) {
     const cost = fundedGatewayCreditCost(creditCostForTask("tailor_analysis"));
     const { apiKey, access } = await resolveFundedGatewayApiKey(req, cost);
 
+    let systemPrompt = `${CREATIVE_DOSSIER_SYSTEM_PROMPT}\nRespond strictly in valid JSON.`;
+    try {
+      const { verifyMimiSession, getServerFirebaseAdmin } = await import(
+        "../../lib/serverFirebaseAdmin.js"
+      );
+      const { getServerTastePromptContext } = await import("../../lib/taste/serverTasteState.js");
+      const decoded = await verifyMimiSession(req.headers || {});
+      const { db } = getServerFirebaseAdmin();
+      if (db) {
+        const tasteBlock = await getServerTastePromptContext(
+          db,
+          decoded.uid,
+          input.tasteContext,
+        );
+        if (tasteBlock) systemPrompt = `${systemPrompt}\n\n${tasteBlock}`;
+      }
+    } catch {
+      /* unsigned or taste unavailable — dossier still runs */
+    }
+
     if (!apiKey) {
       return sendError(
         res,
@@ -100,7 +131,7 @@ export default async function handler(req: any, res: any) {
       body: JSON.stringify({
         model: DOSSIER_MODEL,
         messages: [
-          { role: "system", content: `${CREATIVE_DOSSIER_SYSTEM_PROMPT}\nRespond strictly in valid JSON.` },
+          { role: "system", content: systemPrompt },
           { role: "user", content },
         ],
         response_format: { type: "json_object" },
