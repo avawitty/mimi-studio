@@ -92,6 +92,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Candidate embedding enrichment + Floor backfill script
+
+**Decision:** When a taste snapshot has `diagnostics.embeddingCentroid` but a scoring candidate lacks `embedding`, auto-embed candidate text via `POST /api/mimi/embed` before `scoreTasteCandidate` (`enrichCandidateForScoring`). Scry taste rerank embeds the query once per run and blends query↔centroid cosine similarity into lane `embeddingScore`. Historical public Floor zines backfill via `npm run taste:backfill-floor-atoms` (Admin SDK, idempotent `floor_{zineId}` atoms).
+
+**Alternatives rejected:** (1) Require every caller to supply embeddings manually. (2) Scry-only lexical rerank when centroid exists. (3) One-off client-only backfill without Admin script.
+
+**Why:** Makes centroid diagnostics actionable in Studio scoring and Scry without N duplicate embed calls per hit; backfill closes the gap for publishes before the live mirror shipped.
+
+**Ref:** `lib/taste/enrichCandidateEmbedding.ts`, `services/embedClient.ts`, `lib/scry/tasteScryRerank.ts`, `scripts/backfillFloorEvidenceAtoms.ts`
+
+---
+
 ## 2026-08-08 — Unified Taste Graph summary read path
 
 **Decision:** Add `GET /api/mimi/taste-graph/summary` as the canonical server read for Taste Graph chambers: `TasteState` + latest `TasteModelSnapshot` + projected graph (`projectTasteModelToGraph` preferred over legacy `tasteGraphNodes` when signal is richer) + readiness gaps + server Used Context. Remove demonstration nodes from `/taste-graph` when empty. Mirror Pocket saves into deterministic `EvidenceAtom` ids (`pocket_{itemId}`) via `mirrorPocketItemToEvidenceAtom`. Persist Used Context tray to Firestore (`users/{uid}/studioMeta/usedContext`) with `GET/PUT /api/mimi/used-context` and client hydrate on empty local store.

@@ -8,6 +8,7 @@ import type {
   ScryRun,
 } from "../../schemas/scryContracts.js";
 import type { TasteModelSnapshot } from "../tasteModel/contracts.js";
+import { cosineSimilarity } from "../taste/evidenceEmbeddingMath.js";
 import {
   rerankTasteSearchResults,
   type TasteSearchCandidate,
@@ -68,6 +69,25 @@ function embeddingScoreFor(result: ResearchResult, lexical: number): number {
       : result.relevanceScore;
   }
   return lexical;
+}
+
+/** Blend lane embedding score with query↔centroid similarity when both exist. */
+export function blendCentroidIntoEmbeddingScore(
+  embeddingScore: number,
+  snapshot: TasteModelSnapshot | null,
+  queryEmbedding?: number[],
+): number {
+  const centroid = snapshot?.diagnostics?.embeddingCentroid;
+  if (
+    !centroid ||
+    !queryEmbedding ||
+    centroid.length === 0 ||
+    centroid.length !== queryEmbedding.length
+  ) {
+    return embeddingScore;
+  }
+  const centroidSim = cosineSimilarity(queryEmbedding, centroid);
+  return embeddingScore * 0.65 + centroidSim * 0.35;
 }
 
 export function extractFeatureIdsFromText(
@@ -148,12 +168,21 @@ function rerankLane(
   snapshot: TasteModelSnapshot | null,
   refusals: TasteRefusal[],
   labels: Map<string, string>,
+  queryEmbedding?: number[],
 ): ResearchResult[] {
   if (hits.length === 0) return hits;
 
-  const candidates = hits.map((hit) =>
-    researchResultToTasteCandidate(hit, query, snapshot),
-  );
+  const candidates = hits.map((hit) => {
+    const candidate = researchResultToTasteCandidate(hit, query, snapshot);
+    return {
+      ...candidate,
+      embeddingScore: blendCentroidIntoEmbeddingScore(
+        candidate.embeddingScore,
+        snapshot,
+        queryEmbedding,
+      ),
+    };
+  });
   const ranked = rerankTasteSearchResults({
     snapshot,
     refusals,
@@ -182,6 +211,8 @@ function rerankLane(
 export interface TasteScryRerankInput {
   snapshot: TasteModelSnapshot | null;
   refusals?: TasteRefusal[];
+  /** Query embedding — blends taste centroid similarity into lane embedding scores. */
+  queryEmbedding?: number[];
 }
 
 /** Apply taste-aware reranking per evidence lane; preserves lane buckets on the run. */
@@ -191,6 +222,7 @@ export function applyTasteRerankToScryRun(
 ): ScryRun {
   const refusals = input.refusals ?? [];
   const labels = featureLabelMap(input.snapshot);
+  const queryEmbedding = input.queryEmbedding;
 
   return {
     ...run,
@@ -202,6 +234,7 @@ export function applyTasteRerankToScryRun(
         input.snapshot,
         refusals,
         labels,
+        queryEmbedding,
       ),
       web: rerankLane(
         run.sources.web,
@@ -209,6 +242,7 @@ export function applyTasteRerankToScryRun(
         input.snapshot,
         refusals,
         labels,
+        queryEmbedding,
       ),
       shadowMemory: rerankLane(
         run.sources.shadowMemory,
@@ -216,6 +250,7 @@ export function applyTasteRerankToScryRun(
         input.snapshot,
         refusals,
         labels,
+        queryEmbedding,
       ),
     },
   };

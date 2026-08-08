@@ -3,6 +3,7 @@ import { createEmptyScryRun, type ResearchResult } from "../schemas/scryContract
 import type { TasteModelSnapshot } from "../lib/tasteModel/contracts";
 import {
   applyTasteRerankToScryRun,
+  blendCentroidIntoEmbeddingScore,
   extractFeatureIdsFromText,
   lexicalOverlapScore,
   mergeTasteRankedHits,
@@ -77,6 +78,14 @@ describe("scry taste rerank bridge", () => {
       0.4,
     );
     expect(lexicalOverlapScore("", "anything")).toBe(0);
+  });
+
+  it("blends query centroid similarity into embedding score", () => {
+    const snapshot = testSnapshot();
+    snapshot.diagnostics.embeddingCentroid = [1, 0, 0];
+    const boosted = blendCentroidIntoEmbeddingScore(0.2, snapshot, [1, 0, 0]);
+    expect(boosted).toBeGreaterThan(0.2);
+    expect(blendCentroidIntoEmbeddingScore(0.5, snapshot, undefined)).toBe(0.5);
   });
 
   it("maps archive hits to taste candidates with feature ids", () => {

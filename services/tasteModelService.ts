@@ -48,6 +48,7 @@ import {
 } from '../lib/taste/curationAssertionBridge';
 import { upsertTasteAssertion } from './taste/tasteAssertionService';
 import { averageVectors } from '../lib/taste/evidenceEmbeddingMath';
+import { enrichCandidateForScoring } from '../lib/taste/enrichCandidateEmbedding';
 import { loadRecentEvidenceEmbeddings } from './taste/evidenceAtomEmbeddings';
 
 function eventsCol(userId: string) {
@@ -462,7 +463,8 @@ export async function scoreCandidateAgainstStoredModel(
     };
   }
 
-  return scoreTasteCandidate(candidate, snapshot, context);
+  const enriched = await enrichCandidateForScoring(candidate, snapshot);
+  return scoreTasteCandidate(enriched, snapshot, context);
 }
 
 // ─── Curation → Taste Event Bridge ───────────────────────────────────────────
