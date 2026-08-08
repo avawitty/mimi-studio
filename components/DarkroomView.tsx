@@ -7,6 +7,7 @@ import { analyzeCanonicalTaste, applyAestheticRefraction, analyzePinterestBoard 
 import { StyleTreatment, CanonicalTasteObject } from '../types';
 import { DarkroomGeneration } from './DarkroomGeneration';
 import { DarkroomTranscription } from './DarkroomTranscription';
+import { mirrorDarkroomTreatmentToEvidenceAtom } from '../services/taste/mirrorDarkroomToEvidenceAtom';
 
 import { TranslationTerminal } from './TranslationTerminal';
 
@@ -130,6 +131,10 @@ export const DarkroomView: React.FC = () => {
  savedTreatments: [newTreatment, ...currentTreatments]
  });
  setIsSaved(true);
+
+ void mirrorDarkroomTreatmentToEvidenceAtom(profile.uid, newTreatment).catch((err) => {
+   console.warn("MIMI // Darkroom treatment → EvidenceAtom mirror failed:", err);
+ });
  
  if (user?.isAnonymous || user?.uid?.startsWith('local_')) {
  window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 

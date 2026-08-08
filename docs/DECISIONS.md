@@ -104,6 +104,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Darkroom → EvidenceAtom mirror (treatments + fragments)
+
+**Decision:** Mirror saved Darkroom `StyleTreatment` rows and `saveToDarkroom` fragments into deterministic `darkroom_{id}` EvidenceAtoms with `ingestSource: darkroom`. Batch export to Pocket remains on the Pocket mirror path; this closes the gap for curated treatments and the dormant darkroom collection writer.
+
+**Alternatives rejected:** (1) Rely only on Pocket export for all Darkroom signal. (2) Duplicate treatment rows as Pocket items automatically.
+
+**Why:** Treatment extraction is primary Darkroom output that never touched Pocket; `saveToDarkroom` exists but had zero taste ingest.
+
+**Ref:** `lib/taste/darkroomAtomBridge.ts`, `services/taste/mirrorDarkroomToEvidenceAtom.ts`, `components/DarkroomView.tsx`, `services/archiveManager.ts`
+
+---
+
 ## 2026-08-08 — Unified Taste Graph summary read path
 
 **Decision:** Add `GET /api/mimi/taste-graph/summary` as the canonical server read for Taste Graph chambers: `TasteState` + latest `TasteModelSnapshot` + projected graph (`projectTasteModelToGraph` preferred over legacy `tasteGraphNodes` when signal is richer) + readiness gaps + server Used Context. Remove demonstration nodes from `/taste-graph` when empty. Mirror Pocket saves into deterministic `EvidenceAtom` ids (`pocket_{itemId}`) via `mirrorPocketItemToEvidenceAtom`. Persist Used Context tray to Firestore (`users/{uid}/studioMeta/usedContext`) with `GET/PUT /api/mimi/used-context` and client hydrate on empty local store.
