@@ -26,9 +26,9 @@
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | Expanded reading (thesis, touchpoints, directions); public `/u/:handle/signature` OG; incremental evidence patch; approve → `mark_signature` | Public-face mobile review |
-| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; Phase 1 `EvidenceAtom` layer + correction UI; embedding centroid; Studio/Scry auto-embed | Ops: `taste:backfill-floor-sovereign`, `taste:analyze-evidence-atoms`; shadow audit after Gateway model bumps |
-| **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring (label + cosine); server-side recompile on ingest | Wire candidate embeddings at all Scry/Studio call sites; embedding space migrations on model change |
-| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context conflict UI; legacy graph coexists | Semantic retrieval (#223); ops backfill scripts |
+| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; Phase 1 `EvidenceAtom` layer + correction UI; embedding centroid; Studio/Scry auto-embed; ingest mirrors + Used Context conflict UI | Ops backfill/analyze scripts; shadow audit after Gateway model bumps |
+| **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring (label + cosine); server-side recompile on ingest | Embedding space migrations on model change |
+| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context merge hydrate; legacy graph coexists | Semantic retrieval (#223) |
 | **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
 
 ---
