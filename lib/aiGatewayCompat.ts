@@ -610,14 +610,28 @@ export const isGeminiImageRequest = (params: any) => {
     params.config.responseModalities.some((value: any) => String(value).toLowerCase().includes("image"));
 };
 
+/** Gateway realtime voices (OpenAI-compatible ids). */
+export const GATEWAY_REALTIME_VOICES = [
+  "alloy",
+  "ash",
+  "ballad",
+  "coral",
+  "cedar",
+  "echo",
+  "marin",
+  "sage",
+  "shimmer",
+  "verse",
+] as const;
+
 /** Gemini prebuilt voice names → gateway/OpenAI-style voice ids. */
 const GEMINI_VOICE_TO_GATEWAY: Record<string, string> = {
   kore: "alloy",
   koral: "coral",
-  aoede: "nova",
-  fenrir: "onyx",
+  aoede: "cedar",
+  fenrir: "ash",
   charon: "echo",
-  puck: "fable",
+  puck: "ballad",
   leda: "shimmer",
 };
 
@@ -627,9 +641,16 @@ export const mapGeminiVoiceToGateway = (voiceName?: string): string | undefined 
   const lower = raw.toLowerCase();
   if (GEMINI_VOICE_TO_GATEWAY[lower]) return GEMINI_VOICE_TO_GATEWAY[lower];
   // Already a gateway/OpenAI voice id
-  if (["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse"].includes(lower)) {
+  if ((GATEWAY_REALTIME_VOICES as readonly string[]).includes(lower)) {
     return lower;
   }
+  // Legacy ids that the gateway no longer accepts — remap to closest match
+  const legacy: Record<string, string> = {
+    fable: "ballad",
+    nova: "sage",
+    onyx: "ash",
+  };
+  if (legacy[lower]) return legacy[lower];
   return "alloy";
 };
 
