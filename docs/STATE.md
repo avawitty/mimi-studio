@@ -28,7 +28,7 @@
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
 | **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; computational model (#224) inspector wired | Wire embedding similarity into candidate score; complete atom migration |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP compiler + scoring; no embedding similarity in candidate score yet | Server-side recompile trigger; atom bridge completion |
-| **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
+| **Taste Intelligence (EvidenceAtom)** | — | **shipped** | Phase 1–3: semantic retrieval, atom supersession, Tailor atom id links | Optional backfill of atom ids on legacy clusters |
 
 ---
 
