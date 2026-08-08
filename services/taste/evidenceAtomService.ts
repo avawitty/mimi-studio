@@ -24,7 +24,6 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../firebaseInit";
-import { sanitizeFirestoreData } from "../firebaseUtils";
 import type {
   AnalysisStatus,
   EvidenceAtom,
@@ -72,7 +71,7 @@ export async function createEvidenceAtom(
   const ref = evidenceAtomRef(userId, id);
   const atom = buildEvidenceAtomFromInput(userId, input, { id, now });
 
-  await setDoc(ref, sanitizeFirestoreData(atom));
+  await setDoc(ref, atom);
   scheduleEvidenceAtomAnalysis(id);
   return { id, atom };
 }
