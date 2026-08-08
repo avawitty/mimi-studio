@@ -47,6 +47,8 @@ import {
   type CurationAssertionTarget,
 } from '../lib/taste/curationAssertionBridge';
 import { upsertTasteAssertion } from './taste/tasteAssertionService';
+import { averageVectors } from '../lib/taste/evidenceEmbeddingMath';
+import { loadRecentEvidenceEmbeddings } from './taste/evidenceAtomEmbeddings';
 
 function eventsCol(userId: string) {
   return collection(db, `users/${userId}/tasteLearningEvents`);
@@ -281,6 +283,23 @@ function resolveCompileScope(input: CompileAndSaveInput): TasteModelCompileScope
   return input.projectId ? 'project' : 'global';
 }
 
+async function enrichSnapshotEmbeddings(
+  userId: string,
+  snapshot: TasteModelSnapshot,
+): Promise<TasteModelSnapshot> {
+  const vectors = await loadRecentEvidenceEmbeddings(userId);
+  const centroid = averageVectors(vectors);
+  if (!centroid) return snapshot;
+  return {
+    ...snapshot,
+    diagnostics: {
+      ...snapshot.diagnostics,
+      embeddingCentroid: centroid,
+      embeddingSampleCount: vectors.length,
+    },
+  };
+}
+
 export async function compileAndSaveTasteModel(
   input: CompileAndSaveInput,
 ): Promise<{ global?: TasteModelSnapshot; project?: TasteModelSnapshot }> {
@@ -305,6 +324,7 @@ export async function compileAndSaveTasteModel(
     };
 
     globalSnapshot = compileTasteModel(globalInput);
+    globalSnapshot = await enrichSnapshotEmbeddings(input.userId, globalSnapshot);
     await setDoc(
       snapshotDoc(input.userId, 'global'),
       stripUndefined(globalSnapshot as unknown as Record<string, unknown>),
@@ -351,6 +371,7 @@ export async function compileAndSaveTasteModel(
     };
 
     projectSnapshot = compileTasteModel(projectInput);
+    projectSnapshot = await enrichSnapshotEmbeddings(input.userId, projectSnapshot);
     await setDoc(
       snapshotDoc(input.userId, `project-${input.projectId}`),
       stripUndefined(projectSnapshot as unknown as Record<string, unknown>),

@@ -158,9 +158,108 @@ export async function hydrateUsedContextFromServer(ownerUid?: string): Promise<v
     const merged = mergeUsedContextEntries(local, json.entries, owner.uid);
     localStorage.setItem(getScopedKey(owner.uid), JSON.stringify(merged));
     window.dispatchEvent(new CustomEvent(USED_CONTEXT_CHANGED));
+    void refreshUsedContextConflicts(ownerUid);
   } catch {
     /* ignore */
   }
+}
+
+export type UsedContextConflictField = "approved" | "content";
+
+export interface UsedContextConflict {
+  atomId: string;
+  target: UsedContextTarget;
+  field: UsedContextConflictField;
+  local: UsedContextEntry;
+  server: UsedContextEntry;
+}
+
+export const USED_CONTEXT_CONFLICTS_CHANGED = "mimi:used-context-conflicts-changed";
+
+let cachedConflicts: UsedContextConflict[] = [];
+
+export function getUsedContextConflicts(): UsedContextConflict[] {
+  return cachedConflicts;
+}
+
+function detectUsedContextConflicts(
+  local: UsedContextEntry[],
+  server: UsedContextEntry[],
+): UsedContextConflict[] {
+  const conflicts: UsedContextConflict[] = [];
+  const serverMap = new Map(server.map((e) => [`${e.atomId}::${e.target}`, e]));
+
+  for (const loc of local) {
+    const srv = serverMap.get(`${loc.atomId}::${loc.target}`);
+    if (!srv) continue;
+
+    if (loc.approved !== srv.approved) {
+      conflicts.push({
+        atomId: loc.atomId,
+        target: loc.target,
+        field: "approved",
+        local: loc,
+        server: srv,
+      });
+      continue;
+    }
+
+    if (
+      loc.content.trim() !== srv.content.trim() &&
+      Math.abs(loc.addedAt - srv.addedAt) > 2000
+    ) {
+      conflicts.push({
+        atomId: loc.atomId,
+        target: loc.target,
+        field: "content",
+        local: loc,
+        server: srv,
+      });
+    }
+  }
+
+  return conflicts;
+}
+
+async function fetchServerUsedContext(ownerUid: string): Promise<UsedContextEntry[]> {
+  const headers = await authHeaders();
+  const res = await fetch("/api/mimi/used-context", { headers });
+  if (!res.ok) return [];
+  const json = (await res.json()) as { entries?: UsedContextEntry[] };
+  return Array.isArray(json.entries) ? json.entries : [];
+}
+
+export async function refreshUsedContextConflicts(
+  ownerUid?: string,
+): Promise<UsedContextConflict[]> {
+  const owner = resolveOwner(ownerUid);
+  if (!owner?.uid || owner.uid === "ghost") {
+    cachedConflicts = [];
+    return [];
+  }
+
+  const local = readStore(ownerUid);
+  const server = await fetchServerUsedContext(owner.uid);
+  cachedConflicts = detectUsedContextConflicts(local, server);
+  window.dispatchEvent(new CustomEvent(USED_CONTEXT_CONFLICTS_CHANGED));
+  return cachedConflicts;
+}
+
+export async function resolveUsedContextKeepLocal(ownerUid?: string): Promise<void> {
+  const owner = resolveOwner(ownerUid);
+  if (!owner?.uid) return;
+  const entries = readStore(ownerUid);
+  await syncUsedContextToServer(entries, owner.uid);
+  await refreshUsedContextConflicts(ownerUid);
+}
+
+export async function resolveUsedContextKeepServer(ownerUid?: string): Promise<void> {
+  const owner = resolveOwner(ownerUid);
+  if (!owner?.uid) return;
+  const server = await fetchServerUsedContext(owner.uid);
+  localStorage.setItem(getScopedKey(owner.uid), JSON.stringify(server));
+  window.dispatchEvent(new CustomEvent(USED_CONTEXT_CHANGED));
+  await refreshUsedContextConflicts(ownerUid);
 }
 
 export function getUsedContext(

@@ -204,6 +204,9 @@ export interface TasteModelSnapshot {
     contradictionCount: number;
     lowConfidenceFeatureIds: string[];
     missingDataWarnings: string[];
+    /** Mean embedding vector from recent analyzed evidence atoms */
+    embeddingCentroid?: number[];
+    embeddingSampleCount?: number;
   };
 
   sourceWindow: {
@@ -228,6 +231,8 @@ export interface TasteCandidateInput {
   patternClusterIds?: string[];
   creativeLawIds?: string[];
   observationIds?: string[];
+  /** Optional embedding for vector similarity against snapshot centroid */
+  embedding?: number[];
   canonicalTaste?: {
     motifs?: string[];
     palette?: string[];
