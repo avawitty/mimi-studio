@@ -64,6 +64,94 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+---
+
+## 2026-08-08 — Scribe + Tailor curation ingest into taste spine
+
+**Decision:** Mirror Scribe `MemoryAtom` saves to deterministic `EvidenceAtom` ids (`scribe_{memoryId}`) with content refresh on update. On Tailor pattern/law curation, upsert matching `TasteAssertion` rows (`tailor_{targetType}_{id}`) with LIKES/DISLIKES from user status. Merge server + local Used Context on hydrate (latest `addedAt` wins per atom+target).
+
+**Alternatives rejected:** (1) Keep Scribe memory as a separate taste silo. (2) Assertions only from manual correction chips. (3) Server overwrite of local Used Context tray.
+
+**Why:** Substantial taste data requires every capture and approval path to feed the same canonical spine; curation in Tailor should immediately surface in `getTasteState()` without waiting for a separate compiler-only path.
+
+**Ref:** `lib/taste/scribeAtomBridge.ts`, `lib/taste/curationAssertionBridge.ts`, `services/taste/mirrorScribeToEvidenceAtom.ts`, `services/tasteModelService.ts` (`syncCurationToAssertion`), `services/usedContextService.ts`
+
+---
+
+## 2026-08-08 — Floor publish, evidence embeddings, Used Context conflicts
+
+**Decision:** Mirror public Stand Floor zines to `EvidenceAtom` (`floor_{zineId}`) when `mirrorZineToSovereign` succeeds with `isPublic`. After evidence analyze, embed `semanticDescription` via Gateway into `evidenceAtomEmbeddings/{atomId}` and set `embeddingRef`. On taste model compile, attach `diagnostics.embeddingCentroid` from recent atom embeddings; `scoreTasteCandidate` blends label affinity with cosine similarity when `candidate.embedding` is provided. Used Context tray detects server/local conflicts and offers keep-local vs keep-server resolution.
+
+**Alternatives rejected:** (1) Floor-only sovereign rows without taste mirror. (2) Embedding similarity without storing vectors on atoms. (3) Silent overwrite on hydrate without user-visible conflict state.
+
+**Why:** Completes ingest from published work, makes scoring semantically aware when vectors exist, and handles cross-device Used Context honestly.
+
+**Ref:** `lib/taste/floorAtomBridge.ts`, `lib/taste/evidenceAtomAnalysis.ts`, `lib/tasteModel/scoreTasteCandidate.ts`, `services/taste/evidenceAtomEmbeddings.ts`, `components/UsedContextTray.tsx`
+
+---
+
+## 2026-08-08 — Candidate embedding enrichment + Floor backfill script
+
+**Decision:** When a taste snapshot has `diagnostics.embeddingCentroid` but a scoring candidate lacks `embedding`, auto-embed candidate text via `POST /api/mimi/embed` before `scoreTasteCandidate` (`enrichCandidateForScoring`). Scry taste rerank embeds the query once per run and blends query↔centroid cosine similarity into lane `embeddingScore`. Historical public Floor zines backfill via `npm run taste:backfill-floor-atoms` (Admin SDK, idempotent `floor_{zineId}` atoms).
+
+**Alternatives rejected:** (1) Require every caller to supply embeddings manually. (2) Scry-only lexical rerank when centroid exists. (3) One-off client-only backfill without Admin script.
+
+**Why:** Makes centroid diagnostics actionable in Studio scoring and Scry without N duplicate embed calls per hit; backfill closes the gap for publishes before the live mirror shipped.
+
+**Ref:** `lib/taste/enrichCandidateEmbedding.ts`, `services/embedClient.ts`, `lib/scry/tasteScryRerank.ts`, `scripts/backfillFloorEvidenceAtoms.ts`
+
+---
+
+## 2026-08-08 — Darkroom → EvidenceAtom mirror (treatments + fragments)
+
+**Decision:** Mirror saved Darkroom `StyleTreatment` rows and `saveToDarkroom` fragments into deterministic `darkroom_{id}` EvidenceAtoms with `ingestSource: darkroom`. Batch export to Pocket remains on the Pocket mirror path; this closes the gap for curated treatments and the dormant darkroom collection writer.
+
+**Alternatives rejected:** (1) Rely only on Pocket export for all Darkroom signal. (2) Duplicate treatment rows as Pocket items automatically.
+
+**Why:** Treatment extraction is primary Darkroom output that never touched Pocket; `saveToDarkroom` exists but had zero taste ingest.
+
+**Ref:** `lib/taste/darkroomAtomBridge.ts`, `services/taste/mirrorDarkroomToEvidenceAtom.ts`, `components/DarkroomView.tsx`, `services/archiveManager.ts`
+
+---
+
+## 2026-08-08 — Darkroom treatments backfill script
+
+**Decision:** Add `npm run taste:backfill-darkroom-treatments` to scan `profiles_public` (or `--user=uid`) and idempotently create `darkroom_{treatmentId}` EvidenceAtoms from `savedTreatments`.
+
+**Alternatives rejected:** (1) Require manual re-save in Darkroom UI. (2) Store treatments in a separate collection for easier collectionGroup scan.
+
+**Why:** Historical curated treatments pre-mirror never entered the taste spine; profile scan is the only durable source.
+
+**Ref:** `scripts/backfillDarkroomTreatments.ts`
+
+---
+
+## 2026-08-08 — Sovereign Floor backfill + batch evidence analyze scripts
+
+**Decision:** Add `npm run taste:backfill-floor-sovereign` to read public zines from the sovereign archive (`is_public = 1`) and mirror to `floor_{zineId}` Firestore EvidenceAtoms. Add `npm run taste:analyze-evidence-atoms` to run `runEvidenceAtomAnalysis` (interpret + embed) on pending/failed atoms via Admin + `AI_GATEWAY_API_KEY`.
+
+**Alternatives rejected:** (1) Floor backfill only from Firestore (empty public zine set in prod). (2) Manual per-atom API calls from the client for ops backfill.
+
+**Why:** Production Floor lives in sovereign; ops needs a one-shot path to taste spine + embeddings without UI.
+
+**Ref:** `scripts/backfillFloorEvidenceAtomsFromSovereign.ts`, `scripts/analyzePendingEvidenceAtoms.ts`
+
+---
+
+## 2026-08-08 — Unified Taste Graph summary read path
+
+**Decision:** Add `GET /api/mimi/taste-graph/summary` as the canonical server read for Taste Graph chambers: `TasteState` + latest `TasteModelSnapshot` + projected graph (`projectTasteModelToGraph` preferred over legacy `tasteGraphNodes` when signal is richer) + readiness gaps + server Used Context. Remove demonstration nodes from `/taste-graph` when empty. Mirror Pocket saves into deterministic `EvidenceAtom` ids (`pocket_{itemId}`) via `mirrorPocketItemToEvidenceAtom`. Persist Used Context tray to Firestore (`users/{uid}/studioMeta/usedContext`) with `GET/PUT /api/mimi/used-context` and client hydrate on empty local store.
+
+**Alternatives rejected:** (1) Keep three parallel read paths (map nodes, Tailor graph, snapshot) without a summary API. (2) Demo orbital nodes for anonymous/empty signed-in users. (3) Used Context localStorage-only forever.
+
+**Why:** Substantial taste data requires one honest read surface, traceable ingest from every capture chamber, and durable approved context for cross-device generation. Projection from compiled snapshot aligns map UI with Tailor curation without duplicating authoritative node storage.
+
+**Ref:** `lib/mimiTasteGraphSummaryRoute.ts`, `lib/taste/tasteGraphSummary.ts`, `lib/taste/pocketAtomBridge.ts`, `services/taste/mirrorPocketToEvidenceAtom.ts`, `lib/mimiUsedContextRoute.ts`, `components/TasteGraph.tsx`
+
+---
+
 ## 2026-08-08 — Taste Signature as evidence-backed editorial reading
 
 **Decision:** Expand `/signature` from DNA-card + charts into a layered artifact: exportable **plate** (unchanged public face) → **editorial reading** (thesis, confidence, Used Context refs) → semiotic touchpoints, creative directions, recommendations, anti-signature, drift notes → collapsed analytics. Generation pulls zines, Tailor draft, approved Used Context, and taste model snapshot via AI Gateway (`textDeep`) with Gemini JSON fallback. Explicit **Approve signature** persists `status: approved` and records `mark_signature` through `recordAndRecompile`; **Repair** routes to Tailor.

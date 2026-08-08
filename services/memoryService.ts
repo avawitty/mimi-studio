@@ -2,6 +2,7 @@ import { db } from './firebaseInit';
 import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, where } from 'firebase/firestore';
 import { MemoryAtom, ScribeSignalType } from '../types';
 import { withResilience } from './geminiClient';
+import { mirrorScribeMemoryToEvidenceAtom } from './taste/mirrorScribeToEvidenceAtom';
 
 const MEMORY_ATOM_KIND = 'memory_atom' as const;
 
@@ -165,6 +166,10 @@ export const saveMemoryAtom = async (userId: string, atom: MemoryAtom): Promise<
       kind: MEMORY_ATOM_KIND,
     };
     await setDoc(docRef, payload, { merge: true });
+
+    void mirrorScribeMemoryToEvidenceAtom(userId, payload).catch((err) => {
+      console.warn("MIMI // Scribe → EvidenceAtom mirror failed:", err);
+    });
 
     window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
       detail: { message: "Memory Atom Synced to Project Container.", type: 'success' }

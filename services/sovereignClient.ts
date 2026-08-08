@@ -1,5 +1,6 @@
 import { auth } from "./firebaseInit";
 import type { PocketItem, UserProfile, ZineMetadata } from "../types";
+import { mirrorFloorZineToEvidenceAtom } from "./taste/mirrorFloorZineToEvidenceAtom";
 
 export type SovereignArchiveStatus = {
   enabled?: boolean;
@@ -116,7 +117,14 @@ export const mirrorZineToSovereign = async (zine: ZineMetadata): Promise<boolean
       headers: await authHeaders(zine.userId),
       body: JSON.stringify({ zine }),
     });
-    if (res.ok) cachedStatus = { at: 0, value: null };
+    if (res.ok) {
+      cachedStatus = { at: 0, value: null };
+      if (zine.isPublic) {
+        void mirrorFloorZineToEvidenceAtom(zine.userId, zine).catch((err) => {
+          console.warn("MIMI // Floor → EvidenceAtom mirror failed:", err);
+        });
+      }
+    }
     return res.ok;
   } catch (error) {
     console.warn("MIMI // Sovereign mirror failed:", error);

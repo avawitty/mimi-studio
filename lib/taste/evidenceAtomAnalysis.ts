@@ -2,7 +2,7 @@
  * Server-side Evidence Atom interpretation pipeline.
  * Runs after ingest (API create or client mirror) when AI Gateway is available.
  */
-import { generateGatewayText } from "../ai/generate.js";
+import { generateGatewayText, embedGatewayText } from "../ai/generate.js";
 import { modelFor } from "../../services/modelConfig.js";
 import {
   fetchTrustedStorageAsset,
@@ -191,9 +191,36 @@ export async function runEvidenceAtomAnalysis(
 
   try {
     const { semanticDescription, confidence } = await interpretEvidenceAtom(atom, apiKey);
+
+    let embeddingRef: string | undefined;
+    try {
+      const embedText = semanticDescription || atom.originalSource.slice(0, 2000);
+      const { embedding, model } = await embedGatewayText({
+        value: embedText,
+        apiKey,
+      });
+      if (embedding.length > 0) {
+        const embRef = db
+          .collection("users")
+          .doc(userId)
+          .collection("evidenceAtomEmbeddings")
+          .doc(atomId);
+        await embRef.set({
+          vector: embedding,
+          model,
+          dims: embedding.length,
+          updatedAt: Date.now(),
+        });
+        embeddingRef = `evidenceAtomEmbeddings/${atomId}`;
+      }
+    } catch (embedErr) {
+      console.warn("MIMI // Evidence atom embedding failed (interpretation saved):", embedErr);
+    }
+
     await ref.update({
       semanticDescription,
       confidence,
+      ...(embeddingRef ? { embeddingRef } : {}),
       processingState: "analyzed",
       updatedAt: Date.now(),
     });

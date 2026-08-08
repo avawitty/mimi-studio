@@ -41,6 +41,15 @@ import {
   listObservations,
   listPatternClusters,
 } from './tailorService';
+import {
+  buildAssertionInputFromCuration,
+  curationAssertionId,
+  type CurationAssertionTarget,
+} from '../lib/taste/curationAssertionBridge';
+import { upsertTasteAssertion } from './taste/tasteAssertionService';
+import { averageVectors } from '../lib/taste/evidenceEmbeddingMath';
+import { enrichCandidateForScoring } from '../lib/taste/enrichCandidateEmbedding';
+import { loadRecentEvidenceEmbeddings } from './taste/evidenceAtomEmbeddings';
 
 function eventsCol(userId: string) {
   return collection(db, `users/${userId}/tasteLearningEvents`);
@@ -275,6 +284,23 @@ function resolveCompileScope(input: CompileAndSaveInput): TasteModelCompileScope
   return input.projectId ? 'project' : 'global';
 }
 
+async function enrichSnapshotEmbeddings(
+  userId: string,
+  snapshot: TasteModelSnapshot,
+): Promise<TasteModelSnapshot> {
+  const vectors = await loadRecentEvidenceEmbeddings(userId);
+  const centroid = averageVectors(vectors);
+  if (!centroid) return snapshot;
+  return {
+    ...snapshot,
+    diagnostics: {
+      ...snapshot.diagnostics,
+      embeddingCentroid: centroid,
+      embeddingSampleCount: vectors.length,
+    },
+  };
+}
+
 export async function compileAndSaveTasteModel(
   input: CompileAndSaveInput,
 ): Promise<{ global?: TasteModelSnapshot; project?: TasteModelSnapshot }> {
@@ -299,6 +325,7 @@ export async function compileAndSaveTasteModel(
     };
 
     globalSnapshot = compileTasteModel(globalInput);
+    globalSnapshot = await enrichSnapshotEmbeddings(input.userId, globalSnapshot);
     await setDoc(
       snapshotDoc(input.userId, 'global'),
       stripUndefined(globalSnapshot as unknown as Record<string, unknown>),
@@ -345,6 +372,7 @@ export async function compileAndSaveTasteModel(
     };
 
     projectSnapshot = compileTasteModel(projectInput);
+    projectSnapshot = await enrichSnapshotEmbeddings(input.userId, projectSnapshot);
     await setDoc(
       snapshotDoc(input.userId, `project-${input.projectId}`),
       stripUndefined(projectSnapshot as unknown as Record<string, unknown>),
@@ -435,7 +463,8 @@ export async function scoreCandidateAgainstStoredModel(
     };
   }
 
-  return scoreTasteCandidate(candidate, snapshot, context);
+  const enriched = await enrichCandidateForScoring(candidate, snapshot);
+  return scoreTasteCandidate(enriched, snapshot, context);
 }
 
 // ─── Curation → Taste Event Bridge ───────────────────────────────────────────
@@ -503,7 +532,57 @@ export async function recordCurationAsTasteEvent(
       mappedTargetType,
       targetId,
     ),
+  }).then(async (event) => {
+    void syncCurationToAssertion(userId, projectId, targetType, targetId, action).catch(
+      (err) => console.warn('MIMI // Curation → assertion sync failed:', err),
+    );
+    return event;
   });
+}
+
+async function syncCurationToAssertion(
+  userId: string,
+  projectId: string,
+  targetType: 'pattern_cluster' | 'creative_law' | 'observation',
+  targetId: string,
+  action: UserCurationStatus,
+): Promise<void> {
+  if (targetType === 'observation') return;
+
+  const curationTarget = targetType as CurationAssertionTarget;
+  let label = '';
+  let confidence = 0.75;
+
+  if (targetType === 'pattern_cluster') {
+    const clusters = await listPatternClusters(userId, projectId);
+    const cluster = clusters.find((c) => c.id === targetId);
+    if (!cluster) return;
+    label = cluster.name;
+    confidence = cluster.confidence;
+  } else {
+    const laws = await listCreativeLaws(userId, projectId);
+    const law = laws.find((l) => l.id === targetId);
+    if (!law) return;
+    label = law.title;
+    confidence = law.confidence;
+  }
+
+  const assertionInput = buildAssertionInputFromCuration({
+    userId,
+    projectId,
+    targetType: curationTarget,
+    targetId,
+    action,
+    label,
+    confidence,
+  });
+  if (!assertionInput) return;
+
+  await upsertTasteAssertion(
+    userId,
+    curationAssertionId(curationTarget, targetId),
+    assertionInput,
+  );
 }
 
 export async function recordAndRecompile(

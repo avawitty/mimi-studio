@@ -26,6 +26,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../firebaseInit";
+import { sanitizeFirestoreData } from "../firebaseUtils";
 import type {
   ClaimType,
   CorrectionState,
@@ -85,7 +86,43 @@ export async function createTasteAssertion(
     updatedAt: now,
   };
 
-  await setDoc(assertionRef(userId, id), assertion);
+  await setDoc(assertionRef(userId, id), sanitizeFirestoreData(assertion));
+  return assertion;
+}
+
+/**
+ * Create or update a TasteAssertion with a stable id (curation sync, bridges).
+ */
+export async function upsertTasteAssertion(
+  userId: string,
+  assertionId: string,
+  input: CreateTasteAssertionInput,
+): Promise<TasteAssertion> {
+  if (!userId || userId === "ghost") {
+    throw new Error("Authentication required to upsert taste assertions.");
+  }
+
+  const now = Date.now();
+  const existing = await getTasteAssertion(userId, assertionId);
+  const confidence = capAssertionConfidence(input.claimType, input.confidence);
+
+  const assertion: TasteAssertion = {
+    id: assertionId,
+    userId,
+    projectId: input.projectId,
+    conceptA: input.conceptA,
+    relation: input.relation,
+    conceptB: input.conceptB,
+    context: input.context as TasteScope | undefined,
+    claimType: input.claimType,
+    confidence,
+    userCorrection: existing?.userCorrection,
+    evidenceAtomIds: input.evidenceAtomIds,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  await setDoc(assertionRef(userId, assertionId), sanitizeFirestoreData(assertion));
   return assertion;
 }
 

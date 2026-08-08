@@ -5,9 +5,14 @@ import { UsedContextEntry, UsedContextTarget } from "../types";
 import {
   approveAllUsedContext,
   getUsedContext,
+  getUsedContextConflicts,
+  refreshUsedContextConflicts,
   removeFromUsedContext,
+  resolveUsedContextKeepLocal,
+  resolveUsedContextKeepServer,
   setUsedContextApproved,
   subscribeUsedContext,
+  USED_CONTEXT_CONFLICTS_CHANGED,
 } from "../services/usedContextService";
 import { useUser } from "../contexts/UserContext";
 
@@ -27,12 +32,32 @@ export const UsedContextTray: React.FC<UsedContextTrayProps> = ({
   const { user, profile } = useUser();
   const ownerUid = user?.uid || profile?.uid;
   const [entries, setEntries] = useState<UsedContextEntry[]>([]);
+  const [conflicts, setConflicts] = useState(0);
   const destinationLabel = target === "studio" ? "issue" : "edit compile";
 
   useEffect(() => {
     const refresh = () => setEntries(getUsedContext(target, ownerUid));
+    const refreshConflicts = () =>
+      setConflicts(getUsedContextConflicts().filter((c) => c.target === target).length);
+
     refresh();
-    return subscribeUsedContext(refresh);
+    refreshConflicts();
+    void refreshUsedContextConflicts(ownerUid).then((list) =>
+      setConflicts(list.filter((c) => c.target === target).length),
+    );
+
+    const unsub = subscribeUsedContext(() => {
+      refresh();
+      void refreshUsedContextConflicts(ownerUid).then((list) =>
+        setConflicts(list.filter((c) => c.target === target).length),
+      );
+    });
+    const onConflicts = () => refreshConflicts();
+    window.addEventListener(USED_CONTEXT_CONFLICTS_CHANGED, onConflicts);
+    return () => {
+      unsub();
+      window.removeEventListener(USED_CONTEXT_CONFLICTS_CHANGED, onConflicts);
+    };
   }, [target, ownerUid]);
 
   if (entries.length === 0) {
@@ -62,6 +87,32 @@ export const UsedContextTray: React.FC<UsedContextTrayProps> = ({
 
   return (
     <div className={`space-y-4 ${className}`}>
+      {conflicts > 0 && (
+        <div className="border border-amber-700/50 bg-amber-950/20 p-3 space-y-2">
+          <p className="font-mono text-[8px] uppercase tracking-widest text-amber-500">
+            Sync conflict — {conflicts} item(s) differ on another device
+          </p>
+          <p className="font-sans text-[10px] text-stone-500 leading-relaxed">
+            Approval or content changed elsewhere. Choose which tray to keep before generating.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void resolveUsedContextKeepLocal(ownerUid)}
+              className="font-mono text-[8px] uppercase tracking-widest px-2 py-1 border border-stone-600 text-stone-300 hover:border-stone-400"
+            >
+              Keep this device
+            </button>
+            <button
+              type="button"
+              onClick={() => void resolveUsedContextKeepServer(ownerUid)}
+              className="font-mono text-[8px] uppercase tracking-widest px-2 py-1 border border-stone-600 text-stone-300 hover:border-stone-400"
+            >
+              Use server copy
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#FAF9F6] font-bold">
