@@ -6,6 +6,16 @@ import type {
   TailorLogicDraft,
 } from "../../types";
 import { oppositePaletteFrom } from "./colorOpposite";
+import {
+  buildFieldAttributions,
+  buildRipInputCoverage,
+  enrichInversions,
+} from "./decisionSupport";
+import {
+  buildInverseRecommendations,
+  buildInverseSemioticTouchpoints,
+} from "./semioticInverse";
+import { applyRegisterShift, applyProportionDisruption } from "./inverseFunctions";
 
 export interface RipBuildInput {
   userId: string;
@@ -41,7 +51,7 @@ function refuseFromDraft(draft?: TailorLogicDraft | null): string[] {
 
 /**
  * Deterministic inverse projection from approved Taste Graph material.
- * No AI call — dossiers / likeness / dolls / draft refusals are enough for v0.
+ * Enriched with decision support, semiotic touchpoints, and savable recommendations.
  */
 export function buildRipReadingDraft(
   input: RipBuildInput,
@@ -77,22 +87,14 @@ export function buildRipReadingDraft(
     6,
   );
 
-  const inversions = (dossier?.inversions || []).slice(0, 6).map((i) => ({
-    becauseYouTendTo: i.becauseYouTendTo,
-    tryInstead: i.tryInstead,
-    evidenceRefIds: i.evidenceRefIds || [],
-  }));
-
-  // If no dossier inversions, synthesize light cards from anti-motifs / blind spots
-  if (inversions.length === 0) {
-    for (const anti of antiMotifs.slice(0, 3)) {
-      inversions.push({
-        becauseYouTendTo: `Default toward the familiar pole opposite “${anti}”`,
-        tryInstead: `Run a controlled experiment that admits “${anti}” without abandoning your exclusion principles`,
-        evidenceRefIds: [],
-      });
-    }
-  }
+  const inversions = enrichInversions({
+    dossier,
+    likeness,
+    doll,
+    tailorDraft: input.tailorDraft,
+    antiMotifs,
+    blindSpots,
+  });
 
   const sourcePalette = unique(
     [
@@ -108,7 +110,6 @@ export function buildRipReadingDraft(
     sourcePalette.filter((p) => !p.includes(" ") || p.startsWith("#")),
     4,
   );
-  // If palette was prose-only, still produce named opposites from motifs
   if (oppositePalette.length < 2 && sourcePalette.length) {
     oppositePalette = unique(
       [...oppositePalette, ...oppositePaletteFrom(sourcePalette, 3)],
@@ -117,13 +118,13 @@ export function buildRipReadingDraft(
   }
 
   const oppositeSilhouette = doll?.silhouette
-    ? `anti-${doll.silhouette}`.slice(0, 80)
+    ? applyProportionDisruption(doll.silhouette).disrupted.slice(0, 80)
     : antiMotifs[0]
       ? `silhouette that admits ${antiMotifs[0]}`
       : "looser, less defended proportion";
 
   const oppositeRegister = doll?.emotionalRegister
-    ? `inverse of “${doll.emotionalRegister}”`
+    ? applyRegisterShift(doll.emotionalRegister).shifted
     : blindSpots[0]
       ? `lean into: ${blindSpots[0]}`
       : "productive friction over composure";
@@ -153,11 +154,55 @@ export function buildRipReadingDraft(
       ? `Inverse thesis: the graph’s refusals (${antiMotifs.slice(0, 3).join(", ")}) are the active dark mirror — not a second identity.`
       : "Inverse thesis: without explicit refusals yet, this rip is a placeholder dark mirror. Accept a Tailor likeness or generate a Doll to sharpen it.";
 
+  const semioticTouchpoints = buildInverseSemioticTouchpoints({
+    antiMotifs,
+    blindSpots,
+    doll,
+    dossier,
+    likeness,
+  });
+
+  const inverseRecommendations = buildInverseRecommendations({
+    antiMotifs,
+    blindSpots,
+    shadowExperiments,
+    oppositePalette,
+    oppositeSilhouette,
+    oppositeRegister,
+    doll,
+  });
+
+  const fieldAttributions = buildFieldAttributions({
+    antiMotifs,
+    thingsToAvoid,
+    blindSpots,
+    oppositePalette,
+    oppositeSilhouette,
+    oppositeRegister,
+    shadowExperiments,
+    dossier,
+    likeness,
+    doll,
+    tailorDraft: input.tailorDraft,
+  });
+
+  const inputCoverage = buildRipInputCoverage({
+    dossier,
+    likeness,
+    doll,
+    tailorDraft: input.tailorDraft,
+    inversions,
+  });
+
   const provenanceNotes = [
     dossier ? "Consumed evidence dossier inversions / avoidances" : "No evidence dossier on profile",
     likeness ? "Consumed likeness antiMotifs" : "No likeness manifest",
     doll ? `Consumed doll projection “${doll.name}” (blind spots / contrasts)` : "No doll bound",
     draftRefuse.length ? "Consumed Tailor draft refuse / exclusion principles" : "",
+    `Coverage ${Math.round(inputCoverage.coverageScore * 100)}% · ${inputCoverage.activeSources.join(", ")}`,
+    inputCoverage.evidenceRefCount > 0
+      ? `${inputCoverage.evidenceRefCount} evidence ref(s) linked to inversions`
+      : "No evidence refs on inversions yet",
     "Rip is a Taste Graph projection, not identity or diagnosis.",
   ].filter(Boolean);
 
@@ -179,6 +224,10 @@ export function buildRipReadingDraft(
       ? shadowExperiments
       : ["Run one plate that violates a single exclusion on purpose, then restore the law"],
     provenanceNotes,
+    inputCoverage,
+    fieldAttributions,
+    semioticTouchpoints,
+    inverseRecommendations,
     visibility: "private",
   };
 }
