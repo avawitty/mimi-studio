@@ -267,6 +267,8 @@ function testCanonAndFiles() {
     "lib/celestial/geocodePlace.ts",
     "lib/celestial/bodyLabels.ts",
     "api/celestial/geocode.ts",
+    "api/celestial/geocode-suggest.ts",
+    "components/celestial/BirthLocationField.tsx",
     "lib/celestialChamberContract.ts",
     "components/chambers/CelestialCalibrationChamber.tsx",
     "docs/celestial-calibration-chamber-spec.md",
@@ -297,6 +299,10 @@ function testCanonAndFiles() {
   assert(
     server.includes("/api/celestial/geocode"),
     "dev server mounts celestial geocode",
+  );
+  assert(
+    server.includes("/api/celestial/geocode-suggest"),
+    "dev server mounts celestial geocode suggest",
   );
 
   const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));

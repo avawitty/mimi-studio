@@ -34,7 +34,7 @@ export const CELESTIAL_CHAMBER_COPY = {
   emptyBirthDate:
     "Calibration is on — add a birth date below for your natal Sun, Moon, and planets in every zine. Without it, issues only show the sky at composition time.",
   saveHint:
-    "Saving writes Tailor celestialCalibration and mirrors birth fields on your profile.",
+    "Changes autosave to your profile. Manual save still available if you want confirmation.",
   resolvePlaceHint:
     "Resolve place to attach coordinates + IANA timezone so rising/houses can compute and the Sun uses local civil time.",
 } as const;

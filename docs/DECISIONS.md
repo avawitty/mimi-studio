@@ -6,7 +6,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-<<<<<<< HEAD
+## 2026-08-08 — Celestial place autocomplete + autosave + Mesopic scroll
+
+**Decision:** Add Nominatim-backed `/api/celestial/geocode-suggest` for birth-location autocomplete; extend `/api/celestial/geocode` to accept resolved suggestion coordinates (timezone via `tz-lookup` without re-search). Celestial Calibration autosaves draft changes to `tailorDraft.celestialCalibration` after 900ms debounce. Clear stale lat/lon/timezone when birth location text changes after a resolved place. Mesopic Lens chamber root uses `h-full overflow-y-auto` instead of `overflow-hidden`.
+
+**Alternatives rejected:** (1) Client-only autocomplete without server proxy (Nominatim ToS / rate limits). (2) Manual save-only for celestial profiles. (3) Leaving stale coordinates when location text edits.
+
+**Why:** Resolve place failed silently when coords stayed stale; users need searchable locations and durable profile writes without an explicit save click; Mesopic content was clipped by chamber overflow.
+
+**Ref:** `components/celestial/BirthLocationField.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`, `lib/celestial/geocodePlace.ts`, `api/celestial/geocode-suggest.ts`, `components/chambers/MesopicLensChamber.tsx`
+
+---
+
 ## 2026-08-08 — Studio floating pill + funded gateway credit heal
 
 **Decision:** Consolidate Studio compose chrome into one scrollable floating pill (`buildDefaultStudioInstruments`) with a universal Tools drawer (Anchors, Continuum, Treatments, Used Context, noise). Retire desktop footer tabs and vertical rail. Cover composer uses compact `UsedContextColophon`. Funded gateway heals patron seats (`isPatron` + `patronActivatedAt`) without Stripe verify; assessment trial users get initial 150-credit grant and skip day-pass drip reset.
@@ -16,7 +27,7 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Mobile UX was cluttered; signed-in patrons and assessment trials were falsely hitting `credits_exhausted`. Promo patrons with `isPatron`/`patronKey` or `billing.source=promo` now route through membership credits even when plan fields still read free/trial.
 
 **Ref:** `components/InputStudio.tsx`, `lib/mimiFundedGateway.ts`, `functions/src/index.ts`, `components/provenance/UsedContextColophon.tsx`, `metadata.json`
-=======
+
 ## 2026-08-08 — Zine save taste boundaries + legacy /@ redirect
 
 **Decision:** Stop auto-calling `updateTasteGraph` from `saveZineToProfile`; remove `scryShadowMemory` from `createZine` prompts (approved Used Context + recent zines only). Upload `data:` cover URLs via `archiveManager` before Firestore persist (fail closed). Legacy `/@:handle` redirects to `/u/:handle` without rendering private `tasteProfile` fields.
@@ -26,7 +37,6 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Inference/memory/publication consents must stay separate; public routes fail closed.
 
 **Ref:** `services/firebaseUtils.ts`, `services/zineGenerator.ts`, `components/PublicSharePage.tsx`, `__tests__/stabilizationInvariants.test.ts`
->>>>>>> c0cf2d6 (fix(stabilization): taste boundaries + legacy /@ redirect)
 
 ---
 

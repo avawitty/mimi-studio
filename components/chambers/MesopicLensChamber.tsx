@@ -103,7 +103,7 @@ export const MesopicLensChamber: React.FC<{
       }
     >
       <div
-        className="mesopic-lens-chamber relative min-h-[70vh] overflow-hidden"
+        className="mesopic-lens-chamber relative h-full min-h-0 overflow-y-auto"
         data-testid="mesopic-lens-chamber"
       >
         {/* Twilight gradient field */}

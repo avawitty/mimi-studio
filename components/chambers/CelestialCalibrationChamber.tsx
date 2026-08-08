@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Check, MapPin, Moon, RefreshCw } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Moon, RefreshCw } from "lucide-react";
 import { ChamberShell } from "./ChamberShell";
+import { BirthLocationField } from "../celestial/BirthLocationField";
 import { useUser } from "../../contexts/UserContext";
 import {
   CELESTIAL_CHAMBER_COPY,
@@ -16,7 +17,10 @@ import {
   ZODIAC_SIGN_ORDER,
 } from "../../lib/celestial/sunSign";
 import { ASTRONOMICAL_SEASON_LABELS } from "../../lib/celestial/seasonalAlignment";
-import type { CelestialCalibrationDraft } from "../../schemas/celestialCalibrationContracts";
+import type {
+  CelestialCalibrationDraft,
+  PlaceResolution,
+} from "../../schemas/celestialCalibrationContracts";
 import type { ZodiacSign } from "../../types";
 import {
   DEFAULT_CELESTIAL_CALIBRATION,
@@ -56,6 +60,29 @@ function draftFromProfile(profile: {
   };
 }
 
+function calibrationEquals(
+  a: CelestialCalibrationDraft,
+  b: CelestialCalibrationDraft,
+): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function buildCalibrationFromDraft(
+  draft: CelestialCalibrationDraft,
+  readout: ReturnType<typeof compileCelestialReadout>,
+): CelestialCalibrationDraft {
+  const derivedSign =
+    draft.zodiacLocked && draft.zodiac
+      ? draft.zodiac
+      : readout.sun?.sign || draft.zodiac;
+  return {
+    ...draft,
+    zodiac: derivedSign,
+    seasonalAlignment:
+      draft.seasonalAlignment?.trim() || readout.seasonalAlignment,
+  };
+}
+
 export const CelestialCalibrationChamber: React.FC<{
   navigate?: (path: string) => void;
 }> = ({ navigate }) => {
@@ -65,14 +92,21 @@ export const CelestialCalibrationChamber: React.FC<{
   );
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [autoSaveState, setAutoSaveState] = useState<"idle" | "pending" | "saved">(
+    "idle",
+  );
   const [resolvingPlace, setResolvingPlace] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const skipAutoSaveRef = useRef(true);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const profileUid = profile?.uid;
   const tailorStamp = profile?.tailorDraft?.lastTailored;
   useEffect(() => {
     if (!profileUid || !profile) return;
+    skipAutoSaveRef.current = true;
     setDraft(draftFromProfile(profile));
+    setAutoSaveState("idle");
     // Only re-hydrate after identity change or a successful Tailor save — not every render.
   }, [profileUid, tailorStamp]);
 
@@ -82,6 +116,113 @@ export const CelestialCalibrationChamber: React.FC<{
   const patch = (partial: Partial<CelestialCalibrationDraft>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
     setSavedFlash(false);
+    setAutoSaveState("pending");
+  };
+
+  const persistCalibration = useCallback(
+    async (sourceDraft: CelestialCalibrationDraft, manual = false) => {
+      if (!profile) {
+        if (manual) {
+          setError("Sign in or finish boot before saving calibration.");
+        }
+        return false;
+      }
+      setSaving(true);
+      if (manual) setError(null);
+      try {
+        const sourceReadout = compileCelestialReadout(sourceDraft);
+        const nextCalibration = buildCalibrationFromDraft(
+          sourceDraft,
+          sourceReadout,
+        );
+        await updateProfile({
+          ...profile,
+          birthDate: nextCalibration.birthDate || profile.birthDate,
+          birthTime: nextCalibration.birthTime || profile.birthTime,
+          birthLocation: nextCalibration.birthLocation || profile.birthLocation,
+          zodiacSign: nextCalibration.zodiac || profile.zodiacSign,
+          disabledPlates: syncCelestialPlateDisabled(
+            profile,
+            nextCalibration.enabled,
+          ),
+          tailorDraft: {
+            ...profile.tailorDraft,
+            celestialCalibration: nextCalibration,
+            lastTailored: Date.now(),
+          },
+        });
+        setDraft(nextCalibration);
+        setSavedFlash(true);
+        setAutoSaveState("saved");
+        return true;
+      } catch (e) {
+        if (manual) {
+          setError(
+            e instanceof Error ? e.message : "Failed to save calibration.",
+          );
+        }
+        setAutoSaveState("idle");
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [profile, updateProfile],
+  );
+
+  useEffect(() => {
+    if (!profile) return;
+    if (skipAutoSaveRef.current) {
+      skipAutoSaveRef.current = false;
+      return;
+    }
+
+    const savedDraft = draftFromProfile(profile);
+    if (calibrationEquals(draft, savedDraft)) {
+      setAutoSaveState("idle");
+      return;
+    }
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      void persistCalibration(draft);
+    }, 900);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [draft, profile, persistCalibration]);
+
+  const applyPlaceResolution = (data: PlaceResolution) => {
+    patch({
+      birthLocation: data.label,
+      geocodeLabel: data.label,
+      birthLatitude: data.latitude,
+      birthLongitude: data.longitude,
+      birthTimezone: data.timezone,
+      geocodeStatus: "resolved",
+    });
+  };
+
+  const handleBirthLocationChange = (nextValue: string) => {
+    const wasResolved = draft.geocodeStatus === "resolved";
+    patch({
+      birthLocation: nextValue,
+      geocodeStatus: wasResolved ? "unset" : draft.geocodeStatus,
+      ...(wasResolved
+        ? {
+            birthLatitude: undefined,
+            birthLongitude: undefined,
+            birthTimezone: undefined,
+            geocodeLabel: undefined,
+          }
+        : {}),
+    });
   };
 
   const applyDerivedSun = () => {
@@ -94,81 +235,8 @@ export const CelestialCalibrationChamber: React.FC<{
     });
   };
 
-  const resolvePlace = async () => {
-    const query = draft.birthLocation?.trim();
-    if (!query) {
-      setError("Enter a birth location before resolving place.");
-      return;
-    }
-    setResolvingPlace(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/celestial/geocode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.error?.message || "Failed to resolve place.");
-      }
-      patch({
-        birthLocation: query,
-        geocodeLabel: data.label,
-        birthLatitude: data.latitude,
-        birthLongitude: data.longitude,
-        birthTimezone: data.timezone,
-        geocodeStatus: "resolved",
-      });
-    } catch (e) {
-      patch({ geocodeStatus: "failed" });
-      setError(e instanceof Error ? e.message : "Failed to resolve place.");
-    } finally {
-      setResolvingPlace(false);
-    }
-  };
-
   const handleSave = async () => {
-    if (!profile) {
-      setError("Sign in or finish boot before saving calibration.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const derivedSign =
-        draft.zodiacLocked && draft.zodiac
-          ? draft.zodiac
-          : readout.sun?.sign || draft.zodiac;
-      const nextCalibration: CelestialCalibrationDraft = {
-        ...draft,
-        zodiac: derivedSign,
-        seasonalAlignment:
-          draft.seasonalAlignment?.trim() || readout.seasonalAlignment,
-      };
-      await updateProfile({
-        ...profile,
-        birthDate: nextCalibration.birthDate || profile.birthDate,
-        birthTime: nextCalibration.birthTime || profile.birthTime,
-        birthLocation: nextCalibration.birthLocation || profile.birthLocation,
-        zodiacSign: derivedSign || profile.zodiacSign,
-        disabledPlates: syncCelestialPlateDisabled(
-          profile,
-          nextCalibration.enabled,
-        ),
-        tailorDraft: {
-          ...profile.tailorDraft,
-          celestialCalibration: nextCalibration,
-          lastTailored: Date.now(),
-        },
-      });
-      setDraft(nextCalibration);
-      setSavedFlash(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save calibration.");
-    } finally {
-      setSaving(false);
-    }
+    await persistCalibration(draft, true);
   };
 
   const go = (view: string) => {
@@ -259,49 +327,29 @@ export const CelestialCalibrationChamber: React.FC<{
                   className="w-full bg-transparent border border-nous-border px-3 py-2 font-mono text-xs text-nous-text focus:outline-none focus:border-nous-text/50"
                 />
               </label>
-              <label className="block space-y-1.5 md:col-span-2">
-                <span className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
-                  Birth location
-                </span>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="text"
-                    value={draft.birthLocation || ""}
-                    onChange={(e) =>
-                      patch({
-                        birthLocation: e.target.value,
-                        geocodeStatus:
-                          draft.geocodeStatus === "resolved" ? "unset" : draft.geocodeStatus,
-                      })
-                    }
-                    placeholder="City, region — resolve for timezone + coordinates"
-                    className="flex-1 bg-transparent border border-nous-border px-3 py-2 font-sans text-sm text-nous-text placeholder:text-nous-subtle/50 focus:outline-none focus:border-nous-text/50"
-                  />
-                  <button
-                    type="button"
-                    onClick={resolvePlace}
-                    disabled={resolvingPlace || !draft.birthLocation?.trim()}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-nous-border font-mono text-[8px] uppercase tracking-widest text-nous-subtle hover:text-nous-text disabled:opacity-40 shrink-0"
-                  >
-                    <MapPin size={10} />
-                    {resolvingPlace ? "Resolving…" : "Resolve place"}
-                  </button>
-                </div>
-                <p className="font-sans text-[10px] text-nous-subtle pt-1">
-                  {CELESTIAL_CHAMBER_COPY.resolvePlaceHint}
-                </p>
-                {draft.geocodeStatus === "resolved" && draft.birthTimezone ? (
-                  <p className="font-mono text-[9px] uppercase tracking-wider text-nous-text pt-1">
-                    {draft.geocodeLabel || draft.birthLocation}
-                    {" · "}
-                    {draft.birthTimezone}
-                    {typeof draft.birthLatitude === "number" &&
-                    typeof draft.birthLongitude === "number"
-                      ? ` · ${draft.birthLatitude.toFixed(3)}°, ${draft.birthLongitude.toFixed(3)}°`
-                      : ""}
-                  </p>
-                ) : null}
-              </label>
+              <BirthLocationField
+                value={draft.birthLocation || ""}
+                geocodeStatus={draft.geocodeStatus}
+                geocodeLabel={draft.geocodeLabel}
+                birthTimezone={draft.birthTimezone}
+                birthLatitude={draft.birthLatitude}
+                birthLongitude={draft.birthLongitude}
+                resolvingPlace={resolvingPlace}
+                onValueChange={handleBirthLocationChange}
+                onResolved={applyPlaceResolution}
+                onResolveFailed={() => patch({ geocodeStatus: "failed" })}
+                onResolveError={(message) =>
+                  setError(message ? message : null)
+                }
+                onResolveStart={() => {
+                  setResolvingPlace(true);
+                  setError(null);
+                }}
+                onResolveEnd={() => setResolvingPlace(false)}
+              />
+              <p className="font-sans text-[10px] text-nous-subtle pt-1 md:col-span-2">
+                {CELESTIAL_CHAMBER_COPY.resolvePlaceHint}
+              </p>
             </div>
             {!draft.birthDate ? (
               <div className="border border-amber-500/30 bg-amber-500/5 px-4 py-3 space-y-2">
@@ -553,7 +601,11 @@ export const CelestialCalibrationChamber: React.FC<{
               {saving ? "Saving…" : savedFlash ? "Saved" : "Save calibration"}
             </button>
             <p className="font-sans text-[10px] text-nous-subtle max-w-sm">
-              {CELESTIAL_CHAMBER_COPY.saveHint}
+              {autoSaveState === "pending"
+                ? "Autosaving changes…"
+                : autoSaveState === "saved"
+                  ? "Profile autosaved."
+                  : CELESTIAL_CHAMBER_COPY.saveHint}
             </p>
             {error ? (
               <p className="w-full font-sans text-[11px] text-red-700/80">{error}</p>
