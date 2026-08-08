@@ -15,6 +15,8 @@ import { buildRefusalFromExplicit } from "../lib/tasteIntelligence/refusals";
 import { computeModelDelta } from "../lib/tasteIntelligence/computeModelDelta";
 import {
   assertUndoableEdit,
+  deriveEditBaseline,
+  replayTasteSnapshot,
 } from "../lib/tasteIntelligence/replaySnapshot";
 import { buildE2eTasteSnapshot } from "../lib/e2e/tailorPatternGraphFixture";
 
@@ -83,6 +85,11 @@ async function installTasteIntelligenceMock(page: Page, store: MockStore) {
       return;
     }
 
+    if (method === "GET" && path.startsWith("/model-edits")) {
+      await fulfillJson(route, { edits: store.edits });
+      return;
+    }
+
     if (method === "POST" && path === "/model-edits") {
       const body = route.request().postDataJSON() as {
         operation: TasteModelEdit["operation"];
@@ -131,7 +138,12 @@ async function installTasteIntelligenceMock(page: Page, store: MockStore) {
       const beforeSnapshot = store.snapshot;
       const undoEdit = createUndoEdit(original);
       store.edits.push(undoEdit);
-      store.snapshot = applyEditsToSnapshot(beforeSnapshot, [undoEdit]);
+      const baseline = deriveEditBaseline(beforeSnapshot, store.edits);
+      store.snapshot = replayTasteSnapshot({
+        baseline,
+        edits: store.edits,
+        refusals: store.refusals,
+      });
       await fulfillJson(route, {
         edit: undoEdit,
         snapshot: store.snapshot,
