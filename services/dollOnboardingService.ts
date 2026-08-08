@@ -15,6 +15,11 @@ import {
 } from './tailorService';
 import { deriveProceduralAesthetic, buildLikenessAsDollImagePrompt } from './dollEngine';
 import { formatDeclaredAttributesForPrompt, mergeLikenessTraits } from './dollLikeness';
+import {
+  isDataUrl,
+  uploadDollReferenceBatch,
+  uploadDollReferenceDataUrl,
+} from '../lib/doll/uploadDollReference';
 
 const ONBOARDING_CONSTITUTION = `${ORACLE_PERSONA}
 
@@ -178,12 +183,17 @@ export async function createDollFromOnboarding(input: DollOnboardingInput): Prom
 
   const analyzed = await analyzeOnboardingRefs(input);
 
+  const [userPhotoUrl, aestheticRefUrls] = await Promise.all([
+    uploadDollReferenceDataUrl(input.userId, input.userPhotoDataUrl, 'creator-photo'),
+    uploadDollReferenceBatch(input.userId, input.aestheticRefDataUrls, 'aesthetic-ref'),
+  ]);
+
   const extractedTraits = analyzed.likenessTraits as DollLikenessTraits | undefined;
   const mergedTraits = mergeLikenessTraits(input.declaredAttributes, extractedTraits);
 
   const onboardingRefs: DollOnboardingRefs = {
-    userPhotoDataUrl: input.userPhotoDataUrl,
-    aestheticRefDataUrls: input.aestheticRefDataUrls,
+    userPhotoUrl,
+    aestheticRefUrls,
     rawThought: input.rawThought?.trim() || undefined,
     declaredAttributes: input.declaredAttributes,
     likenessTraits: mergedTraits,
@@ -235,7 +245,10 @@ export async function createDollFromOnboarding(input: DollOnboardingInput): Prom
   await ensureDefaultDollMasks(input.userId, doll);
 
   try {
-    const portraitUrl = await generateShellPortrait(doll, input.userPhotoDataUrl);
+    const portraitSource = isDataUrl(input.userPhotoDataUrl)
+      ? userPhotoUrl
+      : input.userPhotoDataUrl;
+    const portraitUrl = await generateShellPortrait(doll, portraitSource);
     if (portraitUrl) {
       const updates = {
         generatedImageUrl: portraitUrl,
