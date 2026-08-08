@@ -38,14 +38,14 @@
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
 | **Scry** | `/scry` | shipped | Curiosity records (local + Firestore); readings ground on profile + celestial + web; unified retrieval service still deferred | Keep lane honesty + curiosity `verify:curiosity-tracking` |
-| **Mesopic Lens** | `/mesopic-lens` | **shipped** | Personal twilight Q&A (distinct from Observatory collective Mesopic); curiosity pattern reports | Celestial handoff when calibration inactive |
+| **Mesopic Lens** | `/mesopic-lens` | **shipped** | Personal twilight Q&A; scrollable void shell; curiosity pattern reports | Celestial handoff when calibration inactive |
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
 | **Observatory** | `/observatory` | **partial** | Live MMM + Mesopic API, cycle notes, window selector (7–90d), in-chamber withdraw | Mesopic promotion rules tuning; cycle inference calibration |
 | **Mean Median Mode** | `/mean-median-mode` | **partial** | In-chamber segment (same shell as Observatory) | Route alias only — no separate UI fork |
 | **Forecast** | `/forecast` | partial | Intake + Apify queries + **POST /api/forecast** snapshot + Residue artifact panel; cultural vector uses **live** MMM API (empty when no corpus) | Remove residual costume metrics; approved RSS ingest |
-| **Celestial Calibration** | `/celestial-calibration` | shipped | Rising/houses need time + geocoded place | — |
+| **Celestial Calibration** | `/celestial-calibration` | shipped | Place autocomplete + autosave; rising/houses need time + geocoded place | — |
 | **Oracle** | `/oracle` | **partial** | Cyberdeck voice overlay shipped; chamber reports + theme analysis now local-first (`oracleChamberService`); not in `CANON_MODULES` yet; celestial readings ephemeral | Register in canon; optional Neon sync for cross-device reports |
 
 ---

@@ -124,6 +124,14 @@ export const natalChartSliceSchema = z.object({
   summary: z.string(),
 });
 
+export const placeSuggestionSchema = z.object({
+  query: z.string(),
+  label: z.string(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  countryCode: z.string().optional(),
+});
+
 export const placeResolutionSchema = z.object({
   query: z.string(),
   label: z.string(),
@@ -164,4 +172,5 @@ export type NatalBodyPosition = z.infer<typeof natalBodyPositionSchema>;
 export type NatalAspect = z.infer<typeof natalAspectSchema>;
 export type NatalHouseCusp = z.infer<typeof natalHouseCuspSchema>;
 export type NatalChartSlice = z.infer<typeof natalChartSliceSchema>;
+export type PlaceSuggestion = z.infer<typeof placeSuggestionSchema>;
 export type PlaceResolution = z.infer<typeof placeResolutionSchema>;
