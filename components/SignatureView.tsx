@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useUser } from "../contexts/UserContext";
 import { fetchUserZines } from "../services/firebaseUtils";
-import { generateSignature } from "../services/signatureService";
+import { generateSignature, patchSignatureFromEvidence } from "../services/signatureService";
 import { AestheticSignature } from "../types";
 import { SignatureImageGenerator } from "./SignatureImageGenerator";
 import { Share2, Download, Fingerprint, Activity, Layers, Sparkles } from "lucide-react";
@@ -21,10 +21,18 @@ import { SignaturePlate } from "./signature/SignaturePlate";
 import { SignatureApproveBar, SignatureReading } from "./signature/SignatureReading";
 import { PublicField, PublicCTA } from "./public-face";
 import { PressReveal } from "./motion/PressReveal";
-import { getApprovedUsedContext } from "../services/usedContextService";
+import {
+  getApprovedUsedContext,
+  subscribeUsedContext,
+} from "../services/usedContextService";
 import { useTasteModel } from "../hooks/useTasteModel";
 import { recordAndRecompile } from "../services/tasteModelService";
 import { useFeedback } from "../hooks/useFeedback";
+import {
+  computeSignatureFingerprint,
+  fingerprintKey,
+  shouldPatchSignatureOnly,
+} from "../lib/signature/signatureFingerprint";
 
 const SignatureSkeleton = () => (
   <PublicField bleed className="w-full min-h-full font-serif pb-20 md:pb-28">
@@ -58,6 +66,9 @@ export const SignatureView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const dnaCardRef = useRef<HTMLDivElement>(null);
+  const lastFingerprintRef = useRef<string | null>(null);
+  const patchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipNextPatchRef = useRef(true);
 
   const { activeSnapshot } = useTasteModel({
     userId: user?.uid ?? "",
@@ -115,6 +126,7 @@ export const SignatureView: React.FC = () => {
           return;
         }
         const sig = await generateSignature(ctx);
+        lastFingerprintRef.current = fingerprintKey(computeSignatureFingerprint(ctx));
         await persistSignature(sig);
       } catch (error) {
         console.error("MIMI // SignatureView: Error generating signature:", error);
@@ -133,7 +145,9 @@ export const SignatureView: React.FC = () => {
       }
 
       if (profile?.tasteProfile?.aestheticSignature) {
-        setSignature(profile.tasteProfile.aestheticSignature);
+        const cached = profile.tasteProfile.aestheticSignature;
+        setSignature(cached);
+        lastFingerprintRef.current = cached.contextFingerprint ?? null;
         setLoading(false);
         return;
       }
@@ -142,6 +156,7 @@ export const SignatureView: React.FC = () => {
         const ctx = await buildGenerationContext();
         if (ctx && (ctx.zines.length > 0 || (ctx.approvedUsedContext?.length ?? 0) > 0)) {
           const sig = await generateSignature(ctx);
+          lastFingerprintRef.current = fingerprintKey(computeSignatureFingerprint(ctx));
           await persistSignature(sig);
         }
       } catch (error) {
@@ -152,6 +167,72 @@ export const SignatureView: React.FC = () => {
     };
     void init();
   }, [user, profile?.tasteProfile?.aestheticSignature, buildGenerationContext, persistSignature]);
+
+  useEffect(() => {
+    if (!user || !signature) return;
+
+    const scheduleEvidencePatch = () => {
+      if (skipNextPatchRef.current || busy || loading) return;
+      if (patchTimerRef.current) clearTimeout(patchTimerRef.current);
+      patchTimerRef.current = setTimeout(() => {
+        void (async () => {
+          const ctx = await buildGenerationContext(signature);
+          if (!ctx) return;
+          const nextFp = fingerprintKey(computeSignatureFingerprint(ctx));
+          const prevFp = lastFingerprintRef.current;
+          if (!prevFp || prevFp === nextFp) return;
+
+          const prev = JSON.parse(prevFp) as ReturnType<typeof computeSignatureFingerprint>;
+          const next = computeSignatureFingerprint(ctx);
+          if (!shouldPatchSignatureOnly(prev, next)) return;
+
+          const prevIds = new Set(prev.approvedAtomIds);
+          const nextIds = new Set(next.approvedAtomIds);
+          const removedAtomIds = prev.approvedAtomIds.filter((id) => !nextIds.has(id));
+          const addedApproved = (ctx.approvedUsedContext ?? []).filter(
+            (e) => e.approved && !prevIds.has(e.atomId),
+          );
+
+          setBusy(true);
+          try {
+            const patched = await patchSignatureFromEvidence(signature, ctx, {
+              addedApproved,
+              removedAtomIds,
+            });
+            lastFingerprintRef.current = nextFp;
+            await persistSignature(patched);
+            window.dispatchEvent(
+              new CustomEvent("mimi:toast", {
+                detail: {
+                  message: "Reading updated from new evidence",
+                  type: "info",
+                },
+              }),
+            );
+          } catch (error) {
+            console.error("MIMI // SignatureView: evidence patch failed:", error);
+          } finally {
+            setBusy(false);
+          }
+        })();
+      }, 700);
+    };
+
+    const unsubscribe = subscribeUsedContext(scheduleEvidencePatch);
+    return () => {
+      unsubscribe();
+      if (patchTimerRef.current) clearTimeout(patchTimerRef.current);
+    };
+  }, [user, signature, busy, loading, buildGenerationContext, persistSignature]);
+
+  useEffect(() => {
+    if (!loading && signature) {
+      skipNextPatchRef.current = false;
+      if (!lastFingerprintRef.current && signature.contextFingerprint) {
+        lastFingerprintRef.current = signature.contextFingerprint;
+      }
+    }
+  }, [loading, signature]);
 
   const handleExport = async (format: "plate" | "story" = "plate") => {
     if (!dnaCardRef.current) return;
@@ -224,7 +305,7 @@ export const SignatureView: React.FC = () => {
   const handleCopyShareLink = async () => {
     const handle = profile?.handle;
     const url = handle
-      ? `${window.location.origin}/u/${handle}`
+      ? `${window.location.origin}/u/${handle}/signature`
       : `${window.location.origin}/signature`;
     try {
       await navigator.clipboard.writeText(url);
@@ -250,6 +331,8 @@ export const SignatureView: React.FC = () => {
         ...signature,
         status: "approved",
         approvedAt: Date.now(),
+        contextFingerprint:
+          signature.contextFingerprint ?? lastFingerprintRef.current ?? undefined,
       };
       await persistSignature(approved);
       try {

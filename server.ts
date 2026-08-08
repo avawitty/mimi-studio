@@ -1953,6 +1953,73 @@ async function startServer() {
     return modifiedHtml;
   }
 
+  async function fetchPublicProfileByHandleServer(
+    handle: string,
+  ): Promise<Record<string, unknown> | null> {
+    const normalized = String(handle || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^@/, "");
+    if (!normalized || !db) return null;
+    try {
+      const snap = await db
+        .collection("profiles_public")
+        .where("handle", "==", normalized)
+        .limit(1)
+        .get();
+      if (snap.empty) return null;
+      return snap.docs[0].data() as Record<string, unknown>;
+    } catch (e) {
+      console.warn("MIMI // Server profile fetch failed:", e);
+      return null;
+    }
+  }
+
+  app.get("/u/:handle/signature", async (req, res) => {
+    try {
+      const handle = String(req.params.handle || "").trim();
+      console.log(`MIMI // Server-side SEO requested for public signature: @${handle}`);
+
+      let htmlPath = "";
+      if (process.env.NODE_ENV !== "production" && viteAvailable) {
+        htmlPath = path.join(process.cwd(), "index.html");
+      } else {
+        htmlPath = path.join(process.cwd(), "dist", "index.html");
+      }
+
+      if (!fs.existsSync(htmlPath)) {
+        return res.status(404).send("Index template not found");
+      }
+
+      let html = fs.readFileSync(htmlPath, "utf8");
+      const profile = await fetchPublicProfileByHandleServer(handle);
+      const { extractApprovedPublicSignature, buildPublicSignatureSeo, injectSignatureSeoIntoIndexHtml } =
+        await import("./lib/signature/publicSignature.js");
+      const signature = extractApprovedPublicSignature(profile);
+      const showcase = (profile?.publicShowcase || {}) as Record<string, unknown>;
+      const pageUrl = `https://${req.get("host")}/u/${handle.toLowerCase()}/signature`;
+      const seo = buildPublicSignatureSeo(handle, signature, {
+        baseUrl: `https://${req.get("host")}`,
+        imageFallback:
+          typeof showcase.dollPortraitUrl === "string" ? showcase.dollPortraitUrl : undefined,
+      });
+      html = injectSignatureSeoIntoIndexHtml(html, { ...seo, pageUrl });
+
+      if (process.env.NODE_ENV !== "production" && viteInstance) {
+        html = await viteInstance.transformIndexHtml(req.originalUrl, html);
+      }
+
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    } catch (err: unknown) {
+      console.error("MIMI // Error generating signature SEO:", err);
+      if (process.env.NODE_ENV !== "production" && viteAvailable) {
+        res.sendFile(path.join(process.cwd(), "index.html"));
+      } else {
+        res.sendFile(path.join(process.cwd(), "dist", "index.html"));
+      }
+    }
+  });
+
   // Intercept shared zines routes to provide native platform preview support (rich Open Graph card previews)
   app.get("/s/:zineId", async (req, res) => {
     try {

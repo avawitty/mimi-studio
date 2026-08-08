@@ -126,6 +126,8 @@ export interface AestheticSignature {
   status?: "draft" | "approved";
   approvedAt?: number;
   version?: number;
+  /** Fingerprint of inputs used for the last compile/patch. */
+  contextFingerprint?: string;
 }
 
 export interface InfluenceLineageItem {
