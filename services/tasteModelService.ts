@@ -41,6 +41,12 @@ import {
   listObservations,
   listPatternClusters,
 } from './tailorService';
+import {
+  buildAssertionInputFromCuration,
+  curationAssertionId,
+  type CurationAssertionTarget,
+} from '../lib/taste/curationAssertionBridge';
+import { upsertTasteAssertion } from './taste/tasteAssertionService';
 
 function eventsCol(userId: string) {
   return collection(db, `users/${userId}/tasteLearningEvents`);
@@ -503,7 +509,57 @@ export async function recordCurationAsTasteEvent(
       mappedTargetType,
       targetId,
     ),
+  }).then(async (event) => {
+    void syncCurationToAssertion(userId, projectId, targetType, targetId, action).catch(
+      (err) => console.warn('MIMI // Curation → assertion sync failed:', err),
+    );
+    return event;
   });
+}
+
+async function syncCurationToAssertion(
+  userId: string,
+  projectId: string,
+  targetType: 'pattern_cluster' | 'creative_law' | 'observation',
+  targetId: string,
+  action: UserCurationStatus,
+): Promise<void> {
+  if (targetType === 'observation') return;
+
+  const curationTarget = targetType as CurationAssertionTarget;
+  let label = '';
+  let confidence = 0.75;
+
+  if (targetType === 'pattern_cluster') {
+    const clusters = await listPatternClusters(userId, projectId);
+    const cluster = clusters.find((c) => c.id === targetId);
+    if (!cluster) return;
+    label = cluster.name;
+    confidence = cluster.confidence;
+  } else {
+    const laws = await listCreativeLaws(userId, projectId);
+    const law = laws.find((l) => l.id === targetId);
+    if (!law) return;
+    label = law.title;
+    confidence = law.confidence;
+  }
+
+  const assertionInput = buildAssertionInputFromCuration({
+    userId,
+    projectId,
+    targetType: curationTarget,
+    targetId,
+    action,
+    label,
+    confidence,
+  });
+  if (!assertionInput) return;
+
+  await upsertTasteAssertion(
+    userId,
+    curationAssertionId(curationTarget, targetId),
+    assertionInput,
+  );
 }
 
 export async function recordAndRecompile(
