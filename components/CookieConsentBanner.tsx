@@ -5,12 +5,18 @@ import {
   setCookieConsent,
 } from "../lib/cookieConsent";
 
-export const CookieConsentBanner: React.FC = () => {
+export const CookieConsentBanner: React.FC<{ suppressed?: boolean }> = ({
+  suppressed = false,
+}) => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (suppressed) {
+      setVisible(false);
+      return;
+    }
     setVisible(!hasCookieConsentChoice());
-  }, []);
+  }, [suppressed]);
 
   if (!visible) return null;
 

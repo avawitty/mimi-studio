@@ -38,6 +38,17 @@ export interface NavigationSection {
 
 export const MENU_STRUCTURE: NavigationSection[] = [
   {
+    section: "Orient",
+    items: [
+      {
+        mode: "chamber-map",
+        label: "Studio Map",
+        note: "see your phase, dossier, and next step",
+        keywords: ["map", "orientation", "desk", "phase", "dossier", "workflow", "where am i"],
+      },
+    ],
+  },
+  {
     section: "Collect",
     items: [
       {
@@ -409,12 +420,6 @@ export const MENU_STRUCTURE: NavigationSection[] = [
         note: "brand voice dossier",
         keywords: ["voice", "brand voice", "tone", "editorial", "copy", "language", "persona", "style guide", "principles"],
       },
-      {
-        mode: "chamber-map",
-        label: "Chamber Map",
-        note: "canonical module registry",
-        keywords: ["chamber", "map", "registry", "canon", "modules", "routes", "milestone"],
-      }
     ]
   }
 ];

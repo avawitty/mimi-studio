@@ -277,7 +277,8 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
 
         {lastDelta && lastDelta.changedFeatures.length > 0 && (
           <Section title="Model delta">
-            <ul className="text-xs text-mimi-stone space-y-1">
+            <div data-testid="taste-model-delta">
+              <ul className="text-xs text-mimi-stone space-y-1">
               {lastDelta.changedFeatures.map((delta) => (
                 <li key={delta.featureId}>
                   {delta.label}: strength {delta.signedStrengthBefore.toFixed(2)} →{' '}
@@ -285,6 +286,7 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
                 </li>
               ))}
             </ul>
+            </div>
           </Section>
         )}
 
@@ -299,6 +301,7 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
             <button
               type="button"
               onClick={onRefine}
+              data-testid="taste-refine-signal"
               className="min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-cobalt/40 px-3 py-2 text-mimi-cobalt"
             >
               Refine this signal
@@ -314,12 +317,14 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
                 <input
                   value={renameDraft}
                   onChange={(e) => setRenameDraft(e.target.value)}
+                  data-testid="taste-rename-input"
                   className="flex-1 border border-mimi-hairline/30 bg-transparent px-2 py-2 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => onRename(renameDraft)}
                   disabled={!renameDraft.trim()}
+                  data-testid="taste-rename-save"
                   className="min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-hairline/40 px-3"
                 >
                   Save
@@ -333,9 +338,16 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
               type="button"
               onClick={onUndo}
               className="min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-hairline/40 px-3 py-2"
+              data-testid="taste-undo-last-edit"
             >
-              Undo last edit
+              Undo last correction only
             </button>
+          )}
+          {canUndo && (
+            <p className="text-[10px] text-mimi-stone">
+              Reverses the most recent model edit in this session — not a full history rollback.
+              Refusals must be changed with a new refine action.
+            </p>
           )}
         </div>
       </div>

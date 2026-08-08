@@ -8,6 +8,42 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — AI Gateway funding for TTS + Oracle Cyberdeck live voice
+
+**Decision:** Route Gemini-compat TTS (`responseModalities: AUDIO`, `*-tts-*` models) through `generateGatewaySpeech` in `/api/proxy/gemini` with funded-gateway metering. Mint Oracle Cyberdeck live sessions via `gateway.experimental_realtime.getToken` in `/api/live/token` when `AI_GATEWAY_API_KEY` is configured; client connects with `GatewayLiveConnection` (WebSocket codec). Keep Gemini ephemeral tokens as fallback when gateway is absent or for BYOK `x-api-key`.
+
+**Alternatives rejected:** (1) Requiring `GEMINI_API_KEY` for all vocal features despite funded credits. (2) One-shot TTS only for Cyberdeck (product needs bidirectional live). (3) Adding `@ai-sdk/react` solely for `useRealtime` in this pass.
+
+**Why:** Lab users with plan-funded gateway credits were blocked on vocal sync and narration because live/TTS paths hard-depended on a server Gemini key. Gateway catalog already exposes `tts` and realtime models (`lib/models.ts`).
+
+**Ref:** `lib/ai/generate.ts`, `lib/aiGatewayCompat.ts`, `api/live/token.ts`, `hooks/gatewayLiveConnection.ts`, `hooks/useLiveSession.ts`, `services/liveAuth.ts`
+
+---
+
+**Decision:** Serialize multi-image why-saved prompts through `useWhySavedPrompt` artifact queue (one sheet at a time; Done exits queue; dismiss advances). Per-hypothesis review pending/error state; `epistemicLabelForHypothesis` centralizes Inferred/Observed/Creator labels; `useModalFocus` traps focus in `WhySavedSheet`.
+
+**Alternatives rejected:** (1) Prompting only the final image in a batch (loses per-artifact capture). (2) Global `loading` disabling all hypothesis actions during one review.
+
+**Why:** Prevents racing propose requests and overlapping review state; meets dialog a11y contract without a parallel sheet primitive.
+
+**Ref:** `hooks/useWhySavedPrompt.ts`, `components/pocket/WhySavedSheet.tsx`, `lib/a11y/useModalFocus.ts`, `lib/tasteIntelligence/savedReason.ts`
+
+---
+
+## 2026-08-08 — Pocket why-saved surface (Taste Intelligence #13)
+
+**Decision:** Wire `proposeSavedReasonHypotheses` / `applySavedReasonReview` to Pocket capture via `WhySavedSheet` + `/api/mimi/taste-intelligence/saved-reason/*` routes. Hypotheses persist in Neon `saved_reason_hypotheses`; language distinguishes Inferred / Observed / Creator confirmed / Creator rejected.
+
+**Alternatives rejected:** (1) Reusing legacy `DeltaVerdictCard` as why-saved. (2) Client-only hypotheses without Neon persistence.
+
+**Why:** Completes Capture → Interpret → Approve for Pocket without touching the generation pipeline; bounded post-capture sheet after image stash.
+
+**Ref:** `components/pocket/WhySavedSheet.tsx`, `hooks/useWhySavedPrompt.ts`, `lib/tasteIntelligence/savedReason.ts`
+
+---
+
 ## 2026-08-08 — Studio compiler/critic cards + Tailor v2 contract reconciliation
 
 **Decision:** Ship Studio-facing compiler and critic UI wired through `/api/mimi/taste-intelligence/compiler/compile` and `/critic/critique`, with `mergeGenerationContracts` reconciling Taste Intelligence compiler output against Tailor Profile v2 `generationContract` before prompt injection.
@@ -16,7 +52,16 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 - Client-only compile without persistence (loses audit trail for critiques).
 - Replacing Tailor v2 `generationContract` with TI compiler output (breaks existing zine/Tailor prompt paths).
 
-**Rationale:** Studio needs visible, pre-generation contracts and post-generation critique without forking Tailor’s canonical profile contract. Merge keeps both sources authoritative: Tailor strategic rules + TI evidence-linked compiler modes.
+**Rationale:** Studio needs visible, pre-generation contracts and post-generation critique without forking Tailor's canonical profile contract. Merge keeps both sources authoritative: Tailor strategic rules + TI evidence-linked compiler modes.
+
+---
+
+## 2026-08-08 — Safe undo semantics for Taste Intelligence model edits
+
+**Decision:** Limit undo to single-edit reversal (most recent forward model edit only) with explicit UI copy; server recomputes authoritative snapshot via `replayTasteSnapshot` from derived baseline + immutable edit/refusal log instead of trusting client snapshot. Returns `409 UNDO_NOT_ALLOWED` when undo target is not the latest forward edit.
+
+**Alternatives rejected:** Full historical rollback UI (misleading without full event replay); client-authoritative undo (non-deterministic on reload).
+
 
 ---
 
@@ -439,3 +484,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Closes the loop from capture → interpretation → correction → generation without requiring a separate analyze step from the user.
 
 **Ref:** `lib/taste/evidenceAtomAnalysis.ts`, `lib/taste/serverTasteState.ts`, `lib/mimiGenerateTextRoute.ts`
+
+---
+
+## 2026-08-08 — Post-generation Taste Critic evaluates artifact output
+
+**Decision:** Taste Critic runs only after successful Studio zine generation. `GeneratedArtifactForTasteCritique` normalizes zine pages/text/images; deterministic (+ optional Gateway) feature extraction feeds `critiqueAgainstContract`. Source prompt tags are provenance only. Critique persists against real artifact ID, contract ID, snapshot ID, and critic version. Alignment score displays as `N / 100` (model score, not probability).
+
+**Alternatives rejected:** (1) Critique on `isThinking` flip — critiques pre-generation tags, not output. (2) LLM-assigned final score — deterministic critic consumes extracted features; AI only proposes feature claims.
+
+**Why:** Post-generation critique must evaluate what was produced, with honest partial states when imagery cannot be analyzed.
+
+**Ref:** `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`, `hooks/useStudioTasteCompiler.ts`

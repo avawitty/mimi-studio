@@ -10,6 +10,7 @@ import type {
   TasteModelEditOperation,
   TasteRefusal,
   TasteRefusalType,
+  SavedReasonHypothesis,
   GenerationMedium,
   GenerationMode,
   TasteGenerationContract,
@@ -169,6 +170,38 @@ export async function undoTasteModelEdit(input: {
   });
 }
 
+export async function proposeSavedReasonHypotheses(input: {
+  artifactId: string;
+  tags?: string[];
+  projectId?: string;
+}): Promise<{
+  hypotheses: SavedReasonHypothesis[];
+  snapshotAvailable: boolean;
+}> {
+  return apiFetch("/saved-reason/propose", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function listSavedReasonHypotheses(artifactId?: string): Promise<{
+  hypotheses: SavedReasonHypothesis[];
+}> {
+  const qs = artifactId ? `?artifactId=${encodeURIComponent(artifactId)}` : "";
+  return apiFetch(`/saved-reason${qs}`);
+}
+
+export async function reviewSavedReasonHypothesis(input: {
+  hypothesis: SavedReasonHypothesis;
+  action: "confirm" | "reject" | "edit" | "skip";
+  editedText?: string;
+}): Promise<{ hypothesis: SavedReasonHypothesis }> {
+  return apiFetch("/saved-reason/review", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function persistTasteModelSnapshot(input: {
   snapshot: TasteModelSnapshot;
   projectId?: string;
@@ -203,13 +236,34 @@ export async function compileTasteGenerationContract(input: {
 export async function critiqueTasteCandidate(input: {
   contractId?: string;
   contract?: TasteGenerationContract;
-  candidate: {
+  artifact: {
+    id: string;
+    medium:
+      | "editorial"
+      | "image"
+      | "writing"
+      | "ui"
+      | "brand"
+      | "fashion"
+      | "product";
+    text?: string;
+    imageRefs?: string[];
+    pages?: Array<{
+      text?: string;
+      imageRef?: string;
+      layoutMetadata?: Record<string, unknown>;
+    }>;
+    generationMetadata?: Record<string, unknown>;
+    sourcePromptTags?: string[];
+  };
+  candidate?: {
     id: string;
     featureIds?: string[];
     tags?: string[];
   };
   persist?: boolean;
   projectId?: string;
+  allowAiExtraction?: boolean;
 }): Promise<{
   critique: TasteCritique;
   extracted: {
@@ -217,6 +271,14 @@ export async function critiqueTasteCandidate(input: {
     labels: string[];
     tags: string[];
     evidenceIds: string[];
+    completeness: "full" | "partial" | "failed";
+    partialReason?: string;
+    provenance: Array<{
+      source: "deterministic" | "ai";
+      provider?: string;
+      model?: string;
+      featureCount: number;
+    }>;
   };
 }> {
   return apiFetch("/critic/critique", {

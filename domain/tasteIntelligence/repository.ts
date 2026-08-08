@@ -164,6 +164,10 @@ export interface TasteIntelligenceRepository {
     ownerId: string,
     hypothesis: SavedReasonHypothesis,
   ): Promise<SavedReasonHypothesis>;
+  upsertSavedReasonHypothesis(
+    ownerId: string,
+    hypothesis: SavedReasonHypothesis,
+  ): Promise<SavedReasonHypothesis>;
   listSavedReasonHypotheses(
     ownerId: string,
     artifactId?: string,

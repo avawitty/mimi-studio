@@ -1,7 +1,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { LiveServerMessage, Modality, Type } from '@google/genai';
-import { resolveLiveAiCredentials, type LiveAiCredentials } from '../services/liveAuth';
+import { resolveLiveAiCredentials } from '../services/liveAuth';
+import { GatewayLiveConnection } from './gatewayLiveConnection';
 
 // Audio helpers
 function floatTo16BitPCM(input: Float32Array) {
@@ -42,6 +43,7 @@ export const useLiveSession = (
 
   // Refs for cleanup
   const sessionRef = useRef<any>(null);
+  const gatewayRef = useRef<GatewayLiveConnection | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const inputContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
@@ -98,6 +100,10 @@ export const useLiveSession = (
         try { sessionRef.current.close(); } catch(e) {}
       }
       sessionRef.current = null;
+      if (gatewayRef.current) {
+        try { gatewayRef.current.close(); } catch(e) {}
+        gatewayRef.current = null;
+      }
       audioQueueRef.current.forEach(s => {
         try { s.stop(); } catch(e) {}
       });
@@ -143,9 +149,12 @@ export const useLiveSession = (
     });
 
     // Mint credentials ONCE per user tap — retries must not re-bill funded gateway credits.
-    let credentials: LiveAiCredentials;
+    let credentials: Awaited<ReturnType<typeof resolveLiveAiCredentials>>;
     try {
-      credentials = await resolveLiveAiCredentials();
+      credentials = await resolveLiveAiCredentials({
+        systemInstruction: systemInstructionRef.current,
+        voiceName: voiceNameRef.current,
+      });
       await Promise.all([resumeOutput, resumeInput]);
     } catch (e: any) {
       if (currentAttemptRef.current === currentAttempt) {
@@ -208,6 +217,58 @@ export const useLiveSession = (
         localAnalyser.fftSize = 256;
         localAnalyser.connect(outputCtx.destination);
         analyserRef.current = localAnalyser;
+
+        if (credentials.provider === "gateway") {
+          const stream = await micPromise;
+          if (abandonLocalIfStale()) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+
+          const gatewayConnection = new GatewayLiveConnection({
+            model: credentials.gatewayModel,
+            token: credentials.token,
+            url: credentials.url,
+            sessionConfig: {
+              ...credentials.sessionConfig,
+              instructions: systemInstructionRef.current,
+            },
+            onOpen: () => {
+              if (currentAttemptRef.current !== currentAttempt) return;
+              setIsConnected(true);
+              setIsConnecting(false);
+              setAnalyser(analyserRef.current);
+            },
+            onClose: () => {
+              if (currentAttemptRef.current !== currentAttempt) return;
+              setIsConnected(false);
+              cleanup();
+            },
+            onError: (err) => {
+              if (currentAttemptRef.current !== currentAttempt) return;
+              setError(err.message || "Connection severed by server.");
+              setIsConnected(false);
+              cleanup();
+            },
+            onTranscriptDelta: (delta) => {
+              if (currentAttemptRef.current !== currentAttempt) return;
+              setTranscript((prev) => prev + delta);
+            },
+            onSpeakingChange: (speaking) => {
+              if (currentAttemptRef.current !== currentAttempt) return;
+              setIsSpeaking(speaking);
+            },
+            onToolCall: onToolCallRef.current
+              ? async (name, args) => onToolCallRef.current!(name, args)
+              : undefined,
+          });
+
+          gatewayRef.current = gatewayConnection;
+          streamRef.current = stream;
+          await gatewayConnection.start(stream, outputCtx, inputCtx);
+          if (abandonLocalIfStale()) return;
+          return;
+        }
 
         const { ai, model } = credentials;
         const sessionPromise = ai.live.connect({
@@ -460,6 +521,10 @@ export const useLiveSession = (
           try { sessionRef.current.close(); } catch {}
         }
         sessionRef.current = null;
+        if (gatewayRef.current) {
+          try { gatewayRef.current.close(); } catch {}
+          gatewayRef.current = null;
+        }
         if (analyserRef.current) {
           try { analyserRef.current.disconnect(); } catch {}
           analyserRef.current = null;

@@ -23,6 +23,8 @@ import {
   buildConsentAwareTransmission,
   publishToastMessage,
 } from '../services/collective/broadcastTransmission';
+import { WhySavedSheet } from './pocket/WhySavedSheet';
+import { useWhySavedPrompt } from '../hooks/useWhySavedPrompt';
 
 // --- SUB-COMPONENTS ---
 
@@ -714,6 +716,7 @@ const ShardDetailView: React.FC<{ item: PocketItem; onClose: () => void; onUpdat
 
 export const Pocket: React.FC<{ onSelectZine: (zine: ZineMetadata) => void }> = ({ onSelectZine }) => {
  const { user, profile, systemStatus } = useUser();
+ const whySaved = useWhySavedPrompt(user?.uid);
  const [items, setItems] = useState<PocketItem[]>([]);
  const [loading, setLoading] = useState(true);
  
@@ -1139,6 +1142,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  if (files.length === 0) return;
  setLoading(true);
  try {
+ const savedImages: { artifactId: string; tags: string[] }[] = [];
  for (const file of files) {
  const reader = new FileReader();
  const base64 = await new Promise<string>((resolve, reject) => {
@@ -1178,6 +1182,12 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const id = await archiveManager.saveToPocket(user?.uid || 'ghost', type, newItem, undefined, undefined, deltaVerdict);
  const fullItem: PocketItem = { id, userId: user?.uid || 'ghost', type, savedAt: Date.now(), content: newItem, deltaVerdict };
  window.dispatchEvent(new CustomEvent('mimi:shard_added', { detail: fullItem }));
+ if (type === 'image' && id && user?.uid && !user?.isAnonymous) {
+  savedImages.push({ artifactId: id, tags: [file.name, file.type] });
+ }
+ }
+ if (savedImages.length > 0) {
+  whySaved.enqueueArtifacts(savedImages);
  }
  await loadPocket(true);
  } catch (err) { console.error(err); } finally { setLoading(false); }
@@ -2014,6 +2024,20 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  if (!isBroadcasting) setShowBroadcastConsent(false);
  }}
  onConfirm={handleBroadcastConsentConfirm}
+ />
+ <WhySavedSheet
+  open={Boolean(whySaved.prompt)}
+  onDismiss={whySaved.dismiss}
+  onDone={whySaved.done}
+  hypotheses={whySaved.hypotheses}
+  loading={whySaved.loading}
+  error={whySaved.error}
+  snapshotAvailable={whySaved.snapshotAvailable}
+  queuePosition={whySaved.queuePosition}
+  queueLength={whySaved.queueLength}
+  isReviewing={whySaved.isReviewing}
+  reviewErrors={whySaved.reviewErrors}
+  onReview={whySaved.review}
  />
  </>
  );

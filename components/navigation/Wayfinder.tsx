@@ -50,6 +50,9 @@ export const Wayfinder: React.FC<WayfinderProps> = ({
           {chamber.module?.name || chamber.pathLabel || chamber.family}
         </span>
       </div>
+      <p className="mb-3 font-sans text-[11px] leading-snug studio-text-muted">
+        Previous, current, and likely next step in the creator workflow.
+      </p>
 
       <ol className="grid grid-cols-3 gap-1.5">
         {visiblePath.map(({ step, index }) => {

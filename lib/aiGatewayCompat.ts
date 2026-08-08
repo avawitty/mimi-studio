@@ -1,4 +1,5 @@
 import { modelFor } from "../services/modelConfig.js";
+import { generateGatewaySpeech } from "./ai/generate.js";
 
 // Resolve text / image / video models via modelFor(..., "gateway") so calls
 // use the newest curated IDs from lib/models.ts (env-overridable).
@@ -607,6 +608,114 @@ export const isGeminiImageRequest = (params: any) => {
   const model = String(params?.model || "").toLowerCase();
   return model.includes("image") || Array.isArray(params?.config?.responseModalities) &&
     params.config.responseModalities.some((value: any) => String(value).toLowerCase().includes("image"));
+};
+
+/** Gemini prebuilt voice names → gateway/OpenAI-style voice ids. */
+const GEMINI_VOICE_TO_GATEWAY: Record<string, string> = {
+  kore: "alloy",
+  koral: "coral",
+  aoede: "nova",
+  fenrir: "onyx",
+  charon: "echo",
+  puck: "fable",
+  leda: "shimmer",
+};
+
+export const mapGeminiVoiceToGateway = (voiceName?: string): string | undefined => {
+  const raw = String(voiceName || "").trim();
+  if (!raw) return undefined;
+  const lower = raw.toLowerCase();
+  if (GEMINI_VOICE_TO_GATEWAY[lower]) return GEMINI_VOICE_TO_GATEWAY[lower];
+  // Already a gateway/OpenAI voice id
+  if (["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse"].includes(lower)) {
+    return lower;
+  }
+  return "alloy";
+};
+
+const extractSpeechText = (params: any): string => {
+  const parts = params?.contents?.parts || params?.contents?.[0]?.parts;
+  if (Array.isArray(parts)) {
+    return parts.map((part: any) => part?.text || "").filter(Boolean).join("\n");
+  }
+  return textFromUnknown(params?.contents);
+};
+
+const extractSpeechVoice = (params: any): string | undefined => {
+  const config = params?.config || {};
+  const single = config.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName;
+  if (single) return mapGeminiVoiceToGateway(single);
+  const multi = config.speechConfig?.multiSpeakerVoiceConfig?.speakerVoiceConfigs;
+  if (Array.isArray(multi) && multi.length > 0) {
+    return mapGeminiVoiceToGateway(multi[0]?.voiceConfig?.prebuiltVoiceConfig?.voiceName);
+  }
+  return undefined;
+};
+
+export const isGeminiAudioRequest = (params: any) => {
+  const model = String(params?.model || "").toLowerCase();
+  if (model.includes("tts")) return true;
+  return (
+    Array.isArray(params?.config?.responseModalities) &&
+    params.config.responseModalities.some((value: any) =>
+      String(value).toLowerCase().includes("audio"),
+    )
+  );
+};
+
+/**
+ * Remap Gemini TTS generateContent calls to AI Gateway speech models.
+ * Returns Gemini-compat candidates[].content.parts[].inlineData for clients.
+ */
+export const generateGeminiSpeechViaGateway = async (
+  params: any,
+  apiKey: string,
+  options: GatewayRequestOptions = {},
+) => {
+  const text = extractSpeechText(params);
+  if (!text.trim()) {
+    throw Object.assign(new Error("TTS request did not include readable text."), {
+      status: 400,
+      code: "TTS_TEXT_MISSING",
+    });
+  }
+
+  const voice = extractSpeechVoice(params);
+  const multiSpeaker = params?.config?.speechConfig?.multiSpeakerVoiceConfig;
+  const instructions = multiSpeaker
+    ? "Read the following script with distinct character voices for each labeled speaker."
+    : "Speak in a chic, percipient, editorial studio voice.";
+
+  const model = options.model || modelFor("tts", "gateway");
+  const wantsWav = String(params?.model || "").includes("gemini");
+  const { audio, mimeType } = await generateGatewaySpeech({
+    text,
+    voice,
+    instructions,
+    outputFormat: wantsWav ? "wav" : "mp3",
+    model,
+    apiKey,
+  });
+
+  const base64 = Buffer.from(audio).toString("base64");
+  return {
+    candidates: [
+      {
+        content: {
+          role: "model",
+          parts: [
+            {
+              inlineData: {
+                mimeType,
+                data: base64,
+              },
+            },
+          ],
+        },
+      },
+    ],
+    modelVersion: model,
+  };
 };
 
 export const isGeminiVideoRequest = (params: any) => {

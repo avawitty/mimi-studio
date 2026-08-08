@@ -17,6 +17,11 @@ import {
   computeModelDelta,
   applyEditsToSnapshot,
   buildRefusalFromExplicit,
+  proposeSavedReasonHypotheses,
+  applySavedReasonReview,
+  assertUndoableEdit,
+  deriveEditBaseline,
+  replayTasteSnapshot,
   type CalibrationCandidate,
 } from "./tasteIntelligence/index.js";
 import type {
@@ -27,6 +32,7 @@ import type {
   GenerationMode,
   TasteGenerationContract,
   TasteCritique,
+  SavedReasonHypothesis,
 } from "../schemas/tasteIntelligenceContracts.js";
 import type { TasteModelSnapshot } from "./tasteModel/contracts.js";
 import type { TailorGenerationContractInput } from "./tasteIntelligence/mergeGenerationContracts.js";
@@ -162,13 +168,56 @@ const compilerCompileSchema = z.object({
 const criticCritiqueSchema = z.object({
   contractId: z.string().optional(),
   contract: z.custom<TasteGenerationContract>().optional(),
-  candidate: z.object({
-    id: z.string(),
-    featureIds: z.array(z.string()).optional(),
-    tags: z.array(z.string()).optional(),
-  }),
+  candidate: z
+    .object({
+      id: z.string(),
+      featureIds: z.array(z.string()).optional(),
+      tags: z.array(z.string()).optional(),
+    })
+    .optional(),
+  artifact: z
+    .object({
+      id: z.string(),
+      medium: z.enum([
+        "editorial",
+        "image",
+        "writing",
+        "ui",
+        "brand",
+        "fashion",
+        "product",
+      ]),
+      text: z.string().optional(),
+      imageRefs: z.array(z.string()).optional(),
+      pages: z
+        .array(
+          z.object({
+            text: z.string().optional(),
+            imageRef: z.string().optional(),
+            layoutMetadata: z.record(z.string(), z.unknown()).optional(),
+          }),
+        )
+        .optional(),
+      generationMetadata: z.record(z.string(), z.unknown()).optional(),
+      sourcePromptTags: z.array(z.string()).optional(),
+    })
+    .optional(),
   persist: z.boolean().optional(),
   projectId: z.string().optional(),
+  allowAiExtraction: z.boolean().optional(),
+});
+
+const savedReasonProposeSchema = z.object({
+  artifactId: z.string(),
+  tags: z.array(z.string()).optional(),
+  projectId: z.string().optional(),
+  scope: z.string().optional(),
+});
+
+const savedReasonReviewSchema = z.object({
+  hypothesis: z.custom<SavedReasonHypothesis>(),
+  action: z.enum(["confirm", "reject", "edit", "skip"]),
+  editedText: z.string().optional(),
 });
 
 async function resolveMembershipPlan(actorId: string): Promise<string> {
@@ -238,6 +287,18 @@ export async function handleTasteIntelligenceRoute(req: any, res: any) {
   if (action === "critic" && segments[1] === "critique") {
     if (!requireOperationalMethod(req, res, "POST")) return;
     return handleCriticCritique(req, res);
+  }
+  if (action === "saved-reason" && segments[1] === "propose") {
+    if (!requireOperationalMethod(req, res, "POST")) return;
+    return handleSavedReasonPropose(req, res);
+  }
+  if (action === "saved-reason" && segments[1] === "review") {
+    if (!requireOperationalMethod(req, res, "POST")) return;
+    return handleSavedReasonReview(req, res);
+  }
+  if (action === "saved-reason") {
+    if (!requireOperationalMethod(req, res, "GET")) return;
+    return handleListSavedReasons(req, res);
   }
 
   sendOperationalError(res, 404, "NOT_FOUND", "Unknown taste intelligence route.");
@@ -722,20 +783,43 @@ async function handleUndoModelEdit(req: any, res: any) {
     );
     const uow = getNeonUnitOfWork();
     const repo = uow.repositories.tasteIntelligence;
+    const scope = body.data.projectId ?? "global";
 
     const edits = await repo.listModelEdits(decoded.uid, {
       projectId: body.data.projectId,
       limit: 50,
     });
-    const original = edits.find((e) => e.id === body.data.editId);
+    const original = assertUndoableEdit(edits, body.data.editId);
     if (!original) {
-      sendOperationalError(res, 404, "EDIT_NOT_FOUND", "Model edit not found.");
+      sendOperationalError(
+        res,
+        409,
+        "UNDO_NOT_ALLOWED",
+        "Undo is limited to reversing the most recent model edit only. Full history rollback is not supported.",
+      );
       return;
     }
 
+    const refusals = await repo.listActiveRefusals(
+      decoded.uid,
+      body.data.projectId,
+    );
+    const latestRow = await repo.getLatestSnapshot(decoded.uid, scope);
+    const materialized =
+      latestRow?.snapshot ?? body.data.snapshot;
+    const baseline = deriveEditBaseline(materialized, edits);
+    const authoritativeBefore = replayTasteSnapshot({
+      baseline,
+      edits,
+      refusals,
+    });
+
     const undoEdit = createUndoEdit(original);
-    const beforeSnapshot = body.data.snapshot;
-    const afterSnapshot = applyEditsToSnapshot(beforeSnapshot, [undoEdit]);
+    const afterSnapshot = replayTasteSnapshot({
+      baseline,
+      edits: [...edits, undoEdit],
+      refusals,
+    });
 
     await uow.transaction(async (repositories) => {
       await repositories.tasteIntelligence.appendModelEdit(undoEdit);
@@ -746,8 +830,13 @@ async function handleUndoModelEdit(req: any, res: any) {
       );
     });
 
-    const modelDelta = computeModelDelta(beforeSnapshot, afterSnapshot);
-    sendJson(res, 200, { edit: undoEdit, snapshot: afterSnapshot, modelDelta });
+    const modelDelta = computeModelDelta(authoritativeBefore, afterSnapshot);
+    sendJson(res, 200, {
+      edit: undoEdit,
+      snapshot: afterSnapshot,
+      modelDelta,
+      undoSemantics: "single_edit_only",
+    });
   } catch (error) {
     sendOperationalError(
       res,
@@ -942,20 +1031,70 @@ async function handleCriticCritique(req: any, res: any) {
       return;
     }
 
+    const refusals = await repo.listActiveRefusals(
+      decoded.uid,
+      body.data.projectId,
+    );
+
     const {
       critiqueAgainstContract,
-      extractCandidateFeatures,
+      extractionToCritiqueFeatures,
     } = await import("./tasteIntelligence/critiqueCandidate.js");
-
-    const extracted = extractCandidateFeatures(
-      body.data.candidate,
-      snapshotRow.snapshot,
+    const { extractArtifactFeatures, artifactExtractionToCandidate } =
+      await import("./tasteIntelligence/extractArtifactFeatures.js");
+    const { isCritiquableArtifact } = await import(
+      "./tasteIntelligence/generatedArtifact.js"
     );
+
+    const artifact = body.data.artifact;
+    if (!artifact) {
+      sendOperationalError(
+        res,
+        400,
+        "ARTIFACT_REQUIRED",
+        "Post-generation critique requires a generated artifact.",
+      );
+      return;
+    }
+
+    if (!isCritiquableArtifact(artifact)) {
+      sendOperationalError(
+        res,
+        422,
+        "ARTIFACT_EMPTY",
+        "Generated artifact has no critiquable content.",
+      );
+      return;
+    }
+
+    const extraction = await extractArtifactFeatures({
+      artifact,
+      snapshot: snapshotRow.snapshot,
+      allowAiExtraction: body.data.allowAiExtraction !== false,
+    });
+
+    if (extraction.completeness === "failed") {
+      sendOperationalError(
+        res,
+        422,
+        "EXTRACTION_FAILED",
+        extraction.partialReason ?? "Feature extraction could not run.",
+      );
+      return;
+    }
+
+    const candidate =
+      body.data.candidate ??
+      artifactExtractionToCandidate(artifact, extraction);
+
+    const extracted = extractionToCritiqueFeatures(extraction);
     const critique = critiqueAgainstContract({
       contract,
       snapshot: snapshotRow.snapshot,
-      candidate: body.data.candidate,
+      candidate: { ...candidate, id: artifact.id },
       extracted,
+      refusals,
+      sourceSnapshotId: snapshotRow.id,
     });
 
     const persist = body.data.persist !== false;
@@ -965,13 +1104,119 @@ async function handleCriticCritique(req: any, res: any) {
       });
     }
 
-    sendJson(res, 200, { critique, extracted });
+    sendJson(res, 200, { critique, extracted: extraction });
   } catch (error) {
     sendOperationalError(
       res,
       500,
       "CRITIC_FAILED",
       publicOperationalMessage(500, "Critique could not be completed.", String(error)),
+    );
+  }
+}
+
+async function handleSavedReasonPropose(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const body = savedReasonProposeSchema.safeParse(req.body || {});
+    if (!body.success) {
+      sendOperationalError(res, 400, "INVALID_REQUEST", body.error.message);
+      return;
+    }
+
+    const scope = body.data.projectId ?? "global";
+    const { getNeonUnitOfWork } = await import(
+      "../infrastructure/database/neon/unitOfWork.js"
+    );
+    const uow = getNeonUnitOfWork();
+    const repo = uow.repositories.tasteIntelligence;
+
+    const snapshotRow = await repo.getLatestSnapshot(decoded.uid, scope);
+    const hypotheses = proposeSavedReasonHypotheses(
+      body.data.artifactId,
+      snapshotRow?.snapshot ?? null,
+      body.data.tags ?? [],
+    );
+
+    await uow.transaction(async (repositories) => {
+      for (const hypothesis of hypotheses) {
+        await repositories.tasteIntelligence.saveSavedReasonHypothesis(
+          decoded.uid,
+          hypothesis,
+        );
+      }
+    });
+
+    sendJson(res, 200, { hypotheses, snapshotAvailable: Boolean(snapshotRow) });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "SAVED_REASON_PROPOSE_FAILED",
+      publicOperationalMessage(500, "Could not propose saved reasons.", String(error)),
+    );
+  }
+}
+
+async function handleListSavedReasons(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const artifactId = req.query?.artifactId
+      ? String(req.query.artifactId)
+      : undefined;
+    const { getNeonTasteIntelligenceRepository } = await import(
+      "../infrastructure/database/neon/tasteIntelligenceRuntime.js"
+    );
+    const hypotheses =
+      await getNeonTasteIntelligenceRepository().listSavedReasonHypotheses(
+        decoded.uid,
+        artifactId,
+      );
+    sendJson(res, 200, { hypotheses });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "SAVED_REASON_LIST_FAILED",
+      publicOperationalMessage(500, "Saved reasons unavailable.", String(error)),
+    );
+  }
+}
+
+async function handleSavedReasonReview(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const body = savedReasonReviewSchema.safeParse(req.body || {});
+    if (!body.success) {
+      sendOperationalError(res, 400, "INVALID_REQUEST", body.error.message);
+      return;
+    }
+
+    const reviewed = applySavedReasonReview(
+      body.data.hypothesis,
+      body.data.action,
+      body.data.editedText,
+    );
+
+    if (body.data.action !== "skip") {
+      const { getNeonUnitOfWork } = await import(
+        "../infrastructure/database/neon/unitOfWork.js"
+      );
+      await getNeonUnitOfWork().transaction(async (repositories) => {
+        await repositories.tasteIntelligence.upsertSavedReasonHypothesis(
+          decoded.uid,
+          reviewed,
+        );
+      });
+    }
+
+    sendJson(res, 200, { hypothesis: reviewed });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "SAVED_REASON_REVIEW_FAILED",
+      publicOperationalMessage(500, "Review could not be saved.", String(error)),
     );
   }
 }
