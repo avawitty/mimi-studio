@@ -4,7 +4,7 @@
 
 export const TASTE_INTELLIGENCE_ALGORITHM_VERSION = "taste-intel-v2.0.0";
 export const TASTE_COMPILER_VERSION = "taste-compiler-v1.0.0";
-export const TASTE_CRITIC_VERSION = "taste-critic-v1.0.0";
+export const TASTE_CRITIC_VERSION = "taste-critic-v1.1.0";
 
 /** Active-learning pair selection weights (sum ≈ 1.0 before penalties). */
 export const PAIR_SELECTION_WEIGHTS = {

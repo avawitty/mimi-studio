@@ -17,6 +17,11 @@ import {
   compileTasteGenerationContract,
   critiqueAgainstContract,
   extractCandidateFeatures,
+  extractionToCritiqueFeatures,
+  extractDeterministicArtifactFeatures,
+  extractArtifactFeatures,
+  isCritiquableArtifact,
+  zineMetadataToGeneratedArtifact,
   mergeGenerationContracts,
   formatGenerationContractPrompt,
   rerankTasteSearchResults,
@@ -220,22 +225,6 @@ describe("taste intelligence compiler and critic", () => {
     expect(contract.mode).toBe("aligned");
   });
 
-  it("critic is deterministic after feature extraction", () => {
-    const snapshot = minimalSnapshot();
-    const contract = compileTasteGenerationContract(
-      snapshot,
-      { ownerId: "u1" },
-      "writing",
-      "adjacent",
-    );
-    const candidate = { id: "c1", featureIds: ["pattern_cluster:c1"] };
-    const extracted = extractCandidateFeatures(candidate, snapshot);
-    const a = critiqueAgainstContract({ contract, snapshot, candidate, extracted });
-    const b = critiqueAgainstContract({ contract, snapshot, candidate, extracted });
-    expect(a.alignmentScore).toBe(b.alignmentScore);
-    expect(a.violatedRules).toEqual(b.violatedRules);
-  });
-
   it("merges tailor v2 generationContract into compiler output", () => {
     const snapshot = minimalSnapshot();
     const compiled = compileTasteGenerationContract(
@@ -259,6 +248,275 @@ describe("taste intelligence compiler and critic", () => {
     expect(contract.contextRules.some((r) => r.startsWith("Objective:"))).toBe(true);
     const prompt = formatGenerationContractPrompt(contract, reconciliation);
     expect(prompt).toContain("Reconciled with Tailor Profile v2");
+  });
+});
+
+describe("post-generation taste critic", () => {
+  const generatedText =
+    "Soft contrast editorial spread with muted contrast typography and archival melancholy rhythm across three pages.";
+
+  const artifact = {
+    id: "zine-real-123",
+    medium: "editorial" as const,
+    text: generatedText,
+    pages: [
+      { text: "Page one body with soft contrast motifs." },
+      { text: "Page two continues the editorial rhythm." },
+    ],
+    sourcePromptTags: ["neon", "stock-futurism"],
+  };
+
+  it("extracts features from actual generated content not source tags", async () => {
+    const snapshot = minimalSnapshot();
+    const extraction = await extractArtifactFeatures({
+      artifact,
+      snapshot,
+      allowAiExtraction: false,
+    });
+    expect(extraction.labels.some((l) => l.toLowerCase().includes("soft"))).toBe(
+      true,
+    );
+    expect(extraction.tags).not.toContain("neon");
+    expect(extraction.tags).not.toContain("stock-futurism");
+    expect(extraction.completeness).not.toBe("failed");
+  });
+
+  it("empty output does not produce critiquable artifact", () => {
+    expect(
+      isCritiquableArtifact({ id: "empty", medium: "editorial", text: "  " }),
+    ).toBe(false);
+  });
+
+  it("source tags remain provenance only in zine conversion", () => {
+    const converted = zineMetadataToGeneratedArtifact(
+      {
+        id: "z-1",
+        title: "Issue title",
+        theme: "Editorial Stillness",
+        content: {
+          meta: { mode: "editorial" as const, intent: "test", timestamp: Date.now() },
+          taste_context: { active_archetype: "editor", active_palette: [] },
+          title: "Issue",
+          structure: { hero_prompt: "", pages: [] },
+          visual_guidance: { palette: [], motifs: [] },
+          pages: [{ pageNumber: 1, headline: "H", bodyCopy: "Body", imagePrompt: "" }],
+        } as unknown as import("../types").ZineContent,
+        tags: ["prompt-only"],
+      },
+      ["prompt-only", "anchor"],
+    );
+    expect(converted.sourcePromptTags).toEqual(["prompt-only", "anchor"]);
+    expect(converted.text).toContain("Body");
+  });
+
+  it("explicit refusal violation lowers score", () => {
+    const snapshot = minimalSnapshot();
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["pattern_cluster:c1"],
+      refusalType: "always",
+      signedWeight: -1,
+      confidence: 0.95,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: [],
+    });
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1", refusals: [refusal] },
+      "editorial",
+      "aligned",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const extracted = extractionToCritiqueFeatures(extraction);
+    const withRefusal = critiqueAgainstContract({
+      contract,
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted,
+      refusals: [refusal],
+    });
+    const withoutRefusal = critiqueAgainstContract({
+      contract: compileTasteGenerationContract(
+        snapshot,
+        { ownerId: "u1" },
+        "editorial",
+        "aligned",
+      ),
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted,
+      refusals: [],
+    });
+    expect(
+      withRefusal.violatedRules.length + withRefusal.violatedRules.join(" "),
+    ).toMatch(/refusal|avoid/i);
+    expect(withRefusal.alignmentScore).toBeLessThanOrEqual(
+      withoutRefusal.alignmentScore,
+    );
+  });
+
+  it("aligned vs adjacent vs divergent interpret departures differently", () => {
+    const snapshot = minimalSnapshot();
+    const preserveRule = snapshot.featureWeights[0]!.label;
+    const modes = ["aligned", "adjacent", "divergent"] as const;
+    const results = modes.map((mode) => {
+      const contract = {
+        ...compileTasteGenerationContract(
+          snapshot,
+          { ownerId: "u1" },
+          "editorial",
+          mode,
+        ),
+        preserve: [preserveRule],
+        permit: ["experimental layout"],
+      };
+      const extraction = extractDeterministicArtifactFeatures(
+        {
+          id: `z-${mode}`,
+          medium: "editorial",
+          text: "experimental layout without preserve motifs",
+        },
+        snapshot,
+      );
+      return critiqueAgainstContract({
+        contract,
+        snapshot,
+        candidate: { id: `z-${mode}`, featureIds: [] },
+        extracted: extractionToCritiqueFeatures(extraction),
+      });
+    });
+    expect(results[0]!.violatedRules.length).toBeGreaterThan(0);
+    expect(results[2]!.usefulDepartures.length).toBeGreaterThan(0);
+  });
+
+  it("hard refusal remains violation in divergent mode", () => {
+    const snapshot = minimalSnapshot();
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["pattern_cluster:c1"],
+      refusalType: "always",
+      signedWeight: -1,
+      confidence: 0.95,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: [],
+    });
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1", refusals: [refusal] },
+      "editorial",
+      "divergent",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const critique = critiqueAgainstContract({
+      contract,
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted: extractionToCritiqueFeatures(extraction),
+      refusals: [refusal],
+    });
+    expect(
+      critique.violatedRules.some(
+        (r) => r.toLowerCase().includes("refusal") || r.toLowerCase().includes("avoid"),
+      ),
+    ).toBe(true);
+  });
+
+  it("repair suggestions are re-scored on 0-100 scale", () => {
+    const snapshot = minimalSnapshot();
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1" },
+      "editorial",
+      "aligned",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const critique = critiqueAgainstContract({
+      contract,
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted: extractionToCritiqueFeatures(extraction),
+    });
+    if (critique.counterfactualRepairs.length > 0) {
+      const repair = critique.counterfactualRepairs[0]!;
+      expect(repair.resultingScore).toBeGreaterThanOrEqual(0);
+      expect(repair.resultingScore).toBeLessThanOrEqual(100);
+      for (const mod of repair.modifications) {
+        expect(mod.scoreAfter).toBeGreaterThanOrEqual(0);
+        expect(mod.scoreAfter).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
+  it("artifact ID links critique to actual output", () => {
+    const snapshot = minimalSnapshot();
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1" },
+      "editorial",
+      "aligned",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const critique = critiqueAgainstContract({
+      contract,
+      snapshot,
+      candidate: { id: artifact.id, featureIds: extraction.featureIds },
+      extracted: extractionToCritiqueFeatures(extraction),
+    });
+    expect(critique.artifactId).toBe("zine-real-123");
+    expect(critique.candidateId).toBe("zine-real-123");
+    expect(critique.alignmentScore).toBeGreaterThanOrEqual(0);
+    expect(critique.alignmentScore).toBeLessThanOrEqual(100);
+  });
+
+  it("partial extraction surfaces partial state", async () => {
+    const snapshot = minimalSnapshot();
+    const partialArtifact = {
+      id: "partial-1",
+      medium: "editorial" as const,
+      text: "Editorial text only",
+      pages: [
+        { text: "Page without image" },
+        { text: "Second page", imageRef: undefined as string | undefined },
+      ],
+      imageRefs: ["https://example.com/missing-plate.jpg"],
+    };
+    const extraction = await extractArtifactFeatures({
+      artifact: partialArtifact,
+      snapshot,
+      allowAiExtraction: false,
+    });
+    expect(extraction.completeness).toBe("partial");
+    const critique = critiqueAgainstContract({
+      contract: compileTasteGenerationContract(
+        snapshot,
+        { ownerId: "u1" },
+        "editorial",
+        "aligned",
+      ),
+      snapshot,
+      candidate: { id: partialArtifact.id, featureIds: extraction.featureIds },
+      extracted: extractionToCritiqueFeatures(extraction),
+    });
+    expect(critique.featureExtraction?.completeness).toBe("partial");
+  });
+
+  it("critic is deterministic after artifact feature extraction", () => {
+    const snapshot = minimalSnapshot();
+    const contract = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1" },
+      "writing",
+      "adjacent",
+    );
+    const extraction = extractDeterministicArtifactFeatures(artifact, snapshot);
+    const extracted = extractionToCritiqueFeatures(extraction);
+    const candidate = { id: artifact.id, featureIds: extraction.featureIds };
+    const a = critiqueAgainstContract({ contract, snapshot, candidate, extracted });
+    const b = critiqueAgainstContract({ contract, snapshot, candidate, extracted });
+    expect(a.alignmentScore).toBe(b.alignmentScore);
+    expect(a.violatedRules).toEqual(b.violatedRules);
   });
 });
 
