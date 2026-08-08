@@ -110,10 +110,10 @@ test.describe('Mimi E2E Experience', () => {
     await page.goto('/studio');
     await waitForStableUI(page);
     await expect(
-      page.getByText(/Studio worktable · archival desk/i),
+      page.getByRole('heading', { name: /Turn source material into an editorial issue/i }),
     ).toBeVisible({ timeout: 15000 });
 
-    await expect(page).toHaveScreenshot('studio-worktable-entry.png', {
+    await expect(page).toHaveScreenshot('studio-input-console.png', {
       fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.03,

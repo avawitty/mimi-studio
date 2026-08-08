@@ -11,7 +11,6 @@ import { useOptionalUser } from "../../contexts/UserContext";
 import { useFeedback } from "../../hooks/useFeedback";
 import { WorkSurface } from "./WorkSurface";
 import { DossierTabs, type DossierFolder } from "./DossierTabs";
-import { PromptCycle } from "./PromptCycle";
 import {
   InstrumentBar,
   DEFAULT_INSTRUMENTS,
@@ -19,15 +18,19 @@ import {
 } from "./InstrumentBar";
 import { AuraMeter, auraMoodToTone, type AuraMood } from "./AuraMeter";
 import { TasteDrawer, type TasteDrawerTab } from "./TasteDrawer";
+import { RandomIntake } from "./RandomIntake";
+import { ChamberExplore } from "./ChamberExplore";
+import { HubActionBar } from "./HubActionBar";
 
-/** Opener fragments — card invitation and field placeholder stay aligned */
-const PROMPT_CYCLES = [
+/** Opener fragments — invitation matches the field, not interrogative cards */
+const PROMPT_WHISPERS = [
   "Right now, the material anchoring me is…",
   "The light fell across the room, reminding me of…",
   "The defining texture or material anchoring my mood is…",
   "A light, dynamic, or shadow that shifted my mood was…",
   "The sensory fragment I'm trying to preserve is…",
   "Lately, I keep returning to the idea of…",
+  "It started when…",
 ];
 
 const FOLDERS: DossierFolder[] = [
@@ -68,8 +71,10 @@ export type StudioWorktableProps = {
 };
 
 /**
- * WT-001 — Archival atelier worktable: masthead, folders, prompt cycles,
- * instruments, aura meter, context strip. Mobile-first desk metaphor.
+ * Studio Hub middle ground:
+ * open Random Intake + optional prompt whisper,
+ * chamber explore grid, unified Context · M · Generate bar,
+ * parchment field (keeps instruments + console escape).
  */
 export const StudioWorktable: React.FC<StudioWorktableProps> = ({
   onRefine,
@@ -89,7 +94,8 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
 
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [cycleIndex, setCycleIndex] = useState(0);
+  const [whisperIndex, setWhisperIndex] = useState(0);
+  const [whisperOpen, setWhisperOpen] = useState(true);
   const [input, setInput] = useState(initialValue);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>(initialMedia || []);
   const [mood, setMood] = useState<AuraMood>("EDITORIAL");
@@ -114,8 +120,6 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
     zineOptions.selectedTreatmentId || null,
   );
 
-  const activeCycle = PROMPT_CYCLES[cycleIndex];
-
   useEffect(() => {
     if (initialValue) setInput(initialValue);
   }, [initialValue]);
@@ -139,21 +143,20 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
     [profile?.savedTreatments],
   );
 
+  // Spark lives on the hub bar — keep the strip for desk tools only
   const instruments = useMemo(
     () =>
-      DEFAULT_INSTRUMENTS.map((item) => {
+      DEFAULT_INSTRUMENTS.filter((item) => item.id !== "spark").map((item) => {
         let active = item.id === activeInstrument;
         if (item.id === "globe") active = useSearch;
         if (item.id === "brain") active = deepThinking;
-        if (item.id === "spark") active = isThinking;
-        return { ...item, active, disabled: item.id === "spark" && isThinking };
+        return { ...item, active };
       }),
-    [activeInstrument, useSearch, deepThinking, isThinking],
+    [activeInstrument, useSearch, deepThinking],
   );
 
-  const advanceCycle = useCallback(() => {
-    setCycleIndex((i) => (i + 1) % PROMPT_CYCLES.length);
-    setInput("");
+  const advanceWhisper = useCallback(() => {
+    setWhisperIndex((i) => (i + 1) % PROMPT_WHISPERS.length);
     feedback.trigger("selection.changed");
   }, [feedback]);
 
@@ -165,7 +168,9 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
       return;
     }
     const tone = auraMoodToTone(mood);
-    const payload = text || activeCycle;
+    const payload =
+      text ||
+      (whisperOpen ? PROMPT_WHISPERS[whisperIndex] : "Open capture from the desk");
     const opts = {
       deepThinking,
       isPublic: false,
@@ -195,7 +200,8 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
     mediaFiles,
     mood,
     onRefine,
-    activeCycle,
+    whisperIndex,
+    whisperOpen,
     deepThinking,
     tailorOn,
     initialHighFidelity,
@@ -261,7 +267,6 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
       onNavigate?.(folder.mode);
       return;
     }
-    setCycleIndex(0);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -269,6 +274,10 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
     mediaFiles.length > 0
       ? `${mediaFiles.length} media artifact${mediaFiles.length === 1 ? "" : "s"} on the desk`
       : "No approved context — Mimi will not invent sources";
+
+  const activeWhisper = whisperOpen ? PROMPT_WHISPERS[whisperIndex] : null;
+  const intakePlaceholder =
+    activeWhisper ?? "Write anything. A thought, image, mood, reference, fragment…";
 
   return (
     <WorkSurface className="h-full min-h-[100dvh]">
@@ -306,7 +315,7 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
                 <button
                   type="button"
                   onClick={onOpenConsole}
-                  className="hidden sm:inline-flex min-h-10 px-2 font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--wt-ink-2,#6b6a66)] border border-[var(--wt-line,#d8d3c6)] hover:text-[var(--wt-ink,#1b1b19)]"
+                  className="inline-flex min-h-10 px-2 font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--wt-ink-2,#6b6a66)] border border-[var(--wt-line,#d8d3c6)] hover:text-[var(--wt-ink,#1b1b19)]"
                 >
                   Console
                 </button>
@@ -318,14 +327,14 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
                   setDrawerOpen(true);
                 }}
                 className="lg:hidden min-h-12 min-w-12 border border-[var(--wt-line,#d8d3c6)] font-mono text-[14px] text-[var(--wt-ink,#1b1b19)]"
-                aria-label="Open taste drawer"
+                aria-label="Open tools"
               >
                 ◫
               </button>
             </div>
           </header>
 
-          <div className="shrink-0 px-4 lg:hidden">
+          <div className="shrink-0 px-4 lg:hidden mb-1">
             <InstrumentBar
               instruments={instruments}
               onSelect={handleInstrument}
@@ -333,17 +342,27 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
             />
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 lg:px-2 pt-3 space-y-4">
-            <PromptCycle
-              cycle={cycleIndex + 1}
-              total={PROMPT_CYCLES.length}
-              question={activeCycle}
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 lg:px-2 pt-3 space-y-5">
+            <RandomIntake
               value={input}
               onChange={setInput}
-              placeholder={activeCycle}
-              onNext={advanceCycle}
-              phaseLabel={isThinking ? "DEVELOPING" : "INTAKE"}
+              onSend={handleGenerate}
+              sending={isThinking}
+              placeholder={intakePlaceholder}
+              whisper={activeWhisper}
+              onWhisperNext={advanceWhisper}
+              onWhisperDismiss={() => setWhisperOpen(false)}
             />
+
+            {!whisperOpen && (
+              <button
+                type="button"
+                onClick={() => setWhisperOpen(true)}
+                className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--wt-ink-2,#6b6a66)] underline underline-offset-4 decoration-dotted"
+              >
+                Need a prompt whisper?
+              </button>
+            )}
 
             {demoNote && !onRefine && (
               <p
@@ -387,38 +406,48 @@ export const StudioWorktable: React.FC<StudioWorktableProps> = ({
               <AuraMeter mood={mood} onChange={setMood} />
             </div>
 
-            <div className="border border-[var(--wt-line,#d8d3c6)] px-4 py-3 flex items-start justify-between gap-3">
-              <p className="font-serif italic font-light text-[16px] leading-snug text-[var(--wt-ink,#1b1b19)]">
-                {contextSummary}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setDrawerTab("context");
-                  setDrawerOpen(true);
-                }}
-                className="shrink-0 font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--mimi-cobalt-deep,#6a8aa4)] min-h-10"
-              >
-                Context
-              </button>
-            </div>
+            <ChamberExplore
+              folders={FOLDERS}
+              activeId="studio"
+              onSelect={handleFolder}
+              className="lg:hidden"
+            />
+          </div>
 
+          <HubActionBar
+            className="lg:hidden"
+            contextSummary={contextSummary}
+            onOpenContext={() => {
+              setDrawerTab("context");
+              setDrawerOpen(true);
+            }}
+            onGenerate={handleGenerate}
+            generating={isThinking}
+          />
+
+          {/* Desktop keeps a quieter context + spark pair (no mobile hub chrome) */}
+          <div className="hidden lg:flex items-center gap-3 px-2 pb-2">
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerTab("context");
+                setDrawerOpen(true);
+              }}
+              className="flex-1 border border-[var(--wt-line,#d8d3c6)] px-4 py-3 text-left min-h-12"
+            >
+              <span className="font-serif italic text-[15px] text-[var(--wt-ink,#1b1b19)]">
+                {contextSummary}
+              </span>
+            </button>
             <button
               type="button"
               onClick={handleGenerate}
               disabled={isThinking}
-              className="w-full min-h-12 border border-[var(--wt-ink,#1b1b19)] bg-[var(--wt-ink,#1b1b19)] text-[var(--wt-paper,#f6f3ec)] font-mono text-[10px] uppercase tracking-[0.28em] disabled:opacity-50"
+              className="shrink-0 min-h-12 px-5 border border-[var(--wt-ink,#1b1b19)] bg-[var(--wt-ink,#1b1b19)] text-[var(--wt-paper,#f6f3ec)] font-mono text-[10px] uppercase tracking-[0.24em] disabled:opacity-50"
             >
               {isThinking ? "Developing…" : "Spark · Generate"}
             </button>
           </div>
-
-          <DossierTabs
-            folders={FOLDERS}
-            activeId="studio"
-            onSelect={handleFolder}
-            orientation="horizontal"
-          />
         </div>
 
         <InstrumentBar
