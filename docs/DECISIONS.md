@@ -64,6 +64,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Darkroom treatments backfill script
+
+**Decision:** Add `npm run taste:backfill-darkroom-treatments` to scan `profiles_public` (or `--user=uid`) and idempotently create `darkroom_{treatmentId}` EvidenceAtoms from `savedTreatments`.
+
+**Alternatives rejected:** (1) Require manual re-save in Darkroom UI. (2) Store treatments in a separate collection for easier collectionGroup scan.
+
+**Why:** Historical curated treatments pre-mirror never entered the taste spine; profile scan is the only durable source.
+
+**Ref:** `scripts/backfillDarkroomTreatments.ts`
+
+---
+
 ## 2026-08-08 — Unified Taste Graph summary read path
 
 **Decision:** Add `GET /api/mimi/taste-graph/summary` as the canonical server read for Taste Graph chambers: `TasteState` + latest `TasteModelSnapshot` + projected graph (`projectTasteModelToGraph` preferred over legacy `tasteGraphNodes` when signal is richer) + readiness gaps + server Used Context. Remove demonstration nodes from `/taste-graph` when empty. Mirror Pocket saves into deterministic `EvidenceAtom` ids (`pocket_{itemId}`) via `mirrorPocketItemToEvidenceAtom`. Persist Used Context tray to Firestore (`users/{uid}/studioMeta/usedContext`) with `GET/PUT /api/mimi/used-context` and client hydrate on empty local store.
