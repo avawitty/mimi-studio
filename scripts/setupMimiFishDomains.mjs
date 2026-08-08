@@ -170,7 +170,7 @@ async function ensureVercelDomain(projectName) {
 
 async function main() {
   const projectId = argValue("--project", readDefaultProject());
-  const vercelProject = argValue("--vercel-project", process.env.VERCEL_PROJECT_NAME || "mimi-studio");
+  const vercelProject = argValue("--vercel-project", process.env.VERCEL_PROJECT_NAME || "mimi-studio-gateway");
   console.log(`Project: ${projectId}`);
   await ensureFirebaseAuthDomains(projectId);
   await ensureVercelDomain(vercelProject);
