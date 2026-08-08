@@ -183,9 +183,20 @@ export const PublicProfileCard: React.FC<PublicProfileCardProps> = ({
 
       {signature ? (
         <section className={`mx-auto px-6 py-8 border-b border-[var(--mimi-hairline,rgba(0,0,0,0.12))] ${compact ? "max-w-3xl" : "max-w-5xl"}`}>
-          <p className="font-sans text-[9px] uppercase tracking-[0.32em] text-[var(--mimi-stone,#78716c)] font-semibold mb-3">
-            Taste signature
-          </p>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-3">
+            <p className="font-sans text-[9px] uppercase tracking-[0.32em] text-[var(--mimi-stone,#78716c)] font-semibold">
+              Taste signature
+            </p>
+            {signature.fullPagePath ? (
+              <button
+                type="button"
+                onClick={() => onNavigate(signature.fullPagePath!)}
+                className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-[var(--mimi-ink,#0a0a0a)] hover:text-[var(--mimi-olive,#5A5A40)] inline-flex items-center gap-1.5"
+              >
+                Full plate <ArrowUpRight size={12} />
+              </button>
+            ) : null}
+          </div>
           <div className="border border-[var(--mimi-ink,#0a0a0a)]/12 bg-[var(--mimi-field,#ffffff)] px-6 py-8 md:px-8">
             <h2 className="font-serif italic text-3xl md:text-4xl leading-tight max-w-[18ch]">
               {signature.title}
