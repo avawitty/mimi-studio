@@ -19,6 +19,8 @@ import {
   computePairwiseAccuracy,
   explanationCoverage,
   TASTE_PLAN_ENTITLEMENTS,
+  proposeSavedReasonHypotheses,
+  applySavedReasonReview,
 } from "../lib/tasteIntelligence/index.js";
 import {
   tasteCalibrationSessionSchema,
@@ -206,6 +208,11 @@ tasteCalibrationSessionSchema.parse({
   createdAt: NOW,
   updatedAt: NOW,
 });
+
+const [whyHypothesis] = proposeSavedReasonHypotheses("verify-artifact", snapshot, ["composition"]);
+assert(whyHypothesis?.artifactId === "verify-artifact", "saved reason propose");
+const confirmedWhy = applySavedReasonReview(whyHypothesis!, "confirm");
+assert(confirmedWhy.userStatus === "confirmed", "saved reason confirm");
 
 console.log("verify:taste-intelligence — OK", {
   pairReason: pair.selectionReason,

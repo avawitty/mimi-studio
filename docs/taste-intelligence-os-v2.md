@@ -49,7 +49,7 @@ Algorithm: `taste-intel-v2.0.0`
 | 10 | Trajectories v2 | **shipped** (`trajectories.ts`) |
 | 11 | Taste-aware Scry search | **logic shipped** (`tasteSearch.ts`); Scry UI integration partial |
 | 12 | Contradictions | **shipped** (`contradictions.ts`) |
-| 13 | Why saved | **logic shipped** (`savedReason.ts`); Pocket flow partial |
+| 13 | Why saved | **shipped** (`savedReason.ts` + Pocket `WhySavedSheet`) |
 | 14 | Creative experiments | **logic + persistence shipped** |
 | 15 | Sentinel memory policy | **shipped** (headless + review component) |
 | 16 | Taste Passport | **shipped** (build/export/import) |
@@ -91,6 +91,9 @@ JSONB holds versioned payloads; relational columns support owner/project/status/
 | `/api/mimi/taste-intelligence/calibration/session` | GET | Active session |
 | `/api/mimi/taste-intelligence/snapshot/latest` | GET | Latest snapshot (Neon-first) |
 | `/api/mimi/taste-intelligence/refusals` | GET | Active refusals |
+| `/api/mimi/taste-intelligence/saved-reason/propose` | POST | Propose why-saved hypotheses for artifact |
+| `/api/mimi/taste-intelligence/saved-reason` | GET | List hypotheses (`?artifactId=`) |
+| `/api/mimi/taste-intelligence/saved-reason/review` | POST | Confirm / reject / edit hypothesis |
 
 Auth: `verifyMimiSession`. Writes: idempotent keys. AI-backed critic extraction: future route via `ai/operations` (credits).
 

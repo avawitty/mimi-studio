@@ -21,6 +21,8 @@ import {
   buildTastePassport,
   computePairwiseAccuracy,
   computeBrierScore,
+  proposeSavedReasonHypotheses,
+  applySavedReasonReview,
 } from "../lib/tasteIntelligence";
 
 const NOW = Date.now();
@@ -399,5 +401,43 @@ describe("calibration pair ranking", () => {
       emergingFeatureIds: [],
     });
     expect(fresh[0]!.priority).toBeGreaterThanOrEqual(repeated[0]?.priority ?? 0);
+  });
+});
+
+describe("taste intelligence why saved", () => {
+  it("proposes hypotheses from taste snapshot features", () => {
+    const snapshot = minimalSnapshot();
+    const hypotheses = proposeSavedReasonHypotheses("artifact-1", snapshot, []);
+    expect(hypotheses.length).toBeGreaterThan(0);
+    expect(hypotheses[0]!.artifactId).toBe("artifact-1");
+    expect(hypotheses[0]!.userStatus).toBe("unreviewed");
+  });
+
+  it("confirm marks hypothesis as creator confirmed", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-2", snapshot);
+    expect(hypothesis).toBeTruthy();
+    const reviewed = applySavedReasonReview(hypothesis!, "confirm");
+    expect(reviewed.userStatus).toBe("confirmed");
+    expect(reviewed.source).toBe("creator_authored");
+  });
+
+  it("reject marks not-why-i-saved interpretive rejection", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-3", snapshot);
+    const reviewed = applySavedReasonReview(hypothesis!, "reject");
+    expect(reviewed.userStatus).toBe("rejected");
+  });
+
+  it("edit preserves creator correction text", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-4", snapshot);
+    const reviewed = applySavedReasonReview(
+      hypothesis!,
+      "edit",
+      "Saved for the grain, not the palette.",
+    );
+    expect(reviewed.userStatus).toBe("edited");
+    expect(reviewed.hypothesis).toContain("grain");
   });
 });

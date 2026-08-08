@@ -8,6 +8,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Pocket why-saved surface (Taste Intelligence #13)
+
+**Decision:** Wire `proposeSavedReasonHypotheses` / `applySavedReasonReview` to Pocket capture via `WhySavedSheet` + `/api/mimi/taste-intelligence/saved-reason/*` routes. Hypotheses persist in Neon `saved_reason_hypotheses`; language distinguishes Inferred / Observed / Creator confirmed / Creator rejected.
+
+**Alternatives rejected:** (1) Reusing legacy `DeltaVerdictCard` as why-saved. (2) Client-only hypotheses without Neon persistence.
+
+**Why:** Completes Capture → Interpret → Approve for Pocket without touching the generation pipeline; bounded post-capture sheet after image stash.
+
+**Ref:** `components/pocket/WhySavedSheet.tsx`, `hooks/useWhySavedPrompt.ts`, `lib/tasteIntelligence/savedReason.ts`
+
+---
+
 ## 2026-08-08 — Taste Intelligence OS v2 (Neon operational layer + Calibration Lab)
 
 **Decision:** Extend the v1 computational taste model into a coherent intelligence layer without a second Taste Graph. New operational writes go to Neon (`mimi.taste_*` tables) via authenticated `/api/mimi/taste-intelligence/*` routes; `services/tasteModelService.ts` dual-writes/dual-reads during Firestore migration. Calibration Lab lives at `/tailor/calibrate` with deterministic active-learning pair selection and Bradley-Terry-style calibration deltas. Sentinel memory policy is a separate headless layer (`lib/tasteIntelligence/sentinelPolicy.ts` + `SentinelMemoryReview`) — `CaptiveSentinel` remains the in-app browser guard only.

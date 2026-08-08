@@ -11,6 +11,8 @@ import {
   scatterLayout,
   type MessyClipLayout,
 } from "./messyPocketLayout";
+import { WhySavedSheet } from "./WhySavedSheet";
+import { useWhySavedPrompt } from "../../hooks/useWhySavedPrompt";
 
 export const POCKET_STASH_TOGGLE_EVENT = "mimi:toggle_pocket_stash";
 export const POCKET_STASH_OPEN_EVENT = "mimi:open_pocket_stash";
@@ -62,6 +64,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
   onOpenRegistry,
 }) => {
   const { user } = useUser();
+  const whySaved = useWhySavedPrompt(user?.uid);
   const deskRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<PocketItem[]>([]);
@@ -234,7 +237,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
     const uid = user?.uid || "local-guest";
     for (const file of list) {
       if (file.type.startsWith("image/")) {
-        await archiveManager.saveToPocket(
+        const artifactId = await archiveManager.saveToPocket(
           uid,
           "image",
           {
@@ -243,6 +246,9 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
           },
           [file],
         );
+        if (artifactId && user?.uid && !user.isAnonymous) {
+          void whySaved.openForArtifact(artifactId, [file.name, file.type]);
+        }
       } else {
         const text = await file.text();
         await archiveManager.saveToPocket(uid, "text", {
@@ -498,6 +504,15 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
           </div>
         </div>
       </div>
+      <WhySavedSheet
+        open={Boolean(whySaved.prompt)}
+        onClose={whySaved.close}
+        hypotheses={whySaved.hypotheses}
+        loading={whySaved.loading}
+        error={whySaved.error}
+        snapshotAvailable={whySaved.snapshotAvailable}
+        onReview={whySaved.review}
+      />
     </div>
   );
 };
