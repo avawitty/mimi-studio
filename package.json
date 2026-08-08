@@ -83,7 +83,8 @@
     "db:check": "drizzle-kit check --config=drizzle.config.ts",
     "credits:sweep": "tsx scripts/sweepCreditReservations.ts",
     "setup:mimi-rip-domains": "node scripts/setupMimiRipDomains.mjs",
-    "setup:mimi-fish-domains": "node scripts/setupMimiFishDomains.mjs"
+    "setup:mimi-fish-domains": "node scripts/setupMimiFishDomains.mjs",
+    "migrate:mimi-domains-from-lovable": "node scripts/migrateMimiDomainsFromLovable.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
