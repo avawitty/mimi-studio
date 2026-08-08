@@ -108,7 +108,7 @@ const buildReferenceParts = (references: MimiImageReference[] = []) => {
     ];
     if (hasDollRef) {
       refInstructions.push(
-        "DOLL IDENTITY & STABLE FACE RULE: The references contain a calibrated doll proxy ('Doll Portrait', 'Doll Full Body', or 'Doll Profile'). You MUST carefully lock in, align, and preserve the face structure, features, hairstyle, and likeness of the doll from the 'Doll Portrait' reference. Allow the doll's clothing to vary based on the prompt while maintaining cohesive material signatures and fit shapes from 'Doll Full Body'. Depict the same stable character proxy travelling through different times, settings, or editorial backdrops."
+        "DOLL IDENTITY & STABLE FACE RULE: The references contain a calibrated doll proxy ('Doll Portrait', 'Doll Full Body', or 'Doll Profile'). You MUST carefully lock in, align, and preserve the face structure, features, hairstyle, and likeness of the doll from the 'Doll Portrait' reference. Allow the doll's clothing to vary based on the prompt while maintaining cohesive material signatures and fit shapes from 'Doll Full Body'. Depict the same stable character proxy travelling through different times, settings, or editorial backdrops. Default to front-facing or three-quarter-toward-camera poses with the face visible — never rear-facing or back-turned away from the lens unless the prompt explicitly requests it."
       );
     }
     const hasCreatorPhoto = references.some((ref) =>

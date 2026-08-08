@@ -21,8 +21,8 @@ import {
   updateDoll,
 } from '../../services/tailorService';
 import {
-  buildIdentityViewPrompt,
   buildLikenessAsDollImagePrompt,
+  buildMimiShellImagePrompt,
   identityPackCompleteness,
   mergeIdentityReference,
   type DollIdentityView,
@@ -217,10 +217,18 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
     triggerSound('transition');
 
     const creatorPhoto = currentDoll.onboardingRefs?.userPhotoDataUrl;
+    const forwardGazePosture =
+      'THE GAZE — still, forward, chin lifted, eyes toward lens';
     const imagePrompt =
       view === 'portrait' && creatorPhoto
-        ? buildLikenessAsDollImagePrompt(currentDoll, { view: 'portrait' })
-        : buildIdentityViewPrompt(currentDoll, view);
+        ? buildLikenessAsDollImagePrompt(currentDoll, {
+            view: 'portrait',
+            posture: forwardGazePosture,
+          })
+        : buildMimiShellImagePrompt(currentDoll, {
+            view,
+            ...(view === 'portrait' ? { posture: forwardGazePosture } : {}),
+          });
     const aspectRatio = view === 'full_body' ? '2:3' : '3:4';
 
     // Pass existing portrait as stable-face ref when generating other views
@@ -660,117 +668,117 @@ GUIDELINES FOR THE RESPONSE:
         </div>
       </div>
 
-      {/* Main Grid: Left (Visual/Stats), Right (Tabs & Action) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8 flex-1">
-        
-        {/* Left Column (5 cols): Visual Portrait, Stats & Output */}
-        <div className="lg:col-span-5 space-y-6">
-          
-          {/* Portrait Container with vintage frame */}
-          <div className="border border-stone-200 dark:border-stone-850 p-3 bg-stone-50 dark:bg-[#12110F] shadow-lg relative">
-            <div className="absolute top-4 left-4 z-10 bg-black/75 px-2 py-0.5 border border-stone-700">
-              <span className="font-mono text-[8px] uppercase tracking-widest text-amber-500 font-bold">
-                SIGNAL LIVE // {isDollState ? "CHASSIS_PARTITIONED" : "ORGANIC_BIO_FEEDS"}
-              </span>
-            </div>
-            
-            {/* Inline SVG filter for high-fashion digital distortion */}
-            <svg className="absolute w-0 h-0 pointer-events-none" width="0" height="0">
-              <defs>
-                <filter id="mimi-digital-construct-shift">
-                  <feTurbulence
-                    type="fractalNoise"
-                    baseFrequency="0.08 0.95"
-                    numOctaves="2"
-                    result="noise"
-                  />
-                  <feDisplacementMap
-                    in="SourceGraphic"
-                    in2="noise"
-                    scale={filterScale}
-                    xChannelSelector="R"
-                    yChannelSelector="G"
-                  />
-                </filter>
-              </defs>
-            </svg>
+      {/* Shell projection — primary visual above conditioning workspace */}
+      <section
+        aria-label="Mimi shell identity projection"
+        className="mb-8 max-w-xl mx-auto w-full"
+      >
+        <div className="border border-stone-200 dark:border-stone-850 p-3 bg-stone-50 dark:bg-[#12110F] shadow-lg relative">
+          <div className="absolute top-4 left-4 z-10 bg-black/75 px-2 py-0.5 border border-stone-700">
+            <span className="font-mono text-[8px] uppercase tracking-widest text-amber-500 font-bold">
+              SIGNAL LIVE // {isDollState ? "CHASSIS_PARTITIONED" : "ORGANIC_BIO_FEEDS"}
+            </span>
+          </div>
 
-            <motion.div 
-              layout 
-              layoutId={`mimi-portrait-container-${currentDoll.id}`}
-              className="aspect-[3/4] relative w-full overflow-hidden border border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-950"
+          <svg className="absolute w-0 h-0 pointer-events-none" width="0" height="0">
+            <defs>
+              <filter id="mimi-digital-construct-shift">
+                <feTurbulence
+                  type="fractalNoise"
+                  baseFrequency="0.08 0.95"
+                  numOctaves="2"
+                  result="noise"
+                />
+                <feDisplacementMap
+                  in="SourceGraphic"
+                  in2="noise"
+                  scale={filterScale}
+                  xChannelSelector="R"
+                  yChannelSelector="G"
+                />
+              </filter>
+            </defs>
+          </svg>
+
+          <motion.div
+            layout
+            layoutId={`mimi-portrait-container-${currentDoll.id}`}
+            className="aspect-[3/4] relative w-full overflow-hidden border border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-950"
+            style={{
+              filter: filterScale > 0 ? "url(#mimi-digital-construct-shift)" : "none",
+            }}
+          >
+            <motion.div
+              layout
+              className={`w-full h-full transition-all duration-1000 ${
+                !isDollState
+                  ? "grayscale-[20%] sepia-[15%] contrast-[0.98] brightness-[1.03] saturate-[1.1] blur-[0.2px]"
+                  : "grayscale-0 sepia-0 contrast-100 brightness-100 saturate-100"
+              }`}
               style={{
-                filter: filterScale > 0 ? "url(#mimi-digital-construct-shift)" : "none"
+                transform: isConstructShifting
+                  ? `translateX(${chromaticOffset}px) scale(${1 + Math.abs(chromaticOffset) * 0.005})`
+                  : "none",
               }}
             >
-              <motion.div 
-                layout
-                className={`w-full h-full transition-all duration-1000 ${
-                  !isDollState 
-                    ? "grayscale-[20%] sepia-[15%] contrast-[0.98] brightness-[1.03] saturate-[1.1] blur-[0.2px]" 
-                    : "grayscale-0 sepia-0 contrast-100 brightness-100 saturate-100"
-                }`}
-                style={{
-                  transform: isConstructShifting ? `translateX(${chromaticOffset}px) scale(${1 + Math.abs(chromaticOffset) * 0.005})` : 'none'
-                }}
-              >
-                <DollPortraitStage
-                  doll={currentDoll}
-                  view={identityView}
-                  className="w-full h-full"
-                />
-              </motion.div>
+              <DollPortraitStage
+                doll={currentDoll}
+                view={identityView}
+                className="w-full h-full"
+              />
+            </motion.div>
 
-              {/* Construct Shift Glitch Overlay */}
-              <AnimatePresence>
-                {isConstructShifting && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [0.8, 0.4, 0.9, 0.6, 0] }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.6, ease: "linear" }}
-                    className="absolute inset-0 z-20 pointer-events-none mix-blend-screen overflow-hidden"
-                  >
-                    {/* Glitch color bars */}
-                    <div 
-                      className="absolute top-1/4 left-0 w-full h-3 bg-cyan-500/30 blur-[1px]" 
-                      style={{ transform: `translateX(${chromaticOffset * 1.5}px)` }} 
-                    />
-                    <div 
-                      className="absolute top-2/3 left-0 w-full h-6 bg-rose-500/20 blur-[1px]" 
-                      style={{ transform: `translateX(${-chromaticOffset * 2.5}px)` }} 
-                    />
-                    {/* Glitch matrix block */}
-                    <div className="absolute inset-0 bg-stone-950/40 flex flex-col justify-between p-4 font-mono text-[8px] text-amber-500/80">
-                      <div className="flex justify-between items-center">
-                        <span>SHIFTING COGNITIVE PARTITIONS...</span>
-                        <span>DISPLACING VECTOR_{filterScale}</span>
-                      </div>
-                      <div className="w-full bg-amber-500/10 h-0.5 relative overflow-hidden">
-                        <div className="absolute top-0 bottom-0 bg-amber-500 animate-[pulse_0.1s_infinite]" style={{ left: '20%', right: '40%' }} />
-                      </div>
-                      <div className="flex justify-between items-center text-[6px]">
-                        <span>LACE_MUTATION_TAUT</span>
-                        <span>SYS_DE_INDIVIDUATION: ACTIVE</span>
-                      </div>
+            <AnimatePresence>
+              {isConstructShifting && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0.8, 0.4, 0.9, 0.6, 0] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.6, ease: "linear" }}
+                  className="absolute inset-0 z-20 pointer-events-none mix-blend-screen overflow-hidden"
+                >
+                  <div
+                    className="absolute top-1/4 left-0 w-full h-3 bg-cyan-500/30 blur-[1px]"
+                    style={{ transform: `translateX(${chromaticOffset * 1.5}px)` }}
+                  />
+                  <div
+                    className="absolute top-2/3 left-0 w-full h-6 bg-rose-500/20 blur-[1px]"
+                    style={{ transform: `translateX(${-chromaticOffset * 2.5}px)` }}
+                  />
+                  <div className="absolute inset-0 bg-stone-950/40 flex flex-col justify-between p-4 font-mono text-[8px] text-amber-500/80">
+                    <div className="flex justify-between items-center">
+                      <span>SHIFTING COGNITIVE PARTITIONS...</span>
+                      <span>DISPLACING VECTOR_{filterScale}</span>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              
-              {/* Overlay active implants visual feedback */}
-              <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-1 pointer-events-none z-10">
-                {equippedAccessories.map(acc => (
-                  <span 
-                    key={acc.id}
-                    className="bg-stone-950/90 text-stone-200 text-[7px] uppercase tracking-widest border border-amber-500/30 px-1.5 py-0.5 flex items-center gap-1"
-                  >
-                    <Sliders size={8} className="text-amber-500" />
-                    {acc.name}
-                  </span>
-                ))}
-                {aestheticTokens.filter(t => equippedIds.includes(t.id)).map(tok => (
-                  <span 
+                    <div className="w-full bg-amber-500/10 h-0.5 relative overflow-hidden">
+                      <div
+                        className="absolute top-0 bottom-0 bg-amber-500 animate-[pulse_0.1s_infinite]"
+                        style={{ left: "20%", right: "40%" }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-[6px]">
+                      <span>LACE_MUTATION_TAUT</span>
+                      <span>SYS_DE_INDIVIDUATION: ACTIVE</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-1 pointer-events-none z-10">
+              {equippedAccessories.map((acc) => (
+                <span
+                  key={acc.id}
+                  className="bg-stone-950/90 text-stone-200 text-[7px] uppercase tracking-widest border border-amber-500/30 px-1.5 py-0.5 flex items-center gap-1"
+                >
+                  <Sliders size={8} className="text-amber-500" />
+                  {acc.name}
+                </span>
+              ))}
+              {aestheticTokens
+                .filter((t) => equippedIds.includes(t.id))
+                .map((tok) => (
+                  <span
                     key={tok.id}
                     className="bg-stone-950/90 text-stone-200 text-[7px] uppercase tracking-widest border border-amber-500/30 px-1.5 py-0.5 flex items-center gap-1 animate-pulse"
                   >
@@ -778,75 +786,82 @@ GUIDELINES FOR THE RESPONSE:
                     {tok.name}
                   </span>
                 ))}
-              </div>
-            </motion.div>
-            
-            <div className="mt-3 space-y-2">
-              <div className="flex gap-1">
-                {([
-                  ['portrait', 'Portrait'],
-                  ['full_body', 'Full Body'],
-                  ['profile', 'Profile'],
-                ] as const).map(([view, label]) => (
-                  <button
-                    key={view}
-                    type="button"
-                    onClick={() => setIdentityView(view)}
-                    className={`flex-1 py-1.5 border font-mono text-[7px] uppercase tracking-widest ${
-                      identityView === view
-                        ? 'border-amber-500/60 bg-amber-500/10 text-amber-500'
-                        : 'border-stone-800 text-stone-500 hover:border-stone-600'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="font-mono text-[7px] uppercase tracking-widest text-stone-500">
-                Identity pack {packStatus.filled}/{packStatus.total}
-                {packStatus.missing.length
-                  ? ` · missing ${packStatus.missing.join(', ')}`
-                  : ' · calibrated'}
-              </p>
-              <button
-                onClick={() => handleRegeneratePortrait(identityView)}
-                disabled={isGeneratingPortrait}
-                className="w-full py-2.5 border border-stone-200 dark:border-stone-800 hover:border-amber-500/50 bg-[#12110F] text-[8px] uppercase tracking-[0.25em] font-black text-amber-600 dark:text-amber-500 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {isGeneratingPortrait ? (
-                  <>
-                    <RefreshCw size={10} className="animate-spin text-amber-500" />
-                    PROJECTING MIMI SHELL…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={10} className="text-amber-500 animate-pulse" />
-                    [ RUN SHELL PROJECTION ]
-                  </>
-                )}
-              </button>
-              {masks.length > 0 && (
-                <div className="pt-1">
-                  <label className="font-mono text-[7px] uppercase tracking-widest text-stone-500 block mb-1">
-                    Active Mask (companion role)
-                  </label>
-                  <select
-                    value={activeMaskId ?? ''}
-                    onChange={(e) => void handleSelectMask(e.target.value)}
-                    className="w-full border border-stone-800 bg-[#12110F] font-mono text-[9px] uppercase tracking-wider px-2 py-1.5 text-stone-300"
-                  >
-                    {masks.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} · {m.role}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Neural Integrity (Telemetry Stats) */}
+          <div className="mt-3 space-y-2">
+            <div className="flex gap-1">
+              {(
+                [
+                  ["portrait", "Portrait"],
+                  ["full_body", "Full Body"],
+                  ["profile", "Side Profile"],
+                ] as const
+              ).map(([view, label]) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setIdentityView(view)}
+                  className={`flex-1 py-1.5 border font-mono text-[7px] uppercase tracking-widest ${
+                    identityView === view
+                      ? "border-amber-500/60 bg-amber-500/10 text-amber-500"
+                      : "border-stone-800 text-stone-500 hover:border-stone-600"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="font-mono text-[7px] uppercase tracking-widest text-stone-500">
+              Identity pack {packStatus.filled}/{packStatus.total}
+              {packStatus.missing.length
+                ? ` · missing ${packStatus.missing.join(", ")}`
+                : " · calibrated"}
+            </p>
+            <button
+              onClick={() => handleRegeneratePortrait(identityView)}
+              disabled={isGeneratingPortrait}
+              className="w-full py-2.5 border border-stone-200 dark:border-stone-800 hover:border-amber-500/50 bg-[#12110F] text-[8px] uppercase tracking-[0.25em] font-black text-amber-600 dark:text-amber-500 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isGeneratingPortrait ? (
+                <>
+                  <RefreshCw size={10} className="animate-spin text-amber-500" />
+                  PROJECTING MIMI SHELL…
+                </>
+              ) : (
+                <>
+                  <Sparkles size={10} className="text-amber-500 animate-pulse" />
+                  [ RUN SHELL PROJECTION ]
+                </>
+              )}
+            </button>
+            {masks.length > 0 && (
+              <div className="pt-1">
+                <label className="font-mono text-[7px] uppercase tracking-widest text-stone-500 block mb-1">
+                  Active Mask (companion role)
+                </label>
+                <select
+                  value={activeMaskId ?? ""}
+                  onChange={(e) => void handleSelectMask(e.target.value)}
+                  className="w-full border border-stone-800 bg-[#12110F] font-mono text-[9px] uppercase tracking-wider px-2 py-1.5 text-stone-300"
+                >
+                  {masks.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} · {m.role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Main Grid: Left (Stats), Right (Tabs & Action) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8 flex-1">
+
+        {/* Left Column: Telemetry & ritual */}
+        <div className="lg:col-span-5 space-y-6">
           <div className="border border-stone-200 dark:border-stone-850 p-4 bg-stone-50 dark:bg-[#12110F] space-y-4 shadow-sm">
             <div className="flex justify-between items-center border-b border-stone-200 dark:border-stone-800 pb-2">
               <span className="font-mono text-[9px] uppercase tracking-widest text-stone-500 font-bold">
