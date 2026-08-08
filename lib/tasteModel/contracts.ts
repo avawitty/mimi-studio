@@ -161,6 +161,10 @@ export interface TasteFeatureWeight {
   sourceIds: string[];
   /** Optional provider embedding for semantic similarity scoring */
   embeddingVector?: number[];
+  /** Executed embedding model id when embeddingVector is present */
+  embeddingModel?: string;
+  /** Vector width when embeddingVector is present */
+  embeddingDims?: number;
 }
 
 export interface TasteInteractionRule {
@@ -245,6 +249,10 @@ export interface TasteCandidateInput {
   };
   /** Optional embedding from artifact or retrieval pipeline */
   embeddingVector?: number[];
+  /** Executed embedding model id when embeddingVector is present */
+  embeddingModel?: string;
+  /** Vector width when embeddingVector is present */
+  embeddingDims?: number;
 }
 
 export interface TasteCandidateScore {

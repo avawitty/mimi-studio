@@ -406,10 +406,10 @@ export async function rebuildTasteModel(
   projectId?: string,
 ): Promise<{ global?: TasteModelSnapshot; project?: TasteModelSnapshot }> {
   try {
-    if (projectId) {
-      return await compileAndSaveTasteModel({ userId, projectId, scope: 'project' });
-    }
-    return await compileAndSaveTasteModel({ userId, scope: 'global' });
+    const result = projectId
+      ? await compileAndSaveTasteModel({ userId, projectId, scope: 'project' })
+      : await compileAndSaveTasteModel({ userId, scope: 'global' });
+    return await replayPersistedEditsOntoCompileResult(userId, projectId, result);
   } catch (err) {
     const staleScope = projectId ? { projectId } : 'global';
     const existing = await getTasteModelSnapshot(userId, staleScope);
@@ -427,6 +427,60 @@ export async function rebuildTasteModel(
       );
     }
     throw err;
+  }
+}
+
+async function replayPersistedEditsOntoCompileResult(
+  userId: string,
+  projectId: string | undefined,
+  result: { global?: TasteModelSnapshot; project?: TasteModelSnapshot },
+): Promise<{ global?: TasteModelSnapshot; project?: TasteModelSnapshot }> {
+  try {
+    const { listTasteModelEdits, listTasteRefusals } = await import(
+      './tasteIntelligenceClient'
+    );
+    const { replayTasteSnapshot } = await import(
+      '../lib/tasteIntelligence/replaySnapshot'
+    );
+    const [editsRes, refusalsRes] = await Promise.all([
+      listTasteModelEdits(projectId),
+      listTasteRefusals(projectId),
+    ]);
+    const edits = editsRes.edits;
+    const refusals = refusalsRes.refusals;
+    if (edits.length === 0 && refusals.length === 0) return result;
+
+    if (projectId && result.project) {
+      const replayed = replayTasteSnapshot({
+        baseline: result.project,
+        edits,
+        refusals,
+      });
+      await setDoc(
+        snapshotDoc(userId, `project-${projectId}`),
+        stripUndefined(replayed as unknown as Record<string, unknown>),
+      );
+      await persistSnapshotViaApi(replayed, { projectId });
+      return { ...result, project: replayed };
+    }
+
+    if (result.global) {
+      const replayed = replayTasteSnapshot({
+        baseline: result.global,
+        edits,
+        refusals,
+      });
+      await setDoc(
+        snapshotDoc(userId, 'global'),
+        stripUndefined(replayed as unknown as Record<string, unknown>),
+      );
+      await persistSnapshotViaApi(replayed);
+      return { ...result, global: replayed };
+    }
+
+    return result;
+  } catch {
+    return result;
   }
 }
 

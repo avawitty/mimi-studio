@@ -104,6 +104,51 @@ function mergeFeatureWeights(
   };
 }
 
+/** Keep trajectory buckets aligned with surviving feature IDs after structural edits. */
+function syncTrajectoryFromFeatures(
+  snapshot: TasteModelSnapshot,
+): TasteModelSnapshot {
+  const featureIds = new Set(snapshot.featureWeights.map((f) => f.featureId));
+  const filterBucket = (ids: string[]) => ids.filter((id) => featureIds.has(id));
+
+  const trajectory = {
+    emergingFeatureIds: filterBucket(snapshot.trajectory.emergingFeatureIds),
+    strengtheningFeatureIds: filterBucket(
+      snapshot.trajectory.strengtheningFeatureIds,
+    ),
+    stableFeatureIds: filterBucket(snapshot.trajectory.stableFeatureIds),
+    decliningFeatureIds: filterBucket(snapshot.trajectory.decliningFeatureIds),
+  };
+
+  const placed = new Set([
+    ...trajectory.emergingFeatureIds,
+    ...trajectory.strengtheningFeatureIds,
+    ...trajectory.stableFeatureIds,
+    ...trajectory.decliningFeatureIds,
+  ]);
+
+  for (const fw of snapshot.featureWeights) {
+    if (placed.has(fw.featureId)) continue;
+    switch (fw.trend) {
+      case "emerging":
+        trajectory.emergingFeatureIds.push(fw.featureId);
+        break;
+      case "strengthening":
+        trajectory.strengtheningFeatureIds.push(fw.featureId);
+        break;
+      case "declining":
+        trajectory.decliningFeatureIds.push(fw.featureId);
+        break;
+      default:
+        trajectory.stableFeatureIds.push(fw.featureId);
+        break;
+    }
+    placed.add(fw.featureId);
+  }
+
+  return { ...snapshot, trajectory };
+}
+
 function applyEditToSnapshot(
   snapshot: TasteModelSnapshot,
   edit: TasteModelEdit,
@@ -235,12 +280,17 @@ function applyEditToSnapshot(
 
       const undoSurvivor = edit.after.survivor as TasteFeatureWeight | undefined;
       const undoAbsorbed = edit.after.absorbed as TasteFeatureWeight | undefined;
+      const preMergeRules = edit.after.preMergeRules as
+        | TasteInteractionRule[]
+        | undefined;
       if (undoSurvivor && undoAbsorbed) {
         next.featureWeights = next.featureWeights
           .filter((f) => f.featureId !== survivorId && f.featureId !== absorbedId)
           .concat([undoSurvivor, undoAbsorbed]);
-        next.interactionRules = dedupeInteractionRules(next.interactionRules);
-        break;
+        next.interactionRules = preMergeRules
+          ? dedupeInteractionRules(preMergeRules.map((rule) => ({ ...rule })))
+          : dedupeInteractionRules(next.interactionRules);
+        return syncTrajectoryFromFeatures(next);
       }
 
       const survivor = next.featureWeights.find(
@@ -265,7 +315,7 @@ function applyEditToSnapshot(
         absorbedId,
         survivorId,
       );
-      break;
+      return syncTrajectoryFromFeatures(next);
     }
     case "split": {
       const parentId = edit.targetIds[0];
@@ -283,7 +333,7 @@ function applyEditToSnapshot(
         next.interactionRules = next.interactionRules.filter(
           (rule) => !rule.featureIds.includes(childId),
         );
-        break;
+        return syncTrajectoryFromFeatures(next);
       }
 
       const parent = next.featureWeights.find((f) => f.featureId === parentId);
@@ -323,7 +373,7 @@ function applyEditToSnapshot(
       next.featureWeights = next.featureWeights
         .map((f) => (f.featureId === parentId ? updatedParent : f))
         .concat(child);
-      break;
+      return syncTrajectoryFromFeatures(next);
     }
     default: {
       const _exhaustive: never = edit.operation;

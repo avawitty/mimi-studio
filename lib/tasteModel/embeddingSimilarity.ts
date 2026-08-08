@@ -4,6 +4,7 @@
  */
 import type { TasteCandidateInput, TasteModelSnapshot } from './contracts';
 import { cosineSimilarity, embeddingsCompatible } from '../embeddingMath';
+import { embeddingSpacesCompatible } from '../../schemas/embeddingContracts';
 
 const HASH_EMBED_DIM = 48;
 
@@ -85,6 +86,27 @@ export function buildCandidateEmbeddingVector(
   return hashEmbed(text);
 }
 
+function embeddingVectorsCompatible(
+  candidate: TasteCandidateInput,
+  candidateVec: number[],
+  featureVec: number[],
+  featureModel?: string,
+  featureDims?: number,
+): boolean {
+  if (
+    candidate.embeddingModel &&
+    featureModel &&
+    candidate.embeddingDims &&
+    featureDims
+  ) {
+    return embeddingSpacesCompatible(
+      { model: candidate.embeddingModel, dims: candidate.embeddingDims },
+      { model: featureModel, dims: featureDims },
+    );
+  }
+  return embeddingsCompatible(candidateVec, featureVec);
+}
+
 /**
  * Cosine similarity between candidate and taste preference (0–1).
  * Falls back to 0.5 when insufficient signal.
@@ -105,8 +127,18 @@ export function computeEmbeddingSimilarity(
         .map((fw) => ({
           vec: fw.embeddingVector!,
           w: fw.signedWeight * fw.confidence,
+          model: fw.embeddingModel,
+          dims: fw.embeddingDims,
         }))
-        .filter((entry) => embeddingsCompatible(candidateVec, entry.vec));
+        .filter((entry) =>
+          embeddingVectorsCompatible(
+            candidate,
+            candidateVec,
+            entry.vec,
+            entry.model,
+            entry.dims,
+          ),
+        );
 
       if (weighted.length > 0) {
         const dims = candidateVec.length;
