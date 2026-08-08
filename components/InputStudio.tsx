@@ -349,6 +349,7 @@ export const InputStudio: React.FC<{
   isThinking: boolean;
   initialValue?: string;
   initialMedia?: MediaFile[];
+  initialCoverVariants?: ZineCoverVariant[];
   continuumContext?: any;
   zineOptions: ZineGenerationOptions;
   setZineOptions: (options: ZineGenerationOptions) => void;
@@ -358,6 +359,7 @@ export const InputStudio: React.FC<{
   isThinking,
   initialValue,
   initialMedia,
+  initialCoverVariants,
   continuumContext,
   initialHighFidelity,
   zineOptions,
@@ -605,9 +607,10 @@ export const InputStudio: React.FC<{
   const [isDraggingOverSlot, setIsDraggingOverSlot] = useState<boolean>(false);
   const [isComposingCover, setIsComposingCover] = useState(false);
   const [composeCoverError, setComposeCoverError] = useState<string | null>(null);
-  const [coverVariants, setCoverVariants] = useState<ZineCoverVariant[]>(() =>
-    parseStoredCoverVariants(localStorage.getItem(STUDIO_COVER_DRAFT_KEY)),
-  );
+  const [coverVariants, setCoverVariants] = useState<ZineCoverVariant[]>(() => {
+    if (initialCoverVariants?.length) return initialCoverVariants;
+    return parseStoredCoverVariants(localStorage.getItem(STUDIO_COVER_DRAFT_KEY));
+  });
   const [showImageApiKeyInfo, setShowImageApiKeyInfo] = useState(false);
   const [coverProvider, setCoverProvider] = useState<StudioCoverProvider>(() => {
     const stored = localStorage.getItem("mimi_cover_provider");
@@ -2053,6 +2056,15 @@ ${finalInput}`;
       syncComposedCoverMedia(selected.url);
     }
   }, [coverVariants, syncComposedCoverMedia]);
+
+  useEffect(() => {
+    if (!initialCoverVariants?.length) return;
+    setCoverVariants(initialCoverVariants);
+    const selected = selectedCoverVariant(initialCoverVariants);
+    if (selected?.url) {
+      syncComposedCoverMedia(selected.url);
+    }
+  }, [initialCoverVariants, syncComposedCoverMedia]);
 
   const handlePromoteCoverVariant = useCallback(
     (seed: string) => {
@@ -3693,7 +3705,7 @@ ${finalInput}`;
                         <Loader2 size={10} className="animate-spin text-amber-500" /> Generating
                       </>
                     ) : (
-                      "Compose"
+                      "Generate Preview"
                     )}
                   </button>
                 </div>
