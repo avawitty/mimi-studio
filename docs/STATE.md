@@ -63,7 +63,7 @@
 | **Sanctuary** | `/sanctuary` | shipped | Local-only boundary | — |
 | **The Ward** | `/ward` | shipped | — | — |
 | **Atelier** | `/atelier` | shipped | Soft cap 40 objects | Verify Shopify touchpoint metadata path |
-| **The Proscenium** | `/proscenium` | **stub** | **`mock_1`…`mock_3` Local Echoes** hardcoded in `ProsceniumView` | Replace demo specimens with consented live transmissions or honest empty |
+| **The Proscenium** | `/proscenium` | **partial** | Stage shows consent badges + Observatory handoff; Local Echoes demo specimens illustrate MMM states | Live transmission corpus still thin without signed-in staging |
 | **Studio Map** | `/chamber-map` | shipped | — | — |
 | **Codex** | `/codex` | shipped | — | — |
 

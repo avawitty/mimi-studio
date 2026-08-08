@@ -613,3 +613,13 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/tailor/tailorDefaults.ts`, `contexts/UserContext.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`
 
+---
+
+## 2026-08-08 — Proscenium showcases collective consent on Stage
+
+**Decision:** Stage wing surfaces Mean Median Mode consent states on each transmission (`ProsceniumContributionBadge`) and a collective brief panel with Observatory / MMM handoffs (`ProsceniumCollectiveBrief`). Local Echoes demo specimens illustrate contributing, staged-only, and withdrawn states — never mixed into live counts.
+
+**Why:** Collective intelligence consent shipped in Pocket / ZineCard / AnalysisDisplay but Proscenium had no visible readout of what staging means for Observatory aggregates.
+
+**Ref:** `components/proscenium/ProsceniumContributionBadge.tsx`, `components/proscenium/ProsceniumCollectiveBrief.tsx`, `components/ProsceniumView.tsx`
+

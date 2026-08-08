@@ -37,6 +37,10 @@ import { MimiWordmark } from "./public-face/MimiWordmark";
 import { PressMark } from "./public-face/PressMark";
 import { ColumnRule } from "./public-face/ColumnRule";
 import { PublicCTA } from "./public-face/PublicCTA";
+import { ProsceniumContributionBadge } from "./proscenium/ProsceniumContributionBadge";
+import { ProsceniumCollectiveBrief } from "./proscenium/ProsceniumCollectiveBrief";
+import { mayContributeToMeanMedianMode } from "../services/collective/consent";
+import { MMM_CONSENT_DISCLOSURE_VERSION } from "../services/collective/methodology";
 
 export type ProsceniumWing = "stage" | "correspondents" | "cliques";
 
@@ -53,6 +57,12 @@ interface Transmission {
   vibeNotes?: VibeNote[];
   /** Local demo specimen — never mix with live counts in copy */
   isDemo?: boolean;
+  artifactId?: string;
+  contributeToMeanMedianMode?: boolean;
+  disclosedAt?: number;
+  disclosureVersion?: string;
+  mmmContributionStatus?: "active" | "withdrawn" | "never";
+  stagedPublicly?: boolean;
 }
 
 interface ProsceniumViewProps {
@@ -87,6 +97,8 @@ const WINGS: {
   },
 ];
 
+const DEMO_DISCLOSED_AT = Date.now() - 86400000;
+
 const DEMO_TRANSMISSIONS: Transmission[] = [
   {
     id: "sim_1",
@@ -99,11 +111,21 @@ const DEMO_TRANSMISSIONS: Transmission[] = [
     likes: 42,
     vibeNotes: [],
     isDemo: true,
+    artifactId: "mock_1",
+    stagedPublicly: true,
+    disclosedAt: DEMO_DISCLOSED_AT,
+    disclosureVersion: MMM_CONSENT_DISCLOSURE_VERSION,
+    contributeToMeanMedianMode: true,
+    mmmContributionStatus: "active",
     zineData: {
       id: "mock_1",
       title: "Biological Imperative",
       content: "",
       isPublic: true,
+      contributeToMeanMedianMode: true,
+      disclosedAt: DEMO_DISCLOSED_AT,
+      disclosureVersion: MMM_CONSENT_DISCLOSURE_VERSION,
+      mmmContributionStatus: "active",
       mask: { typographyIntent: { archetype: "minimalist-sans" } },
     } as unknown as ZineMetadata,
   },
@@ -118,11 +140,21 @@ const DEMO_TRANSMISSIONS: Transmission[] = [
     likes: 12,
     vibeNotes: [],
     isDemo: true,
+    artifactId: "mock_2",
+    stagedPublicly: true,
+    disclosedAt: DEMO_DISCLOSED_AT,
+    disclosureVersion: MMM_CONSENT_DISCLOSURE_VERSION,
+    contributeToMeanMedianMode: false,
+    mmmContributionStatus: "never",
     zineData: {
       id: "mock_2",
       title: "Hyper Nostalgia",
       content: "",
       isPublic: true,
+      contributeToMeanMedianMode: false,
+      disclosedAt: DEMO_DISCLOSED_AT,
+      disclosureVersion: MMM_CONSENT_DISCLOSURE_VERSION,
+      mmmContributionStatus: "never",
       mask: { typographyIntent: { archetype: "editorial-serif" } },
     } as unknown as ZineMetadata,
   },
@@ -137,11 +169,21 @@ const DEMO_TRANSMISSIONS: Transmission[] = [
     likes: 8,
     vibeNotes: [],
     isDemo: true,
+    artifactId: "mock_3",
+    stagedPublicly: true,
+    disclosedAt: DEMO_DISCLOSED_AT,
+    disclosureVersion: MMM_CONSENT_DISCLOSURE_VERSION,
+    contributeToMeanMedianMode: true,
+    mmmContributionStatus: "withdrawn",
     zineData: {
       id: "mock_3",
       title: "Loudest Texture",
       content: "",
-      isPublic: true,
+      isPublic: false,
+      contributeToMeanMedianMode: false,
+      disclosedAt: DEMO_DISCLOSED_AT,
+      disclosureVersion: MMM_CONSENT_DISCLOSURE_VERSION,
+      mmmContributionStatus: "withdrawn",
       mask: { typographyIntent: { archetype: "brutalist-mono" } },
     } as unknown as ZineMetadata,
   },
@@ -388,6 +430,18 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
     activeChannel === "local" ||
     transmissions.every((t) => t.isDemo);
 
+  const liveTransmissions = transmissions.filter((t) => !t.isDemo);
+  const contributingCount = liveTransmissions.filter((t) =>
+    mayContributeToMeanMedianMode(t),
+  ).length;
+  const stagedOnlyCount = liveTransmissions.filter(
+    (t) =>
+      t.disclosedAt &&
+      t.disclosureVersion &&
+      !mayContributeToMeanMedianMode(t) &&
+      t.mmmContributionStatus !== "withdrawn",
+  ).length;
+
   const channelLabel = isOfflineMode
     ? "Demonstration specimens"
     : activeChannel === "following"
@@ -598,6 +652,11 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
                 </div>
               )}
 
+              <ProsceniumCollectiveBrief
+                contributingCount={contributingCount}
+                stagedCount={stagedOnlyCount}
+              />
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--mimi-hairline,#d4d4d4)] border border-[var(--mimi-hairline,#d4d4d4)]">
                 <AnimatePresence>
                   {transmissions.map((t, i) => (
@@ -625,6 +684,13 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
                         </div>
                       )}
 
+                      <div className="absolute top-3 left-3 z-10 max-w-[85%]">
+                        <ProsceniumContributionBadge
+                          transmission={t}
+                          variant="overlay"
+                        />
+                      </div>
+
                       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-5">
                         <div className="translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
                           <div className="flex items-center gap-2 mb-2">
@@ -644,11 +710,6 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
                             >
                               {t.userHandle}
                             </button>
-                            {t.isDemo && (
-                              <span className="font-mono text-[7px] uppercase tracking-widest text-white/40">
-                                [demo]
-                              </span>
-                            )}
                           </div>
                           <p className="font-serif text-lg italic text-white leading-tight mb-4 line-clamp-2">
                             {t.content}
@@ -823,6 +884,12 @@ export const ProsceniumView: React.FC<ProsceniumViewProps> = ({
                     >
                       {selectedArtifact.userHandle}
                     </button>
+                  </div>
+                  <div className="mb-4">
+                    <ProsceniumContributionBadge
+                      transmission={selectedArtifact}
+                      variant="modal"
+                    />
                   </div>
                   <h2 className="font-serif text-3xl md:text-4xl italic text-white leading-tight mb-6">
                     {selectedArtifact.content}
