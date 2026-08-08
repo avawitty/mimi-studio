@@ -834,3 +834,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `components/proscenium/ProsceniumContributionBadge.tsx`, `components/proscenium/ProsceniumCollectiveBrief.tsx`, `components/ProsceniumView.tsx`
 
+---
+
+## 2026-08-08 — Direct Studio zine path keeps editorial compiler behind the scenes
+
+**Decision:** `createZine` continues the fast direct Studio UX (`enhanceZineGenerationLayout` only in the reveal path) but now runs `applyDirectPathEditorialIntelligence` after layout seeding so earned-page rules, structural compression, plan evaluation, page rationale, and Press readiness still receive a compiled `issuePlan`. Proof UI remains removed from reveal.
+
+**Alternatives rejected:** (1) Re-mount Proof Mode in `AnalysisDisplay` — violates #246 UX simplification. (2) Drop issue planning entirely — breaks export readiness, page rationale, and composition critique contracts.
+
+**Why:** Preserves creator-facing speed while keeping deterministic editorial intelligence for publication, provenance, and regression tests.
+
+**Ref:** `lib/zine/applyDirectPathEditorialIntelligence.ts`, `services/zineGenerator.ts`, `__tests__/zineDirectPathEditorialIntelligence.test.ts`, `scripts/verifyZineGenerateToPlan.ts`
+

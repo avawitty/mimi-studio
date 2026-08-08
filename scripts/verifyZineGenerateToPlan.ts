@@ -5,6 +5,7 @@ import {
   draftZineArtifactId,
   enhanceZineGenerationLayout,
 } from "../lib/zine/enhanceZineGenerationLayout";
+import { applyDirectPathEditorialIntelligence } from "../lib/zine/applyDirectPathEditorialIntelligence";
 import type { ZineContent } from "../types";
 
 const root = process.cwd();
@@ -32,17 +33,24 @@ const content: ZineContent = {
   ],
 };
 
-const enhanced = enhanceZineGenerationLayout({
-  content,
-  artifactId: draftZineArtifactId(),
+const artifactId = draftZineArtifactId();
+const enhanced = enhanceZineGenerationLayout({ content, artifactId });
+const editorial = applyDirectPathEditorialIntelligence({
+  content: enhanced,
+  artifactId,
+  originalInput: "verify source",
 });
 
-assert.equal(enhanced.pages?.length, 1);
-assert.ok(enhanced.pages?.[0].id);
-assert.ok(enhanced.pages?.[0].grammar);
-assert.ok(enhanced.pages?.[0].customLayout?.elements.length);
-assert.ok(enhanced.pagesJson);
-assert.equal(JSON.parse(enhanced.pagesJson!).length, 1);
+assert.equal(editorial.content.pages?.length, editorial.issuePlan.pages.filter((p) => !p.derived).length);
+assert.ok(editorial.content.pages?.[0].id);
+assert.ok(editorial.content.pages?.[0].grammar);
+assert.ok(editorial.content.pages?.[0].customLayout?.elements.length);
+assert.ok(editorial.content.pagesJson);
+assert.equal(JSON.parse(editorial.content.pagesJson!).length, editorial.content.pages?.length);
+assert.equal(editorial.issuePlan.pages[0].sectionType, "cover");
+assert.equal(editorial.issuePlan.pages.at(-1)?.sectionType, "colophon");
+assert.ok(editorial.issuePlan.evaluation);
+assert.ok(editorial.issuePlan.pages.every((page) => page.earnsExistenceBy.length > 0));
 
 const generator = read("services/zineGenerator.ts");
 assert.match(
@@ -50,17 +58,22 @@ assert.match(
   /enhanceZineGenerationLayout/,
   "createZine must enhance layout after generation",
 );
-assert.doesNotMatch(
+assert.match(
   generator,
-  /realizeZineContentFromPlan/,
-  "createZine must not run the editorial issue-plan pipeline",
+  /applyDirectPathEditorialIntelligence/,
+  "createZine must run editorial compiler behind the direct path",
+);
+assert.match(
+  generator,
+  /issuePlan: editorial\.issuePlan/,
+  "createZine must attach compiled issue plan for readiness/provenance",
 );
 
 const app = read("App.tsx");
 assert.doesNotMatch(
   app,
-  /issuePlan: result\.issuePlan/,
-  "Hi-fi bake must not depend on issue plan slots",
+  /ZineProofMode/,
+  "Studio reveal must not mount proof UI",
 );
 
 const bake = read("lib/bakeZinePlates.ts");
@@ -71,5 +84,6 @@ assert.doesNotMatch(
 );
 
 console.log("✓ Mimi zine generation layout verified");
-console.log("  - createZine seeds spread layouts without issue-plan compression");
+console.log("  - createZine seeds spread layouts then runs editorial compiler");
+console.log("  - issuePlan + compression + rationale preserved without proof UI");
 console.log("  - hi-fi bake develops pages with image prompts directly");
