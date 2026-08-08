@@ -581,5 +581,5 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Alternatives rejected:** (1) Keep Used Context as footer-only — loses composition grammar. (2) Wire forecast-drift to demonstration MMM fixtures — honest labeling requires Tailor-sourced vectors until Forecast ships live data.
 
-**Ref:** `lib/zine/buildPlateStampData.ts`, `lib/zine/insertEditorialPlates.ts`, `components/zine/grammars/*PlatePage.tsx`
+**Ref:** `lib/zine/buildPlateStampData.ts`, `lib/zine/insertEditorialPlates.ts`, `lib/zine/enrichEditorialPlateContent.ts`, `components/zine/grammars/*PlatePage.tsx`
 
