@@ -18,7 +18,6 @@ import {
   NeonMemoryRepository,
   NeonProvenanceRepository,
 } from "./memoryRepository.js";
-import type { TasteIntelligenceRepository } from "../../../domain/tasteIntelligence/repository.js";
 import {
   NeonAiRunRepository,
   NeonOperationResultRepository,

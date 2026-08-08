@@ -6,6 +6,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
 ## 2026-08-08 — Taste Intelligence OS v2 (Neon operational layer + Calibration Lab)
 
 **Decision:** Extend the v1 computational taste model into a coherent intelligence layer without a second Taste Graph. New operational writes go to Neon (`mimi.taste_*` tables) via authenticated `/api/mimi/taste-intelligence/*` routes; `services/tasteModelService.ts` dual-writes/dual-reads during Firestore migration. Calibration Lab lives at `/tailor/calibrate` with deterministic active-learning pair selection and Bradley-Terry-style calibration deltas. Sentinel memory policy is a separate headless layer (`lib/tasteIntelligence/sentinelPolicy.ts` + `SentinelMemoryReview`) — `CaptiveSentinel` remains the in-app browser guard only.
@@ -39,6 +41,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** React must never connect to Neon; client bundles must stay server-free.
 
 **Ref:** `services/tasteModelService.ts`, `lib/tasteIntelligenceRoute.ts`, `services/tasteIntelligenceClient.ts`
+
+---
+
+## 2026-08-08 — Taste Calibration MVP (parallel PR — superseded by Taste Intelligence OS v2)
+
+**Decision:** A parallel `lib/tasteCalibration/*` stack with normalized Neon columns (`taste_calibration_*` migration `0001_taste_calibration`) was prototyped on branch `metaste-calibration-mvp-278f`. **Merged into main by adopting the existing Taste Intelligence OS v2 architecture** (`lib/tasteIntelligence/*`, JSONB payload columns, `/api/mimi/taste-intelligence/calibration/*`, `CalibrationLab.tsx`) rather than maintaining duplicate repositories and API surfaces.
+
+**Alternatives rejected:** Running two calibration persistence stacks side-by-side.
+
+**Why:** Same product surface (`/tailor/calibrate`), same ADR-001 constraints, but main already shipped the broader OS v2 spine; duplicate schema/API would fork operational truth.
+
+**Ref:** `docs/taste-calibration-lab.md` (algorithm notes retained), `docs/taste-intelligence-os-v2.md` (canonical architecture)
 
 ---
 

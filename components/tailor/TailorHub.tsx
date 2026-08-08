@@ -4,10 +4,10 @@ import { ArtStyleChamber } from '../ArtStyleChamber';
 import { AestheticIntelligenceChamber } from '../chambers/AestheticIntelligenceChamber';
 import { TailorProjectFlow } from './TailorProjectFlow';
 import { EvidenceDossierFlow } from './EvidenceDossierFlow';
+import { CalibrationLab } from './CalibrationLab';
 import { useUser } from '../../contexts/UserContext';
 import { getTailorProject, listEvidenceNodes } from '../../services/tailorService';
 import type { TailorProject, EvidenceNode } from '../../types';
-import { CalibrationLab } from './CalibrationLab';
 import { ChamberHandoff } from '../ChamberHandoff';
 
 export type TailorPanel =
@@ -78,6 +78,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
   const tabs: Array<{ id: TailorPanel; label: string; note: string }> = [
     { id: 'intake', label: 'Evidence Intake', note: 'collect' },
     { id: 'blueprint', label: 'Profile Blueprint', note: 'compile' },
+    { id: 'calibrate', label: 'Taste Calibration', note: 'refine' },
     { id: 'style-lab', label: 'Style Lab', note: 'interpret' },
     { id: 'calibrate', label: 'Calibration Lab', note: 'learn' },
     { id: 'diagnostics', label: 'Diagnostics', note: 'review' },

@@ -1350,8 +1350,8 @@ export const App: React.FC = () => {
                 : pathParts[1] === "calibrate"
                   ? "calibrate"
                   : pathParts[1] === "blueprint"
-                  ? "blueprint"
-                  : "intake"; // Evidence Intake is Tailor step 0
+                    ? "blueprint"
+                    : "intake"; // Evidence Intake is Tailor step 0
 
   useEffect(() => {
     if (isLegacyStyleLabRoute) {
