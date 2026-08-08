@@ -4,6 +4,7 @@ import { X, Sparkles, Briefcase, Eraser, Save, PenTool, Zap, Disc3, Orbit } from
 import { LiveMentor } from './LiveMentor';
 import { useUser } from '../contexts/UserContext';
 import { archiveManager } from '../services/archiveManager';
+import { saveOracleSession } from '../services/oracleChamberService';
 import { sanitizeHtml } from '../lib/htmlSanitizer';
 
 const MIMI_SYSTEM_INSTRUCTION = `
@@ -87,6 +88,7 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
   const [aiTranscript, setAiTranscript] = useState('');
   const [showGlyphPad, setShowGlyphPad] = useState(false);
   const { user } = useUser();
+  const sessionStartedAt = useRef(new Date().toISOString());
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -162,8 +164,27 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
+  const persistChamberSession = useCallback(() => {
+    const currentUser = user?.uid || 'ghost';
+    if (!aiTranscript.trim() && chamberNotes.length === 0) return;
+    saveOracleSession(currentUser, {
+      entity: activeEntity,
+      entityLabel: config.label,
+      role: config.role,
+      transcript: aiTranscript,
+      notes: chamberNotes,
+      startedAt: sessionStartedAt.current,
+    });
+  }, [user?.uid, activeEntity, config.label, config.role, aiTranscript, chamberNotes]);
+
+  const handleClose = useCallback(() => {
+    persistChamberSession();
+    onClose();
+  }, [persistChamberSession, onClose]);
+
   const handleExportChamber = async () => {
     const currentUser = user?.uid || 'ghost';
+    persistChamberSession();
     let count = 0;
     if (chamberNotes.length || aiTranscript.trim()) {
       await archiveManager.saveToPocket(currentUser, 'text', {
@@ -255,7 +276,7 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
           >
             <Save size={12} /> Pocket
           </button>
-          <button type="button" onClick={onClose} className="w-9 h-9 border border-white/15 flex items-center justify-center text-white/55 hover:text-white">
+          <button type="button" onClick={handleClose} className="w-9 h-9 border border-white/15 flex items-center justify-center text-white/55 hover:text-white">
             <X size={16} strokeWidth={1.25} />
           </button>
         </div>
