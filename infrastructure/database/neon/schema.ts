@@ -632,129 +632,397 @@ export const auditEvents = mimi.table(
   ],
 );
 
+// ─── Taste Intelligence OS v2 ─────────────────────────────────────────────────
+
+export const tasteLearningEvents = mimi.table(
+  "taste_learning_events",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+      onDelete: "restrict",
+    }),
+    projectId: text("project_id"),
+    eventPayload: jsonb("event_payload").$type<Record<string, unknown>>().notNull(),
+    idempotencyKey: text("idempotency_key"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("taste_learning_events_owner_idempotency_unique")
+      .on(table.ownerId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
+    index("taste_learning_events_owner_occurred_idx").on(
+      table.ownerId,
+      table.occurredAt,
+    ),
+    index("taste_learning_events_project_occurred_idx").on(
+      table.projectId,
+      table.occurredAt,
+    ),
+  ],
+);
+
+export const tasteModelSnapshots = mimi.table(
+  "taste_model_snapshots",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+      onDelete: "restrict",
+    }),
+    projectId: text("project_id"),
+    scope: text("scope").$type<"global" | "project">().notNull(),
+    schemaVersion: integer("schema_version").notNull().default(1),
+    modelVersion: text("model_version").notNull(),
+    snapshotPayload: jsonb("snapshot_payload")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("taste_model_snapshots_owner_updated_idx").on(
+      table.ownerId,
+      table.updatedAt,
+    ),
+    index("taste_model_snapshots_owner_scope_idx").on(
+      table.ownerId,
+      table.scope,
+      table.updatedAt,
+    ),
+    index("taste_model_snapshots_model_version_idx").on(table.modelVersion),
+  ],
+);
+
 export const tasteCalibrationSessions = mimi.table(
   "taste_calibration_sessions",
   {
-    id: uuid("id").primaryKey(),
-    ownerId: text("owner_id")
-      .notNull()
-      .references(() => profiles.id, { onDelete: "cascade" }),
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
     workspaceId: uuid("workspace_id").references(() => workspaces.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     projectId: text("project_id"),
+    modelSnapshotId: text("model_snapshot_id").notNull(),
     status: text("status")
-      .$type<"active" | "paused" | "completed" | "abandoned">()
-      .notNull()
-      .default("active"),
-    targetQuestionCount: integer("target_question_count").notNull().default(10),
-    answeredCount: integer("answered_count").notNull().default(0),
-    seed: text("seed").notNull(),
+      .$type<"active" | "completed" | "abandoned">()
+      .notNull(),
+    targetQuestionCount: integer("target_question_count").notNull(),
+    answeredQuestionCount: integer("answered_question_count").notNull().default(0),
     algorithmVersion: text("algorithm_version").notNull(),
-    baselineSnapshotId: text("baseline_snapshot_id"),
-    currentSnapshotId: text("current_snapshot_id"),
-    currentModelState: jsonb("current_model_state").$type<Record<string, unknown>>(),
-    scope: text("scope")
-      .$type<"persistent" | "project" | "session">()
-      .notNull()
-      .default("project"),
+    idempotencyKey: text("idempotency_key"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
-    index("taste_calibration_sessions_owner_created_idx").on(
-      table.ownerId,
-      table.createdAt,
-    ),
-    index("taste_calibration_sessions_project_idx").on(table.projectId),
-    index("taste_calibration_sessions_active_idx").on(
+    uniqueIndex("taste_calibration_sessions_owner_idempotency_unique")
+      .on(table.ownerId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
+    index("taste_calibration_sessions_owner_status_idx").on(
       table.ownerId,
       table.status,
-      table.projectId,
+      table.updatedAt,
     ),
-    check(
-      "taste_calibration_sessions_status_check",
-      sql`${table.status} in ('active', 'paused', 'completed', 'abandoned')`,
-    ),
-    check(
-      "taste_calibration_sessions_scope_check",
-      sql`${table.scope} in ('persistent', 'project', 'session')`,
-    ),
+    index("taste_calibration_sessions_active_idx")
+      .on(table.ownerId, table.projectId)
+      .where(sql`${table.status} = 'active'`),
   ],
 );
 
 export const tasteCalibrationPairs = mimi.table(
   "taste_calibration_pairs",
   {
-    id: uuid("id").primaryKey(),
-    sessionId: uuid("session_id")
+    id: text("id").primaryKey(),
+    sessionId: text("session_id")
       .notNull()
       .references(() => tasteCalibrationSessions.id, { onDelete: "cascade" }),
-    ownerId: text("owner_id")
-      .notNull()
-      .references(() => profiles.id, { onDelete: "cascade" }),
-    pairIndex: integer("pair_index").notNull(),
-    leftCandidateId: text("left_candidate_id").notNull(),
-    rightCandidateId: text("right_candidate_id").notNull(),
-    isolatedFeatureIds: jsonb("isolated_feature_ids").$type<string[]>().notNull(),
-    selectionReason: jsonb("selection_reason").$type<Record<string, unknown>>().notNull(),
-    predictedLeftPreference: numeric("predicted_left_preference", {
-      precision: 8,
-      scale: 6,
-    }).notNull(),
-    expectedInformationGain: numeric("expected_information_gain", {
-      precision: 8,
-      scale: 6,
-    }).notNull(),
+    pairPayload: jsonb("pair_payload").$type<Record<string, unknown>>().notNull(),
     askedAt: timestamp("asked_at", { withTimezone: true }).notNull(),
-    answeredAt: timestamp("answered_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (table) => [
-    index("taste_calibration_pairs_session_idx").on(table.sessionId, table.pairIndex),
-    uniqueIndex("taste_calibration_pairs_session_pair_unique").on(
-      table.sessionId,
-      table.pairIndex,
-    ),
+    index("taste_calibration_pairs_session_idx").on(table.sessionId, table.askedAt),
   ],
 );
 
 export const tastePairwiseJudgments = mimi.table(
   "taste_pairwise_judgments",
   {
-    id: uuid("id").primaryKey(),
-    sessionId: uuid("session_id")
+    id: text("id").primaryKey(),
+    sessionId: text("session_id")
       .notNull()
       .references(() => tasteCalibrationSessions.id, { onDelete: "cascade" }),
-    pairId: uuid("pair_id")
-      .notNull()
-      .references(() => tasteCalibrationPairs.id, { onDelete: "cascade" }),
-    ownerId: text("owner_id")
-      .notNull()
-      .references(() => profiles.id, { onDelete: "cascade" }),
-    choice: text("choice")
-      .$type<"left" | "right" | "both" | "neither" | "skip">()
+    pairId: text("pair_id").notNull(),
+    judgmentPayload: jsonb("judgment_payload")
+      .$type<Record<string, unknown>>()
       .notNull(),
-    decidingFeatureIds: jsonb("deciding_feature_ids").$type<string[]>().notNull(),
-    correctionNote: text("correction_note"),
-    scope: text("scope")
-      .$type<"persistent" | "project" | "session">()
-      .notNull(),
-    projectId: text("project_id"),
+    idempotencyKey: text("idempotency_key"),
     answeredAt: timestamp("answered_at", { withTimezone: true }).notNull(),
     createdAt: createdAt(),
   },
   (table) => [
-    index("taste_pairwise_judgments_session_idx").on(table.sessionId, table.answeredAt),
-    uniqueIndex("taste_pairwise_judgments_pair_unique").on(table.pairId),
-    check(
-      "taste_pairwise_judgments_choice_check",
-      sql`${table.choice} in ('left', 'right', 'both', 'neither', 'skip')`,
+    uniqueIndex("taste_pairwise_judgments_session_idempotency_unique")
+      .on(table.sessionId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
+    index("taste_pairwise_judgments_session_idx").on(
+      table.sessionId,
+      table.answeredAt,
     ),
-    check(
-      "taste_pairwise_judgments_scope_check",
-      sql`${table.scope} in ('persistent', 'project', 'session')`,
+  ],
+);
+
+export const tasteRefusals = mimi.table(
+  "taste_refusals",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    projectId: text("project_id"),
+    refusalPayload: jsonb("refusal_payload").$type<Record<string, unknown>>().notNull(),
+    status: text("status").$type<"active" | "revised" | "withdrawn">().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("taste_refusals_owner_status_idx").on(
+      table.ownerId,
+      table.status,
+      table.updatedAt,
+    ),
+    index("taste_refusals_project_idx").on(table.projectId, table.updatedAt),
+  ],
+);
+
+export const tasteModelEdits = mimi.table(
+  "taste_model_edits",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    projectId: text("project_id"),
+    editPayload: jsonb("edit_payload").$type<Record<string, unknown>>().notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("taste_model_edits_owner_created_idx").on(
+      table.ownerId,
+      table.createdAt,
+    ),
+    index("taste_model_edits_project_idx").on(table.projectId, table.createdAt),
+  ],
+);
+
+export const tasteGenerationContracts = mimi.table(
+  "taste_generation_contracts",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+      onDelete: "restrict",
+    }),
+    projectId: text("project_id"),
+    contractPayload: jsonb("contract_payload")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    compiledAt: timestamp("compiled_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("taste_generation_contracts_owner_compiled_idx").on(
+      table.ownerId,
+      table.compiledAt,
+    ),
+  ],
+);
+
+export const tasteCritiques = mimi.table(
+  "taste_critiques",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    contractId: text("contract_id").notNull(),
+    critiquePayload: jsonb("critique_payload")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("taste_critiques_owner_created_idx").on(table.ownerId, table.createdAt),
+    index("taste_critiques_contract_idx").on(table.contractId),
+  ],
+);
+
+export const tasteExposureEvents = mimi.table(
+  "taste_exposure_events",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    projectId: text("project_id"),
+    eventPayload: jsonb("event_payload").$type<Record<string, unknown>>().notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("taste_exposure_events_owner_occurred_idx").on(
+      table.ownerId,
+      table.occurredAt,
+    ),
+  ],
+);
+
+export const tasteExperiments = mimi.table(
+  "taste_experiments",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    projectId: text("project_id"),
+    experimentPayload: jsonb("experiment_payload")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    status: text("status").notNull(),
+    createdAt: createdAt(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("taste_experiments_owner_status_idx").on(
+      table.ownerId,
+      table.status,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const tastePassports = mimi.table(
+  "taste_passports",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    passportPayload: jsonb("passport_payload")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    visibility: text("visibility")
+      .$type<"private" | "unlisted" | "public">()
+      .notNull(),
+    version: integer("version").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("taste_passports_owner_updated_idx").on(table.ownerId, table.updatedAt),
+    index("taste_passports_visibility_idx").on(table.visibility, table.updatedAt),
+  ],
+);
+
+export const collaborativeTasteContracts = mimi.table(
+  "collaborative_taste_contracts",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    projectId: text("project_id"),
+    contractPayload: jsonb("contract_payload")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    version: integer("version").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("collaborative_taste_contracts_workspace_idx").on(
+      table.workspaceId,
+      table.updatedAt,
+    ),
+    index("collaborative_taste_contracts_workspace_status_idx").on(
+      table.workspaceId,
+      table.version,
+    ),
+  ],
+);
+
+export const tasteEvaluationEvents = mimi.table(
+  "taste_evaluation_events",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+      onDelete: "restrict",
+    }),
+    projectId: text("project_id"),
+    evaluationType: text("evaluation_type").notNull(),
+    eventPayload: jsonb("event_payload").$type<Record<string, unknown>>().notNull(),
+    modelVersion: text("model_version").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("taste_evaluation_events_owner_type_idx").on(
+      table.ownerId,
+      table.evaluationType,
+      table.occurredAt,
+    ),
+  ],
+);
+
+export const sentinelMemoryPolicies = mimi.table(
+  "sentinel_memory_policies",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    projectId: text("project_id"),
+    targetObjectId: text("target_object_id").notNull(),
+    policyPayload: jsonb("policy_payload").$type<Record<string, unknown>>().notNull(),
+    epistemicState: text("epistemic_state").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("sentinel_memory_policies_owner_target_idx").on(
+      table.ownerId,
+      table.targetObjectId,
+    ),
+    index("sentinel_memory_policies_owner_state_idx").on(
+      table.ownerId,
+      table.epistemicState,
+      table.updatedAt,
+    ),
+  ],
+);
+
+export const savedReasonHypotheses = mimi.table(
+  "saved_reason_hypotheses",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    artifactId: text("artifact_id").notNull(),
+    hypothesisPayload: jsonb("hypothesis_payload")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    userStatus: text("user_status").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("saved_reason_hypotheses_owner_artifact_idx").on(
+      table.ownerId,
+      table.artifactId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const culturalPositioningReports = mimi.table(
+  "cultural_positioning_reports",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    reportPayload: jsonb("report_payload").$type<Record<string, unknown>>().notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("cultural_positioning_reports_owner_created_idx").on(
+      table.ownerId,
+      table.createdAt,
     ),
   ],
 );
@@ -786,7 +1054,21 @@ export const neonSchema = {
   memoryApprovalCommands,
   legacyRecordMap,
   auditEvents,
+  tasteLearningEvents,
+  tasteModelSnapshots,
   tasteCalibrationSessions,
   tasteCalibrationPairs,
   tastePairwiseJudgments,
+  tasteRefusals,
+  tasteModelEdits,
+  tasteGenerationContracts,
+  tasteCritiques,
+  tasteExposureEvents,
+  tasteExperiments,
+  tastePassports,
+  collaborativeTasteContracts,
+  tasteEvaluationEvents,
+  sentinelMemoryPolicies,
+  savedReasonHypotheses,
+  culturalPositioningReports,
 };

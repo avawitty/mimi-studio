@@ -18,12 +18,12 @@ import {
   NeonMemoryRepository,
   NeonProvenanceRepository,
 } from "./memoryRepository.js";
-import { NeonTasteCalibrationRepository } from "./tasteCalibrationRepository.js";
 import {
   NeonAiRunRepository,
   NeonOperationResultRepository,
   NeonWorkflowRepository,
 } from "./workflowRepository.js";
+import { NeonTasteIntelligenceRepository } from "./tasteIntelligenceRepository.js";
 
 function createRepositories(
   db: NeonRepositoryDatabase,
@@ -38,7 +38,7 @@ function createRepositories(
     operationResults: new NeonOperationResultRepository(db),
     memory: new NeonMemoryRepository(db, transactional),
     provenance: new NeonProvenanceRepository(db, transactional),
-    tasteCalibration: new NeonTasteCalibrationRepository(db),
+    tasteIntelligence: new NeonTasteIntelligenceRepository(db, transactional),
   };
 }
 

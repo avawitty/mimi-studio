@@ -51,6 +51,35 @@ function snapshotDoc(userId: string, scope: 'global' | string) {
   return doc(db, `users/${userId}/tasteModelSnapshots/${docId}`);
 }
 
+async function persistSnapshotViaApi(
+  snapshot: TasteModelSnapshot,
+  opts?: { projectId?: string; workspaceId?: string },
+): Promise<void> {
+  try {
+    const { persistTasteModelSnapshot } = await import('./tasteIntelligenceClient');
+    await persistTasteModelSnapshot({
+      snapshot,
+      projectId: opts?.projectId,
+      workspaceId: opts?.workspaceId,
+    });
+  } catch {
+    /* Neon optional during migration — Firestore remains canonical client write */
+  }
+}
+
+async function readSnapshotViaApi(
+  scope: 'global' | { projectId: string },
+): Promise<TasteModelSnapshot | null> {
+  try {
+    const { getLatestTasteSnapshot } = await import('./tasteIntelligenceClient');
+    const scopeKey = scope === 'global' ? 'global' : scope.projectId;
+    const res = await getLatestTasteSnapshot(scopeKey);
+    return res.snapshot;
+  } catch {
+    return null;
+  }
+}
+
 const EXPLICIT_CURATION_ACTIONS = new Set<TasteLearningAction>([
   'accept_cluster',
   'reject_cluster',
@@ -274,6 +303,9 @@ export async function compileAndSaveTasteModel(
       snapshotDoc(input.userId, 'global'),
       stripUndefined(globalSnapshot as unknown as Record<string, unknown>),
     );
+    await persistSnapshotViaApi(globalSnapshot, {
+      projectId: input.projectId,
+    });
   }
 
   if ((scope === 'project' || scope === 'both') && input.projectId) {
@@ -317,6 +349,9 @@ export async function compileAndSaveTasteModel(
       snapshotDoc(input.userId, `project-${input.projectId}`),
       stripUndefined(projectSnapshot as unknown as Record<string, unknown>),
     );
+    await persistSnapshotViaApi(projectSnapshot, {
+      projectId: input.projectId,
+    });
   }
 
   return { global: globalSnapshot, project: projectSnapshot };
@@ -327,6 +362,9 @@ export async function getTasteModelSnapshot(
   scope: 'global' | { projectId: string },
 ): Promise<TasteModelSnapshot | null> {
   if (!userId || userId.startsWith('local_')) return null;
+
+  const neonFirst = await readSnapshotViaApi(scope);
+  if (neonFirst) return neonFirst;
 
   const docId =
     scope === 'global' ? 'global' : `project-${scope.projectId}`;

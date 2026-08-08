@@ -6,15 +6,53 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-08 — Taste Calibration MVP: Neon operational judgments + derived session model
+---
 
-**Decision:** Store taste calibration sessions, pairs, and pairwise judgments in Neon (`taste_calibration_*` tables) per ADR-001. Pair selection uses deterministic seeded active learning (`taste-calibration-v1`). Judgments apply Bradley-Terry-style updates to a session-scoped derived model snapshot stored in Neon; legacy Firestore taste snapshots are read-only for base model compatibility.
+## 2026-08-08 — Taste Intelligence OS v2 (Neon operational layer + Calibration Lab)
 
-**Alternatives rejected:** (1) Writing calibration judgments to Firestore. (2) Random pair selection. (3) LLM-generated “why these two” explanations. (4) Universal “Mimi knows you X%” confidence score in UI.
+**Decision:** Extend the v1 computational taste model into a coherent intelligence layer without a second Taste Graph. New operational writes go to Neon (`mimi.taste_*` tables) via authenticated `/api/mimi/taste-intelligence/*` routes; `services/tasteModelService.ts` dual-writes/dual-reads during Firestore migration. Calibration Lab lives at `/tailor/calibrate` with deterministic active-learning pair selection and Bradley-Terry-style calibration deltas. Sentinel memory policy is a separate headless layer (`lib/tasteIntelligence/sentinelPolicy.ts` + `SentinelMemoryReview`) — `CaptiveSentinel` remains the in-app browser guard only.
 
-**Why:** Explicit pairwise judgments are operational state requiring transactional integrity and owner scoping; deterministic selection enables testable active learning; provenance must remain explainable without inventing rationales.
+**Alternatives rejected:** (1) Second canonical taste graph. (2) Replacing Tailor Profile v2. (3) LLM as hidden scoring function. (4) React → Neon direct connections. (5) Repurposing CaptiveSentinel for agent memory.
 
-**Ref:** `docs/taste-calibration-lab.md`, `lib/tasteCalibration/*`, `infrastructure/database/neon/migrations/0001_taste_calibration.sql`
+**Why:** ADR 001 alignment, explainable learning loop, and vertical-slice delivery (persistence + API + UI + tests) over mock-only screens.
+
+**Ref:** `docs/taste-intelligence-os-v2.md`, `lib/tasteIntelligence/`, `schemas/tasteIntelligenceContracts.ts`, migration `0001_taste_intelligence`
+
+---
+
+## 2026-08-08 — Scry taste rerank + visible why-matched
+
+**Decision:** After the four Scry evidence lanes settle, `runSpecimenScry` loads the latest taste snapshot + refusals (graceful no-op when unsigned out or API unavailable) and reranks hits **within each lane** via `lib/scry/tasteScryRerank.ts` → `rerankTasteSearchResults`. Each `ResearchResult` may carry `tasteScore` and `whyMatched` (semantic fit, linked features, trajectory, refusal contradiction). ScryView merges lanes sorted by taste score and exposes an expandable “Why matched” panel per card.
+
+**Alternatives rejected:** (1) New schema columns for search provenance. (2) Cross-lane overwrite into a single blended blob. (3) Client-only rerank in ScryView without service-layer attachment.
+
+**Why:** Completes the search vertical slice with explainable retrieval tied to the approved taste model; preserves lane honesty from ADR 2026-08-02.
+
+**Ref:** `lib/scry/tasteScryRerank.ts`, `services/scryService.ts`, `components/ScryView.tsx`, `schemas/scryContracts.ts`
+
+---
+
+## 2026-08-08 — Client taste model sync via API (not Neon imports)
+
+**Decision:** `services/tasteModelService.ts` must not import `infrastructure/database/neon/*` — even dynamic imports get bundled into the Vite client graph and break Vercel builds (`node:crypto` in `creditRepository`). Neon snapshot persist/read goes through `/api/mimi/taste-intelligence/snapshot/*` via `tasteIntelligenceClient`.
+
+**Alternatives rejected:** Vite `external` hacks for the whole neon tree; keeping dual-write in client service.
+
+**Why:** React must never connect to Neon; client bundles must stay server-free.
+
+**Ref:** `services/tasteModelService.ts`, `lib/tasteIntelligenceRoute.ts`, `services/tasteIntelligenceClient.ts`
+
+---
+
+## 2026-08-08 — Taste Calibration MVP (parallel PR — superseded by Taste Intelligence OS v2)
+
+**Decision:** A parallel `lib/tasteCalibration/*` stack with normalized Neon columns (`taste_calibration_*` migration `0001_taste_calibration`) was prototyped on branch `metaste-calibration-mvp-278f`. **Merged into main by adopting the existing Taste Intelligence OS v2 architecture** (`lib/tasteIntelligence/*`, JSONB payload columns, `/api/mimi/taste-intelligence/calibration/*`, `CalibrationLab.tsx`) rather than maintaining duplicate repositories and API surfaces.
+
+**Alternatives rejected:** Running two calibration persistence stacks side-by-side.
+
+**Why:** Same product surface (`/tailor/calibrate`), same ADR-001 constraints, but main already shipped the broader OS v2 spine; duplicate schema/API would fork operational truth.
+
+**Ref:** `docs/taste-calibration-lab.md` (algorithm notes retained), `docs/taste-intelligence-os-v2.md` (canonical architecture)
 
 ---
 
@@ -50,6 +88,7 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 
 ---
 
+## 2026-08-08 — Computational Taste Model (derived snapshot, v1)
 
 **Decision:** Introduce `TasteModelSnapshot` as a **derived cache** compiled deterministically from canonical Tailor graph entities (`EvidenceNode`, `Observation`, `PatternCluster`, `CreativeLaw`) plus immutable `TasteEventV2` learning events. Pure compilation in `lib/tasteModel/`; persistence at `users/{uid}/tasteLearningEvents` and `users/{uid}/tasteModelSnapshots/{global|project-{id}}`. Legacy `TasteEvent` normalized additively via `normalizeTasteEvent()`. Candidate scoring returns fit score (0–100, not probability), confidence, and evidence-linked explanation — no LLM in the scoring path.
 

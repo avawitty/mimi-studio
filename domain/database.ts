@@ -7,7 +7,7 @@ import type {
   MemoryRepository,
   ProvenanceRepository,
 } from "./memory/repository.js";
-import type { TasteCalibrationRepository } from "./tasteCalibration/repository.js";
+import type { TasteIntelligenceRepository } from "./tasteIntelligence/repository.js";
 import type {
   AiRunRepository,
   OperationResultRepository,
@@ -23,7 +23,7 @@ export interface DatabaseRepositories {
   operationResults: OperationResultRepository;
   memory: MemoryRepository;
   provenance: ProvenanceRepository;
-  tasteCalibration: TasteCalibrationRepository;
+  tasteIntelligence: TasteIntelligenceRepository;
 }
 
 export interface UnitOfWork {
