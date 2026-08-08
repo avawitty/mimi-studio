@@ -14,6 +14,32 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Public profile OG + bio editing
+
+**Decision:** Add server-visible SEO for `/u/:handle` via `lib/publicProfileSeo.ts`, Express `app.get("/u/:handle")` metadata injection, and Vercel bot rewrite to `api/og/profile.ts`. Add bio textarea to `UserProfileView` (280 chars) saved to `profiles_public`. Client SPA navigation updates meta via `setPublicProfileMetaTags` on `PublicShowcasePage`.
+
+**Alternatives rejected:** (1) Client-only SEO for share previews (crawlers need server HTML). (2) Separate bio field on `publicShowcase` snapshot (bio is identity, not doll token).
+
+**Why:** Completes the public card loop — creators can write bio in settings; link previews show doll portrait, bio, and handle.
+
+**Ref:** `lib/publicProfileSeo.ts`, `api/og/profile.ts`, `server.ts`, `components/UserProfileView.tsx`, `vercel.json`
+
+---
+
+## 2026-08-08 — Unified `PublicProfileCard` for `/u/:handle`
+
+**Decision:** Extract a shared `PublicProfileCard` (`components/public-face/PublicProfileCard.tsx`) backed by `lib/publicProfileCard.ts` helpers. Canonical mimi.you showcase composes identity (photo, display name, bio, handle), taste signature excerpt (`aestheticSignature` → `semantic_signature` → doll philosophy), opt-in inverse reading teaser when `publicRip` is published, doll specimen, public zine grid, Keep Tabs, and cross-links to mimi.fish / mimi.rip.
+
+**Alternatives rejected:** (1) Continue duplicating layout across `PublicShowcasePage`, `PublicSharePage`, and directory tiles. (2) Expose full private taste graph on the public card. (3) Inline rip reading on mimi.you instead of linking to mimi.rip.
+
+**Why:** Product asked for a single public profile card surface; prior `/u/:handle` showed doll + zines only and ignored bio, avatar, signature report, and rip opt-in. Public-face kit + token colors align with PRD-07.
+
+**Ref:** `components/public-face/PublicProfileCard.tsx`, `lib/publicProfileCard.ts`, `services/publicShowcaseService.ts`, `components/PublicShowcasePage.tsx`
+
+---
+
 ## 2026-08-08 — Omni Loop Cult dolls: onboarding + art-history time travel
 
 **Decision:** Ship Omni Loop Cult as `omni-loop-resin-v1` staple (ball-jointed resin BJD species). Doll onboarding: user photo + 2+ aesthetic refs + user-declared likeness attributes → Gemini analysis → `saveDoll` + shell portrait via `/api/mimi-image`. Time travel: era picker + Met public-domain refs → `generateRedepictionPrompt` (when Tailor project exists) or fallback shell prompt → scene image with doll + artwork + friend portrait refs. Persist scenes in `users/{uid}/dollScenes`; public gallery tab for shared scenes.

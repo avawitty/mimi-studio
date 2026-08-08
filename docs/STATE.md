@@ -104,7 +104,7 @@
 | `mimi.you` (skin `you`) | shipped | Full app; canonical identity |
 | `mimi.fish` (skin `fish`) | partial | Share plates + creator shelf; domains attached — run `setup:mimi-fish-domains` for Firebase Auth |
 | `mimi.rip` (skin `rip`) | partial | Inverse public plates + `/rip` chamber; domains attached — run `setup:mimi-rip-domains` |
-| `/u/:handle` | shipped | Public doll/profile cards (skin selects rip/fish/you variant on host) |
+| `/u/:handle` | shipped | `PublicProfileCard` + compact directory tiles + OG + external links |
 | `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`); canonical share origin `mimi.fish` |
 | `/u/:handle/feed.xml` | shipped | Keep Tabs RSS |
 | `/api/feed` | shipped | Creator feed API |
