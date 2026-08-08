@@ -8,6 +8,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Installed PWA edge-to-edge viewport shell
+
+**Decision:** Harden the installed-PWA frame for any screen size: pre-paint `mimi-pwa-shell` class on `<html>`, `lib/pwaShell.ts` bootstrap syncing `--mimi-viewport-height` from `visualViewport`, layered `100dvh` / `-webkit-fill-available` fallbacks, fixed `inset: 0` shell in standalone/fullscreen display modes, manifest `orientation: any` + `scope: /`, and `interactive-widget=resizes-content` on the viewport meta.
+
+**Alternatives rejected:** (1) Permanent bottom chamber tab bar to fill the home-indicator gap. (2) `orientation: portrait` lock (breaks Pro Max landscape and split attention). (3) Body-level safe-area padding (doubles StudioChrome insets).
+
+**Why:** iPhone 16 Pro Max A2HS showed unused bands at the edges; the gap was missing viewport shell discipline, not missing navigation chrome.
+
+**Ref:** `lib/pwaShell.ts`, `index.css`, `index.html`, `metadata.json`, `e2e/ios-pwa-shell.spec.ts`
+
+---
+
 ## 2026-08-08 — Celestial place autocomplete + autosave + Mesopic scroll
 
 **Decision:** Add Nominatim-backed `/api/celestial/geocode-suggest` for birth-location autocomplete; extend `/api/celestial/geocode` to accept resolved suggestion coordinates (timezone via `tz-lookup` without re-search). Celestial Calibration autosaves draft changes to `tailorDraft.celestialCalibration` after 900ms debounce. Clear stale lat/lon/timezone when birth location text changes after a resolved place. Mesopic Lens chamber root uses `h-full overflow-y-auto` instead of `overflow-hidden`.

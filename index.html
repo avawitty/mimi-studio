@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Mimi | Creator operating system for taste</title>
     <meta name="description" content="Mimi is a creator operating system for taste — not a chatbot or print shop. Capture evidence in Scribe, approve Used Context in Tailor and Studio, compose in The Edit, export from The Press, with provenance for every artifact." />
     <meta name="keywords" content="mimi, taste graph, creator operating system, editorial studio, used context, zine, creative dossier, provenance, scribe, tailor, the press" />
@@ -41,6 +41,21 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Mimi">
+
+    <script>
+      (function () {
+        var standalone =
+          window.matchMedia &&
+          window.matchMedia("(display-mode: standalone)").matches;
+        var fullscreen =
+          window.matchMedia &&
+          window.matchMedia("(display-mode: fullscreen)").matches;
+        var iosStandalone = window.navigator.standalone === true;
+        if (standalone || fullscreen || iosStandalone) {
+          document.documentElement.classList.add("mimi-pwa-shell");
+        }
+      })();
+    </script>
     
     <!-- Brand icon registry — cropped "mi" mark; wordmark spelling is "Mimi" (docs/brand-assets.md) -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">

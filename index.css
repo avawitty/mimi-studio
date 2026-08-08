@@ -108,11 +108,20 @@
     --era-font-serif: "Cormorant Garamond", serif;
   }
 
-  html, body {
-    height: 100dvh;
+  html {
+    /* Edge-to-edge under notch / home indicator (viewport-fit=cover) */
+    background-color: var(--nous-base);
+  }
+
+  html,
+  body {
     width: 100%;
     margin: 0;
     padding: 0;
+    min-height: 100%;
+    min-height: -webkit-fill-available;
+    min-height: 100dvh;
+    height: var(--mimi-viewport-height, 100dvh);
     overflow: hidden;
     background-color: var(--nous-base);
     background-image: var(--era-bg-image);
@@ -123,7 +132,7 @@
     font-family: var(--era-font-sans);
     font-weight: 400;
     line-height: 1.5; /* Increased line height for better readability */
-    overscroll-behavior-y: none;
+    overscroll-behavior: none;
     touch-action: manipulation;
   }
 
@@ -1165,10 +1174,30 @@
 }
 
 #root {
-  height: 100dvh;
   width: 100%;
+  min-height: 100%;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
+  height: var(--mimi-viewport-height, 100dvh);
   display: flex;
   flex-direction: column;
+}
+
+/*
+ * Installed PWA shell — fixed inset frame for iOS A2HS / display-mode standalone.
+ * Class is applied in index.html (pre-paint) and lib/pwaShell.ts (bootstrap).
+ */
+html.mimi-pwa-shell,
+html.mimi-pwa-shell body,
+html.mimi-pwa-shell #root {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: 100%;
+  height: var(--mimi-viewport-height, 100dvh);
+  max-height: var(--mimi-viewport-height, 100dvh);
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* TEXTURE SYSTEM */
