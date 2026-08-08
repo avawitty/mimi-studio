@@ -104,6 +104,7 @@ import { TailorAuditOverlay } from "./TailorAuditOverlay";
 import { TailorPreview } from "./TailorPreview";
 import { ShardAnalyzer } from "./ShardAnalyzer";
 import { GlossaryTooltip } from "./GlossaryTooltip";
+import { ZineOwnerPlatesEditor } from "./ZineOwnerPlatesEditor";
 import { AestheticDial } from "./AestheticDial";
 import { SemanticSteps } from "./SemanticSteps";
 import { MaterialityPanel } from "./MaterialityPanel";
@@ -1253,6 +1254,9 @@ export const TailorView: React.FC<{
     user,
     enabledAlgos,
     toggleAlgo,
+    enabledPlates,
+    togglePlate,
+    updateOwnerPlateTemplates,
     deletePersona,
     canGenerate,
     incrementGeneration,
@@ -5876,6 +5880,138 @@ export const TailorView: React.FC<{
                                   );
                                 })}
                               </div>
+                            </FieldGroup>
+
+                            <FieldGroup
+                              label={
+                                <GlossaryTooltip
+                                  term="Editorial Plates"
+                                  poeticMeaning="The calibration spreads that frame each issue."
+                                  functionalMeaning="Enable or disable screenplay, chromatic, celestial, signal index, sonic, contact sheet, used context, material specimen, forecast drift, and owner carousel plates in generated zines."
+                                >
+                                  <span>Editorial Plates</span>
+                                </GlossaryTooltip>
+                              }
+                              description="All calibration plates run by default. Disable any you want left out of future zines."
+                            >
+                              <div className="space-y-4">
+                                {[
+                                  {
+                                    id: "contact-sheet",
+                                    name: "Contact Sheet",
+                                    desc: "Intake evidence grid — studio uploads before interpretation.",
+                                  },
+                                  {
+                                    id: "screenwrite",
+                                    name: "Screenwrite",
+                                    desc: "A screenplay excerpt that sets the scene before the reading.",
+                                  },
+                                  {
+                                    id: "chromatic",
+                                    name: "Chromatic Calibration",
+                                    desc: "Tailor palette swatches for this issue's color world.",
+                                  },
+                                  {
+                                    id: "material-specimen",
+                                    name: "Material Specimen",
+                                    desc: "Tailor materiality and silhouette signals as handled evidence.",
+                                  },
+                                  {
+                                    id: "forecast-drift",
+                                    name: "Forecast Drift",
+                                    desc: "Strategic saturation and drift vectors from Tailor.",
+                                  },
+                                  {
+                                    id: "celestial",
+                                    name: "Celestial Calibration",
+                                    desc: "Natal and issue-moment sky as an ephemeris-backed plate.",
+                                  },
+                                  {
+                                    id: "signal-index",
+                                    name: "Signal Index",
+                                    desc: "Indexed semiotic motifs and visual directives.",
+                                  },
+                                  {
+                                    id: "used-context",
+                                    name: "Used Context",
+                                    desc: "Approved Taste Graph atoms as a provenance spread.",
+                                  },
+                                  {
+                                    id: "sonic",
+                                    name: "Sonic Layer",
+                                    desc: "Ambient soundscape description as a composition plate.",
+                                  },
+                                  {
+                                    id: "owner-carousel",
+                                    name: "Add your own",
+                                    desc: "Owner-authored text or image carousel alongside Mimi's reading.",
+                                  },
+                                ].map((plate) => {
+                                  const isEnabled = enabledPlates.includes(
+                                    plate.id,
+                                  );
+                                  return (
+                                    <div
+                                      key={plate.id}
+                                      className="flex items-center justify-between p-4 border border-nous-border rounded-none bg-nous-base/50 group hover:border-nous-border transition-all"
+                                    >
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <span
+                                            className={`font-sans text-[9px] uppercase tracking-widest font-black ${isEnabled ? "text-nous-text " : "text-nous-subtle"}`}
+                                          >
+                                            {plate.name}
+                                          </span>
+                                          {isEnabled && (
+                                            <ShieldCheck
+                                              size={10}
+                                              className="text-nous-text"
+                                            />
+                                          )}
+                                        </div>
+                                        <p className="font-serif italic text-xs text-nous-subtle">
+                                          {plate.desc}
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() => togglePlate(plate.id)}
+                                        className={`p-2 rounded-none transition-all ${isEnabled ? "bg-nous-text text-nous-base shadow-stone-900/20 dark:shadow-stone-100/20" : "bg-stone-200 text-nous-subtle hover:text-nous-subtle"}`}
+                                      >
+                                        {isEnabled ? (
+                                          <Zap size={16} />
+                                        ) : (
+                                          <Wind size={16} />
+                                        )}
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </FieldGroup>
+
+                            <FieldGroup
+                              label={
+                                <GlossaryTooltip
+                                  term="Owner slide templates"
+                                  poeticMeaning="Your standing refraction — carried issue to issue."
+                                  functionalMeaning="Default text and image slides copied into every new zine when the Add your own plate is enabled."
+                                >
+                                  <span>Owner Slide Templates</span>
+                                </GlossaryTooltip>
+                              }
+                              description="Slides you define here seed new zines at generation. Edit per issue anytime in the reveal."
+                            >
+                              <ZineOwnerPlatesEditor
+                                variant="template"
+                                slides={profile?.ownerPlateTemplates || []}
+                                ownerUid={user?.uid}
+                                onChange={updateOwnerPlateTemplates}
+                              />
+                              {!enabledPlates.includes("owner-carousel") ? (
+                                <p className="mt-4 font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
+                                  Enable &quot;Add your own&quot; above for these slides to appear in generated zines.
+                                </p>
+                              ) : null}
                             </FieldGroup>
 
                             <FieldGroup

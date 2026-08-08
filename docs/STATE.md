@@ -18,7 +18,7 @@
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
 | **Scribe** | `/scribe` | shipped | ResearchMemory nested in Atomize tab | Mobile density pass on long capture sessions |
-| **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
+| **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes; **Owner Slide Templates** UI; 10 editorial calibration plates (incl. Used Context, contact sheet, material specimen, forecast drift) | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
 | **Studio (orientation intake)** | `/studio` | shipped | Imagen-first toolbar (Stock / References toggles); inspo carousel + “Publish my rendition”; Unsplash via `/api/inspo/search`; Pinterest board import | Promote compose shell (instrument rail + footnote dock) from legacy console after intake |
 | **Studio (compose console)** | `/studio/worktable-legacy` | partial | Extracted `StudioInstrumentRail`, footnote dock (Continuum · Pocket · Telemetry), polaroid media bar, auto cover index; spectrogram reverse-transcribe not wired | Mount post-intake on `/studio`; live telemetry beyond decorative dash |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
@@ -104,8 +104,8 @@
 | `mimi.you` (skin `you`) | shipped | Full app; canonical identity |
 | `mimi.fish` (skin `fish`) | partial | Share plates + creator shelf; domains attached — run `setup:mimi-fish-domains` for Firebase Auth |
 | `mimi.rip` (skin `rip`) | partial | Inverse public plates + `/rip` chamber; domains attached — run `setup:mimi-rip-domains` |
-| `/u/:handle` | shipped | `PublicProfileCard` + compact directory tiles + OG + external links |
-| `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`); canonical share origin `mimi.fish` |
+| `/u/:handle` | shipped | `PublicProfileCard` + compact directory tiles + OG + external links; public doll/profile cards (skin selects rip/fish/you variant on host) |
+| `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`); canonical share origin `mimi.fish`; inline **Refractions** (text + voice) on published issues |
 | `/u/:handle/feed.xml` | shipped | Keep Tabs RSS |
 | `/api/feed` | shipped | Creator feed API |
 

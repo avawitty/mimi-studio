@@ -638,6 +638,54 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 ---
 
+## 2026-08-08 — Editorial calibration plates + public zine refractions
+
+**Decision:** `enhanceZineGenerationLayout` prepends four optional calibration grammars when data exists: `screenwrite` (`screenwrite_excerpt`), `celestial` (`celestial_readout`), `signal-index` (`semiotic_signals`), `sonic` (`sonic_layer`). Reveal renders them via `ZinePageRenderer` in the Visual Plates section; standalone Celestial section is suppressed when a celestial plate is present. Published zines (`isPublic`) show an inline **Refractions** thread at the bottom — text + voice memo comments (`ZineComments` `variant="inline"`). Firestore `zine_comments` reads are public; writes remain auth-gated.
+
+**Alternatives rejected:** (1) Keep celestial/sonic as reveal-only sections — plates make calibration exportable in the flipbook spine. (2) Server comment API in v1 — existing Firestore + Storage path reused with relaxed read rules.
+
+**Why:** Creators asked for screenplay, celestial, sonic, and signal plates in the issue, plus interactive commentary on published shares.
+
+**Ref:** `lib/zine/insertEditorialPlates.ts`, `components/zine/grammars/*`, `components/ZineComments.tsx`, `components/AnalysisDisplay.tsx`, `firestore.rules`
+
+---
+
+## 2026-08-08 — Editorial plate opt-out (Tailor Algo Firewall area)
+
+**Decision:** Calibration plates (`screenwrite`, `celestial`, `signal-index`, `sonic`) default **on**. Profile field `disabledPlates` opts out per plate; UI lives in Tailor **Editorial Plates** field group beside Algo Firewall. Celestial plate also respects `celestialCalibration.enabled` (synced with Celestial chamber “Exclude from zines” and the plate toggle).
+
+**Alternatives rejected:** (1) Per-zine plate picker at generation time — adds friction; Tailor is the right defaults surface. (2) Opt-in plates — inconsistent with algo firewall opt-out model.
+
+**Ref:** `lib/tailor/tailorDefaults.ts`, `lib/zine/insertEditorialPlates.ts`, `components/TailorView.tsx`, `contexts/UserContext.tsx`
+
+---
+
+## 2026-08-08 — Chromatic + owner carousel editorial plates
+
+**Decision:** Add `chromatic` plate (palette from Tailor `chromaticRegistry` + issue `strict_palette`) and `owner-carousel` plate (`owner_plates[]` with text/image slides). Owner edits slides in zine reveal via `ZineOwnerPlatesEditor`; profile `ownerPlateTemplates` seed new issues. Both plates opt-out via `disabledPlates` in Tailor Editorial Plates.
+
+**Ref:** `lib/zine/chromaticPlatePalette.ts`, `components/zine/grammars/ChromaticPlatePage.tsx`, `components/zine/grammars/OwnerCarouselPage.tsx`, `components/ZineOwnerPlatesEditor.tsx`
+
+---
+
+## 2026-08-08 — Owner slide templates UI (Tailor)
+
+**Decision:** Expose `ownerPlateTemplates` in Tailor **Owner Slide Templates** field group (below Editorial Plates). Reuses `ZineOwnerPlatesEditor` with `variant="template"`; `updateOwnerPlateTemplates` persists to `userPreferences` alongside `disabledPlates` / `disabledAlgos`.
+
+**Alternatives rejected:** (1) Templates only editable per-zine in reveal — forces re-entry every issue. (2) Separate template component — duplicates upload/text UX already in `ZineOwnerPlatesEditor`.
+
+**Ref:** `components/TailorView.tsx`, `components/ZineOwnerPlatesEditor.tsx`, `contexts/UserContext.tsx`, `lib/zine/applyEditorialStamps.ts`
+
+---
+
+## 2026-08-08 — Provenance + intake editorial plates (batch)
+
+**Decision:** Add four calibration plates to the editorial stack: `contact-sheet` (intake image grid), `material-specimen` (Tailor materiality), `forecast-drift` (Tailor strategic vectors — not live Forecast chamber demo), and `used-context` (approved atoms as spread). Plate order: contact → screenwrite → chromatic → material → forecast → celestial → signal → used context → sonic → owner. Hide legacy Used Context colophon section when the plate is present.
+
+**Alternatives rejected:** (1) Keep Used Context as footer-only — loses composition grammar. (2) Wire forecast-drift to demonstration MMM fixtures — honest labeling requires Tailor-sourced vectors until Forecast ships live data.
+
+**Ref:** `lib/zine/buildPlateStampData.ts`, `lib/zine/insertEditorialPlates.ts`, `lib/zine/enrichEditorialPlateContent.ts`, `components/zine/grammars/*PlatePage.tsx`
+
 ---
 
 ## 2026-08-08 — Forecast intake + Apify-backed evidence

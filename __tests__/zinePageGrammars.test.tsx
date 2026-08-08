@@ -12,6 +12,16 @@ const GRAMMARS: ZinePageGrammar[] = [
   "editorial-split",
   "dark-plate",
   "debris",
+  "celestial",
+  "screenwrite",
+  "sonic",
+  "signal-index",
+  "chromatic",
+  "owner-carousel",
+  "used-context",
+  "contact-sheet",
+  "material-specimen",
+  "forecast-drift",
 ];
 
 describe("exemplary zine page grammars", () => {

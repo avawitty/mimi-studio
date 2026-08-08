@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CELESTIAL_CALIBRATION,
+  listEnabledEditorialPlates,
   listEnabledTailorAlgos,
   migrateDisabledAlgos,
   resolveCelestialCalibration,
+  toggleEditorialPlateDisabled,
   toggleTailorAlgoDisabled,
 } from "../lib/tailor/tailorDefaults";
 
@@ -37,5 +39,26 @@ describe("tailor opt-out defaults", () => {
     const restored = toggleTailorAlgoDisabled({ disabledAlgos: first }, "zine_gen");
     expect(restored).toEqual([]);
     expect(listEnabledTailorAlgos({ disabledAlgos: restored })).toHaveLength(5);
+  });
+
+  it("enables all editorial plates by default", () => {
+    expect(listEnabledEditorialPlates(undefined)).toHaveLength(10);
+    expect(listEnabledEditorialPlates({})).toHaveLength(10);
+  });
+
+  it("toggles editorial plates via disabledPlates opt-out", () => {
+    const first = toggleEditorialPlateDisabled(undefined, "sonic");
+    expect(first).toEqual(["sonic"]);
+    expect(listEnabledEditorialPlates({ disabledPlates: first })).not.toContain(
+      "sonic",
+    );
+  });
+
+  it("excludes celestial plate when calibration is disabled", () => {
+    expect(
+      listEnabledEditorialPlates({
+        tailorDraft: { celestialCalibration: { enabled: false } } as any,
+      }),
+    ).not.toContain("celestial");
   });
 });

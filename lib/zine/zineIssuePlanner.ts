@@ -77,6 +77,16 @@ export function inferPageSectionType(
     case "reading":
       return "reading";
     case "evidence-ledger":
+    case "signal-index":
+    case "celestial":
+    case "screenwrite":
+    case "sonic":
+    case "chromatic":
+    case "owner-carousel":
+    case "used-context":
+    case "contact-sheet":
+    case "material-specimen":
+    case "forecast-drift":
       return "evidence";
     case "debris":
       return "debris";
@@ -108,6 +118,7 @@ export function grammarForSection(
     case "reading":
       return "reading";
     case "signal-index":
+      return "signal-index";
     case "evidence":
       return "evidence-ledger";
     case "debris":

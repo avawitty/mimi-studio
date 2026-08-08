@@ -42,6 +42,7 @@
     "verify:zine-generate-to-plan": "tsx scripts/verifyZineGenerateToPlan.ts",
     "verify:zine-export-equivalence": "tsx scripts/verifyZineExportEquivalence.ts",
     "verify:zine-private-context": "tsx scripts/verifyZinePrivateContext.ts",
+    "verify:editorial-plates": "tsx scripts/verifyEditorialPlates.ts",
     "verify:zine-performance-budget": "tsx scripts/verifyZinePerformanceBudget.ts",
     "verify:pinterest-preview": "tsx scripts/verifyPinterestBoardPreview.ts",
     "verify:pinterest-api": "tsx scripts/verifyPinterestApi.ts",
