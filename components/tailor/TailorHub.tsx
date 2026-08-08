@@ -9,6 +9,7 @@ import { useUser } from '../../contexts/UserContext';
 import { getTailorProject, listEvidenceNodes } from '../../services/tailorService';
 import type { TailorProject, EvidenceNode } from '../../types';
 import { ChamberHandoff } from '../ChamberHandoff';
+import { isE2eTailorPatternsFixture } from '../../lib/e2e/tailorPatternGraphFixture';
 
 export type TailorPanel =
   | 'blueprint'
@@ -146,7 +147,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
           />
         )}
         {mode === 'intake' && (
-          isSignedIn ? (
+          isSignedIn || isE2eTailorPatternsFixture() ? (
             <TailorProjectFlow
               initialProject={resumeProject ?? undefined}
               initialEvidence={resumeEvidence}

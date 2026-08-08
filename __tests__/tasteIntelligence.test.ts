@@ -34,6 +34,11 @@ import {
   computeModelDelta,
   applyEditsToSnapshot,
   refusalTypeForRefineOption,
+  replayTasteSnapshot,
+  deriveEditBaseline,
+  getUndoableForwardEdit,
+  assertUndoableEdit,
+  isUndoModelEdit,
 } from "../lib/tasteIntelligence";
 import { mergeGraphPositions, projectTasteModelToGraph } from "../lib/tasteModel";
 import { readFileSync } from "node:fs";
@@ -1046,5 +1051,95 @@ describe("negative taste and model editing slice", () => {
     expect(source).toContain("min-h-[44px]");
     expect(source).toContain("SignalRefineSheet");
     expect(source).toContain("useIsNarrow");
+  });
+
+  it("refusal → edit → undo → recompile is deterministic after reload", () => {
+    const baseline = minimalSnapshot();
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["pattern_cluster:c1"],
+      refusalType: "always",
+      signedWeight: -1,
+      confidence: 0.95,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: ["evt-1"],
+    });
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "rename",
+      targetIds: ["pattern_cluster:c1"],
+      before: { label: "Soft contrast" },
+      after: { label: "Edited label" },
+    });
+    const undo = createUndoEdit(edit);
+
+    const afterRefusal = replayTasteSnapshot({
+      baseline,
+      edits: [],
+      refusals: [refusal],
+    });
+    const afterEdit = replayTasteSnapshot({
+      baseline,
+      edits: [edit],
+      refusals: [refusal],
+    });
+    const afterUndo = replayTasteSnapshot({
+      baseline,
+      edits: [edit, undo],
+      refusals: [refusal],
+    });
+
+    const featureAfterRefusal = afterRefusal.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    )!;
+    const featureAfterEdit = afterEdit.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    )!;
+    const featureAfterUndo = afterUndo.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    )!;
+
+    expect(featureAfterEdit.label).toBe("Edited label");
+    expect(featureAfterUndo.label).toBe(featureAfterRefusal.label);
+    expect(featureAfterUndo.signedWeight).toBeCloseTo(
+      featureAfterRefusal.signedWeight,
+      5,
+    );
+
+    const derivedBaseline = deriveEditBaseline(afterUndo, [edit, undo]);
+    const replayed = replayTasteSnapshot({
+      baseline: derivedBaseline,
+      edits: [edit, undo],
+      refusals: [refusal],
+    });
+    const reloaded = JSON.parse(JSON.stringify(replayed)) as TasteModelSnapshot;
+    expect(reloaded.featureWeights).toEqual(afterUndo.featureWeights);
+    expect(reloaded.interactionRules).toEqual(afterUndo.interactionRules);
+  });
+
+  it("undo is limited to the most recent forward edit", () => {
+    const rename = createModelEdit({
+      ownerId: "u1",
+      operation: "rename",
+      targetIds: ["pattern_cluster:c1"],
+      before: { label: "Soft contrast" },
+      after: { label: "Renamed once" },
+    });
+    const weight = createModelEdit({
+      ownerId: "u1",
+      operation: "set_weight",
+      targetIds: ["pattern_cluster:c1"],
+      before: { signedWeight: 0.6 },
+      after: { signedWeight: 0.1 },
+    });
+
+    expect(getUndoableForwardEdit([rename, weight])?.id).toBe(weight.id);
+    expect(assertUndoableEdit([rename, weight], weight.id)?.id).toBe(weight.id);
+    expect(assertUndoableEdit([rename, weight], rename.id)).toBeNull();
+
+    const undoWeight = createUndoEdit(weight);
+    expect(isUndoModelEdit(undoWeight)).toBe(true);
+    expect(getUndoableForwardEdit([rename, weight, undoWeight])?.id).toBe(rename.id);
   });
 });
