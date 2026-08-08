@@ -35,9 +35,12 @@ import {
 } from './chambers/ArchiveChamberShell';
 import { GraphSettle } from './motion/GraphSettle';
 import { TasteEvidenceAtomsPanel } from './taste/TasteEvidenceAtomsPanel';
+import { TasteTrajectorySummary } from './taste/TasteTrajectorySummary';
 import type { TasteGraphReadiness } from '../lib/taste/tasteGraphSummary';
+import type { TasteModelSnapshot } from '../lib/tasteModel/contracts';
 import { hydrateUsedContextFromServer } from '../services/usedContextService';
 import type { TasteGraphProjectionSource } from '../lib/taste/tasteGraphSummary';
+import type { TasteState } from '../types';
 
 type TabType = 'map' | 'radar' | 'clusters' | 'report';
 type RadarAxis = { axis: string; value: number; desc: string };
@@ -102,6 +105,9 @@ export const TasteGraph: React.FC = () => {
   const [readiness, setReadiness] = useState<TasteGraphReadiness | null>(null);
   const [graphSource, setGraphSource] = useState<TasteGraphProjectionSource>('empty');
   const [tasteConfidence, setTasteConfidence] = useState(0);
+  const [tasteSnapshot, setTasteSnapshot] = useState<TasteModelSnapshot | null>(null);
+  const [tasteTensions, setTasteTensions] = useState<TasteState['tensions']>([]);
+  const [approvedContextCount, setApprovedContextCount] = useState(0);
 
   const liveFootprint = compileTasteFootprint({
     nodes,
@@ -254,7 +260,9 @@ export const TasteGraph: React.FC = () => {
               summary?: {
                 graph?: { nodes: TasteGraphNode[]; edges: TasteGraphEdge[]; source?: TasteGraphProjectionSource };
                 readiness?: TasteGraphReadiness;
-                state?: { confidence?: number };
+                state?: TasteState;
+                snapshot?: TasteModelSnapshot | null;
+                usedContext?: Array<{ approved?: boolean }>;
               };
             };
             if (json.summary) {
@@ -264,6 +272,11 @@ export const TasteGraph: React.FC = () => {
               setGraphSource(json.summary.graph?.source ?? 'empty');
               setReadiness(json.summary.readiness ?? null);
               setTasteConfidence(json.summary.state?.confidence ?? 0);
+              setTasteTensions(json.summary.state?.tensions ?? []);
+              setTasteSnapshot(json.summary.snapshot ?? null);
+              setApprovedContextCount(
+                (json.summary.usedContext ?? []).filter((e) => e.approved).length,
+              );
             }
           }
         } catch (e) {
@@ -313,6 +326,9 @@ export const TasteGraph: React.FC = () => {
         setReadiness(null);
         setGraphSource('empty');
         setTasteConfidence(0);
+        setTasteSnapshot(null);
+        setTasteTensions([]);
+        setApprovedContextCount(0);
         setFootprint(emptyTasteFootprint());
       }
     } catch (e) {
@@ -995,7 +1011,25 @@ export const TasteGraph: React.FC = () => {
                         {readiness && (
                           <p className="font-mono text-[8px] uppercase tracking-widest text-stone-500">
                             Readiness {readiness.score}/100 · {readiness.evidenceCount} evidence · confidence {Math.round(tasteConfidence * 100)}%
+                            {approvedContextCount > 0 ? ` · ${approvedContextCount} approved for generation` : ''}
                           </p>
+                        )}
+                        {tasteSnapshot && (
+                          <div className="pt-2 border-t border-stone-200/60 dark:border-stone-850/60">
+                            <TasteTrajectorySummary snapshot={tasteSnapshot} compact />
+                          </div>
+                        )}
+                        {tasteTensions.length > 0 && (
+                          <div className="space-y-1 pt-2">
+                            <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-stone-400">Active tensions</span>
+                            <ul className="font-serif italic text-xs text-stone-600 dark:text-stone-400 space-y-1">
+                              {tasteTensions.slice(0, 3).map((t) => (
+                                <li key={`${t.conceptA}-${t.conceptB}`}>
+                                  {t.conceptA} ↔ {t.conceptB}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
                         
                         <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200/50 dark:border-stone-850/50 text-xs">

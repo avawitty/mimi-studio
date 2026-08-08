@@ -51,6 +51,29 @@ function migrateLegacyStore(uid: string, handle?: string): void {
   }
 }
 
+function mergeUsedContextEntries(
+  local: UsedContextEntry[],
+  server: UsedContextEntry[],
+  ownerUid: string,
+): UsedContextEntry[] {
+  const map = new Map<string, UsedContextEntry>();
+
+  for (const entry of server) {
+    const key = `${entry.atomId}::${entry.target}`;
+    map.set(key, { ...entry, ownerUid: entry.ownerUid || ownerUid });
+  }
+
+  for (const entry of local) {
+    const key = `${entry.atomId}::${entry.target}`;
+    const existing = map.get(key);
+    if (!existing || entry.addedAt >= existing.addedAt) {
+      map.set(key, { ...entry, ownerUid: entry.ownerUid || ownerUid });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.addedAt - a.addedAt);
+}
+
 function readStore(ownerUid?: string): UsedContextEntry[] {
   const owner = resolveOwner(ownerUid);
   if (!owner?.uid) return [];
@@ -115,21 +138,25 @@ export async function syncUsedContextToServer(
 }
 
 /**
- * Pull server Used Context when local store is empty (e.g. new device).
+ * Merge server Used Context with local tray (cross-device sync).
  */
 export async function hydrateUsedContextFromServer(ownerUid?: string): Promise<void> {
   const owner = resolveOwner(ownerUid);
   if (!owner?.uid || owner.uid === "ghost") return;
   migrateLegacyStore(owner.uid, owner.handle);
-  if (localStorage.getItem(getScopedKey(owner.uid))) return;
 
   try {
     const headers = await authHeaders();
     const res = await fetch("/api/mimi/used-context", { headers });
     if (!res.ok) return;
     const json = (await res.json()) as { entries?: UsedContextEntry[] };
-    if (!Array.isArray(json.entries) || json.entries.length === 0) return;
-    localStorage.setItem(getScopedKey(owner.uid), JSON.stringify(json.entries));
+    if (!Array.isArray(json.entries)) return;
+
+    const local = readStore(ownerUid);
+    if (json.entries.length === 0 && local.length === 0) return;
+
+    const merged = mergeUsedContextEntries(local, json.entries, owner.uid);
+    localStorage.setItem(getScopedKey(owner.uid), JSON.stringify(merged));
     window.dispatchEvent(new CustomEvent(USED_CONTEXT_CHANGED));
   } catch {
     /* ignore */
