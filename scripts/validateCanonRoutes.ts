@@ -54,7 +54,7 @@ const IMPLEMENTED_MODES = new Set([
 
 /** Primary chamber component paths (Milestone 1 registry) */
 const CHAMBER_COMPONENT_FILES: Record<string, string> = {
-  StudioWorktable: "components/worktable/StudioWorktable.tsx",
+  InputStudio: "components/InputStudio.tsx",
   CodexView: "components/CodexView.tsx",
   ScribeChamber: "components/chambers/ScribeChamber.tsx",
   MimiDollsChamber: "components/chambers/MimiDollsChamber.tsx",
@@ -86,8 +86,6 @@ const CHAMBER_COMPONENT_FILES: Record<string, string> = {
   ExportChamber: "components/ExportChamber.tsx",
   ChamberMapView: "components/chambers/ChamberMapView.tsx",
   ProsceniumView: "components/ProsceniumView.tsx",
-  StudioOrientationEntry: "components/studio/StudioOrientationEntry.tsx",
-  InputStudio: "components/InputStudio.tsx",
 };
 
 const failures: string[] = [];

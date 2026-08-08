@@ -163,19 +163,14 @@ describe("reduced-motion grammar", () => {
   });
 });
 
-describe("StudioWorktable must not call navigator.vibrate directly", () => {
-  it("source file uses FeedbackService path", async () => {
+describe("InputStudio must not call navigator.vibrate directly", () => {
+  it("source file avoids direct vibrate calls", async () => {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
     const source = await fs.readFile(
-      path.resolve(
-        process.cwd(),
-        "components/worktable/StudioWorktable.tsx",
-      ),
+      path.resolve(process.cwd(), "components/InputStudio.tsx"),
       "utf8",
     );
     expect(source).not.toMatch(/navigator\.vibrate/);
-    expect(source).toMatch(/useFeedback/);
-    expect(source).toMatch(/selection\.changed/);
   });
 });

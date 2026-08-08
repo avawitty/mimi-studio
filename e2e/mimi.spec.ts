@@ -109,14 +109,12 @@ test.describe('Mimi E2E Experience', () => {
     await seedQuietSession(page);
     await page.goto('/studio');
     await waitForStableUI(page);
-    await expect(page.locator('[data-studio-entry="orientation"]')).toBeVisible({
+    await expect(page.getByRole('navigation', { name: 'Studio pages' })).toBeVisible({
       timeout: 15000,
     });
-    await expect(
-      page.getByText('Start with a thought, image, or fragment.'),
-    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Compose cover')).toBeVisible({ timeout: 15000 });
 
-    await expect(page).toHaveScreenshot('studio-orientation-entry.png', {
+    await expect(page).toHaveScreenshot('studio-compose-console.png', {
       fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.03,
