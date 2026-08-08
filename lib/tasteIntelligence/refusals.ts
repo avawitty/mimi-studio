@@ -10,8 +10,10 @@ export function refusalMatchesCandidate(
   contextScope: "persistent" | "project" | "session",
 ): boolean {
   if (refusal.status !== "active") return false;
-  if (refusal.scope === "project" && contextScope !== "project") return false;
-  if (refusal.scope === "session" && contextScope !== "session") return false;
+  if (refusal.refusalType !== "wrong_context") {
+    if (refusal.scope === "project" && contextScope !== "project") return false;
+    if (refusal.scope === "session" && contextScope !== "session") return false;
+  }
 
   const candidateFeatures = new Set([
     ...(candidate.featureIds ?? []),

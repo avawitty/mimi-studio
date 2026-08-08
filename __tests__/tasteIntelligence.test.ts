@@ -21,7 +21,13 @@ import {
   buildTastePassport,
   computePairwiseAccuracy,
   computeBrierScore,
+  computeModelDelta,
+  applyEditsToSnapshot,
+  refusalTypeForRefineOption,
 } from "../lib/tasteIntelligence";
+import { mergeGraphPositions, projectTasteModelToGraph } from "../lib/tasteModel";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const NOW = Date.now();
 
@@ -399,5 +405,275 @@ describe("calibration pair ranking", () => {
       emergingFeatureIds: [],
     });
     expect(fresh[0]!.priority).toBeGreaterThanOrEqual(repeated[0]?.priority ?? 0);
+  });
+});
+
+describe("negative taste and model editing slice", () => {
+  it("explicit global refusal affects score", () => {
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["pattern_cluster:c1"],
+      refusalType: "always",
+      signedWeight: -1,
+      confidence: 0.95,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: ["evt-1"],
+    });
+    const { penalty } = computeRefusalPenalty(
+      [refusal],
+      { id: "cand", featureIds: ["pattern_cluster:c1"] },
+      "persistent",
+    );
+    expect(penalty).toBeGreaterThan(0.5);
+  });
+
+  it("contextual refusal affects only intended context", () => {
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      projectId: "p1",
+      featureIds: ["pattern_cluster:c1"],
+      refusalType: "wrong_context",
+      signedWeight: -1,
+      confidence: 0.9,
+      explicit: true,
+      scope: "project",
+      sourceIds: [],
+    });
+    const global = computeRefusalPenalty(
+      [refusal],
+      { id: "c1", featureIds: ["pattern_cluster:c1"] },
+      "persistent",
+    );
+    const project = computeRefusalPenalty(
+      [refusal],
+      { id: "c2", featureIds: ["pattern_cluster:c1"] },
+      "project",
+    );
+    expect(global.penalty).toBeGreaterThan(project.penalty);
+  });
+
+  it("conditional refusal does not negatively weight either feature in isolation", () => {
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["a", "b"],
+      refusalType: "only_when_combined",
+      signedWeight: -1,
+      confidence: 0.9,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: [],
+    });
+    const snapshot = minimalSnapshot();
+    const aloneA = applyEditsToSnapshot(snapshot, [], [refusal]);
+    const aloneB = applyEditsToSnapshot(snapshot, [], [refusal]);
+    const featureA = aloneA.featureWeights.find((f) => f.featureId === "a");
+    const featureB = aloneB.featureWeights.find((f) => f.featureId === "b");
+    expect(featureA).toBeUndefined();
+    expect(featureB).toBeUndefined();
+    const combinedPenalty = computeRefusalPenalty(
+      [refusal],
+      { id: "combo", featureIds: ["a", "b"] },
+      "persistent",
+    );
+    expect(combinedPenalty.penalty).toBeGreaterThan(0);
+  });
+
+  it("not why i saved it maps to negative interpretive refusal type", () => {
+    expect(refusalTypeForRefineOption("not_why_i_saved_it")).toBe(
+      "not_why_i_saved_it",
+    );
+  });
+
+  it("overexposed is distinct from dislike", () => {
+    const overexposed = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["f1"],
+      refusalType: "overexposed",
+      signedWeight: -0.5,
+      confidence: 0.8,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: [],
+    });
+    const dislike = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["f1"],
+      refusalType: "always",
+      signedWeight: -1,
+      confidence: 0.95,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: [],
+    });
+    expect(overexposed.refusalType).not.toBe(dislike.refusalType);
+    const overPenalty = computeRefusalPenalty(
+      [overexposed],
+      { id: "c1", featureIds: ["f1"] },
+      "persistent",
+    ).penalty;
+    const dislikePenalty = computeRefusalPenalty(
+      [dislike],
+      { id: "c2", featureIds: ["f1"] },
+      "persistent",
+    ).penalty;
+    expect(dislikePenalty).toBeGreaterThan(overPenalty);
+  });
+
+  it("formerly liked keeps historical provenance via source ids", () => {
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      featureIds: ["f1"],
+      refusalType: "formerly_liked",
+      signedWeight: -0.35,
+      confidence: 0.85,
+      explicit: true,
+      scope: "persistent",
+      sourceIds: ["evt-old-like"],
+    });
+    expect(refusal.sourceIds).toContain("evt-old-like");
+    expect(refusal.refusalType).toBe("formerly_liked");
+  });
+
+  it("rename preserves stable feature ID", () => {
+    const snapshot = minimalSnapshot();
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "rename",
+      targetIds: ["pattern_cluster:c1"],
+      before: { label: "Soft contrast" },
+      after: { label: "Muted contrast" },
+    });
+    const after = applyEditsToSnapshot(snapshot, [edit]);
+    const renamed = after.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    );
+    expect(renamed?.label).toBe("Muted contrast");
+    expect(renamed?.featureId).toBe("pattern_cluster:c1");
+  });
+
+  it("disconnect removes the selected relationship", () => {
+    const snapshot = {
+      ...minimalSnapshot(),
+      interactionRules: [
+        {
+          id: "rule-1",
+          featureIds: ["pattern_cluster:c1", "tag:x"] as [string, string],
+          relation: "reinforces" as const,
+          signedWeight: 0.8,
+          supportCount: 2,
+          confidence: 0.7,
+          contextScopes: ["persistent"],
+          sourceIds: [] as string[],
+        },
+      ],
+    };
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "disconnect",
+      targetIds: ["pattern_cluster:c1", "tag:x"],
+      before: { connected: true },
+      after: { connected: false },
+    });
+    const after = applyEditsToSnapshot(snapshot, [edit]);
+    expect(after.interactionRules).toHaveLength(0);
+  });
+
+  it("explicit graph edit produces immutable edit event", () => {
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "set_weight",
+      targetIds: ["c1"],
+      before: { signedWeight: 0.6 },
+      after: { signedWeight: 0.25 },
+    });
+    expect(edit.id).toBeTruthy();
+    expect(edit.before).toEqual({ signedWeight: 0.6 });
+    expect(edit.inverseEdit).toBeTruthy();
+  });
+
+  it("undo restores previous state", () => {
+    const snapshot = minimalSnapshot();
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "rename",
+      targetIds: ["pattern_cluster:c1"],
+      before: { label: "Soft contrast" },
+      after: { label: "New label" },
+    });
+    const undo = createUndoEdit(edit);
+    const edited = applyEditsToSnapshot(snapshot, [edit]);
+    const restored = applyEditsToSnapshot(edited, [undo]);
+    const feature = restored.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    );
+    expect(feature?.label).toBe("Soft contrast");
+  });
+
+  it("project-scoped refusal does not leak global", () => {
+    const refusal = buildRefusalFromExplicit({
+      ownerId: "u1",
+      projectId: "p1",
+      featureIds: ["f1"],
+      refusalType: "always",
+      signedWeight: -1,
+      confidence: 0.9,
+      explicit: true,
+      scope: "project",
+      sourceIds: [],
+    });
+    const global = computeRefusalPenalty(
+      [refusal],
+      { id: "c1", featureIds: ["f1"] },
+      "persistent",
+    );
+    expect(global.matchedRefusalIds).toHaveLength(0);
+  });
+
+  it("model delta reflects edits", () => {
+    const before = minimalSnapshot();
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "set_weight",
+      targetIds: ["pattern_cluster:c1"],
+      before: { signedWeight: before.featureWeights[0]!.signedWeight },
+      after: { signedWeight: 0.1 },
+    });
+    const after = applyEditsToSnapshot(before, [edit]);
+    const delta = computeModelDelta(before, after);
+    expect(delta.changedFeatures.length).toBeGreaterThan(0);
+    expect(delta.changedFeatures[0]!.featureId).toBe("pattern_cluster:c1");
+  });
+
+  it("graph layout positions remain stable for nonstructural edits", () => {
+    const snapshot = minimalSnapshot();
+    const projected = projectTasteModelToGraph(snapshot).nodes.map((n, i) => ({
+      ...n,
+      x: i * 10,
+      y: i * 5,
+    }));
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "rename",
+      targetIds: ["pattern_cluster:c1"],
+      before: { label: "Soft contrast" },
+      after: { label: "Renamed" },
+    });
+    const afterSnapshot = applyEditsToSnapshot(snapshot, [edit]);
+    const nextProjected = projectTasteModelToGraph(afterSnapshot).nodes;
+    const merged = mergeGraphPositions(nextProjected, projected);
+    expect(merged[0]?.x).toBe(projected[0]?.x);
+    expect(merged[0]?.y).toBe(projected[0]?.y);
+  });
+
+  it("mobile edit controls are accessible in PatternGraphScreen", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "components/tailor/PatternGraphScreen.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("Refine this signal");
+    expect(source).toContain("min-h-[44px]");
+    expect(source).toContain("SignalRefineSheet");
+    expect(source).toContain("useIsNarrow");
   });
 });

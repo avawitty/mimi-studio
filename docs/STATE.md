@@ -29,7 +29,7 @@
 | **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; embedding space migrations on model change | Complete atom migration; run shadow audit after Gateway model bumps |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
-| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs shipped; Scry taste rerank + why-matched shipped; Pocket/Studio integration partial | Studio compiler cards + Pocket why-saved; expand graph editor ops UI |
+| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs shipped; negative taste + graph model editing in Pattern Graph; Scry taste rerank shipped | Pocket why-saved; Studio compiler cards; merge/split graph ops |
 
 ---
 

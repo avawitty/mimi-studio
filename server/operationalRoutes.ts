@@ -47,4 +47,19 @@ export function registerOperationalRoutes(app: Express): void {
     const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
     await handleTasteIntelligenceRoute(req, res);
   });
+  app.post("/api/mimi/taste-intelligence/refusals", async (req, res) => {
+    (req as { path?: string }).path = "refusals";
+    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
+    await handleTasteIntelligenceRoute(req, res);
+  });
+  app.post("/api/mimi/taste-intelligence/model-edits", async (req, res) => {
+    (req as { path?: string }).path = "model-edits";
+    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
+    await handleTasteIntelligenceRoute(req, res);
+  });
+  app.post("/api/mimi/taste-intelligence/model-edits/undo", async (req, res) => {
+    (req as { path?: string }).path = "model-edits/undo";
+    const { handleTasteIntelligenceRoute } = await import("../lib/tasteIntelligenceRoute.js");
+    await handleTasteIntelligenceRoute(req, res);
+  });
 }
