@@ -575,15 +575,7 @@
     position: relative;
   }
   .floating-cylinder-toolbar-item[aria-pressed="true"]::after {
-    content: "";
-    position: absolute;
-    bottom: 3px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 12px;
-    height: 1px;
-    background: currentColor;
-    opacity: 0.85;
+    content: none;
   }
 
   /* Mobile instrument rail — legacy alias */

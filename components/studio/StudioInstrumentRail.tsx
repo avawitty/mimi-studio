@@ -14,6 +14,7 @@ import {
   Pipette,
   Repeat2,
   Scissors,
+  Sparkles,
 } from "lucide-react";
 import { StudioFootnoteEmblem, type StudioFootnoteLabel } from "./StudioFootnoteEmblem";
 import {
@@ -34,7 +35,10 @@ export type StudioInstrumentKey =
   | "telemetry"
   | "anchors"
   | "more"
-  | "mic";
+  | "mic"
+  | "spark"
+  | "brain"
+  | "globe";
 
 export type StudioInstrumentItem = FloatingCylinderToolbarItem & {
   key: StudioInstrumentKey;
@@ -45,6 +49,135 @@ type StudioInstrumentRailProps = {
   footnoteLabel?: StudioFootnoteLabel;
   className?: string;
 };
+
+/** Primary floating strip — readable labels, scroll inside the pill. */
+export function buildStudioFloatingInstruments(handlers: {
+  onTools?: () => void;
+  onAttach: () => void;
+  onCompose: () => void;
+  onCover: () => void;
+  onShape?: () => void;
+  onMic: () => void;
+  onSpark?: () => void;
+  onDeep?: () => void;
+  onWeb?: () => void;
+  onPocket: () => void;
+  onMore: () => void;
+  active?: Partial<Record<StudioInstrumentKey, boolean>>;
+}): StudioInstrumentItem[] {
+  const active = handlers.active ?? {};
+  const icon = (Icon: LucideIcon) => <Icon size={15} strokeWidth={1.45} />;
+
+  const toolsItem: StudioInstrumentItem[] = handlers.onTools
+    ? [
+        {
+          key: "tools",
+          label: "Tools",
+          icon: icon(LayoutGrid),
+          active: active.tools,
+          onClick: handlers.onTools,
+        },
+      ]
+    : [];
+
+  const shapeItem: StudioInstrumentItem[] = handlers.onShape
+    ? [
+        {
+          key: "tailor",
+          label: "Shape",
+          icon: icon(Scissors),
+          active: active.tailor,
+          onClick: handlers.onShape,
+        },
+      ]
+    : [];
+
+  const sparkItem: StudioInstrumentItem[] = handlers.onSpark
+    ? [
+        {
+          key: "spark",
+          label: "Spark",
+          icon: icon(Sparkles),
+          active: active.spark,
+          onClick: handlers.onSpark,
+        },
+      ]
+    : [];
+
+  const deepItem: StudioInstrumentItem[] = handlers.onDeep
+    ? [
+        {
+          key: "brain",
+          label: "Deep",
+          icon: icon(Activity),
+          active: active.brain,
+          onClick: handlers.onDeep,
+        },
+      ]
+    : [];
+
+  const webItem: StudioInstrumentItem[] = handlers.onWeb
+    ? [
+        {
+          key: "globe",
+          label: "Web",
+          icon: icon(Globe),
+          active: active.globe,
+          onClick: handlers.onWeb,
+        },
+      ]
+    : [];
+
+  return [
+    ...toolsItem,
+    {
+      key: "compose",
+      label: "Compose",
+      icon: icon(PenLine),
+      active: active.compose,
+      onClick: handlers.onCompose,
+    },
+    {
+      key: "cover",
+      label: "Cover",
+      icon: icon(Eye),
+      active: active.cover,
+      onClick: handlers.onCover,
+    },
+    {
+      key: "attach",
+      label: "Attach",
+      icon: icon(Paperclip),
+      active: active.attach,
+      onClick: handlers.onAttach,
+    },
+    {
+      key: "mic",
+      label: "Voice",
+      icon: icon(Mic),
+      active: active.mic,
+      onClick: handlers.onMic,
+    },
+    ...shapeItem,
+    ...sparkItem,
+    ...deepItem,
+    ...webItem,
+    {
+      key: "pocket",
+      label: "Pocket",
+      icon: icon(Archive),
+      active: active.pocket,
+      onClick: handlers.onPocket,
+    },
+    {
+      key: "more",
+      label: "More",
+      icon: icon(MoreHorizontal),
+      active: active.more,
+      onClick: handlers.onMore,
+    },
+  ];
+}
 
 export function buildDefaultStudioInstruments(handlers: {
   onTools?: () => void;
