@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import type { ZineMetadata } from "../types";
+import type { ZineContent, ZineMetadata } from "../types";
 import { enhanceZineGenerationLayout } from "../lib/zine/enhanceZineGenerationLayout";
 
 const SMOKE_ZINE_ID = "e2e-editorial-smoke";
@@ -17,7 +17,7 @@ function buildSmokeZine(): ZineMetadata {
     },
     structure: {
       hero_prompt: "archival desk under north light",
-      pages: [],
+      pages: [] as [],
       sonic_layer:
         "Low tape hiss, distant cello harmonics, and the click of a film advance lever.",
     },
@@ -43,7 +43,7 @@ function buildSmokeZine(): ZineMetadata {
     celestial_calibration: "Sun in Gemini · issue composed under mutable air",
     celestial_readout: {
       calibration: "Sun in Gemini",
-      natal: null,
+      natal: null as null,
       issueMomentUtc: new Date().toISOString(),
       issueMomentSummary: "Issue composed under Sun Gemini · Moon Pisces",
       scopeNotice: "Tropical zodiac · astronomy-engine ephemeris.",
@@ -55,7 +55,7 @@ function buildSmokeZine(): ZineMetadata {
         motif: "Archival dust",
         context: "Texture as memory",
         visual_directive: "Soft grain on parchment",
-        type: "conceptual",
+        type: "conceptual" as const,
       },
     ],
     owner_plates: [
@@ -74,10 +74,10 @@ function buildSmokeZine(): ZineMetadata {
         imagePrompt: "archival still life, soft north light",
       },
     ],
-  };
+  } satisfies Partial<ZineContent>;
 
   const enhanced = enhanceZineGenerationLayout({
-    content: baseContent,
+    content: baseContent as ZineContent,
     artifactId: SMOKE_ZINE_ID,
   });
 
@@ -86,6 +86,11 @@ function buildSmokeZine(): ZineMetadata {
     userId: "e2e-user",
     userHandle: "e2e-smoke",
     title: "Editorial Plate Smoke",
+    theme: "editorial",
+    aestheticVector: {},
+    tone: "editorial",
+    timestamp: Date.now(),
+    likes: 0,
     createdAt: Date.now(),
     isPublic: true,
     publishedAt: Date.now(),

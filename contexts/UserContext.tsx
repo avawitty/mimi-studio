@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { UserProfile, UserPreferences, Persona, TailorLogicDraft, NarrativeThread } from '../types';
+import { UserProfile, UserPreferences, Persona, TailorLogicDraft, NarrativeThread, ZineOwnerPlateSlide } from '../types';
 import { getLocalProfile, getLocalPocket, saveProfileLocally } from '../services/localArchive';
 import { 
   bootstrapAuth, ensureAuth, getUserProfile, saveUserProfile, commitGlobalHandshake,
@@ -99,6 +99,7 @@ interface UserContextType {
   toggleAlgo: (algoId: string) => void;
   enabledPlates: string[];
   togglePlate: (plateId: string) => void;
+  updateOwnerPlateTemplates: (slides: ZineOwnerPlateSlide[]) => void;
   personas: Persona[];
   activePersonaId: string | undefined;
   activePersona: Persona | undefined;
@@ -442,6 +443,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     updateProfile({ ...profile, disabledPlates });
+  };
+
+  const updateOwnerPlateTemplates = (slides: ZineOwnerPlateSlide[]) => {
+    if (!profile) return;
+    updateProfile({ ...profile, ownerPlateTemplates: slides });
   };
 
   const setApiKey = (provider: string, key: string) => {
@@ -1095,7 +1101,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.info("MIMI // updateProfile: navigator.onLine:", navigator.onLine, "user:", !!user, "currentUid:", currentUid);
       if (navigator.onLine && user && currentUid && !currentUid.startsWith('local_')) {
         // Split data into Identity (Public) and Preferences (Private)
-        const { tailorDraft, personas, activePersonaId, starredZineIds, lastAuditReport, likenessManifest, evidenceDossier, ...identity } = updated;
+        const {
+          tailorDraft,
+          personas,
+          activePersonaId,
+          starredZineIds,
+          lastAuditReport,
+          likenessManifest,
+          evidenceDossier,
+          disabledAlgos,
+          disabledPlates,
+          ownerPlateTemplates,
+          ...identity
+        } = updated;
         const preferences: UserPreferences = {
             tailorDraft,
             likenessManifest,
@@ -1104,7 +1122,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             lastAuditReport,
             personas,
             activePersonaId,
-            zineOptions: updated.zineOptions
+            zineOptions: updated.zineOptions,
+            disabledAlgos,
+            disabledPlates,
+            ownerPlateTemplates,
         };
         
         await Promise.all([
@@ -1548,6 +1569,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toggleAlgo,
       enabledPlates: listEnabledEditorialPlates(profile ?? undefined),
       togglePlate,
+      updateOwnerPlateTemplates,
       personas: profile?.personas || [],
       activePersonaId: profile?.activePersonaId,
       activePersona,

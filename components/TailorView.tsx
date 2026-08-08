@@ -104,6 +104,7 @@ import { TailorAuditOverlay } from "./TailorAuditOverlay";
 import { TailorPreview } from "./TailorPreview";
 import { ShardAnalyzer } from "./ShardAnalyzer";
 import { GlossaryTooltip } from "./GlossaryTooltip";
+import { ZineOwnerPlatesEditor } from "./ZineOwnerPlatesEditor";
 import { AestheticDial } from "./AestheticDial";
 import { SemanticSteps } from "./SemanticSteps";
 import { MaterialityPanel } from "./MaterialityPanel";
@@ -1255,6 +1256,7 @@ export const TailorView: React.FC<{
     toggleAlgo,
     enabledPlates,
     togglePlate,
+    updateOwnerPlateTemplates,
     deletePersona,
     canGenerate,
     incrementGeneration,
@@ -5965,6 +5967,31 @@ export const TailorView: React.FC<{
                                   );
                                 })}
                               </div>
+                            </FieldGroup>
+
+                            <FieldGroup
+                              label={
+                                <GlossaryTooltip
+                                  term="Owner slide templates"
+                                  poeticMeaning="Your standing refraction — carried issue to issue."
+                                  functionalMeaning="Default text and image slides copied into every new zine when the Add your own plate is enabled."
+                                >
+                                  <span>Owner Slide Templates</span>
+                                </GlossaryTooltip>
+                              }
+                              description="Slides you define here seed new zines at generation. Edit per issue anytime in the reveal."
+                            >
+                              <ZineOwnerPlatesEditor
+                                variant="template"
+                                slides={profile?.ownerPlateTemplates || []}
+                                ownerUid={user?.uid}
+                                onChange={updateOwnerPlateTemplates}
+                              />
+                              {!enabledPlates.includes("owner-carousel") ? (
+                                <p className="mt-4 font-mono text-[8px] uppercase tracking-widest text-nous-subtle">
+                                  Enable &quot;Add your own&quot; above for these slides to appear in generated zines.
+                                </p>
+                              ) : null}
                             </FieldGroup>
 
                             <FieldGroup

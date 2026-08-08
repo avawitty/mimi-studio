@@ -14,7 +14,8 @@ export const ZineOwnerPlatesEditor: React.FC<{
   slides: ZineOwnerPlateSlide[];
   ownerUid?: string;
   onChange: (slides: ZineOwnerPlateSlide[]) => void;
-}> = ({ slides, ownerUid, onChange }) => {
+  variant?: "issue" | "template";
+}> = ({ slides, ownerUid, onChange, variant = "issue" }) => {
   const [textDraft, setTextDraft] = useState("");
   const [titleDraft, setTitleDraft] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -76,17 +77,23 @@ export const ZineOwnerPlatesEditor: React.FC<{
     onChange(slides.filter((slide) => slide.id !== id));
   };
 
+  const isTemplate = variant === "template";
+
   return (
     <div className="w-full max-w-3xl border border-[var(--mimi-hairline,#d4d4d4)] bg-white p-6 md:p-8 space-y-6">
       <div className="space-y-2">
         <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-[var(--mimi-stone,#78716c)]">
-          Add your own
+          {isTemplate ? "Default carousel slides" : "Add your own"}
         </p>
         <p className="font-serif text-lg italic text-[var(--mimi-ink,#0a0a0a)]">
-          Author a carousel plate with your text or images.
+          {isTemplate
+            ? "Slides that seed every new zine at generation."
+            : "Author a carousel plate with your text or images."}
         </p>
         <p className="font-sans text-sm text-[var(--mimi-stone,#78716c)] leading-relaxed">
-          Your slides appear as a plate in this issue — commentary alongside Mimi&apos;s reading.
+          {isTemplate
+            ? "Set once in Tailor — each new issue starts with these slides. You can still edit them per zine in the reveal."
+            : "Your slides appear as a plate in this issue — commentary alongside Mimi's reading."}
         </p>
       </div>
 
@@ -131,7 +138,9 @@ export const ZineOwnerPlatesEditor: React.FC<{
         </ul>
       ) : (
         <p className="font-serif italic text-sm text-[var(--mimi-stone,#78716c)]">
-          No owner slides yet — add text or upload an image below.
+          {isTemplate
+            ? "No default slides yet — add text or upload an image to carry into future issues."
+            : "No owner slides yet — add text or upload an image below."}
         </p>
       )}
 
