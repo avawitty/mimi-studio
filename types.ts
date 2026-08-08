@@ -1701,6 +1701,8 @@ export interface UserPreferences {
   enabledAlgos?: string[]; // legacy opt-in list (migrated to disabledAlgos)
   /** Opt-out list — algos not listed here are enabled by default. */
   disabledAlgos?: string[];
+  /** Opt-out list — editorial calibration plates enabled by default. */
+  disabledPlates?: string[];
   zineOptions?: ZineGenerationOptions;
   agentConfig?: {
     curatorEnabled: boolean;

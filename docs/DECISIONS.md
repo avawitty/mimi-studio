@@ -545,3 +545,13 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/zine/insertEditorialPlates.ts`, `components/zine/grammars/*`, `components/ZineComments.tsx`, `components/AnalysisDisplay.tsx`, `firestore.rules`
 
+---
+
+## 2026-08-08 — Editorial plate opt-out (Tailor Algo Firewall area)
+
+**Decision:** Calibration plates (`screenwrite`, `celestial`, `signal-index`, `sonic`) default **on**. Profile field `disabledPlates` opts out per plate; UI lives in Tailor **Editorial Plates** field group beside Algo Firewall. Celestial plate also respects `celestialCalibration.enabled` (synced with Celestial chamber “Exclude from zines” and the plate toggle).
+
+**Alternatives rejected:** (1) Per-zine plate picker at generation time — adds friction; Tailor is the right defaults surface. (2) Opt-in plates — inconsistent with algo firewall opt-out model.
+
+**Ref:** `lib/tailor/tailorDefaults.ts`, `lib/zine/insertEditorialPlates.ts`, `components/TailorView.tsx`, `contexts/UserContext.tsx`
+

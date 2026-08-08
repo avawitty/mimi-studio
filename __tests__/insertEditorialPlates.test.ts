@@ -50,4 +50,14 @@ describe("insertEditorialPlates", () => {
     const second = insertEditorialPlates({ ...base, pages: first });
     expect(second.filter((p) => p.grammar === "sonic")).toHaveLength(1);
   });
+
+  it("omits disabled plates when enabledPlates is narrowed", () => {
+    const merged = insertEditorialPlates(base, {
+      enabledPlates: ["screenwrite", "sonic"],
+    });
+    expect(merged.some((p) => p.grammar === "celestial")).toBe(false);
+    expect(merged.some((p) => p.grammar === "signal-index")).toBe(false);
+    expect(merged[0].grammar).toBe("screenwrite");
+    expect(merged.some((p) => p.grammar === "sonic")).toBe(true);
+  });
 });

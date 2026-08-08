@@ -21,6 +21,7 @@ import type { ZodiacSign } from "../../types";
 import {
   DEFAULT_CELESTIAL_CALIBRATION,
   resolveCelestialCalibration,
+  syncCelestialPlateDisabled,
 } from "../../lib/tailor/tailorDefaults";
 
 const emptyDraft = (): CelestialCalibrationDraft => ({
@@ -151,6 +152,10 @@ export const CelestialCalibrationChamber: React.FC<{
         birthTime: nextCalibration.birthTime || profile.birthTime,
         birthLocation: nextCalibration.birthLocation || profile.birthLocation,
         zodiacSign: derivedSign || profile.zodiacSign,
+        disabledPlates: syncCelestialPlateDisabled(
+          profile,
+          nextCalibration.enabled,
+        ),
         tailorDraft: {
           ...profile.tailorDraft,
           celestialCalibration: nextCalibration,

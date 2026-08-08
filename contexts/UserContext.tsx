@@ -24,9 +24,11 @@ import { buildCreditGrant } from '../lib/mimiEntitlements';
 import {
   DEFAULT_CELESTIAL_CALIBRATION,
   listEnabledTailorAlgos,
+  listEnabledEditorialPlates,
   normalizeTailorDraft,
   resolveCelestialCalibration,
   toggleTailorAlgoDisabled,
+  toggleEditorialPlateDisabled,
 } from '../lib/tailor/tailorDefaults';
 
 interface SystemStatus {
@@ -95,6 +97,8 @@ interface UserContextType {
   toggleFeature: (key: keyof FeatureFlags) => void;
   enabledAlgos: string[];
   toggleAlgo: (algoId: string) => void;
+  enabledPlates: string[];
+  togglePlate: (plateId: string) => void;
   personas: Persona[];
   activePersonaId: string | undefined;
   activePersona: Persona | undefined;
@@ -417,6 +421,27 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!profile) return;
     const disabledAlgos = toggleTailorAlgoDisabled(profile, algoId);
     updateProfile({ ...profile, disabledAlgos, enabledAlgos: undefined });
+  };
+
+  const togglePlate = (plateId: string) => {
+    if (!profile) return;
+    const disabledPlates = toggleEditorialPlateDisabled(profile, plateId);
+    const plateEnabled = !disabledPlates.includes(plateId);
+    if (plateId === "celestial") {
+      const current = resolveCelestialCalibration(
+        profile.tailorDraft?.celestialCalibration,
+      );
+      updateProfile({
+        ...profile,
+        disabledPlates,
+        tailorDraft: {
+          ...profile.tailorDraft,
+          celestialCalibration: { ...current, enabled: plateEnabled },
+        },
+      });
+      return;
+    }
+    updateProfile({ ...profile, disabledPlates });
   };
 
   const setApiKey = (provider: string, key: string) => {
@@ -1521,6 +1546,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       featureFlags, toggleFeature,
       enabledAlgos: listEnabledTailorAlgos(profile ?? undefined),
       toggleAlgo,
+      enabledPlates: listEnabledEditorialPlates(profile ?? undefined),
+      togglePlate,
       personas: profile?.personas || [],
       activePersonaId: profile?.activePersonaId,
       activePersona,

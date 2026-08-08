@@ -21,6 +21,7 @@ import { celestialTimingForGeneration } from "../lib/celestial/compileCelestialR
 import { applyCelestialToZine } from "../lib/celestial/applyCelestialToZine";
 import {
     draftZineArtifactId,
+    editorialPlateOptionsFromProfile,
     enhanceZineGenerationLayout,
 } from "../lib/zine/enhanceZineGenerationLayout";
 
@@ -95,10 +96,12 @@ async function realizeGeneratedZineContent(
     _text: string,
     _opts: any,
     _media: any[],
+    profile?: UserProfile | null,
 ): Promise<{ content: any }> {
     const enhanced = enhanceZineGenerationLayout({
         content,
         artifactId: draftZineArtifactId(),
+        plateOptions: editorialPlateOptionsFromProfile(profile),
     });
     return { content: enhanced };
 }
@@ -639,7 +642,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                 console.warn("MIMI // Failed to generate execution layer or GEO block", e);
             }
 
-            return await realizeGeneratedZineContent(content, text, opts, effectiveMedia);
+            return await realizeGeneratedZineContent(content, text, opts, effectiveMedia, profileToUse);
         });
     } catch (error: any) {
         console.error("MIMI // Zine Generation Error:", error);
@@ -650,7 +653,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             profile?.tailorDraft?.celestialCalibration ||
             profile?.extensions?.celestialCalibration;
         const stampedSimulated = applyCelestialToZine(simulated, celestialDraft);
-        return await realizeGeneratedZineContent(stampedSimulated, text, opts, media || []);
+        return await realizeGeneratedZineContent(stampedSimulated, text, opts, media || [], profile);
     }
 };
 

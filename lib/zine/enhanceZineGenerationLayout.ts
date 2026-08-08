@@ -1,11 +1,26 @@
 import type { ZineContent, ZinePageSpec } from "../../types";
+import type { UserProfile } from "../../types";
+import { listEnabledEditorialPlates } from "../tailor/tailorDefaults";
 import { buildDefaultSpreadElements } from "../zineSpreadLayout";
-import { insertEditorialPlates, isCalibrationPlate } from "./insertEditorialPlates";
+import {
+  insertEditorialPlates,
+  isCalibrationPlate,
+  type EditorialPlateOptions,
+} from "./insertEditorialPlates";
 import { prepareArtifactPages } from "./zineIssuePlanner";
 
 export interface EnhanceZineLayoutInput {
   content: ZineContent;
   artifactId: string;
+  plateOptions?: EditorialPlateOptions;
+}
+
+export function editorialPlateOptionsFromProfile(
+  profile?: Pick<UserProfile, "disabledPlates" | "tailorDraft"> | null,
+): EditorialPlateOptions {
+  return {
+    enabledPlates: listEnabledEditorialPlates(profile ?? undefined),
+  };
 }
 
 function seedSpreadLayout(page: ZinePageSpec): ZinePageSpec {
@@ -33,7 +48,10 @@ function seedSpreadLayout(page: ZinePageSpec): ZinePageSpec {
 export function enhanceZineGenerationLayout(
   input: EnhanceZineLayoutInput,
 ): ZineContent {
-  const withPlates = insertEditorialPlates(input.content);
+  const withPlates = insertEditorialPlates(
+    input.content,
+    input.plateOptions,
+  );
   const prepared = prepareArtifactPages(
     input.artifactId,
     withPlates || [],
