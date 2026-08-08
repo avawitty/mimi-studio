@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { SovereignIdentityCardView } from './SovereignIdentityCardView';
 import { TasteConstellation } from './TasteConstellation';
@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { ExecutionBlock } from './ExecutionBlock';
 import { ExecutionLayer } from '../types';
-import { OracleSpecimenHero } from './public-face';
 import { OracleChamberReports } from './oracle/OracleChamberReports';
 import { OracleCyberdeckAtmosphere, OracleCyberdeckDeck } from './oracle/OracleCyberdeckDeck';
 import type { OracleEntityId } from '../services/oracleChamberService';
@@ -36,10 +35,6 @@ export const TheOracle: React.FC = () => {
   const [loadingReading, setLoadingReading] = useState(false);
 
   const userId = user?.uid || 'ghost';
-
-  const handleAsk = useCallback((_question: string) => {
-    openChamber('cyrus');
-  }, []);
 
   useEffect(() => {
     if (profile && !reading) {
@@ -64,8 +59,6 @@ export const TheOracle: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto pb-32">
-      <OracleSpecimenHero onAsk={handleAsk} reading={reading} loading={loadingReading} />
-
       <OracleCyberdeckAtmosphere className="min-h-0">
         <div className="px-4 md:px-8 py-8 md:py-12 max-w-6xl mx-auto w-full space-y-10">
 

@@ -6,6 +6,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
 ## 2026-08-08 — Installed PWA edge-to-edge viewport shell
 
 **Decision:** Harden the installed-PWA frame for any screen size: pre-paint `mimi-pwa-shell` class on `<html>`, `lib/pwaShell.ts` bootstrap syncing `--mimi-viewport-height` from `visualViewport`, layered `100dvh` / `-webkit-fill-available` fallbacks, fixed `inset: 0` shell in standalone/fullscreen display modes, manifest `orientation: any` + `scope: /`, and `interactive-widget=resizes-content` on the viewport meta.
@@ -17,6 +19,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Ref:** `lib/pwaShell.ts`, `index.css`, `index.html`, `metadata.json`, `e2e/ios-pwa-shell.spec.ts`
 
 ---
+
+## 2026-08-08 — Celestial place autocomplete + autosave + Mesopic scroll
+
+**Decision:** Add Nominatim-backed `/api/celestial/geocode-suggest` for birth-location autocomplete; extend `/api/celestial/geocode` to accept resolved suggestion coordinates (timezone via `tz-lookup` without re-search). Celestial Calibration autosaves draft changes to `tailorDraft.celestialCalibration` after 900ms debounce. Clear stale lat/lon/timezone when birth location text changes after a resolved place. Mesopic Lens chamber root uses `h-full overflow-y-auto` instead of `overflow-hidden`.
+
+**Alternatives rejected:** (1) Client-only autocomplete without server proxy (Nominatim ToS / rate limits). (2) Manual save-only for celestial profiles. (3) Leaving stale coordinates when location text edits.
+
+**Why:** Resolve place failed silently when coords stayed stale; users need searchable locations and durable profile writes without an explicit save click; Mesopic content was clipped by chamber overflow.
+
+**Ref:** `components/celestial/BirthLocationField.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`, `lib/celestial/geocodePlace.ts`, `api/celestial/geocode-suggest.ts`, `components/chambers/MesopicLensChamber.tsx`
+
+---
+
+## 2026-08-08 — Tailor evidence local-first + readable errors
 
 **Decision:** Let Mimi Read You saves evidence to IndexedDB first (`tailorEvidenceLocalStore`), strips oversized inline blobs before Firestore writes, and merges local + cloud on read. Quota/offline cloud failures return saved nodes instead of blocking intake. User-facing errors use `formatUserError` (no JSON auth dumps); registry toasts truncate and sit top-safe on mobile.
 

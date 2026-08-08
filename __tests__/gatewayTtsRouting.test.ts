@@ -29,15 +29,22 @@ describe("isGeminiAudioRequest", () => {
 });
 
 describe("mapGeminiVoiceToGateway", () => {
-  it("maps Oracle cyberdeck Gemini voices to gateway ids", () => {
+  it("maps Oracle cyberdeck Gemini voices to supported gateway ids", () => {
     expect(mapGeminiVoiceToGateway("Kore")).toBe("alloy");
-    expect(mapGeminiVoiceToGateway("Aoede")).toBe("nova");
-    expect(mapGeminiVoiceToGateway("Puck")).toBe("fable");
+    expect(mapGeminiVoiceToGateway("Aoede")).toBe("cedar");
+    expect(mapGeminiVoiceToGateway("Puck")).toBe("ballad");
     expect(mapGeminiVoiceToGateway("Charon")).toBe("echo");
   });
 
   it("passes through gateway voice ids unchanged", () => {
     expect(mapGeminiVoiceToGateway("alloy")).toBe("alloy");
     expect(mapGeminiVoiceToGateway("shimmer")).toBe("shimmer");
+    expect(mapGeminiVoiceToGateway("cedar")).toBe("cedar");
+  });
+
+  it("remaps deprecated gateway voice ids", () => {
+    expect(mapGeminiVoiceToGateway("fable")).toBe("ballad");
+    expect(mapGeminiVoiceToGateway("nova")).toBe("sage");
+    expect(mapGeminiVoiceToGateway("onyx")).toBe("ash");
   });
 });

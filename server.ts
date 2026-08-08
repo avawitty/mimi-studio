@@ -56,6 +56,7 @@ import { handleCreatorFeedRequest } from "./api/feed";
 import youSearchHandler from "./api/you-search";
 import forecastHandler from "./api/forecast";
 import celestialGeocodeHandler from "./api/celestial/geocode";
+import celestialGeocodeSuggestHandler from "./api/celestial/geocode-suggest";
 import residueAcquireHandler from "./api/residue-acquire";
 import collectiveMmmReportHandler from "./api/collective/mmm-report";
 import liveTokenHandler from "./api/live/token";
@@ -1516,6 +1517,10 @@ async function startServer() {
 
   app.post("/api/celestial/geocode", async (req, res) => {
     await celestialGeocodeHandler(req, res);
+  });
+
+  app.post("/api/celestial/geocode-suggest", async (req, res) => {
+    await celestialGeocodeSuggestHandler(req, res);
   });
 
   app.get("/api/residue-acquire", async (req, res) => {

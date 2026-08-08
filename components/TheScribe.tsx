@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Sparkles, Briefcase, Eraser, Save, PenTool, Zap, Disc3, Orbit } from 'lucide-react';
+import { X, Sparkles, Briefcase, Eraser, Save, PenTool, Zap, Disc3 } from 'lucide-react';
 import { LiveMentor } from './LiveMentor';
 import { useUser } from '../contexts/UserContext';
 import { archiveManager } from '../services/archiveManager';
@@ -250,16 +250,41 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
 
       {/* Top bar */}
       <div className="relative z-20 flex items-center justify-between px-4 md:px-8 py-4 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <Disc3 size={16} className="text-amber-500/80" />
-          <div>
+        <div className="flex items-center gap-3 min-w-0">
+          <Disc3 size={16} className="text-amber-500/80 shrink-0" />
+          <div className="min-w-0">
             <p className="font-serif italic text-lg leading-none">Oracle Chamber</p>
             <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-white/45 mt-1">
               Cyberdeck · Voice Communion
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Entity switcher — compact tabs, no flower disk */}
+        <div className="hidden sm:flex items-center gap-1 mx-4">
+          {(['mimi', 'cyrus', 'synthesis'] as EntityId[]).map((id) => {
+            const meta = ENTITY_META[id];
+            const active = activeEntity === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveEntity(id)}
+                className={`px-3 py-2 border font-mono text-[8px] uppercase tracking-widest flex items-center gap-1.5 transition-colors ${
+                  active
+                    ? 'border-amber-500/60 bg-amber-500/15 text-amber-400'
+                    : 'border-white/15 text-white/55 hover:text-white hover:border-white/30'
+                }`}
+                aria-pressed={active}
+              >
+                {meta.icon}
+                {meta.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setShowGlyphPad((v) => !v)}
@@ -282,43 +307,33 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
         </div>
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col lg:flex-row min-h-0">
-        {/* Disk selector */}
-        <aside className="lg:w-[340px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 p-4 md:p-6 flex flex-col gap-5 overflow-y-auto">
-          <div className="relative mx-auto w-[220px] h-[220px] md:w-[260px] md:h-[260px]">
-            <div className="absolute inset-0 rounded-full border border-white/15 bg-gradient-to-b from-white/[0.06] to-transparent shadow-[inset_0_0_40px_rgba(0,0,0,0.45)]" />
-            <div className="absolute inset-[18%] rounded-full border border-dashed border-white/20" />
-            <div className="absolute inset-[38%] rounded-full border border-white/25 bg-black/40 flex items-center justify-center">
-              <Orbit size={18} className="text-amber-500/70 animate-[spin_12s_linear_infinite]" />
-            </div>
-            {(['mimi', 'cyrus', 'synthesis'] as EntityId[]).map((id, index) => {
-              const angle = -90 + index * 120;
-              const rad = (angle * Math.PI) / 180;
-              const r = 42;
-              const x = 50 + r * Math.cos(rad);
-              const y = 50 + r * Math.sin(rad);
-              const meta = ENTITY_META[id];
-              const active = activeEntity === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setActiveEntity(id)}
-                  style={{ left: `${x}%`, top: `${y}%` }}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full border flex flex-col items-center justify-center gap-0.5 transition-all ${
-                    active
-                      ? 'bg-[#f5f4f0] text-black border-amber-500 scale-110 shadow-[0_0_24px_rgba(245,158,11,0.25)]'
-                      : 'bg-black/50 text-white/70 border-white/20 hover:border-white/50'
-                  }`}
-                  aria-pressed={active}
-                >
-                  {meta.icon}
-                  <span className="font-mono text-[7px] uppercase tracking-widest font-bold">{meta.label}</span>
-                </button>
-              );
-            })}
-          </div>
+      {/* Mobile entity switcher */}
+      <div className="sm:hidden relative z-20 flex items-center justify-center gap-1 px-4 py-2 border-b border-white/10">
+        {(['mimi', 'cyrus', 'synthesis'] as EntityId[]).map((id) => {
+          const meta = ENTITY_META[id];
+          const active = activeEntity === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveEntity(id)}
+              className={`flex-1 px-2 py-2 border font-mono text-[7px] uppercase tracking-widest flex items-center justify-center gap-1 transition-colors ${
+                active
+                  ? 'border-amber-500/60 bg-amber-500/15 text-amber-400'
+                  : 'border-white/15 text-white/55'
+              }`}
+              aria-pressed={active}
+            >
+              {meta.icon}
+              {meta.label}
+            </button>
+          );
+        })}
+      </div>
 
+      <div className="relative z-10 flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* Entity context + chamber notes sidebar */}
+        <aside className="lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 p-4 md:p-5 flex flex-col gap-4 overflow-y-auto">
           <div className="space-y-2 border border-white/10 p-4 bg-white/[0.03]">
             <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-amber-500/80">
               {config.label} · {config.role}
@@ -355,7 +370,7 @@ export const TheScribe: React.FC<TheScribeProps> = ({ onClose, initialTab = 'mim
               role={config.role}
               voiceName={config.voice}
               systemInstruction={config.instruction}
-              theme={config.theme}
+              theme="cyberdeck"
               onTranscriptUpdate={setAiTranscript}
               onToolCall={handleToolCall}
             />
