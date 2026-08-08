@@ -24,6 +24,13 @@ import {
 } from "../services/scribeService";
 import { listTailorProjects } from "../services/tailorService";
 import type { TailorProject } from "../types";
+import {
+  mobileCanvasClass,
+  mobileComposerShellClass,
+  mobileHairlineFieldClass,
+  mobileRowClass,
+  mobileRowStackClass,
+} from "../lib/mobileShell";
 
 const SUGGESTED_PROMPTS: { label: string; hint: string; query: string; icon: React.ReactNode }[] = [
   {
@@ -373,7 +380,7 @@ export const ScribeAskPanel: React.FC = () => {
   const busy = isRetrieving || isAsking;
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-[#FAF9F5] dark:bg-[#0D0C0A] text-[#292524] dark:text-[#E7E5E4] transition-colors duration-300">
+    <div className={`${mobileCanvasClass} bg-[var(--mimi-field,#ffffff)] dark:bg-[#0D0C0A] text-[var(--mimi-ink,#0a0a0a)] dark:text-[#E7E5E4] transition-colors duration-300`}>
       <AnimatePresence>
         {notification && (
           <motion.div
@@ -393,9 +400,9 @@ export const ScribeAskPanel: React.FC = () => {
       </AnimatePresence>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="p-4 md:p-8 space-y-6 md:space-y-8 pb-4">
-          {/* Scope — desktop also shows panel title; mobile relies on chamber chrome */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-stone-200 dark:border-stone-800 pb-4 gap-3">
+        <div className="px-4 md:px-8 space-y-6 md:space-y-8 pb-4">
+          {/* Scope */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-[var(--mimi-hairline,#d4d4d4)] dark:border-stone-800 pb-4 gap-3">
             <div className="hidden md:block">
               <h2 className="font-serif italic text-2xl md:text-3xl font-normal tracking-tight text-stone-900 dark:text-stone-100">
                 Ask memory
@@ -413,7 +420,7 @@ export const ScribeAskPanel: React.FC = () => {
                 <select
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
-                  className="flex-1 md:flex-none border border-stone-300 dark:border-stone-700 bg-transparent px-3 py-2 min-h-[44px] md:min-h-0 md:py-1.5 font-mono text-[10px] text-stone-800 dark:text-stone-200 outline-none"
+                  className="flex-1 md:flex-none bg-transparent px-0 md:px-3 py-2 min-h-[44px] md:min-h-0 md:py-1.5 font-mono text-[10px] text-stone-800 dark:text-stone-200 outline-none border-0 border-b border-[var(--mimi-hairline,#d4d4d4)] md:border md:border-stone-300 dark:md:border-stone-700"
                 >
                   <option value="">All of your memory</option>
                   {projects.map((proj) => (
@@ -469,16 +476,16 @@ export const ScribeAskPanel: React.FC = () => {
 
           {!answer && !busy && (
             <div className="space-y-3">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 flex items-center gap-1.5 px-1">
                 <Sparkles size={11} className="text-stone-400" /> Try one of these
               </p>
-              <div className="flex flex-col md:grid md:grid-cols-3 gap-2 md:gap-3">
+              <div className={`md:grid md:grid-cols-3 md:gap-3 ${mobileRowStackClass}`}>
                 {SUGGESTED_PROMPTS.map((p) => (
                   <button
                     key={p.label}
                     type="button"
                     onClick={() => setQuery(p.query)}
-                    className="group text-left border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 hover:border-stone-900 dark:hover:border-stone-100 transition-colors px-4 py-3 md:p-4 flex flex-col gap-1 min-h-[44px]"
+                    className={`${mobileRowClass} md:border md:border-stone-200 dark:md:border-stone-800 md:bg-white dark:md:bg-stone-950 md:hover:border-stone-900 dark:md:hover:border-stone-100 md:p-4 flex flex-col gap-1 items-stretch`}
                   >
                     <span className="flex items-center gap-2 text-stone-700 dark:text-stone-300">
                       {p.icon}
@@ -801,20 +808,20 @@ export const ScribeAskPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile sticky composer */}
-      <div className="md:hidden shrink-0 border-t border-stone-200 dark:border-stone-800 bg-[#FAF9F5]/95 dark:bg-[#0D0C0A]/95 backdrop-blur-sm px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] space-y-2">
+      {/* Mobile sticky composer — flat field, not box-in-box */}
+      <div className={`md:hidden ${mobileComposerShellClass} space-y-2`}>
         <textarea
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           rows={2}
           placeholder="Ask your memory…"
-          className="w-full border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 py-2 font-serif text-sm leading-relaxed outline-none resize-none text-stone-900 dark:text-stone-100 placeholder:text-stone-500"
+          className={`${mobileHairlineFieldClass} dark:border-stone-700 dark:text-stone-100 dark:placeholder:text-stone-500 resize-none`}
         />
         <button
           type="button"
           disabled={!query.trim() || busy || !user?.uid}
           onClick={handleRetrieveAndAsk}
-          className="w-full min-h-[44px] px-4 py-2.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-mono text-[9px] uppercase tracking-[0.2em] font-black disabled:opacity-40 flex items-center justify-center gap-2"
+          className="w-full min-h-[44px] px-4 py-2.5 bg-[var(--mimi-ink,#0a0a0a)] dark:bg-stone-100 text-[var(--mimi-field,#ffffff)] dark:text-stone-900 font-mono text-[9px] uppercase tracking-[0.2em] font-black disabled:opacity-40 flex items-center justify-center gap-2"
         >
           {busy ? (
             <>
