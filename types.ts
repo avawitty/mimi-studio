@@ -2771,6 +2771,240 @@ export interface SealedContextPacket {
   retrievalVersion: string;
 }
 
+// ===============================================================
+// Taste Intelligence — Phase 1
+// ===============================================================
+
+/**
+ * Stability classification for Evidence Atoms.
+ * Distinguishes durable preferences from transient fascinations.
+ */
+export type StabilityClass =
+  | 'stable'           // persistent, high-confidence preference
+  | 'recurring'        // appears repeatedly across different contexts
+  | 'fascination'      // current strong interest, may be temporary
+  | 'project'          // specific to one project's requirements
+  | 'temporary'        // anomaly or one-off
+  | 'declared';        // explicitly stated by the user
+
+/**
+ * Inline correction states for AI-generated taste interpretations.
+ * Lightweight — not a survey. These are fast, in-context reactions.
+ */
+export type CorrectionState =
+  | 'YES'              // confirmed — strengthens the interpretation
+  | 'SORT_OF'          // partially true — reduces confidence
+  | 'NOT_ANYMORE'      // was true, no longer — marks declining trend
+  | 'ONLY_HERE'        // contextually scoped — weakens global inference
+  | 'NOT_ME'           // rejected entirely — negates the interpretation
+  | 'MORE_LIKE_THIS';  // positive signal — request for similar evidence
+
+/**
+ * Scope for contextual taste preferences.
+ * A user may love brutalism editorially but prefer restraint in their interface work.
+ */
+export type TasteScope =
+  | 'global'
+  | 'project'
+  | 'brand'
+  | 'fashion'
+  | 'interface'
+  | 'editorial'
+  | 'experimental'
+  | string; // extensible for user-defined or project-named scopes
+
+/**
+ * Contextual strength of a TasteConcept within a given scope.
+ */
+export interface ConceptContext {
+  scope: TasteScope;
+  /** -1 (strong negative) to 1 (strong positive) */
+  strength: number;
+  confidence: number;
+  trend: 'stable' | 'rising' | 'declining' | 'unknown';
+  updatedAt: number;
+}
+
+/**
+ * A named taste concept — a label the system has extracted or the user has confirmed.
+ * Examples: "theatrical restraint", "brutalism", "archival melancholy".
+ * Concepts are NOT universally defined — they are personal to the user.
+ */
+export interface TasteConcept {
+  id: string;
+  userId: string;
+  label: string;
+  description?: string;
+  /** true = AI-generated hypothesis; false = user-confirmed or user-created */
+  isInferred: boolean;
+  confidence: number;
+  contexts: ConceptContext[];
+  evidenceAtomIds: string[];
+  assertionIds: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Assertion relation types for the Taste Graph.
+ */
+export type AssertionRelation =
+  | 'LIKES'
+  | 'DISLIKES'
+  | 'PREFERS_OVER'
+  | 'ASSOCIATES'
+  | 'LIKES_ONLY_IN'
+  | 'QUESTIONS';
+
+/**
+ * A directional relationship in the Taste Graph.
+ * "USER LIKES theatrical-restraint" or "USER PREFERS asymmetry OVER symmetry".
+ *
+ * AI-generated assertions use claimType: 'inferred'.
+ * User corrections update both claimType and confidence.
+ * CRITICAL: 'inferred' assertions must never become durable strong preferences
+ * without explicit user interaction.
+ */
+export interface TasteAssertion {
+  id: string;
+  userId: string;
+  projectId?: string;
+  /** Primary concept label or ID */
+  conceptA: string;
+  relation: AssertionRelation;
+  /** Secondary concept — required for PREFERS_OVER, ASSOCIATES, LIKES_ONLY_IN */
+  conceptB?: string;
+  /** The scope in which this assertion applies */
+  context?: TasteScope;
+  claimType: ClaimType;
+  /** 0–1 confidence; inferred assertions start ≤0.7; confirmed assertions can reach 1.0 */
+  confidence: number;
+  /** The correction applied if the user reacted via CorrectionChip */
+  userCorrection?: CorrectionState;
+  evidenceAtomIds: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Canonical Evidence Atom — the unified evidence unit for Taste Intelligence.
+ *
+ * This supersedes the separate EvidenceNode (Tailor) + PocketItem silos for
+ * taste-relevant material. MemoryAtom (Scribe) remains distinct — it is
+ * a capture vessel for context injection, not inherently a taste signal.
+ *
+ * INVARIANT: originalSource is set at creation and NEVER overwritten.
+ * semanticDescription and structuredAttributeIds are AI-generated and kept separate.
+ *
+ * Firestore path: users/{uid}/evidenceAtoms/{id}
+ */
+export interface EvidenceAtom {
+  id: string;
+  userId: string;
+  projectId?: string;
+  /** Optional domain context (brand, editorial, fashion, …) */
+  contextScope?: TasteScope;
+  /** Discriminator for the kind of evidence */
+  kind:
+    | 'image'
+    | 'url'
+    | 'text'
+    | 'note'
+    | 'screenshot'
+    | 'film'
+    | 'product'
+    | 'brand'
+    | 'generated'
+    | 'rejection';
+  sourceType: EvidenceSourceType;
+  /** Raw value as submitted by the user — NEVER overwritten by AI interpretation */
+  originalSource: string;
+  assetUrl?: string;
+  thumbnailUrl?: string;
+  /** Structured metadata from the source (page title, author, date, etc.) */
+  sourceMetadata: Record<string, unknown>;
+  /** Text extracted from the source (OCR, transcript, article body) */
+  extractedText?: string;
+  /**
+   * AI-generated semantic description — stored separately from originalSource.
+   * Example: "Sparse editorial spread with high-contrast serif and archival photo."
+   */
+  semanticDescription?: string;
+  /** IDs of Observation documents linked to this atom */
+  observationIds: string[];
+  /** Reference to embedding vector (for semantic retrieval) */
+  embeddingRef?: string;
+  /**
+   * Inline provenance — records which chamber ingested this atom and any
+   * transfers. Deliberately lightweight (not the full ProvenanceRecord graph).
+   */
+  ingestSource: 'tailor' | 'scribe' | 'pocket' | 'darkroom' | 'api' | 'direct';
+  /** Whether this atom has influenced or should influence taste modeling */
+  tasteImpact: boolean;
+  /** User's reaction to the AI interpretation of this atom */
+  userReaction: UserCurationStatus;
+  confidence: number;
+  stabilityClass: StabilityClass;
+  processingState: AnalysisStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * A pairwise taste axis — a user-specific dimension inferred from comparison judgments.
+ * Examples: "designed ↔ discovered", "earnest ↔ knowing", "archival ↔ synthetic".
+ *
+ * Stored as hypothesis until confirmed by sufficient comparison evidence.
+ * Phase 7 (pairwise learning) populates these from ComparisonCard interactions.
+ *
+ * Firestore path: users/{uid}/tasteAxes/{id}
+ */
+export interface TasteAxis {
+  id: string;
+  userId: string;
+  labelA: string;
+  labelB: string;
+  description?: string;
+  confidence: number;
+  isConfirmed: boolean;
+  evidencePairs: {
+    atomA: string;
+    atomB: string;
+    userPreference: 'A' | 'B' | 'neither';
+  }[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Compact Taste State for a user + optional context.
+ * Returned by getTasteState() — computed on demand, never stored as-is.
+ * This is the primary interface between Taste Intelligence and generation features.
+ */
+export interface TasteState {
+  userId: string;
+  context?: TasteScope;
+  /** High-confidence, stable, user-confirmed positive preferences */
+  stablePreferences: TasteAssertion[];
+  /** Negative preferences and avoidances */
+  negativePreferences: TasteAssertion[];
+  /** Emerging patterns with lower confidence or recency */
+  emergingPreferences: TasteAssertion[];
+  /** Concepts currently being explored or showing rising trend */
+  currentExplorations: TasteConcept[];
+  /** Pairs of concepts that appear in tension with each other */
+  tensions: { conceptA: string; conceptB: string; note?: string }[];
+  /** Inferred taste axes from pairwise comparison (Phase 7) */
+  inferredAxes: TasteAxis[];
+  /** Recent evidence atoms most relevant to the context */
+  relevantEvidence: EvidenceAtom[];
+  /** Overall system confidence in this taste reading */
+  confidence: number;
+  /** Recent shifts in preference direction */
+  recentChanges: { label: string; direction: string; at: number }[];
+  generatedAt: number;
+}
+
 export type QuietOperationType =
   | "direction_card"
   | "image_brief"
