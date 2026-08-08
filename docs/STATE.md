@@ -25,7 +25,7 @@
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab; Export Chamber wired from Publisher Console destinations |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
-| **Taste Signature** | `/signature` | shipped | Expanded reading + public `/u/:handle/signature` OG; incremental evidence patch; approve → `mark_signature` | Public-face mobile review |
+| **Taste Signature** | `/signature` | shipped | Approve reading (memory → `mark_signature`) separate from publish (`publishedAt`); public `/u/:handle/signature` + card excerpt fail closed until published; legacy `/@:handle` → `/u/:handle` redirect | Public-face mobile review |
 | **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; ingest mirrors + Used Context conflict UI; merge/split behind `TASTE_GRAPH_MERGE_SPLIT` | Ops backfill/analyze scripts |
 | **Computational Taste Model** | — (derived) | **shipped** | Centroid blend + embedding similarity in candidate score (hash fallback + vectors); server-side recompile on ingest | Embedding space migrations on model change |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context merge hydrate | Semantic retrieval (#223); batch analyze backfill |
