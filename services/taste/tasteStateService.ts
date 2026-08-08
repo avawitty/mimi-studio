@@ -59,7 +59,9 @@ function confirmationBoost(claimType: TasteAssertion["claimType"]): number {
     case "speculative":
       return 0.6;
     case "user_rejected":
-      return 0.0; // excluded from positive preferences
+      return 0.0; // excluded from positive preferences by caller filter
+    default:
+      return 0.5; // safe fallback for any unrecognised value
   }
 }
 

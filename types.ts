@@ -2834,6 +2834,8 @@ export interface TasteConcept {
   id: string;
   userId: string;
   label: string;
+  /** Lowercase-normalized label for Firestore equality queries. Set at creation, updated on rename. */
+  labelNormalized: string;
   description?: string;
   /** true = AI-generated hypothesis; false = user-confirmed or user-created */
   isInferred: boolean;

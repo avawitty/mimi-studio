@@ -17,6 +17,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   setDoc,
@@ -104,6 +105,7 @@ export async function upsertTasteConcept(
     id,
     userId,
     label: input.label,
+    labelNormalized: input.label.toLowerCase(),
     description: input.description,
     isInferred: input.isInferred,
     confidence: input.confidence,
@@ -134,7 +136,8 @@ export async function getTasteConcept(
 }
 
 /**
- * Find a concept by label (case-insensitive, first match).
+ * Find a concept by label (case-insensitive exact match).
+ * Uses the `labelNormalized` field for an efficient Firestore equality query.
  */
 export async function findConceptByLabel(
   userId: string,
@@ -142,16 +145,13 @@ export async function findConceptByLabel(
 ): Promise<TasteConcept | null> {
   if (!userId || userId === "ghost") return null;
   try {
-    // Firestore doesn't support case-insensitive search natively.
-    // We store the label as-is and do client-side case folding.
-    const q = query(conceptsCol(userId), orderBy("label"));
+    const q = query(
+      conceptsCol(userId),
+      where("labelNormalized", "==", label.toLowerCase()),
+      limit(1),
+    );
     const snap = await getDocs(q);
-    const lower = label.toLowerCase();
-    const match = snap.docs.find((d) => {
-      const data = d.data() as TasteConcept;
-      return data.label.toLowerCase() === lower;
-    });
-    return match ? (match.data() as TasteConcept) : null;
+    return snap.empty ? null : (snap.docs[0].data() as TasteConcept);
   } catch {
     return null;
   }
