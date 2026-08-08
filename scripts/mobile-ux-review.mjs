@@ -14,7 +14,7 @@ const note = (severity, area, detail) => findings.push({ severity, area, detail 
 
 async function dismiss(page) {
   await page.waitForTimeout(600);
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     const accept = page.getByRole("button", { name: /accept all|essential only/i }).first();
     if (await accept.isVisible().catch(() => false)) {
       await accept.click({ force: true });
@@ -30,9 +30,24 @@ async function dismiss(page) {
       await onboard.click({ force: true });
       await page.waitForTimeout(250);
     }
+    const closeModal = page.getByRole("button", { name: /close|not now|skip|dismiss/i }).first();
+    if (await closeModal.isVisible().catch(() => false)) {
+      await closeModal.click({ force: true });
+      await page.waitForTimeout(250);
+    }
     const gateway = page.getByRole("heading", { name: /canonical node|establish your vault/i });
     if (!(await gateway.isVisible().catch(() => false))) break;
+    const guestAgain = page.getByRole("button", { name: /explore as guest/i }).first();
+    if (await guestAgain.isVisible().catch(() => false)) {
+      await guestAgain.click({ force: true });
+      await page.waitForTimeout(400);
+    }
   }
+  await page
+    .locator(".cursor-wait, [class*='z-[20000]']")
+    .first()
+    .waitFor({ state: "hidden", timeout: 8000 })
+    .catch(() => null);
 }
 
 async function shot(page, name) {
@@ -178,41 +193,28 @@ if (!hasOrientation) {
 }
 
 const legacyLink = page.getByRole("link", {
-  name: /Legacy worktable \(experimental\)/i,
+  name: /Legacy worktable\s*[·(]\s*experimental/i,
 });
 if ((await legacyLink.count()) === 0) {
   note("warn", "studio", "Legacy worktable link missing below the fold");
 } else {
-  await legacyLink.scrollIntoViewIfNeeded();
-  await legacyLink.click();
-  await page
-    .waitForURL(/\/studio\/worktable-legacy/, { timeout: 5000 })
-    .catch(() => null);
-  await page.waitForTimeout(500);
+  note("pass", "studio", "Legacy worktable link present below the fold");
+  await dismiss(page);
+  await page.goto(`${base}/studio/worktable-legacy`, {
+    waitUntil: "domcontentloaded",
+  });
+  await dismiss(page);
+  await page.waitForTimeout(400);
   await shot(page, "05-worktable-legacy");
-  const onLegacy = /\/studio\/worktable-legacy/.test(page.url());
   const legacyBody = await page.locator("body").innerText().catch(() => "");
-  if (!onLegacy) {
-    // Direct route check — click navigation can race History API in headless
-    await page.goto(`${base}/studio/worktable-legacy`, {
-      waitUntil: "domcontentloaded",
-    });
-    await dismiss(page);
-    await page.waitForTimeout(400);
-    const legacyDirect = await page.locator("body").innerText().catch(() => "");
-    if (!/Legacy worktable/i.test(legacyDirect)) {
-      note("fail", "studio", "Legacy route missing experimental banner");
-    } else {
-      note(
-        "pass",
-        "studio",
-        "Legacy worktable available at /studio/worktable-legacy",
-      );
-    }
-  } else if (!/Legacy worktable/i.test(legacyBody)) {
+  if (!/Legacy worktable/i.test(legacyBody)) {
     note("fail", "studio", "Legacy route missing experimental banner");
   } else {
-    note("pass", "studio", "Legacy worktable available at /studio/worktable-legacy");
+    note(
+      "pass",
+      "studio",
+      "Legacy worktable available at /studio/worktable-legacy",
+    );
   }
   await page.goto(`${base}/studio`, { waitUntil: "domcontentloaded" });
   await dismiss(page);
