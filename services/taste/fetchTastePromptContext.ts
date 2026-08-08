@@ -1,5 +1,5 @@
 import { auth } from "../firebaseInit";
-import { tasteStateToPromptContext } from "./tasteStateService";
+import { tasteStateToPromptContext } from "../../lib/taste/tastePromptContext";
 import type { TasteScope, TasteState } from "../../types";
 
 /**
