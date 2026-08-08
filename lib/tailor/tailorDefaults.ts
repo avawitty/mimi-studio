@@ -15,9 +15,11 @@ export type TailorAlgoId = (typeof TAILOR_ALGO_IDS)[number];
 /** Editorial calibration plates — all enabled unless listed in `disabledPlates`. */
 export const EDITORIAL_PLATE_IDS = [
   "screenwrite",
+  "chromatic",
   "celestial",
   "signal-index",
   "sonic",
+  "owner-carousel",
 ] as const;
 
 export type EditorialPlateId = (typeof EDITORIAL_PLATE_IDS)[number];

@@ -6,6 +6,8 @@ const CALIBRATION_GRAMMARS = new Set([
   "screenwrite",
   "sonic",
   "signal-index",
+  "chromatic",
+  "owner-carousel",
 ]);
 
 export function isCalibrationPlate(page: ZinePageSpec | undefined): boolean {
@@ -26,8 +28,7 @@ function plateEnabled(
 }
 
 /**
- * Prepend editorial calibration plates (screenwrite, celestial, signal index, sonic)
- * ahead of generated visual pages.
+ * Prepend editorial calibration plates ahead of generated visual pages.
  */
 export function insertEditorialPlates(
   content: ZineContent,
@@ -47,6 +48,27 @@ export function insertEditorialPlates(
       imagePrompt: "",
       sectionType: "interlude",
       grammar: "screenwrite",
+    });
+  }
+
+  const palette = content.chromatic_palette;
+  if (
+    palette?.colors?.length &&
+    plateEnabled(options, "chromatic")
+  ) {
+    plates.push({
+      pageNumber: 0,
+      headline: "Chromatic Calibration",
+      bodyCopy:
+        palette.sourceLabel ||
+        `${palette.colors.length} calibrated tones for this issue.`,
+      supportingText: palette.accent
+        ? `Accent · ${palette.accent}`
+        : "Palette plate",
+      imagePrompt: "",
+      sectionType: "interlude",
+      grammar: "chromatic",
+      plateData: { palette },
     });
   }
 
@@ -94,6 +116,24 @@ export function insertEditorialPlates(
       imagePrompt: "",
       sectionType: "interlude",
       grammar: "sonic",
+    });
+  }
+
+  const ownerSlides = content.owner_plates?.filter(
+    (slide) =>
+      (slide.kind === "text" && slide.body?.trim()) ||
+      (slide.kind === "image" && slide.imageUrl?.trim()),
+  );
+  if (ownerSlides?.length && plateEnabled(options, "owner-carousel")) {
+    plates.push({
+      pageNumber: 0,
+      headline: "Add your own",
+      bodyCopy: `${ownerSlides.length} owner slide${ownerSlides.length === 1 ? "" : "s"} · your refraction`,
+      supportingText: "Owner-authored plate · carousel",
+      imagePrompt: "",
+      sectionType: "interlude",
+      grammar: "owner-carousel",
+      plateData: { ownerSlides },
     });
   }
 

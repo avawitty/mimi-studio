@@ -555,3 +555,11 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/tailor/tailorDefaults.ts`, `lib/zine/insertEditorialPlates.ts`, `components/TailorView.tsx`, `contexts/UserContext.tsx`
 
+---
+
+## 2026-08-08 — Chromatic + owner carousel editorial plates
+
+**Decision:** Add `chromatic` plate (palette from Tailor `chromaticRegistry` + issue `strict_palette`) and `owner-carousel` plate (`owner_plates[]` with text/image slides). Owner edits slides in zine reveal via `ZineOwnerPlatesEditor`; profile `ownerPlateTemplates` seed new issues. Both plates opt-out via `disabledPlates` in Tailor Editorial Plates.
+
+**Ref:** `lib/zine/chromaticPlatePalette.ts`, `components/zine/grammars/ChromaticPlatePage.tsx`, `components/zine/grammars/OwnerCarouselPage.tsx`, `components/ZineOwnerPlatesEditor.tsx`
+

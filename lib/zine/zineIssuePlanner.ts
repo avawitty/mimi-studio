@@ -81,6 +81,8 @@ export function inferPageSectionType(
     case "celestial":
     case "screenwrite":
     case "sonic":
+    case "chromatic":
+    case "owner-carousel":
       return "evidence";
     case "debris":
       return "debris";

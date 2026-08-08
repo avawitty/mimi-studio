@@ -33,6 +33,8 @@ export const zinePageGrammarSchema = z.enum([
   "screenwrite",
   "sonic",
   "signal-index",
+  "chromatic",
+  "owner-carousel",
 ]);
 
 export const zineSectionTypeSchema = z.enum([

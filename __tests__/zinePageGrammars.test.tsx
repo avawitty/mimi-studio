@@ -16,6 +16,8 @@ const GRAMMARS: ZinePageGrammar[] = [
   "screenwrite",
   "sonic",
   "signal-index",
+  "chromatic",
+  "owner-carousel",
 ];
 
 describe("exemplary zine page grammars", () => {

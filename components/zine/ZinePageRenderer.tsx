@@ -17,6 +17,8 @@ import { CelestialPlatePage } from "./grammars/CelestialPlatePage";
 import { ScreenwritePage } from "./grammars/ScreenwritePage";
 import { SonicPlatePage } from "./grammars/SonicPlatePage";
 import { SignalIndexPage } from "./grammars/SignalIndexPage";
+import { ChromaticPlatePage } from "./grammars/ChromaticPlatePage";
+import { OwnerCarouselPage } from "./grammars/OwnerCarouselPage";
 
 interface ZinePageRendererProps {
   artifact: MimiZineArtifact;
@@ -50,6 +52,10 @@ function grammarComponent(
       return <SonicPlatePage {...props} />;
     case "signal-index":
       return <SignalIndexPage {...props} />;
+    case "chromatic":
+      return <ChromaticPlatePage {...props} />;
+    case "owner-carousel":
+      return <OwnerCarouselPage {...props} />;
     default: {
       const exhaustive: never = grammar;
       return exhaustive;

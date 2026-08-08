@@ -60,4 +60,19 @@ describe("insertEditorialPlates", () => {
     expect(merged[0].grammar).toBe("screenwrite");
     expect(merged.some((p) => p.grammar === "sonic")).toBe(true);
   });
+
+  it("inserts chromatic and owner-carousel plates when data exists", () => {
+    const merged = insertEditorialPlates({
+      ...base,
+      chromatic_palette: {
+        colors: [{ name: "Field", hex: "#FDFBF7" }],
+        sourceLabel: "Chromatic Calibration · Tailor",
+      },
+      owner_plates: [
+        { id: "s1", kind: "text", body: "My refraction on this issue." },
+      ],
+    });
+    expect(merged.some((p) => p.grammar === "chromatic")).toBe(true);
+    expect(merged.some((p) => p.grammar === "owner-carousel")).toBe(true);
+  });
 });

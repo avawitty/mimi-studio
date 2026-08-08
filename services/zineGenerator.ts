@@ -20,6 +20,10 @@ import {
 import { celestialTimingForGeneration } from "../lib/celestial/compileCelestialReadout";
 import { applyCelestialToZine } from "../lib/celestial/applyCelestialToZine";
 import {
+    applyChromaticPaletteToZine,
+    applyOwnerPlatesToZine,
+} from "../lib/zine/applyEditorialStamps";
+import {
     draftZineArtifactId,
     editorialPlateOptionsFromProfile,
     enhanceZineGenerationLayout,
@@ -98,8 +102,10 @@ async function realizeGeneratedZineContent(
     _media: any[],
     profile?: UserProfile | null,
 ): Promise<{ content: any }> {
+    let stamped = applyChromaticPaletteToZine(content, profile);
+    stamped = applyOwnerPlatesToZine(stamped, profile);
     const enhanced = enhanceZineGenerationLayout({
-        content,
+        content: stamped,
         artifactId: draftZineArtifactId(),
         plateOptions: editorialPlateOptionsFromProfile(profile),
     });

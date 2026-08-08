@@ -138,6 +138,24 @@ export interface ColorShard {
   descriptor?: string;
 }
 
+/** Owner-authored slide for the Add Your Own carousel plate. */
+export interface ZineOwnerPlateSlide {
+  id: string;
+  kind: "text" | "image";
+  title?: string;
+  body?: string;
+  imageUrl?: string;
+  altText?: string;
+}
+
+/** Palette stamped for the Chromatic Calibration plate. */
+export interface ChromaticPlatePalette {
+  colors: ColorShard[];
+  accent?: string;
+  baseNeutral?: string;
+  sourceLabel?: string;
+}
+
 export interface AgentEnrichment {
   autoTags?: string[];
   detectedEra?: string;
@@ -574,6 +592,10 @@ export interface ZineSpec {
   poetic_provocation?: string;
   /** Screenplay excerpt plate — sets the zine scene before the reading. */
   screenwrite_excerpt?: string;
+  /** Ephemeris-backed chromatic palette for the calibration plate. */
+  chromatic_palette?: ChromaticPlatePalette;
+  /** Owner-authored carousel slides (Add your own plate). */
+  owner_plates?: ZineOwnerPlateSlide[];
 
   // Legacy fields
   oracular_mirror?: string;
@@ -645,7 +667,9 @@ export type ZinePageGrammar =
   | "celestial"
   | "screenwrite"
   | "sonic"
-  | "signal-index";
+  | "signal-index"
+  | "chromatic"
+  | "owner-carousel";
 
 export type ZineSectionType =
   | "cover"
@@ -1047,6 +1071,8 @@ export interface ZinePageSpec {
   plateData?: {
     celestialReadout?: ZineCelestialReadout;
     signals?: SemioticSignal[];
+    palette?: ChromaticPlatePalette;
+    ownerSlides?: ZineOwnerPlateSlide[];
   };
 }
 
@@ -1703,6 +1729,8 @@ export interface UserPreferences {
   disabledAlgos?: string[];
   /** Opt-out list — editorial calibration plates enabled by default. */
   disabledPlates?: string[];
+  /** Default owner carousel slides copied into new zines at generation. */
+  ownerPlateTemplates?: ZineOwnerPlateSlide[];
   zineOptions?: ZineGenerationOptions;
   agentConfig?: {
     curatorEnabled: boolean;

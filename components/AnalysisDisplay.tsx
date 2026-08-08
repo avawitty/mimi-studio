@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { ZineMetadata, PocketItem, LineageEntry, NarrativeThread, MemoryAtom, AtelierObject, SemioticSignal } from '../types';
@@ -62,7 +62,13 @@ import {
 import type { EditorElement } from '../types';
 import { normalizeZineArtifact } from '../lib/zine/normalizeZineArtifact';
 import { isCalibrationPlate } from '../lib/zine/insertEditorialPlates';
+import {
+  editorialPlateOptionsFromProfile,
+  refreshEditorialPlatesInContent,
+} from '../lib/zine/enhanceZineGenerationLayout';
 import { ZinePageRenderer } from './zine/ZinePageRenderer';
+import { ZineOwnerPlatesEditor } from './ZineOwnerPlatesEditor';
+import type { ZineOwnerPlateSlide } from '../types';
 import { CELESTIAL_BODY_LABELS } from '../lib/celestial/bodyLabels';
 import { ZODIAC_SIGN_LABELS } from '../lib/celestial/sunSign';
 import {
@@ -247,6 +253,18 @@ export const AnalysisDisplay: React.FC<{
  const hasCelestialPlate = useMemo(
    () => metadata.content?.pages?.some((page) => page.grammar === 'celestial') ?? false,
    [metadata.content?.pages],
+ );
+
+ const handleOwnerPlatesChange = useCallback(
+   (slides: ZineOwnerPlateSlide[]) => {
+     const nextContent = refreshEditorialPlatesInContent(
+       { ...metadata.content, owner_plates: slides },
+       metadata.id,
+       profile ?? undefined,
+     );
+     onUpdateMetadata({ ...metadata, content: nextContent });
+   },
+   [metadata, onUpdateMetadata, profile],
  );
 
  useEffect(() => {
@@ -2247,6 +2265,22 @@ export const AnalysisDisplay: React.FC<{
  </p>
  </div>
  
+ {isOwner ? (
+   <motion.section
+     initial={{ opacity: 0, y: 30 }}
+     whileInView={{ opacity: 1, y: 0 }}
+     viewport={{ once: true, margin: '-10%' }}
+     transition={{ duration: 0.8 }}
+     className="px-6 md:px-24 flex justify-center"
+   >
+     <ZineOwnerPlatesEditor
+       slides={metadata.content.owner_plates || []}
+       ownerUid={user?.uid}
+       onChange={handleOwnerPlatesChange}
+     />
+   </motion.section>
+ ) : null}
+
  {metadata.content.pages?.map((page, i) => {
  const composed = pageHasCustomLayout(page);
  const calibration = isCalibrationPlate(page);

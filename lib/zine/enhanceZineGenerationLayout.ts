@@ -23,6 +23,19 @@ export function editorialPlateOptionsFromProfile(
   };
 }
 
+/** Rebuild calibration plates after owner edits without losing visual pages. */
+export function refreshEditorialPlatesInContent(
+  content: ZineContent,
+  artifactId: string,
+  profile?: Pick<UserProfile, "disabledPlates" | "tailorDraft"> | null,
+): ZineContent {
+  return enhanceZineGenerationLayout({
+    content,
+    artifactId,
+    plateOptions: editorialPlateOptionsFromProfile(profile),
+  });
+}
+
 function seedSpreadLayout(page: ZinePageSpec): ZinePageSpec {
   if (isCalibrationPlate(page)) return page;
   if (page.customLayout?.elements?.length) return page;

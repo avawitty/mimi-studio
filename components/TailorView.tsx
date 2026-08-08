@@ -5885,7 +5885,7 @@ export const TailorView: React.FC<{
                                 <GlossaryTooltip
                                   term="Editorial Plates"
                                   poeticMeaning="The calibration spreads that frame each issue."
-                                  functionalMeaning="Enable or disable screenplay, celestial, signal index, and sonic plates in generated zines."
+                                  functionalMeaning="Enable or disable screenplay, chromatic, celestial, signal index, sonic, and owner carousel plates in generated zines."
                                 >
                                   <span>Editorial Plates</span>
                                 </GlossaryTooltip>
@@ -5898,6 +5898,11 @@ export const TailorView: React.FC<{
                                     id: "screenwrite",
                                     name: "Screenwrite",
                                     desc: "A screenplay excerpt that sets the scene before the reading.",
+                                  },
+                                  {
+                                    id: "chromatic",
+                                    name: "Chromatic Calibration",
+                                    desc: "Tailor palette swatches for this issue's color world.",
                                   },
                                   {
                                     id: "celestial",
@@ -5913,6 +5918,11 @@ export const TailorView: React.FC<{
                                     id: "sonic",
                                     name: "Sonic Layer",
                                     desc: "Ambient soundscape description as a composition plate.",
+                                  },
+                                  {
+                                    id: "owner-carousel",
+                                    name: "Add your own",
+                                    desc: "Owner-authored text or image carousel alongside Mimi's reading.",
                                   },
                                 ].map((plate) => {
                                   const isEnabled = enabledPlates.includes(
