@@ -48,6 +48,7 @@ const IMPLEMENTED_MODES = new Set([
   "mean-median-mode",
   "forecast",
   "celestial-calibration",
+  "mesopic-lens",
   "scry",
 ]);
 
@@ -68,6 +69,7 @@ const CHAMBER_COMPONENT_FILES: Record<string, string> = {
   ObservatoryChamber: "components/chambers/ObservatoryChamber.tsx",
   TheForecast: "components/TheForecast.tsx",
   CelestialCalibrationChamber: "components/chambers/CelestialCalibrationChamber.tsx",
+  MesopicLensChamber: "components/chambers/MesopicLensChamber.tsx",
   ScryView: "components/ScryView.tsx",
   SignatureView: "components/SignatureView.tsx",
   TailorHub: "components/tailor/TailorHub.tsx",
