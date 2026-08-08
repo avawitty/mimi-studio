@@ -94,7 +94,7 @@
 | **Taste Intelligence (Phase 1)** | infrastructure | Analysis queue on ingest; `GET /api/mimi/taste-state`; taste context in generate-text + create-zine | Pocket mirror; embed pipeline |
 | **Taste Corpus explorer** | `/taste-corpus` | shipped | Demonstration seed manifest (20 specimens) | Wire `--from-sovereign` export; expand corpus from Floor covers |
 | **Public face kit** | — | shipped | `PublicField` + `isPublicEditorialFlowMode` single-scroll contract | Audit remaining dark-plate chambers for nested scroll only if reported |
-| **Mobile shell contract** | — | partial | `lib/mobileShell.ts` quiet chrome + flat rows; Scribe + Codex migrated | Roll flat mobile pattern to House, Oracle, Intel Hub |
+| **Mobile shell contract** | — | partial | `lib/mobileShell.ts` quiet chrome + flat rows; `lib/pwaShell.ts` edge-to-edge installed-PWA viewport (`mimi-pwa-shell`, `--mimi-viewport-height`); Scribe + Codex migrated | Roll flat mobile pattern to House, Oracle, Intel Hub |
 
 ---
 

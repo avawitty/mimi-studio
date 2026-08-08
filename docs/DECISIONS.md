@@ -6,7 +6,17 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-08 — Tailor evidence local-first + readable errors
+## 2026-08-08 — Installed PWA edge-to-edge viewport shell
+
+**Decision:** Harden the installed-PWA frame for any screen size: pre-paint `mimi-pwa-shell` class on `<html>`, `lib/pwaShell.ts` bootstrap syncing `--mimi-viewport-height` from `visualViewport`, layered `100dvh` / `-webkit-fill-available` fallbacks, fixed `inset: 0` shell in standalone/fullscreen display modes, manifest `orientation: any` + `scope: /`, and `interactive-widget=resizes-content` on the viewport meta.
+
+**Alternatives rejected:** (1) Permanent bottom chamber tab bar to fill the home-indicator gap. (2) `orientation: portrait` lock (breaks Pro Max landscape and split attention). (3) Body-level safe-area padding (doubles StudioChrome insets).
+
+**Why:** iPhone 16 Pro Max A2HS showed unused bands at the edges; the gap was missing viewport shell discipline, not missing navigation chrome.
+
+**Ref:** `lib/pwaShell.ts`, `index.css`, `index.html`, `metadata.json`, `e2e/ios-pwa-shell.spec.ts`
+
+---
 
 **Decision:** Let Mimi Read You saves evidence to IndexedDB first (`tailorEvidenceLocalStore`), strips oversized inline blobs before Firestore writes, and merges local + cloud on read. Quota/offline cloud failures return saved nodes instead of blocking intake. User-facing errors use `formatUserError` (no JSON auth dumps); registry toasts truncate and sit top-safe on mobile.
 

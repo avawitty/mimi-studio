@@ -26,7 +26,7 @@ export default defineConfig({
       use: {
         // devices['iPhone 14'] uses the WebKit browser engine; Chromium launch
         // flags are not applicable here and would break WebKit launches.
-        ...devices['iPhone 14'],
+        ...devices['iPhone 16 Pro Max'],
       },
       testMatch: '**/ios-pwa-shell.spec.ts',
     },

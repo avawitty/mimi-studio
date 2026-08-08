@@ -1560,12 +1560,12 @@ export const App: React.FC = () => {
     [navigate, profile?.handle, user?.uid],
   );
   const [pocketStashOpen, setPocketStashOpen] = useState(false);
-  const isStandalonePwaShell = React.useMemo(() => {
-    if (typeof window === "undefined") return false;
-    const inStandaloneDisplayMode = window.matchMedia?.("(display-mode: standalone)")?.matches;
-    const isLegacyIosStandalone = (window.navigator as any)?.standalone === true;
-    return Boolean(inStandaloneDisplayMode || isLegacyIosStandalone);
-  }, []);
+  const isStandalonePwaShell = React.useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      document.documentElement.classList.contains("mimi-pwa-shell"),
+    [],
+  );
   const pocketDragDepth = useRef(0);
 
   useEffect(() => {

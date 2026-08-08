@@ -100,9 +100,11 @@ import { DossierProvider } from './components/studio-os/DossierContext';
 import { FeedbackProvider } from './contexts/FeedbackProvider';
 import { installStaleAssetListeners } from './lib/staleChunkRecovery';
 import { bootstrapResearchMode } from './lib/researchMode';
+import { bootstrapPwaShell } from './lib/pwaShell';
 import { ResearchInstrumentationProvider } from './contexts/ResearchInstrumentationContext';
 
 bootstrapResearchMode();
+bootstrapPwaShell();
 installStaleAssetListeners();
 
 const rootElement = document.getElementById('root');

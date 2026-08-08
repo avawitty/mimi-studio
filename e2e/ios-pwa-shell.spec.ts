@@ -49,6 +49,7 @@ test.describe("Safe areas", () => {
       .locator('meta[name="viewport"]')
       .getAttribute("content");
     expect(content).toContain("viewport-fit=cover");
+    expect(content).toContain("interactive-widget=resizes-content");
   });
 
   test("apple-mobile-web-app meta tags are present", async ({ page }) => {
@@ -92,13 +93,38 @@ test.describe("Safe areas", () => {
     page,
   }) => {
     await page.goto("/");
-    // The CSS rule sets `height: 100dvh` on #root. Confirm the element's
+    // The CSS rule sets dynamic viewport height on #root. Confirm the element's
     // rendered height is greater than zero (meaning the unit was honoured).
     const rootHeight = await page.evaluate(() => {
       const root = document.getElementById("root");
       return root ? root.getBoundingClientRect().height : 0;
     });
     expect(rootHeight).toBeGreaterThan(0);
+  });
+
+  test("installed PWA shell class pins the viewport and sets --mimi-viewport-height", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.evaluate(() => {
+      document.documentElement.classList.add("mimi-pwa-shell");
+      document.documentElement.style.setProperty(
+        "--mimi-viewport-height",
+        `${window.innerHeight}px`,
+      );
+    });
+    const metrics = await page.evaluate(() => {
+      const root = document.getElementById("root");
+      const html = document.documentElement;
+      return {
+        hasShellClass: html.classList.contains("mimi-pwa-shell"),
+        rootPosition: root ? getComputedStyle(root).position : "",
+        viewportHeight: html.style.getPropertyValue("--mimi-viewport-height"),
+      };
+    });
+    expect(metrics.hasShellClass).toBe(true);
+    expect(metrics.rootPosition).toBe("fixed");
+    expect(metrics.viewportHeight).toMatch(/px$/);
   });
 });
 
@@ -179,12 +205,12 @@ test.describe("Keyboard avoidance", () => {
     expect(Math.abs(parseHeight(htmlHeight) - vh)).toBeLessThanOrEqual(vh * 0.1);
   });
 
-  test("body has overscroll-behavior-y: none to prevent elastic bounce", async ({
+  test("body has overscroll-behavior: none to prevent elastic bounce", async ({
     page,
   }) => {
     await page.goto("/");
     const overscroll = await page.evaluate(
-      () => window.getComputedStyle(document.body).overscrollBehaviorY,
+      () => window.getComputedStyle(document.body).overscrollBehavior,
     );
     expect(overscroll).toBe("none");
   });
@@ -292,6 +318,8 @@ test.describe("Service worker", () => {
     expect(manifest.start_url).toBeTruthy();
     expect(manifest.display).toBe("standalone");
     expect(manifest.display_override).toContain("fullscreen");
+    expect(manifest.orientation).toBe("any");
+    expect(manifest.scope).toBe("/");
     expect(Array.isArray(manifest.icons)).toBe(true);
     expect(manifest.icons.length).toBeGreaterThan(0);
   });
