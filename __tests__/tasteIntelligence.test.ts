@@ -955,6 +955,114 @@ describe("negative taste and model editing slice", () => {
     expect(after.interactionRules).toHaveLength(0);
   });
 
+  it("merge combines two features and removes the absorbed id", () => {
+    const snapshot = {
+      ...minimalSnapshot(),
+      featureWeights: [
+        ...minimalSnapshot().featureWeights,
+        {
+          featureId: "tag:x",
+          label: "X motif",
+          category: "tag",
+          sourceType: "tag" as const,
+          signedWeight: 0.4,
+          confidence: 0.6,
+          evidenceMass: 1,
+          explicitMass: 0,
+          implicitMass: 1,
+          trend: "stable" as const,
+          contextScopes: ["persistent"],
+          sourceIds: ["e2"],
+        },
+      ],
+    };
+    const survivor = snapshot.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    )!;
+    const absorbed = snapshot.featureWeights.find((f) => f.featureId === "tag:x")!;
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "merge",
+      targetIds: ["pattern_cluster:c1", "tag:x"],
+      before: { survivor, absorbed },
+      after: { label: "Soft contrast + X motif" },
+    });
+    const after = applyEditsToSnapshot(snapshot, [edit]);
+    expect(after.featureWeights.some((f) => f.featureId === "tag:x")).toBe(false);
+    const merged = after.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    );
+    expect(merged?.label).toBe("Soft contrast + X motif");
+    expect(merged?.sourceIds).toEqual(
+      expect.arrayContaining([...survivor.sourceIds, ...absorbed.sourceIds]),
+    );
+  });
+
+  it("split creates a variant feature and reduces parent weight", () => {
+    const snapshot = minimalSnapshot();
+    const parent = snapshot.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    )!;
+    const newFeatureId = "pattern_cluster:c1:split:test";
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "split",
+      targetIds: ["pattern_cluster:c1"],
+      before: { parent, newFeatureId },
+      after: { newFeatureId, label: "Soft contrast (variant)" },
+    });
+    const after = applyEditsToSnapshot(snapshot, [edit]);
+    expect(after.featureWeights).toHaveLength(2);
+    const child = after.featureWeights.find((f) => f.featureId === newFeatureId);
+    const updatedParent = after.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    );
+    expect(child?.label).toBe("Soft contrast (variant)");
+    expect(updatedParent?.signedWeight).toBeCloseTo(parent.signedWeight * 0.5);
+    expect(child?.signedWeight).toBeCloseTo(parent.signedWeight * 0.5);
+  });
+
+  it("undo merge restores both original features", () => {
+    const snapshot = {
+      ...minimalSnapshot(),
+      featureWeights: [
+        ...minimalSnapshot().featureWeights,
+        {
+          featureId: "tag:x",
+          label: "X motif",
+          category: "tag",
+          sourceType: "tag" as const,
+          signedWeight: 0.4,
+          confidence: 0.6,
+          evidenceMass: 1,
+          explicitMass: 0,
+          implicitMass: 1,
+          trend: "stable" as const,
+          contextScopes: ["persistent"],
+          sourceIds: ["e2"],
+        },
+      ],
+    };
+    const survivor = snapshot.featureWeights.find(
+      (f) => f.featureId === "pattern_cluster:c1",
+    )!;
+    const absorbed = snapshot.featureWeights.find((f) => f.featureId === "tag:x")!;
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "merge",
+      targetIds: ["pattern_cluster:c1", "tag:x"],
+      before: { survivor, absorbed },
+      after: { label: "Merged" },
+    });
+    const merged = applyEditsToSnapshot(snapshot, [edit]);
+    const undo = createUndoEdit(edit);
+    const restored = applyEditsToSnapshot(merged, [undo]);
+    expect(restored.featureWeights).toHaveLength(2);
+    expect(
+      restored.featureWeights.find((f) => f.featureId === "tag:x")?.label,
+    ).toBe("X motif");
+  });
+
   it("explicit graph edit produces immutable edit event", () => {
     const edit = createModelEdit({
       ownerId: "u1",

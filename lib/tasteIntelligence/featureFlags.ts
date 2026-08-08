@@ -5,6 +5,7 @@ export const TASTE_INTELLIGENCE_FLAGS = {
   tasteCalibrationV2: "tasteCalibrationV2",
   tasteNegativeModel: "tasteNegativeModel",
   tasteGraphEditorV2: "tasteGraphEditorV2",
+  tasteGraphMergeSplit: "tasteGraphMergeSplit",
   tasteCompiler: "tasteCompiler",
   tasteCritic: "tasteCritic",
   tasteSemanticSearchV2: "tasteSemanticSearchV2",
@@ -22,6 +23,7 @@ const DEFAULT_FLAGS: Record<TasteIntelligenceFlag, boolean> = {
   tasteCalibrationV2: true,
   tasteNegativeModel: true,
   tasteGraphEditorV2: true,
+  tasteGraphMergeSplit: false,
   tasteCompiler: true,
   tasteCritic: true,
   tasteSemanticSearchV2: true,
@@ -38,6 +40,13 @@ export function resolveTasteIntelligenceFlag(
 ): boolean {
   if (overrides && flag in overrides) {
     return Boolean(overrides[flag]);
+  }
+  if (flag === "tasteGraphMergeSplit") {
+    if (typeof import.meta !== "undefined") {
+      const viteFlag = import.meta.env?.VITE_TASTE_GRAPH_MERGE_SPLIT;
+      if (viteFlag === "1" || viteFlag === "true") return true;
+      if (viteFlag === "0" || viteFlag === "false") return false;
+    }
   }
   if (typeof localStorage !== "undefined") {
     const raw = localStorage.getItem(`mimi_flag_${flag}`);

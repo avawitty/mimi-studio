@@ -159,6 +159,8 @@ export interface TasteFeatureWeight {
   trend: TasteFeatureTrend;
   contextScopes: string[];
   sourceIds: string[];
+  /** Optional provider embedding for semantic similarity scoring */
+  embeddingVector?: number[];
 }
 
 export interface TasteInteractionRule {
@@ -241,6 +243,8 @@ export interface TasteCandidateInput {
     density?: number;
     entropy?: number;
   };
+  /** Optional embedding from artifact or retrieval pipeline */
+  embeddingVector?: number[];
 }
 
 export interface TasteCandidateScore {
@@ -256,6 +260,7 @@ export interface TasteCandidateScore {
 
   components: {
     semanticAffinity: number;
+    embeddingSimilarity: number;
     ruleFit: number;
     contextFit: number;
     trajectoryFit: number;

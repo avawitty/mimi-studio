@@ -20,6 +20,10 @@ interface TasteModelInspectorProps {
   onRefine?: () => void;
   onRename?: (nextLabel: string) => void;
   onDisconnect?: (otherFeatureId: string) => void;
+  onMerge?: (otherFeatureId: string, mergedLabel: string) => void;
+  onSplit?: (splitLabel: string) => void;
+  mergeCandidates?: Array<{ featureId: string; label: string }>;
+  mergeSplitEnabled?: boolean;
   onUndo?: () => void;
   canUndo?: boolean;
 }
@@ -54,10 +58,17 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
   onRefine,
   onRename,
   onDisconnect,
+  onMerge,
+  onSplit,
+  mergeCandidates = [],
+  mergeSplitEnabled,
   onUndo,
   canUndo,
 }) => {
   const [renameDraft, setRenameDraft] = React.useState('');
+  const [mergeLabelDraft, setMergeLabelDraft] = React.useState('');
+  const [splitLabelDraft, setSplitLabelDraft] = React.useState('');
+  const [mergeTargetId, setMergeTargetId] = React.useState('');
 
   const feature = useMemo(() => {
     if (!snapshot || !selectedFeatureId) return null;
@@ -89,6 +100,9 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
 
   React.useEffect(() => {
     setRenameDraft(feature?.label ?? '');
+    setMergeLabelDraft(feature?.label ?? '');
+    setSplitLabelDraft(feature ? `${feature.label} (variant)` : '');
+    setMergeTargetId('');
   }, [feature?.label, selectedFeatureId]);
 
   if (!snapshot) {
@@ -331,6 +345,67 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
                 </button>
               </div>
             </label>
+          )}
+
+          {mergeSplitEnabled && onMerge && mergeCandidates.length > 0 && (
+            <div className="space-y-2" data-testid="taste-merge-controls">
+              <p className="text-[10px] uppercase tracking-wider text-mimi-stone">
+                Merge with another signal
+              </p>
+              <select
+                value={mergeTargetId}
+                onChange={(e) => setMergeTargetId(e.target.value)}
+                data-testid="taste-merge-target"
+                className="w-full border border-mimi-hairline/30 bg-transparent px-2 py-2 text-sm min-h-[44px]"
+              >
+                <option value="">Select signal…</option>
+                {mergeCandidates.map((candidate) => (
+                  <option key={candidate.featureId} value={candidate.featureId}>
+                    {candidate.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={mergeLabelDraft}
+                onChange={(e) => setMergeLabelDraft(e.target.value)}
+                data-testid="taste-merge-label"
+                placeholder="Merged label"
+                className="w-full border border-mimi-hairline/30 bg-transparent px-2 py-2 text-sm"
+              />
+              <button
+                type="button"
+                disabled={!mergeTargetId || !mergeLabelDraft.trim()}
+                onClick={() => onMerge(mergeTargetId, mergeLabelDraft.trim())}
+                data-testid="taste-merge-save"
+                className="min-h-[44px] w-full text-[10px] uppercase tracking-wider border border-mimi-cobalt/40 px-3 py-2 text-mimi-cobalt disabled:opacity-40"
+              >
+                Merge signals
+              </button>
+            </div>
+          )}
+
+          {mergeSplitEnabled && onSplit && (
+            <div className="space-y-2" data-testid="taste-split-controls">
+              <p className="text-[10px] uppercase tracking-wider text-mimi-stone">
+                Split into a variant
+              </p>
+              <input
+                value={splitLabelDraft}
+                onChange={(e) => setSplitLabelDraft(e.target.value)}
+                data-testid="taste-split-label"
+                placeholder="Variant label"
+                className="w-full border border-mimi-hairline/30 bg-transparent px-2 py-2 text-sm"
+              />
+              <button
+                type="button"
+                disabled={!splitLabelDraft.trim()}
+                onClick={() => onSplit(splitLabelDraft.trim())}
+                data-testid="taste-split-save"
+                className="min-h-[44px] w-full text-[10px] uppercase tracking-wider border border-mimi-hairline/40 px-3 py-2"
+              >
+                Split signal
+              </button>
+            </div>
           )}
 
           {canUndo && onUndo && (

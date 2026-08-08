@@ -110,11 +110,12 @@ export const PROJECT_SHRINKAGE_ALPHA = 0.3;
 
 /** Candidate scoring component coefficients */
 export const SCORE_COEFFICIENTS = {
-  semanticAffinity: 0.35,
-  ruleFit: 0.2,
-  contextFit: 0.15,
+  semanticAffinity: 0.28,
+  embeddingSimilarity: 0.12,
+  ruleFit: 0.18,
+  contextFit: 0.14,
   trajectoryFit: 0.1,
-  noveltyFit: 0.1,
+  noveltyFit: 0.08,
   aversionPenalty: 0.25,
   saturationPenalty: 0.1,
 } as const;

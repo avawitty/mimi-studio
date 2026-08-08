@@ -192,7 +192,7 @@ npm run test:unit -- __tests__/tasteCandidateScoring.test.ts
 ## Known MVP Limitations
 
 - Interaction rules use co-occurrence heuristics, not learned coefficients
-- No embedding similarity in scoring (tag/feature overlap fallback only)
+- Embedding similarity uses hash fallback when vectors absent; real vectors optional on candidates/features
 - Trajectory uses simple recent vs historical window comparison
 - No server-side compilation trigger (client-initiated after curation)
 - Demo/anonymous users get in-memory compilation only

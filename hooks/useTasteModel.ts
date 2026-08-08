@@ -87,6 +87,7 @@ export function useTasteModel(opts: UseTasteModelOptions): UseTasteModelResult {
           verdict: 'uncertain',
           components: {
             semanticAffinity: 0,
+            embeddingSimilarity: 0,
             ruleFit: 0,
             contextFit: 0,
             trajectoryFit: 0,

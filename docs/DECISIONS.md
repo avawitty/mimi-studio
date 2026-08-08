@@ -247,6 +247,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Graph merge/split + embedding similarity in critic alignment
+
+**Decision:** Ship merge/split snapshot edits in `applyEditsToSnapshot` with Pattern Graph inspector UI gated by `tasteGraphMergeSplit` (`TASTE_GRAPH_MERGE_SPLIT=1` server, `VITE_TASTE_GRAPH_MERGE_SPLIT=1` client). Add `embeddingSimilarity` component to `scoreTasteCandidate` (12% coefficient) using deterministic hash embeddings with optional real vectors on candidates/features; flows into post-generation critic via existing `critiqueAgainstContract` → `scoreTasteCandidate` path.
+
+**Alternatives rejected:** (1) Client-only merge without API gate. (2) LLM embedding calls inside scoring hot path. (3) Replacing tag overlap with embeddings only.
+
+**Why:** Completes the graph editor vertical slice and improves critic alignment for semantically similar artifacts without breaking deterministic offline scoring.
+
+**Ref:** `lib/tasteIntelligence/applySnapshotEdits.ts`, `lib/tasteModel/embeddingSimilarity.ts`, `components/taste/TasteModelInspector.tsx`
+
+---
+
 ## 2026-08-08 — Negative taste + graph model editing (Tailor Pattern Graph slice)
 
 **Decision:** Ship creator-facing negative taste and direct model editing inside Tailor `PatternGraphScreen` + `TasteModelInspector`, backed by existing Taste Intelligence OS v2 contracts (`taste_refusals`, `taste_model_edits`, `computeModelDelta`, `applyEditsToSnapshot`). New API routes: `POST /api/mimi/taste-intelligence/refusals`, `POST /model-edits`, `POST /model-edits/undo`. Merge/split remain behind `TASTE_GRAPH_MERGE_SPLIT=1`.

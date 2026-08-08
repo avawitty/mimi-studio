@@ -11,6 +11,7 @@ import { useIsNarrow } from '../../hooks/useBreakpoint';
 import { useUser } from '../../contexts/UserContext';
 import { useTasteSignalEditor } from '../../hooks/useTasteSignalEditor';
 import type { SignalRefineOption } from '../../lib/tasteIntelligence/signalRefine';
+import { isTasteIntelligenceSurfaceEnabled } from '../../lib/tasteIntelligence/featureFlags';
 
 const CLAIM_BADGE: Record<ClaimType, string> = {
   observed: 'Observed',
@@ -103,6 +104,7 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
       onTasteSnapshotChange?.(snapshot);
     },
   });
+  const mergeSplitEnabled = isTasteIntelligenceSurfaceEnabled('tasteGraphMergeSplit');
 
   const evidenceMap = useMemo(() => Object.fromEntries(evidence.map((e) => [e.id, e])), [evidence]);
   const acceptedCount = clusters.filter((cluster) => cluster.userStatus === 'accepted' || cluster.userStatus === 'renamed').length;
@@ -185,6 +187,48 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
     });
   };
 
+  const handleMerge = async (otherFeatureId: string, mergedLabel: string) => {
+    if (!selectedFeatureId || !activeSnapshot) return;
+    const survivor = activeSnapshot.featureWeights.find(
+      (f) => f.featureId === selectedFeatureId,
+    );
+    const absorbed = activeSnapshot.featureWeights.find(
+      (f) => f.featureId === otherFeatureId,
+    );
+    if (!survivor || !absorbed) return;
+    await signalEditor.applyModelEdit({
+      operation: 'merge',
+      targetIds: [selectedFeatureId, otherFeatureId],
+      before: { survivor, absorbed },
+      after: { label: mergedLabel },
+      rationale: 'Creator merged signals',
+    });
+  };
+
+  const handleSplit = async (splitLabel: string) => {
+    if (!selectedFeatureId || !activeSnapshot) return;
+    const parent = activeSnapshot.featureWeights.find(
+      (f) => f.featureId === selectedFeatureId,
+    );
+    if (!parent) return;
+    const newFeatureId = `${selectedFeatureId}:split:${Date.now()}`;
+    await signalEditor.applyModelEdit({
+      operation: 'split',
+      targetIds: [selectedFeatureId],
+      before: { parent, newFeatureId },
+      after: { newFeatureId, label: splitLabel },
+      rationale: 'Creator split signal',
+    });
+    setSelectedFeatureId(newFeatureId);
+  };
+
+  const mergeCandidates = useMemo(() => {
+    if (!activeSnapshot || !selectedFeatureId) return [];
+    return activeSnapshot.featureWeights
+      .filter((f) => f.featureId !== selectedFeatureId)
+      .map((f) => ({ featureId: f.featureId, label: f.label }));
+  }, [activeSnapshot, selectedFeatureId]);
+
   const inspector = (
     <TasteModelInspector
       snapshot={activeSnapshot}
@@ -200,6 +244,10 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
       onRefine={() => setRefineOpen(true)}
       onRename={handleRename}
       onDisconnect={handleDisconnect}
+      onMerge={mergeSplitEnabled ? handleMerge : undefined}
+      onSplit={mergeSplitEnabled ? handleSplit : undefined}
+      mergeCandidates={mergeCandidates}
+      mergeSplitEnabled={mergeSplitEnabled}
       onUndo={() => void signalEditor.undoLastEdit()}
       canUndo={Boolean(signalEditor.lastEdit)}
     />
