@@ -12,6 +12,8 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebaseInit';
 import { handleFirestoreError, OperationType } from './firebaseUtils';
+import { evidenceNodeToAtomInput } from '../lib/taste/evidenceNodeBridge';
+import { createEvidenceAtom } from './taste/evidenceAtomService';
 import { getReadConfidenceLabel } from '../constants/tailorSafetyRules';
 import {
   compileTailorProfileFromGraph,
@@ -170,6 +172,11 @@ export async function addEvidenceNode(
     if (project?.tasteGraphId) {
       await appendToTasteGraph(userId, project.tasteGraphId, { evidenceNodeIds: [id] });
     }
+
+    void createEvidenceAtom(userId, evidenceNodeToAtomInput(evidence, projectId)).catch((err) => {
+      console.warn("MIMI // Tailor → EvidenceAtom mirror failed (non-blocking):", err);
+    });
+
     return evidence;
   } catch (e) {
     handleFirestoreError(e, OperationType.WRITE, `evidenceNodes/${id}`);

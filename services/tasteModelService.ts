@@ -23,6 +23,7 @@ import {
   type TasteLearningAction,
   type TasteModelSnapshot,
   type TasteTargetType,
+  buildStableTasteEventDedupeKey,
   buildTasteEventDedupeKey,
 } from '../lib/tasteModel';
 import type {
@@ -50,8 +51,18 @@ function snapshotDoc(userId: string, scope: 'global' | string) {
   return doc(db, `users/${userId}/tasteModelSnapshots/${docId}`);
 }
 
-const uid = () =>
-  crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const EXPLICIT_CURATION_ACTIONS = new Set<TasteLearningAction>([
+  'accept_cluster',
+  'reject_cluster',
+  'rename_cluster',
+  'accept_law',
+  'reject_law',
+  'edit_law',
+  'approve_observation',
+  'reject_observation',
+  'mark_signature',
+  'reduce_weight',
+]);
 
 // ─── Event Recording ──────────────────────────────────────────────────────────
 
@@ -77,23 +88,45 @@ export interface RecordTasteLearningEventInput {
   dedupeKey?: string;
 }
 
-export function buildTasteLearningEventV2(
-  input: RecordTasteLearningEventInput,
-): TasteEventV2 {
-  const occurredAt = Date.now();
-  const dedupeKey =
-    input.dedupeKey ??
-    buildTasteEventDedupeKey(
+export function resolveTasteEventDedupeKey(
+  input: Pick<
+    RecordTasteLearningEventInput,
+    'userId' | 'action' | 'targetType' | 'targetId' | 'dedupeKey' | 'explicit'
+  >,
+  occurredAt = Date.now(),
+): string {
+  if (input.dedupeKey) return input.dedupeKey;
+
+  const stable =
+    input.explicit === true || EXPLICIT_CURATION_ACTIONS.has(input.action);
+
+  if (stable) {
+    return buildStableTasteEventDedupeKey(
       input.userId,
       input.action,
       input.targetType,
       input.targetId,
-      Math.floor(occurredAt / 60_000),
     );
+  }
+
+  return buildTasteEventDedupeKey(
+    input.userId,
+    input.action,
+    input.targetType,
+    input.targetId,
+    Math.floor(occurredAt / 60_000),
+  );
+}
+
+export function buildTasteLearningEventV2(
+  input: RecordTasteLearningEventInput,
+): TasteEventV2 {
+  const occurredAt = Date.now();
+  const dedupeKey = resolveTasteEventDedupeKey(input, occurredAt);
 
   return {
     schemaVersion: 2,
-    id: uid(),
+    id: dedupeKey,
     userId: input.userId,
     projectId: input.projectId,
     sessionId: input.sessionId,
@@ -128,10 +161,10 @@ export async function recordTasteLearningEvent(
   }
 
   const event = buildTasteLearningEventV2(input);
-  const eventId = input.dedupeKey ?? event.id;
+  const eventDocId = event.dedupeKey ?? event.id;
 
   await setDoc(
-    doc(eventsCol(input.userId), eventId),
+    doc(eventsCol(input.userId), eventDocId),
     stripUndefined(event as unknown as Record<string, unknown>),
   );
 
@@ -154,11 +187,16 @@ export async function listTasteLearningEvents(
 
   const snap = await getDocs(q);
   const events: NormalizedTasteEvent[] = [];
+  const seenDedupeKeys = new Set<string>();
 
   for (const d of snap.docs) {
     const raw = d.data() as AnyTasteEvent;
     try {
       const normalized = normalizeTasteEvent(raw);
+      const dedupeKey = normalized.dedupeKey ?? normalized.id;
+      if (seenDedupeKeys.has(dedupeKey)) continue;
+      seenDedupeKeys.add(dedupeKey);
+
       if (opts?.projectId && normalized.projectId !== opts.projectId) continue;
       events.push(normalized);
     } catch {
@@ -171,9 +209,12 @@ export async function listTasteLearningEvents(
 
 // ─── Model Compilation ────────────────────────────────────────────────────────
 
+export type TasteModelCompileScope = 'global' | 'project' | 'both';
+
 export interface CompileAndSaveInput {
   userId: string;
   projectId?: string;
+  scope?: TasteModelCompileScope;
   tasteGraph?: TasteGraphDocument;
   evidence?: EvidenceNode[];
   observations?: Observation[];
@@ -200,44 +241,64 @@ async function loadProjectGraphData(
   return { evidence, observations, clusters, laws };
 }
 
+function resolveCompileScope(input: CompileAndSaveInput): TasteModelCompileScope {
+  if (input.scope) return input.scope;
+  return input.projectId ? 'project' : 'global';
+}
+
 export async function compileAndSaveTasteModel(
   input: CompileAndSaveInput,
-): Promise<{ global: TasteModelSnapshot; project?: TasteModelSnapshot }> {
-  const events =
-    input.events ?? (await listTasteLearningEvents(input.userId, { projectId: input.projectId }));
+): Promise<{ global?: TasteModelSnapshot; project?: TasteModelSnapshot }> {
+  const scope = resolveCompileScope(input);
+  let globalSnapshot: TasteModelSnapshot | undefined;
+  let projectSnapshot: TasteModelSnapshot | undefined;
 
-  let evidence = input.evidence ?? [];
-  let observations = input.observations ?? [];
-  let clusters = input.clusters ?? [];
-  let laws = input.laws ?? [];
+  if (scope === 'global' || scope === 'both') {
+    const globalEvents =
+      input.events ??
+      (await listTasteLearningEvents(input.userId));
 
-  if (input.projectId && !input.evidence) {
-    const graphData = await loadProjectGraphData(input.userId, input.projectId);
-    evidence = graphData.evidence;
-    observations = graphData.observations;
-    clusters = graphData.clusters;
-    laws = graphData.laws;
+    const globalInput: CompileTasteModelInput = {
+      userId: input.userId,
+      scope: 'global',
+      tasteGraph: input.tasteGraph,
+      evidence: input.evidence ?? [],
+      observations: input.observations ?? [],
+      clusters: input.clusters ?? [],
+      laws: input.laws ?? [],
+      events: globalEvents,
+    };
+
+    globalSnapshot = compileTasteModel(globalInput);
+    await setDoc(
+      snapshotDoc(input.userId, 'global'),
+      stripUndefined(globalSnapshot as unknown as Record<string, unknown>),
+    );
   }
 
-  const globalInput: CompileTasteModelInput = {
-    userId: input.userId,
-    scope: 'global',
-    tasteGraph: input.tasteGraph,
-    evidence,
-    observations,
-    clusters,
-    laws,
-    events,
-  };
+  if ((scope === 'project' || scope === 'both') && input.projectId) {
+    const projectEvents =
+      input.events ??
+      (await listTasteLearningEvents(input.userId, { projectId: input.projectId }));
 
-  const globalSnapshot = compileTasteModel(globalInput);
-  await setDoc(
-    snapshotDoc(input.userId, 'global'),
-    stripUndefined(globalSnapshot as unknown as Record<string, unknown>),
-  );
+    let evidence = input.evidence ?? [];
+    let observations = input.observations ?? [];
+    let clusters = input.clusters ?? [];
+    let laws = input.laws ?? [];
 
-  let projectSnapshot: TasteModelSnapshot | undefined;
-  if (input.projectId) {
+    if (!input.evidence) {
+      const graphData = await loadProjectGraphData(input.userId, input.projectId);
+      evidence = graphData.evidence;
+      observations = graphData.observations;
+      clusters = graphData.clusters;
+      laws = graphData.laws;
+    }
+
+    const priorGlobal =
+      globalSnapshot ??
+      (await getTasteModelSnapshot(input.userId, 'global')) ??
+      undefined;
+
     const projectInput: CompileTasteModelInput = {
       userId: input.userId,
       projectId: input.projectId,
@@ -247,9 +308,10 @@ export async function compileAndSaveTasteModel(
       observations,
       clusters,
       laws,
-      events,
-      globalSnapshot,
+      events: projectEvents,
+      globalSnapshot: priorGlobal,
     };
+
     projectSnapshot = compileTasteModel(projectInput);
     await setDoc(
       snapshotDoc(input.userId, `project-${input.projectId}`),
@@ -276,19 +338,25 @@ export async function getTasteModelSnapshot(
 export async function rebuildTasteModel(
   userId: string,
   projectId?: string,
-): Promise<{ global: TasteModelSnapshot; project?: TasteModelSnapshot }> {
+): Promise<{ global?: TasteModelSnapshot; project?: TasteModelSnapshot }> {
   try {
-    return await compileAndSaveTasteModel({ userId, projectId });
+    if (projectId) {
+      return await compileAndSaveTasteModel({ userId, projectId, scope: 'project' });
+    }
+    return await compileAndSaveTasteModel({ userId, scope: 'global' });
   } catch (err) {
-    const existing = await getTasteModelSnapshot(userId, 'global');
+    const staleScope = projectId ? { projectId } : 'global';
+    const existing = await getTasteModelSnapshot(userId, staleScope);
     if (existing) {
       const stale: TasteModelSnapshot = {
         ...existing,
         stale: true,
         recomputeError: err instanceof Error ? err.message : 'Recompilation failed',
       };
+      const docId =
+        staleScope === 'global' ? 'global' : `project-${staleScope.projectId}`;
       await setDoc(
-        snapshotDoc(userId, 'global'),
+        snapshotDoc(userId, docId),
         stripUndefined(stale as unknown as Record<string, unknown>),
       );
     }
@@ -376,11 +444,13 @@ export async function recordCurationAsTasteEvent(
     observation: 'observation',
   };
 
+  const mappedTargetType = targetTypeMap[targetType] ?? 'pattern_cluster';
+
   return recordTasteLearningEvent({
     userId,
     projectId,
     action: tasteAction,
-    targetType: targetTypeMap[targetType] ?? 'pattern_cluster',
+    targetType: mappedTargetType,
     targetId,
     surface: 'tailor',
     scope: 'project',
@@ -389,6 +459,12 @@ export async function recordCurationAsTasteEvent(
     explicit: true,
     intent: opts?.annotation,
     provenance: opts?.provenance,
+    dedupeKey: buildStableTasteEventDedupeKey(
+      userId,
+      tasteAction,
+      mappedTargetType,
+      targetId,
+    ),
   });
 }
 
@@ -399,7 +475,14 @@ export async function recordAndRecompile(
   const result = await compileAndSaveTasteModel({
     userId: input.userId,
     projectId: input.projectId,
+    scope: input.projectId ? 'project' : 'global',
   });
-  const snapshot = input.projectId ? result.project ?? result.global : result.global;
+  const snapshot =
+    (input.projectId ? result.project : result.global) ??
+  result.global ??
+  result.project;
+  if (!snapshot) {
+    throw new Error('Taste model recompilation produced no snapshot');
+  }
   return { event, snapshot };
 }

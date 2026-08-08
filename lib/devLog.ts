@@ -1,4 +1,7 @@
-const isDev = import.meta.env.DEV;
+const isDev =
+  typeof import.meta !== "undefined" &&
+  import.meta.env != null &&
+  Boolean(import.meta.env.DEV);
 
 export const devLog = {
   info: (...args: unknown[]) => {
