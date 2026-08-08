@@ -277,3 +277,15 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Unifies taste-relevant evidence with explicit source vs inference separation, correction loop, and a single `getTasteState()` interface for generation — without blocking on full Tailor/Pocket migration.
 
 **Ref:** `docs/taste-intelligence-phase1.md`, `lib/taste/`, `services/taste/`, `lib/mimiEvidenceRoute.ts`
+
+---
+
+## 2026-08-08 — Taste Intelligence Phase 1.5 hooks
+
+**Decision:** After evidence ingest, queue server-side interpretation (`queueEvidenceAtomAnalysis`) when AI Gateway is configured. Client creates call `POST /api/mimi/evidence/analyze`. Inject `getServerTastePromptContext()` into `generate-text` and `create-zine` for signed-in users. Expose `GET /api/mimi/taste-state`.
+
+**Alternatives rejected:** (1) Client-only analysis — cannot access Admin Firestore or reliably fund gateway on mirror path. (2) Blocking ingest on analysis — keeps ingest fast; honest pending/failed states in UI.
+
+**Why:** Closes the loop from capture → interpretation → correction → generation without requiring a separate analyze step from the user.
+
+**Ref:** `lib/taste/evidenceAtomAnalysis.ts`, `lib/taste/serverTasteState.ts`, `lib/mimiGenerateTextRoute.ts`
