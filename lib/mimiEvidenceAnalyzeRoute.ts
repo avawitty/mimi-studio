@@ -9,7 +9,7 @@ import {
 } from "./apiUtils.js";
 import { verifyMimiSession, getServerFirebaseAdmin } from "./serverFirebaseAdmin.js";
 import { runEvidenceAtomAnalysis } from "./taste/evidenceAtomAnalysis.js";
-import { resolveRouteGatewayKey } from "./mimiFundedText.js";
+import { chargeIfBillable, resolveRouteGatewayKey } from "./mimiFundedText.js";
 
 const analyzeSchema = z.object({
   atomId: z.string().min(1),
@@ -35,7 +35,10 @@ export async function handleMimiEvidenceAnalyzeRoute(req: any, res: any) {
       return;
     }
 
-    const { apiKey, denialReason } = await resolveRouteGatewayKey(req, "vision_analysis");
+    const { apiKey, access, denialReason, cost } = await resolveRouteGatewayKey(
+      req,
+      "vision_analysis",
+    );
     if (!apiKey) {
       sendError(
         res,
@@ -50,7 +53,16 @@ export async function handleMimiEvidenceAnalyzeRoute(req: any, res: any) {
 
     await runEvidenceAtomAnalysis(db, decoded.uid, input.atomId, apiKey);
 
-    sendJson(res, 200, { atomId: input.atomId, status: "analyzed" });
+    await chargeIfBillable(access, {
+      feature: "evidence_atom_analysis",
+      model: "gateway",
+    });
+
+    sendJson(res, 200, {
+      atomId: input.atomId,
+      status: "analyzed",
+      creditsCharged: access?.billable ? cost : 0,
+    });
   } catch (error) {
     const code = String((error as { code?: unknown })?.code || "");
     const isAuth = new Set([

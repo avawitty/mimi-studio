@@ -4,6 +4,15 @@
 **Canon types:** `types.ts` (Taste Intelligence section)  
 **Verify:** `npm run verify:taste-intelligence`
 
+## Architecture boundary
+
+See [`taste-architecture.md`](./taste-architecture.md): **EvidenceAtom / TasteState** are canonical; **TasteModelSnapshot** (#224) is a derived computational cache. No duplicate preference truth stores.
+
+## Phase 1.5 security
+
+- Server-side image fetch for vision analysis uses `lib/trustedStorageFetch.ts` (HTTPS allowlist + SSRF block).
+- Analysis runs only via funded `POST /api/mimi/evidence/analyze` (credit accounting through `resolveRouteGatewayKey`).
+
 ## What shipped
 
 | Layer | Path | Notes |
