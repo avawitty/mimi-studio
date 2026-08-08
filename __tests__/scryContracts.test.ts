@@ -10,6 +10,7 @@ import {
   mapArchiveHits,
   mapShadowHits,
   mapWebHits,
+  mapYouSearchHits,
 } from "../services/scryService";
 
 describe("scryContracts", () => {
@@ -134,5 +135,31 @@ describe("scry lane payload coercion", () => {
     expect(hits).toHaveLength(1);
     expect(hits[0].sourceLane).toBe("shadowMemory");
     expect(hits[0].similarity).toBe(0.81);
+  });
+
+  it("maps you-search deep research into web-lane feed cards with mini write-ups", () => {
+    const hits = mapYouSearchHits(
+      [
+        {
+          sourceUrl: "https://vogue.com/article/taste",
+          title: "Communicating taste in editorial systems",
+          summary: "A field guide to articulating personal style without flattening it.",
+          domain: "vogue.com",
+          graphType: "web_reference",
+          confidence: 0.8,
+          aestheticSignals: {
+            keywords: ["editorial", "taste", "systems"],
+            references: ["Vogue"],
+            tone: "elevated / editorial",
+          },
+        },
+      ],
+      "you.com",
+    );
+    expect(hits).toHaveLength(1);
+    expect(hits[0].sourceLane).toBe("web");
+    expect(hits[0].snippet).toContain("articulating personal style");
+    expect(hits[0].url).toBe("https://vogue.com/article/taste");
+    expect(hits[0].relevance).toContain("elevated / editorial");
   });
 });

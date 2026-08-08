@@ -37,7 +37,7 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Scry** | `/scry` | shipped | Curiosity records (local + Firestore); readings ground on profile + celestial + web; unified retrieval service still deferred | Keep lane honesty + curiosity `verify:curiosity-tracking` |
+| **Scry** | `/scry` | shipped | Specimen web lane uses `/api/you-search` deep research (You.com → Apify → Gateway synthesis) with Gemini Search fallback; curiosity records + celestial reading grounding | Keep lane honesty + `verify:curiosity-tracking` |
 | **Mesopic Lens** | `/mesopic-lens` | **shipped** | Personal twilight Q&A; scrollable void shell; curiosity pattern reports | Celestial handoff when calibration inactive |
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
