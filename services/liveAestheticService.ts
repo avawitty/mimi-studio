@@ -19,7 +19,13 @@ export class LiveAestheticService {
 
   async connect() {
     try {
-      const { ai, model } = await resolveLiveAiCredentials();
+      const credentials = await resolveLiveAiCredentials();
+      if (credentials.provider !== "gemini") {
+        throw new Error(
+          "Live aesthetic analysis is not yet available on AI Gateway realtime in this build.",
+        );
+      }
+      const { ai, model } = credentials;
       this.session = await ai.live.connect({
         model,
         callbacks: {

@@ -1,26 +1,52 @@
 import { GoogleGenAI } from "@google/genai";
+import { gateway } from "ai";
 import { getStoredKey } from "./apiKeyService";
 import { modelFor } from "./modelConfig";
 
-export type LiveAiCredentials = {
-  ai: GoogleGenAI;
-  model: string;
-  source: "byok" | "ephemeral";
+export type LiveAiProvider = "byok" | "ephemeral" | "gateway";
+
+export type LiveAiCredentials =
+  | {
+      provider: "gemini";
+      source: "byok" | "ephemeral";
+      ai: GoogleGenAI;
+      model: string;
+    }
+  | {
+      provider: "gateway";
+      source: "funded" | "byok";
+      model: string;
+      token: string;
+      url: string;
+      sessionConfig: {
+        voice?: string;
+        instructions?: string;
+        turnDetection?: { type: string };
+      };
+      gatewayModel: ReturnType<typeof gateway.experimental_realtime>;
+    };
+
+export type ResolveLiveAiCredentialsOptions = {
+  systemInstruction?: string;
+  voiceName?: string;
 };
 
 /**
- * Resolve a Gemini client that can open Live WebSocket sessions.
- * BYOK keys connect directly; otherwise the server mints an ephemeral token
- * so the long-lived GEMINI_API_KEY never ships to the browser.
+ * Resolve credentials for Oracle Cyberdeck vocal sync.
+ * BYOK Gemini keys connect directly; otherwise the server mints a funded
+ * AI Gateway realtime token (preferred) or a Gemini ephemeral token.
  */
-export async function resolveLiveAiCredentials(): Promise<LiveAiCredentials> {
-  const model = modelFor("live", "gemini");
+export async function resolveLiveAiCredentials(
+  options: ResolveLiveAiCredentialsOptions = {},
+): Promise<LiveAiCredentials> {
+  const geminiModel = modelFor("live", "gemini");
   const byok = getStoredKey("gemini");
 
   if (byok) {
     return {
+      provider: "gemini",
       ai: new GoogleGenAI({ apiKey: byok }),
-      model,
+      model: geminiModel,
       source: "byok",
     };
   }
@@ -40,6 +66,13 @@ export async function resolveLiveAiCredentials(): Promise<LiveAiCredentials> {
   const res = await fetch("/api/live/token", {
     method: "POST",
     headers,
+    body: JSON.stringify({
+      sessionConfig: {
+        voice: options.voiceName,
+        instructions: options.systemInstruction,
+        turnDetection: { type: "server-vad" },
+      },
+    }),
   });
 
   let payload: any = null;
@@ -57,6 +90,31 @@ export async function resolveLiveAiCredentials(): Promise<LiveAiCredentials> {
     throw new Error(message);
   }
 
+  const provider = String(payload?.provider || "gemini");
+
+  if (provider === "gateway") {
+    const model = String(payload?.model || modelFor("live", "gateway"));
+    const token = String(payload?.token || "");
+    const url = String(payload?.url || "");
+    if (!token || !url) {
+      throw new Error("Gateway live token response was incomplete.");
+    }
+    return {
+      provider: "gateway",
+      source: "funded",
+      model,
+      token,
+      url,
+      sessionConfig: {
+        voice: options.voiceName,
+        instructions: options.systemInstruction,
+        turnDetection: { type: "server-vad" },
+        ...(payload?.sessionConfig || {}),
+      },
+      gatewayModel: gateway.experimental_realtime(model),
+    };
+  }
+
   const token = String(payload?.token || "");
   if (!token) {
     throw new Error("Live token response was empty.");
@@ -64,11 +122,12 @@ export async function resolveLiveAiCredentials(): Promise<LiveAiCredentials> {
 
   const apiVersion = String(payload?.apiVersion || "v1alpha");
   return {
+    provider: "gemini",
     ai: new GoogleGenAI({
       apiKey: token,
       httpOptions: { apiVersion },
     }),
-    model: String(payload?.model || model),
+    model: String(payload?.model || geminiModel),
     source: "ephemeral",
   };
 }
