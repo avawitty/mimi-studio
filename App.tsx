@@ -33,6 +33,7 @@ import {
   AppState,
   ToneTag,
   ZineMetadata,
+  ZineCoverVariant,
   DriftEvent,
   MediaFile,
   ZineContent,
@@ -47,6 +48,7 @@ import { resolveApiKey } from "./services/apiKeyService";
 import { diagnoseOracle } from "./services/geminiClient";
 import { createZine } from "./services/zineGenerator";
 import { clearApprovedUsedContext } from "./services/usedContextService";
+import { STUDIO_COVER_DRAFT_KEY } from "./lib/studioCoverVariants";
 import { getEditorialCompileExport } from "./lib/editCompileExport";
 import {
   saveZineToProfile,
@@ -1638,6 +1640,9 @@ export const App: React.FC = () => {
   const [isDeepRefraction, setIsDeepRefraction] = useState(false);
   const [threadValue, setThreadValue] = useState<string>("");
   const [threadMedia, setThreadMedia] = useState<MediaFile[]>([]);
+  const [threadCoverVariants, setThreadCoverVariants] = useState<
+    ZineCoverVariant[] | undefined
+  >(undefined);
   const [threadHighFidelity, setThreadHighFidelity] = useState(false);
   /** Escape hatch: dense InputStudio console under legacy worktable only */
   const [studioConsoleOpen, setStudioConsoleOpen] = useState(false);
@@ -1967,6 +1972,11 @@ export const App: React.FC = () => {
           if (e.detail_data.initialMedia) {
             setThreadMedia(e.detail_data.initialMedia);
           }
+          if (e.detail_data.initialCoverVariants?.length) {
+            setThreadCoverVariants(e.detail_data.initialCoverVariants);
+          } else {
+            setThreadCoverVariants(undefined);
+          }
           if (e.detail_data.isHighFidelity) {
             setThreadHighFidelity(true);
           } else {
@@ -2227,6 +2237,15 @@ export const App: React.FC = () => {
         if (opts.studioCoverVariants?.length) {
           result.content.meta = result.content.meta || {};
           result.content.meta.studioCoverVariants = opts.studioCoverVariants;
+          result.coverSpec = {
+            ...(result.coverSpec || {
+              title: result.content.title || "Untitled",
+              overlays: [],
+              treatment: "editorial",
+              overlayBaked: false,
+            }),
+            covers: opts.studioCoverVariants,
+          };
         }
 
         if (coverUrl && opts.studioCoverOverlays?.length) {
@@ -2298,6 +2317,13 @@ export const App: React.FC = () => {
         );
         if (fragmentIds.length > 0) {
           clearApprovedUsedContext("studio", targetUid);
+        }
+        if (opts.studioCoverVariants?.length) {
+          try {
+            localStorage.removeItem(STUDIO_COVER_DRAFT_KEY);
+          } catch {
+            /* private mode */
+          }
         }
         const zineRecord: ZineMetadata = {
           id,
@@ -2827,6 +2853,7 @@ export const App: React.FC = () => {
                               isThinking={appState === AppState.THINKING}
                               initialValue={threadValue}
                               initialMedia={threadMedia}
+                              initialCoverVariants={threadCoverVariants}
                               initialHighFidelity={threadHighFidelity}
                               zineOptions={zineOptions}
                               setZineOptions={setZineOptions}

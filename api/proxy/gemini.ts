@@ -5,9 +5,11 @@ import {
   generateGeminiContentViaGateway,
   generateGeminiImageViaGateway,
   generateGeminiImagesViaGateway,
+  generateGeminiSpeechViaGateway,
   generateGeminiVideoViaGateway,
   pollGatewayVideoOperation,
   getServerAiGatewayKey,
+  isGeminiAudioRequest,
   isGeminiImageRequest,
 } from "../../lib/aiGatewayCompat.js";
 
@@ -138,15 +140,20 @@ export default async function handler(req: any, res: any) {
 
     if (gatewayKey) {
       if (action === "generateContent") {
+        const isAudio = isGeminiAudioRequest(params);
         const result = isGeminiImageRequest(params)
           ? await generateGeminiImageViaGateway(params, gatewayKey)
-          : await generateGeminiContentViaGateway(params, gatewayKey, {
-              feature: "gemini-compat-content",
-            });
+          : isAudio
+            ? await generateGeminiSpeechViaGateway(params, gatewayKey, {
+                feature: "gemini-compat-tts",
+              })
+            : await generateGeminiContentViaGateway(params, gatewayKey, {
+                feature: "gemini-compat-content",
+              });
         await maybeCharge(access, {
           model: (result as any)?.modelVersion,
           usage: (result as any)?.usageMetadata,
-          feature: "gemini-compat-content",
+          feature: isAudio ? "gemini-compat-tts" : "gemini-compat-content",
         });
         return sendJson(res, 200, result);
       }

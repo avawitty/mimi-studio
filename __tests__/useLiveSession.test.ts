@@ -66,9 +66,10 @@ const mockLiveHolder: { current: any } = { current: null };
 
 vi.mock('../services/liveAuth', () => ({
   resolveLiveAiCredentials: async () => ({
+    provider: 'gemini',
     ai: { live: mockLiveHolder.current },
     model: 'test-live-model',
-    provider: 'gemini',
+    source: 'ephemeral',
   }),
 }));
 

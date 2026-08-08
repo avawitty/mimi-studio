@@ -42,6 +42,7 @@ interface PatternGraphScreenProps {
   observations: Observation[];
   laws?: CreativeLaw[];
   projectId?: string;
+  editorUserId?: string;
   onCurate: (
     clusterId: string,
     action: 'accepted' | 'rejected' | 'renamed',
@@ -63,6 +64,7 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
   observations,
   laws = [],
   projectId,
+  editorUserId,
   onCurate,
   onContinue,
   tasteSnapshot,
@@ -93,7 +95,7 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
   const scopeLabel = projectId ? `Project ${projectId}` : 'Global taste';
 
   const signalEditor = useTasteSignalEditor({
-    userId: user?.uid,
+    userId: editorUserId ?? user?.uid,
     projectId,
     snapshot: activeSnapshot,
     onSnapshotChange: (snapshot) => {
@@ -206,7 +208,7 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
   const selectedClusterCard = clusterIndex >= 0 ? clusters[clusterIndex] : null;
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto" data-testid="pattern-graph-screen">
       <div className="flex flex-col lg:flex-row">
         <div className="flex-1 px-4 sm:px-6 py-8 min-w-0">
           <p className="text-[10px] uppercase tracking-[0.3em] text-nous-subtle mb-2">Pattern Graph</p>

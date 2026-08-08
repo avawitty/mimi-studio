@@ -26,3 +26,4 @@ export * from "./entitlements.js";
 export * from "./computeModelDelta.js";
 export * from "./signalRefine.js";
 export * from "./applySnapshotEdits.js";
+export * from "./replaySnapshot.js";

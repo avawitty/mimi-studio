@@ -181,6 +181,7 @@ function overlayToEditorElement(layer: ZineCoverOverlayLayer): EditorElement {
 }
 
 function normalizeCover(metadata: ZineMetadata): ZineCoverSpec {
+  const coversFromMeta = metadata.content.meta?.studioCoverVariants;
   if (metadata.coverSpec) {
     return {
       ...metadata.coverSpec,
@@ -188,6 +189,9 @@ function normalizeCover(metadata: ZineMetadata): ZineCoverSpec {
         ...overlay,
         style: { ...overlay.style },
       })),
+      covers: metadata.coverSpec.covers?.length
+        ? metadata.coverSpec.covers
+        : coversFromMeta,
     };
   }
 
@@ -215,10 +219,7 @@ function normalizeCover(metadata: ZineMetadata): ZineCoverSpec {
     treatment: coverTreatment(metadata),
     bakedImageUrl: overlayBaked ? imageUrl : undefined,
     overlayBaked,
-    covers:
-      metadata.coverSpec?.covers ||
-      metadata.content.meta.studioCoverVariants ||
-      undefined,
+    covers: coversFromMeta,
   };
 }
 

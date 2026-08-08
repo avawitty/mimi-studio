@@ -18,6 +18,7 @@ export type GatewayModelRole =
   | "imageEdit"
   | "video"
   | "tts"
+  | "live"
   | "embedding";
 
 /**
@@ -34,6 +35,8 @@ export const GATEWAY_DEFAULT_MODELS: Record<GatewayModelRole, string> = {
   video: "google/veo-3.1-lite-generate-001",
   // Newest dedicated speech model on the gateway catalog
   tts: "xai/grok-tts",
+  // Realtime speech-to-speech for Oracle Cyberdeck (funded via AI Gateway)
+  live: "openai/gpt-realtime-2",
   embedding: "openai/text-embedding-3-small",
 };
 

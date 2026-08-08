@@ -19,6 +19,9 @@ import {
   buildRefusalFromExplicit,
   proposeSavedReasonHypotheses,
   applySavedReasonReview,
+  assertUndoableEdit,
+  deriveEditBaseline,
+  replayTasteSnapshot,
   type CalibrationCandidate,
 } from "./tasteIntelligence/index.js";
 import type {
@@ -780,20 +783,43 @@ async function handleUndoModelEdit(req: any, res: any) {
     );
     const uow = getNeonUnitOfWork();
     const repo = uow.repositories.tasteIntelligence;
+    const scope = body.data.projectId ?? "global";
 
     const edits = await repo.listModelEdits(decoded.uid, {
       projectId: body.data.projectId,
       limit: 50,
     });
-    const original = edits.find((e) => e.id === body.data.editId);
+    const original = assertUndoableEdit(edits, body.data.editId);
     if (!original) {
-      sendOperationalError(res, 404, "EDIT_NOT_FOUND", "Model edit not found.");
+      sendOperationalError(
+        res,
+        409,
+        "UNDO_NOT_ALLOWED",
+        "Undo is limited to reversing the most recent model edit only. Full history rollback is not supported.",
+      );
       return;
     }
 
+    const refusals = await repo.listActiveRefusals(
+      decoded.uid,
+      body.data.projectId,
+    );
+    const latestRow = await repo.getLatestSnapshot(decoded.uid, scope);
+    const materialized =
+      latestRow?.snapshot ?? body.data.snapshot;
+    const baseline = deriveEditBaseline(materialized, edits);
+    const authoritativeBefore = replayTasteSnapshot({
+      baseline,
+      edits,
+      refusals,
+    });
+
     const undoEdit = createUndoEdit(original);
-    const beforeSnapshot = body.data.snapshot;
-    const afterSnapshot = applyEditsToSnapshot(beforeSnapshot, [undoEdit]);
+    const afterSnapshot = replayTasteSnapshot({
+      baseline,
+      edits: [...edits, undoEdit],
+      refusals,
+    });
 
     await uow.transaction(async (repositories) => {
       await repositories.tasteIntelligence.appendModelEdit(undoEdit);
@@ -804,8 +830,13 @@ async function handleUndoModelEdit(req: any, res: any) {
       );
     });
 
-    const modelDelta = computeModelDelta(beforeSnapshot, afterSnapshot);
-    sendJson(res, 200, { edit: undoEdit, snapshot: afterSnapshot, modelDelta });
+    const modelDelta = computeModelDelta(authoritativeBefore, afterSnapshot);
+    sendJson(res, 200, {
+      edit: undoEdit,
+      snapshot: afterSnapshot,
+      modelDelta,
+      undoSemantics: "single_edit_only",
+    });
   } catch (error) {
     sendOperationalError(
       res,

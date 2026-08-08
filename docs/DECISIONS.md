@@ -10,7 +10,17 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-08 — Why-saved sheet hardening (queue + a11y + review state)
+## 2026-08-08 — AI Gateway funding for TTS + Oracle Cyberdeck live voice
+
+**Decision:** Route Gemini-compat TTS (`responseModalities: AUDIO`, `*-tts-*` models) through `generateGatewaySpeech` in `/api/proxy/gemini` with funded-gateway metering. Mint Oracle Cyberdeck live sessions via `gateway.experimental_realtime.getToken` in `/api/live/token` when `AI_GATEWAY_API_KEY` is configured; client connects with `GatewayLiveConnection` (WebSocket codec). Keep Gemini ephemeral tokens as fallback when gateway is absent or for BYOK `x-api-key`.
+
+**Alternatives rejected:** (1) Requiring `GEMINI_API_KEY` for all vocal features despite funded credits. (2) One-shot TTS only for Cyberdeck (product needs bidirectional live). (3) Adding `@ai-sdk/react` solely for `useRealtime` in this pass.
+
+**Why:** Lab users with plan-funded gateway credits were blocked on vocal sync and narration because live/TTS paths hard-depended on a server Gemini key. Gateway catalog already exposes `tts` and realtime models (`lib/models.ts`).
+
+**Ref:** `lib/ai/generate.ts`, `lib/aiGatewayCompat.ts`, `api/live/token.ts`, `hooks/gatewayLiveConnection.ts`, `hooks/useLiveSession.ts`, `services/liveAuth.ts`
+
+---
 
 **Decision:** Serialize multi-image why-saved prompts through `useWhySavedPrompt` artifact queue (one sheet at a time; Done exits queue; dismiss advances). Per-hypothesis review pending/error state; `epistemicLabelForHypothesis` centralizes Inferred/Observed/Creator labels; `useModalFocus` traps focus in `WhySavedSheet`.
 
@@ -43,6 +53,15 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 - Replacing Tailor v2 `generationContract` with TI compiler output (breaks existing zine/Tailor prompt paths).
 
 **Rationale:** Studio needs visible, pre-generation contracts and post-generation critique without forking Tailor's canonical profile contract. Merge keeps both sources authoritative: Tailor strategic rules + TI evidence-linked compiler modes.
+
+---
+
+## 2026-08-08 — Safe undo semantics for Taste Intelligence model edits
+
+**Decision:** Limit undo to single-edit reversal (most recent forward model edit only) with explicit UI copy; server recomputes authoritative snapshot via `replayTasteSnapshot` from derived baseline + immutable edit/refusal log instead of trusting client snapshot. Returns `409 UNDO_NOT_ALLOWED` when undo target is not the latest forward edit.
+
+**Alternatives rejected:** Full historical rollback UI (misleading without full event replay); client-authoritative undo (non-deterministic on reload).
+
 
 ---
 

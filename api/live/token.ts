@@ -1,21 +1,23 @@
 import {
   cors,
   providerKey,
+  readJsonBody,
   requireMethod,
   sendError,
   sendJson,
 } from "../../lib/apiUtils.js";
+import { getServerAiGatewayKey, mapGeminiVoiceToGateway } from "../../lib/aiGatewayCompat.js";
 import { modelFor } from "../../services/modelConfig.js";
 
 /**
- * Mint a short-lived Gemini Live ephemeral token for browser WebSocket sessions.
- * Live cannot route through the HTTP AI Gateway proxy — the client connects
- * directly to Google with this token (or a BYOK key).
+ * Mint a short-lived realtime session for the Oracle Cyberdeck.
  *
- * Authorization: BYOK via x-api-key, OR signed-in funded-gateway access.
- * Unauthenticated server-key minting is opt-in via MIMI_LIVE_ALLOW_UNAUTH=true
- * for local smoke tests only — never enabled by MIMI_ENABLE_SERVER_AI alone
- * (server.ts auto-sets that whenever any provider key exists).
+ * Preferred path: Vercel AI Gateway realtime (`gateway.experimental_realtime.getToken`)
+ * with funded-gateway credit metering — no GEMINI_API_KEY required.
+ *
+ * Escape hatches:
+ * - BYOK Gemini via x-api-key → Gemini ephemeral auth token (legacy live SDK path)
+ * - MIMI_LIVE_ALLOW_UNAUTH=true for local smoke tests only
  */
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
@@ -27,35 +29,115 @@ export default async function handler(req: any, res: any) {
       Number(process.env.MIMI_LIVE_CREDIT_COST || 2),
     );
     const headerKey = String(req.headers["x-api-key"] || "").trim();
-    const model = modelFor("live", "gemini");
+    const body = await readJsonBody(req).catch(() => ({}));
+    const sessionConfig = (body?.sessionConfig || {}) as Record<string, unknown>;
+    const gatewayVoice = mapGeminiVoiceToGateway(String(sessionConfig.voice || ""));
 
-    let mintKey = "";
     let access: Awaited<ReturnType<typeof funded.resolveMimiFundedGatewayAccess>> | null =
       null;
 
+    // ── BYOK Gemini: legacy ephemeral token for direct GoogleGenAI live.connect ──
     if (headerKey && headerKey !== "undefined") {
-      mintKey = headerKey;
-    } else {
-      // Live ephemeral tokens require a real Gemini Developer API key —
-      // the AI Gateway key cannot mint them.
-      const serverKey =
-        String(process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim() ||
-        providerKey(req, "gemini");
-      if (!serverKey) {
+      const model = modelFor("live", "gemini");
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey: headerKey,
+        httpOptions: { apiVersion: "v1alpha" },
+      });
+
+      const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      const newSessionExpireTime = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+      const token = await ai.authTokens.create({
+        config: {
+          uses: 1,
+          expireTime,
+          newSessionExpireTime,
+          httpOptions: { apiVersion: "v1alpha" },
+        },
+      });
+
+      if (!token?.name) {
+        return sendError(res, 502, "Gemini did not return a live session token.", "LIVE_TOKEN_EMPTY");
+      }
+
+      return sendJson(res, 200, {
+        token: token.name,
+        model,
+        apiVersion: "v1alpha",
+        provider: "gemini",
+        expireTime,
+        newSessionExpireTime,
+      });
+    }
+
+    // ── Funded AI Gateway realtime (preferred) ──
+    const gatewayKey = getServerAiGatewayKey();
+    if (gatewayKey) {
+      access = await funded.resolveMimiFundedGatewayAccess(req, liveCost);
+      const allowUnauth = process.env.MIMI_LIVE_ALLOW_UNAUTH === "true";
+
+      if (!access.allowed && !allowUnauth) {
+        if (access.uid) {
+          return sendError(
+            res,
+            402,
+            "Insufficient credits for voice communion.",
+            "LIVE_CREDITS",
+          );
+        }
         return sendError(
           res,
-          503,
-          "Voice sync unavailable: configure GEMINI_API_KEY or add a Gemini key in Settings.",
-          "LIVE_KEY_MISSING",
+          403,
+          "Sign in or add a Gemini key in Settings to initiate vocal sync.",
+          "LIVE_AUTH_REQUIRED",
         );
       }
 
-      access = await funded.resolveMimiFundedGatewayAccess(req, liveCost);
-      if (access.allowed) {
-        mintKey = serverKey;
-      } else if (process.env.MIMI_LIVE_ALLOW_UNAUTH === "true") {
-        // Explicit local/dev override only — not tied to MIMI_ENABLE_SERVER_AI.
-        mintKey = serverKey;
+      const liveModel = modelFor("live", "gateway");
+      const { createGateway } = await import("ai");
+      const gatewayProvider = createGateway({ apiKey: gatewayKey });
+      const { token, url } = await gatewayProvider.experimental_realtime.getToken({
+        model: liveModel,
+      });
+
+      if (access?.billable) {
+        await funded.chargeMimiFundedGateway(access, {
+          model: liveModel,
+          feature: "gateway-live-realtime",
+        });
+      }
+
+      return sendJson(res, 200, {
+        token,
+        url,
+        model: liveModel,
+        provider: "gateway",
+        tools: [],
+        sessionConfig: {
+          voice: gatewayVoice || "alloy",
+          instructions: String(sessionConfig.instructions || ""),
+          turnDetection: sessionConfig.turnDetection || { type: "server-vad" },
+        },
+      });
+    }
+
+    // ── Fallback: server Gemini ephemeral when gateway is not configured ──
+    const serverGeminiKey =
+      String(process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim() ||
+      providerKey(req, "gemini");
+
+    if (!serverGeminiKey) {
+      return sendError(
+        res,
+        503,
+        "Voice sync unavailable: configure AI_GATEWAY_API_KEY (preferred) or GEMINI_API_KEY.",
+        "LIVE_KEY_MISSING",
+      );
+    }
+
+    access = await funded.resolveMimiFundedGatewayAccess(req, liveCost);
+    if (!access.allowed) {
+      if (process.env.MIMI_LIVE_ALLOW_UNAUTH === "true") {
         access = null;
       } else if (access.uid) {
         return sendError(
@@ -74,15 +156,15 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    const model = modelFor("live", "gemini");
     const { GoogleGenAI } = await import("@google/genai");
     const ai = new GoogleGenAI({
-      apiKey: mintKey,
+      apiKey: serverGeminiKey,
       httpOptions: { apiVersion: "v1alpha" },
     });
 
     const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     const newSessionExpireTime = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-
     const token = await ai.authTokens.create({
       config: {
         uses: 1,
@@ -107,6 +189,7 @@ export default async function handler(req: any, res: any) {
       token: token.name,
       model,
       apiVersion: "v1alpha",
+      provider: "gemini",
       expireTime,
       newSessionExpireTime,
     });
