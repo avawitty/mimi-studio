@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 import { ZineMetadata, PocketItem, LineageEntry, NarrativeThread, MemoryAtom, AtelierObject, SemioticSignal } from '../types';
 import { generateAudio, animateShardWithVeo, transcribeAudio } from '../services/geminiService';
 import { subscribeToPocketItems, fetchLineageEntry, saveNarrativeThread, saveTask } from '../services/firebaseUtils';
-import { Loader2, X, Volume2, Orbit, Eye, Target, Layers, Moon, Sparkles, Terminal, Quote, ArrowDown, Grid3X3, Bookmark, Check, Play, Pause, ExternalLink, Download, Share2, Star, FileText, Map, Compass, Zap, RefreshCw, PenTool, Save, Mic, Square, AlertCircle, StickyNote, History, MessageSquareQuote, Radar, Maximize2, Activity, Archive, FolderPlus, Compass as RoadmapIcon, Stars as CelestialIcon, ArrowRight, CornerDownRight, Image as ImageIcon, Film, MousePointer2, Briefcase, BookOpen, ChevronDown, Hash, Search, Menu, Plus, Radio, Heart, MessageSquare, Scissors, Pin, ShieldCheck } from 'lucide-react';
+import { Loader2, X, Volume2, Orbit, Eye, Target, Layers, Moon, Sparkles, Terminal, Quote, ArrowDown, Grid3X3, Bookmark, Check, Play, Pause, ExternalLink, Download, Share2, Star, FileText, Map, Compass, Zap, RefreshCw, PenTool, Save, Mic, Square, AlertCircle, StickyNote, History, MessageSquareQuote, Radar, Maximize2, Activity, Archive, FolderPlus, Compass as RoadmapIcon, Stars as CelestialIcon, ArrowRight, CornerDownRight, Image as ImageIcon, Film, MousePointer2, Briefcase, BookOpen, ChevronDown, Hash, Search, Menu, Plus, Radio, Heart, MessageSquare, Scissors, Pin } from 'lucide-react';
 import { ExecutionBlock } from './ExecutionBlock';
 import { VisualLanguageReflection } from './VisualLanguageReflection';
 import { Visualizer } from './Visualizer';
@@ -66,8 +66,6 @@ import {
   createArtifactRevision,
   withCanonicalZinePages,
 } from '../lib/zine/zineMigrations';
-import { ZineProofMode } from './zine/ZineProofMode';
-import { swapZinePlateStock } from '../lib/swapZinePlateStock';
 
 const THEMES = {
   'white editorial': { bg: '#FDFBF7', text: '#1C1917', accent: '#78716c', thread: '#E5E7EB', glow: 'transparent', surface: '#FFFFFF', border: '#F5F5F4', font: 'editorial' },
@@ -220,7 +218,6 @@ export const AnalysisDisplay: React.FC<{
  const [isVoiceLoading, setIsVoiceLoading] = useState(false);
  const [showExport, setShowExport] = useState(false);
  const [showShare, setShowShare] = useState(false);
- const [showProof, setShowProof] = useState(false);
  const [showComments, setShowComments] = useState(false);
  const [showNotes, setShowNotes] = useState(false);
  const [showReflection, setShowReflection] = useState(true);
@@ -268,7 +265,6 @@ export const AnalysisDisplay: React.FC<{
  const [audioProgress, setAudioProgress] = useState(0);
  const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
  const [flippedSignalIndex, setFlippedSignalIndex] = useState<number | null>(null);
- const plateSwapCountsRef = useRef<Record<string, number>>({});
  const atelierOwnerUid = user?.uid;
  const [atelierObjects, setAtelierObjects] = useState<AtelierObject[]>(() =>
    listAtelierObjects(atelierOwnerUid),
@@ -950,109 +946,6 @@ export const AnalysisDisplay: React.FC<{
    }
  };
 
- const handleApproveProof = () => {
-   const now = Date.now();
-   const approved = withCanonicalZinePages(
-     {
-       ...metadata,
-       artifactSchemaVersion: normalizedArtifact.schemaVersion,
-       artifactAuthorship: normalizedArtifact.authorship,
-       lifecycleStatus: 'approved',
-       sourcePacket: normalizedArtifact.sourcePacket,
-       reading: normalizedArtifact.reading,
-       editorialDirection: normalizedArtifact.direction,
-       issueStructure: normalizedArtifact.issueStructure,
-       coverSpec: normalizedArtifact.cover,
-       colophon: normalizedArtifact.colophon,
-       publication: {
-         ...normalizedArtifact.publication,
-         revision: normalizedArtifact.revision,
-       },
-       exportState: normalizedArtifact.exportState,
-       revision: normalizedArtifact.revision,
-       revisions: normalizedArtifact.revisions,
-       updatedAt: now,
-     },
-     normalizedArtifact.pages,
-     now,
-   );
-   onUpdateMetadata(approved);
-   setShowProof(false);
-   window.dispatchEvent(
-     new CustomEvent('mimi:registry_alert', {
-       detail: { message: 'Issue proof approved and frozen at this revision.' },
-     }),
-   );
- };
-
- const handleSwapStockPlate = async (pageIndex: number): Promise<boolean> => {
-   const page = normalizedArtifact.pages[pageIndex];
-   if (!page) return false;
-
-   const pageKey = page.id || `${metadata.id}:page:${pageIndex + 1}`;
-   const swapIndex = (plateSwapCountsRef.current[pageKey] || 0) + 1;
-   plateSwapCountsRef.current[pageKey] = swapIndex;
-
-   try {
-     const swapped = await swapZinePlateStock(page, swapIndex);
-     if (!swapped) {
-       window.dispatchEvent(
-         new CustomEvent('mimi:registry_alert', {
-           detail: {
-             message:
-               'No alternate stock plate matched — configure UNSPLASH_ACCESS_KEY or try again.',
-             type: 'error',
-           },
-         }),
-       );
-       return false;
-     }
-
-     const revisionRequired = artifactRequiresRevision(normalizedArtifact.status);
-     const revisedArtifact = revisionRequired
-       ? createArtifactRevision(normalizedArtifact, {
-           reason: `Stock plate swapped on page ${pageIndex + 1}`,
-           changedPageIds: [pageKey],
-         })
-       : normalizedArtifact;
-     const pages = [...revisedArtifact.pages];
-     pages[pageIndex] = {
-       ...swapped,
-       revision: revisedArtifact.revision,
-     };
-     onUpdateMetadata(
-       withCanonicalZinePages(
-         {
-           ...metadata,
-           artifactSchemaVersion: revisedArtifact.schemaVersion,
-           lifecycleStatus: revisedArtifact.status,
-           revision: revisedArtifact.revision,
-           revisions: revisedArtifact.revisions,
-           updatedAt: Date.now(),
-         },
-         pages,
-       ),
-     );
-     window.dispatchEvent(
-       new CustomEvent('mimi:registry_alert', {
-         detail: { message: 'Stock plate swapped — attribution updated on this spread.' },
-       }),
-     );
-     return true;
-   } catch (error) {
-     console.error('Stock plate swap failed', error);
-     window.dispatchEvent(
-       new CustomEvent('mimi:registry_alert', {
-         detail: {
-           message: 'Could not swap stock plate. Try again in a moment.',
-           type: 'error',
-         },
-       }),
-     );
-     return false;
-   }
- };
-
  const handleHypothesisImageGenerated = async (base64: string) => {
  if (!user?.uid) return;
  try {
@@ -1647,15 +1540,6 @@ export const AnalysisDisplay: React.FC<{
 
   <div className="fixed top-8 right-8 z-[10000] flex items-center gap-2">
     <button
-      type="button"
-      onClick={() => setShowProof(true)}
-      className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/90 dark:bg-stone-900/90 backdrop-blur-md px-4 md:px-5 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer"
-      title="Open issue proof and diagnostics"
-    >
-      <ShieldCheck size={13} />
-      <span className="hidden sm:inline">[ PROOF ]</span>
-    </button>
-    <button
       onClick={() => setIsDedicatedReadingMode(true)}
       className="font-mono text-[10px] uppercase tracking-[0.2em] font-black text-nous-subtle hover:text-nous-text transition-all bg-white/90 dark:bg-stone-900/90 backdrop-blur-md px-4 md:px-5 py-3 border border-nous-border hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 cursor-pointer"
       title="Enter dedicated Reading Mode with expanded line height, increased margins, and zero distraction chrome"
@@ -1736,14 +1620,6 @@ export const AnalysisDisplay: React.FC<{
  )}
  {showExport && <ExportChamber metadata={metadata} onClose={() => setShowExport(false)} />}
  {showShare && <SocialShareModal metadata={metadata} onClose={() => setShowShare(false)} />}
- {showProof && (
-   <ZineProofMode
-     artifact={normalizedArtifact}
-     onClose={() => setShowProof(false)}
-     onApprove={isOwner ? handleApproveProof : undefined}
-     onSwapStockPlate={isOwner ? handleSwapStockPlate : undefined}
-   />
- )}
  <ProsceniumPublishConsentModal
  open={showBroadcastConsent}
  artifactTitle={metadata.content?.headlines?.[0] || metadata.title || 'Untitled'}

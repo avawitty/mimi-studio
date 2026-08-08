@@ -495,4 +495,17 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Why:** Post-generation critique must evaluate what was produced, with honest partial states when imagery cannot be analyzed.
 
-**Ref:** `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`, `hooks/useStudioTasteCompiler.ts`
+**Ref:** `hooks/useStudioTasteCompiler.ts`, `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`
+
+---
+
+## 2026-08-08 — Studio zine generation: direct engine + layout enhancement
+
+**Decision:** `createZine` no longer runs the editorial issue-plan / proof pipeline (`realizeZineContentFromPlan`). Raw model output is post-processed with `enhanceZineGenerationLayout` — stable page IDs, grammars, and default spread layouts via `buildDefaultSpreadElements`. Hi-fi plate bake develops any page with an `imagePrompt` (no plan slot filter). Proof mode UI removed from zine reveal.
+
+**Alternatives rejected:** (1) Keep issue-plan compression in the generation hot path — added compile/proof complexity without improving first reveal. (2) Delete all plan/proof libraries — retained for legacy artifact hydration and Edit/Press export; not wired into Studio generation.
+
+**Why:** Creators asked for operable generation with better layout, not an extra proof/compile gate before reading the issue.
+
+**Ref:** `lib/zine/enhanceZineGenerationLayout.ts`, `services/zineGenerator.ts`, `lib/bakeZinePlates.ts`, `components/AnalysisDisplay.tsx`
+
