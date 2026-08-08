@@ -11,6 +11,7 @@ import type {
 } from "../../types";
 import { partitionAssertions, scoreAssertion } from "./tasteStateLogic";
 import { tasteStateToPromptContext } from "./tastePromptContext";
+import { searchEvidenceAtomsSemantic } from "./evidenceAtomRetrieval";
 
 const ONE_WEEK_MS = 7 * 86_400_000;
 
@@ -99,18 +100,40 @@ export async function getServerTasteState(
   db: AdminDb,
   userId: string,
   context?: TasteScope,
-  options: { maxEvidence?: number; maxAssertions?: number } = {},
+  options: {
+    maxEvidence?: number;
+    maxAssertions?: number;
+    queryText?: string;
+    apiKey?: string;
+    projectId?: string;
+  } = {},
 ): Promise<TasteState> {
-  const { maxEvidence = 12, maxAssertions = 20 } = options;
+  const { maxEvidence = 12, maxAssertions = 20, queryText, apiKey, projectId } = options;
 
   if (!userId || userId === "ghost") {
     return emptyTasteState(userId, context);
   }
 
-  const [allAssertions, allConcepts, recentAtoms] = await Promise.all([
+  const loadRecentEvidence = () => loadEvidenceAtoms(db, userId, context, maxEvidence);
+
+  let relevantEvidence: EvidenceAtom[];
+  if (queryText?.trim() && apiKey) {
+    const ranked = await searchEvidenceAtomsSemantic(db, userId, queryText, apiKey, {
+      context,
+      projectId,
+      maxResults: maxEvidence,
+    });
+    relevantEvidence = ranked.map((entry) => entry.atom);
+    if (!relevantEvidence.length) {
+      relevantEvidence = await loadRecentEvidence();
+    }
+  } else {
+    relevantEvidence = await loadRecentEvidence();
+  }
+
+  const [allAssertions, allConcepts] = await Promise.all([
     loadAssertions(db, userId),
     loadConcepts(db, userId),
-    loadEvidenceAtoms(db, userId, context, maxEvidence),
   ]);
 
   const currentExplorations = allConcepts
@@ -163,7 +186,7 @@ export async function getServerTasteState(
     currentExplorations,
     tensions: tensions.slice(0, 8),
     inferredAxes: [],
-    relevantEvidence: recentAtoms,
+    relevantEvidence,
     confidence: Math.min(1, overallConfidence),
     recentChanges,
     generatedAt: Date.now(),
@@ -175,8 +198,17 @@ export async function getServerTastePromptContext(
   db: AdminDb,
   userId: string,
   context?: TasteScope,
+  options: {
+    queryText?: string;
+    apiKey?: string;
+    projectId?: string;
+  } = {},
 ): Promise<string> {
-  const state = await getServerTasteState(db, userId, context);
+  const state = await getServerTasteState(db, userId, context, {
+    queryText: options.queryText,
+    apiKey: options.apiKey,
+    projectId: options.projectId,
+  });
   const block = tasteStateToPromptContext(state);
   if (!block) return "";
   return `TASTE INTELLIGENCE (approved / inferred — do not invent beyond this):\n${block}`;

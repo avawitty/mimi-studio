@@ -342,3 +342,15 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 **Why:** Closes Phase 2 ingest parity (Tailor + Pocket → canonical atoms), enables future semantic retrieval, and extends taste-aware generation to dossier synthesis and hi-fi zine plate bakes.
 
 **Ref:** `lib/taste/pocketItemBridge.ts`, `lib/taste/evidenceAtomEmbedding.ts`, `api/mimi/synthesize-dossier.ts`, `lib/bakeZinePlates.ts`, `services/zineGenerator.ts`
+
+---
+
+## 2026-08-08 — Taste Intelligence Phase 3 (semantic retrieval + atom supersession)
+
+**Decision:** Read `embeddingRef` vectors via `searchEvidenceAtomsSemantic` (cosine rank, sovereign-style threshold). When `queryText` + Gateway key are present, `getServerTasteState` populates `relevantEvidence` semantically; otherwise recency fallback. Serialize `relevantEvidence` in `tasteStateToPromptContext`. Expose `POST /api/mimi/evidence/search` and `GET /api/mimi/taste-state?q=`. Scribe specimen retrieval prefers `EvidenceAtom`; legacy `EvidenceNode` loop only for unmigrated nodes (no matching `tailorEvidenceNodeId` on atoms).
+
+**Alternatives rejected:** (1) Inline vectors on atom docs — bloats reads. (2) Remove EvidenceNode reads entirely in Scribe — would drop unmigrated project evidence until backfill.
+
+**Why:** Closes the read path for Phase 2 embeddings and reduces duplicate specimen reads without blocking Tailor's project graph.
+
+**Ref:** `lib/taste/evidenceAtomRetrieval.ts`, `lib/mimiEvidenceSearchRoute.ts`, `services/scribeService.ts`, `lib/taste/tastePromptContext.ts`

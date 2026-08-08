@@ -87,7 +87,7 @@
 | **Shadow memory migration** | shipped | UID-gated reindex | — |
 | **Gateway entitlements** | shipped | Stripe + promo paths | — |
 | **Serverless lazy graphs** | shipped | CI: `verify:api-lazy-graphs` | — |
-| **Taste Intelligence (Phase 1–2)** | infrastructure | Pocket mirror; embed pipeline; taste in dossier + zine bake | Semantic retrieval from `embeddingRef`; deprecate duplicate EvidenceNode reads |
+| **Taste Intelligence (Phase 1–3)** | infrastructure | Semantic retrieval + Scribe atom migration | Tailor graph ID migration; Floor search over atom embeddings |
 | **Taste Corpus explorer** | `/taste-corpus` | shipped | Demonstration seed manifest (20 specimens) | Wire `--from-sovereign` export; expand corpus from Floor covers |
 | **Public face kit** | — | shipped | `PublicField` + `isPublicEditorialFlowMode` single-scroll contract | Audit remaining dark-plate chambers for nested scroll only if reported |
 

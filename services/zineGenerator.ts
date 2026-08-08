@@ -227,6 +227,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
 
             const tasteIntelligenceContext = await fetchTastePromptContext(
                 opts.tasteContext || "editorial",
+                text,
             );
 
             const dollContext = opts.dollPromptContext

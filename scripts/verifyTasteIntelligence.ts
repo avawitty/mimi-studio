@@ -11,6 +11,10 @@ import {
 import { evidenceNodeToAtomInput } from "../lib/taste/evidenceNodeBridge";
 import { pocketItemToAtomInput } from "../lib/taste/pocketItemBridge";
 import { evidenceAtomEmbeddingRef } from "../lib/taste/evidenceAtomEmbedding";
+import {
+  rankEvidenceAtomsByEmbedding,
+  MIN_EVIDENCE_SEMANTIC_SCORE,
+} from "../lib/taste/evidenceAtomRetrieval";
 import { buildEvidenceAtomFromInput } from "../lib/taste/buildEvidenceAtom";
 import { createEvidenceAtomSchema } from "../lib/taste/evidenceAtomSchema";
 import { atomReactionToCorrection } from "../lib/taste/correctionLogic";
@@ -146,5 +150,56 @@ assert(
   evidenceAtomEmbeddingRef("u1", "atom-1") === "users/u1/evidenceAtomEmbeddings/atom-1",
   "embedding ref is a stable users-scoped path",
 );
+
+// ─── Semantic ranking ─────────────────────────────────────────────────────────
+
+const rankAtoms = [
+  {
+    id: "atom-a",
+    userId: "u1",
+    kind: "image" as const,
+    sourceType: "image" as const,
+    originalSource: "a",
+    sourceMetadata: {},
+    observationIds: [] as string[],
+    embeddingRef: "users/u1/evidenceAtomEmbeddings/atom-a",
+    ingestSource: "tailor" as const,
+    tasteImpact: true,
+    userReaction: "suggested" as const,
+    confidence: 0.5,
+    stabilityClass: "project" as const,
+    processingState: "analyzed" as const,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  {
+    id: "atom-b",
+    userId: "u1",
+    kind: "url" as const,
+    sourceType: "website" as const,
+    originalSource: "b",
+    sourceMetadata: {},
+    observationIds: [] as string[],
+    embeddingRef: "users/u1/evidenceAtomEmbeddings/atom-b",
+    ingestSource: "pocket" as const,
+    tasteImpact: true,
+    userReaction: "suggested" as const,
+    confidence: 0.5,
+    stabilityClass: "recurring" as const,
+    processingState: "analyzed" as const,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+];
+const ranked = rankEvidenceAtomsByEmbedding(
+  [1, 0],
+  rankAtoms,
+  new Map([
+    ["atom-a", [1, 0]],
+    ["atom-b", [0, 1]],
+  ]),
+  { minScore: MIN_EVIDENCE_SEMANTIC_SCORE, maxResults: 1 },
+);
+assert(ranked[0]?.atom.id === "atom-a", "semantic rank prefers nearest embedding");
 
 console.log("verify:taste-intelligence — all checks passed");

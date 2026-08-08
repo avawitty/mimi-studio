@@ -35,6 +35,10 @@ import { evidenceNodeToAtomInput } from "../lib/taste/evidenceNodeBridge";
 import { pocketItemToAtomInput } from "../lib/taste/pocketItemBridge";
 import { evidenceAtomEmbeddingRef } from "../lib/taste/evidenceAtomEmbedding";
 import {
+  rankEvidenceAtomsByEmbedding,
+  MIN_EVIDENCE_SEMANTIC_SCORE,
+} from "../lib/taste/evidenceAtomRetrieval";
+import {
   tasteStateToPromptContext,
   tasteConfidenceLabel,
 } from "../services/taste/tasteStateService";
@@ -306,6 +310,45 @@ describe("tasteStateToPromptContext", () => {
     expect(prompt).toContain("CURRENT EXPLORATIONS");
     expect(prompt).toContain("archival melancholy");
   });
+
+  it("includes relevant evidence atoms when present", () => {
+    const state: TasteState = {
+      userId: "u1",
+      stablePreferences: [],
+      negativePreferences: [],
+      emergingPreferences: [],
+      currentExplorations: [],
+      tensions: [],
+      inferredAxes: [],
+      relevantEvidence: [
+        {
+          id: "atom-1",
+          userId: "u1",
+          kind: "image",
+          sourceType: "image",
+          originalSource: "https://example.com/ref.jpg",
+          sourceMetadata: {},
+          observationIds: [] as string[],
+          ingestSource: "tailor",
+          tasteImpact: true,
+          userReaction: "suggested",
+          confidence: 0.5,
+          stabilityClass: "project",
+          processingState: "analyzed",
+          semanticDescription: "Sparse editorial spread with high-contrast serif.",
+          embeddingRef: "users/u1/evidenceAtomEmbeddings/atom-1",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      confidence: 0.4,
+      recentChanges: [],
+      generatedAt: Date.now(),
+    };
+    const prompt = tasteStateToPromptContext(state);
+    expect(prompt).toContain("RELEVANT EVIDENCE");
+    expect(prompt).toContain("Sparse editorial spread");
+  });
 });
 
 describe("capAssertionConfidence", () => {
@@ -435,6 +478,42 @@ describe("evidenceAtomEmbeddingRef", () => {
     expect(evidenceAtomEmbeddingRef("u1", "atom-1")).toBe(
       "users/u1/evidenceAtomEmbeddings/atom-1",
     );
+  });
+});
+
+describe("rankEvidenceAtomsByEmbedding", () => {
+  const baseAtom = {
+    userId: "u1",
+    kind: "image" as const,
+    sourceType: "image" as const,
+    originalSource: "ref",
+    sourceMetadata: {},
+    observationIds: [] as string[],
+    ingestSource: "tailor" as const,
+    tasteImpact: true,
+    userReaction: "suggested" as const,
+    confidence: 0.5,
+    stabilityClass: "project" as const,
+    processingState: "analyzed" as const,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  it("ranks atoms by cosine similarity above threshold", () => {
+    const atoms = [
+      { ...baseAtom, id: "a1", embeddingRef: "users/u1/evidenceAtomEmbeddings/a1" },
+      { ...baseAtom, id: "a2", embeddingRef: "users/u1/evidenceAtomEmbeddings/a2" },
+    ];
+    const embeddings = new Map<string, number[]>([
+      ["a1", [1, 0]],
+      ["a2", [0, 1]],
+    ]);
+    const ranked = rankEvidenceAtomsByEmbedding([1, 0], atoms, embeddings, {
+      minScore: MIN_EVIDENCE_SEMANTIC_SCORE,
+      maxResults: 2,
+    });
+    expect(ranked[0]?.atom.id).toBe("a1");
+    expect(ranked[0]?.score).toBeGreaterThan(0.9);
   });
 });
 

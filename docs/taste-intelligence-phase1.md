@@ -68,7 +68,11 @@ Signed-in requests to these routes receive `TASTE INTELLIGENCE` in the system pr
 - `POST /api/mimi/synthesize-dossier` (optional `tasteContext` in body)
 - Studio zine bake (`createZine` + `bakeZineVisualPlates`) — fetches `GET /api/mimi/taste-state` client-side
 
-Read path: `GET /api/mimi/taste-state?context=editorial`
+Read path: `GET /api/mimi/taste-state?context=editorial&q=sparse+editorial+spread`
+
+Semantic search: `POST /api/mimi/evidence/search` `{ query, context?, projectId?, maxResults? }`
+
+When `q` / `queryText` is provided and AI Gateway is available, `relevantEvidence` is ranked by cosine similarity over `embeddingRef` vectors (fallback: recency).
 
 ## Embeddings
 
@@ -87,8 +91,9 @@ The atom's `embeddingRef` field stores the stable path `users/{uid}/evidenceAtom
 - [x] Pocket mirror (like Tailor bridge)
 - [x] Embedding refs on atoms after analysis
 - [x] Taste context in zine bake + dossier synthesis routes
-- [ ] Deprecate duplicate reads from `EvidenceNode` where `EvidenceAtom` supersedes
-- [ ] Semantic retrieval using `embeddingRef` in generation / Floor search
+- [x] Semantic retrieval using `embeddingRef` in taste state + generation
+- [x] Scribe specimen retrieval prefers `EvidenceAtom`; legacy `EvidenceNode` fallback only when unmigrated
+- [ ] Deprecate duplicate reads from `EvidenceNode` in Tailor analysis graph (project-scoped IDs remain)
 
 ## Correction loop
 

@@ -41,6 +41,7 @@ import generateImageHandler from "./api/mimi/generate-image";
 import synthesizeDossierHandler from "./api/mimi/synthesize-dossier";
 import { handleMimiEvidenceRoute } from "./lib/mimiEvidenceRoute";
 import { handleMimiEvidenceAnalyzeRoute } from "./lib/mimiEvidenceAnalyzeRoute";
+import { handleMimiEvidenceSearchRoute } from "./lib/mimiEvidenceSearchRoute";
 import { handleMimiTasteStateRoute } from "./lib/mimiTasteStateRoute";
 import { fetchPinterestBoardPreview } from "./lib/pinterestBoardPreview";
 import { fetchLetterboxdFeed } from "./lib/letterboxdFeed";
@@ -1817,6 +1818,17 @@ async function startServer() {
       await handleMimiEvidenceAnalyzeRoute(req, res);
     } catch (error: any) {
       console.error("MIMI // Route error in /api/mimi/evidence/analyze:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/evidence/search", async (req, res) => {
+    try {
+      await handleMimiEvidenceSearchRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/evidence/search:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }

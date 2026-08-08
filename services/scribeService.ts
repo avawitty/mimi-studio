@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import type { MemoryAtom, PocketItem, TasteGraphNode, CreativeLaw, EvidenceNode, Observation, TailorProject } from '../types';
+import type { MemoryAtom, PocketItem, TasteGraphNode, CreativeLaw, EvidenceNode, Observation, TailorProject, EvidenceAtom } from '../types';
 import { fetchMemoryAtoms } from './memoryService';
 import { auth } from './firebaseInit';
 import { getTasteGraph } from './tasteGraphService';
+import { queryEvidenceAtoms } from './taste/evidenceAtomService';
 import { 
   listTailorProjects, 
   getTailorProject, 
@@ -209,6 +210,7 @@ export async function retrieveScribeContext(
     activeProject,
     creativeLaws,
     evidenceNodes,
+    projectEvidenceAtoms,
     observations,
     dolls,
   ] = await Promise.all([
@@ -219,6 +221,11 @@ export async function retrieveScribeContext(
     projectId ? getTailorProject(userId, projectId).catch((): null => null) : Promise.resolve(null),
     projectId ? listCreativeLaws(userId, projectId).catch(() => [] as CreativeLaw[]) : Promise.resolve([] as CreativeLaw[]),
     projectId ? listEvidenceNodes(userId, projectId).catch(() => [] as EvidenceNode[]) : Promise.resolve([] as EvidenceNode[]),
+    projectId
+      ? queryEvidenceAtoms(userId, { projectId, tasteImpact: true, maxResults: 40 }).catch(
+          () => [] as EvidenceAtom[],
+        )
+      : Promise.resolve([] as EvidenceAtom[]),
     projectId ? listObservations(userId, projectId).catch(() => [] as Observation[]) : Promise.resolve([] as Observation[]),
     listDolls(userId).catch((): Awaited<ReturnType<typeof listDolls>> => []),
   ]);
@@ -312,7 +319,7 @@ export async function retrieveScribeContext(
     });
   }
 
-  // 4. Specimens (Pocket items + project evidence nodes)
+  // 4. Specimens (Pocket items + canonical evidence atoms; legacy nodes as fallback)
   for (const item of pocket) {
     const content = typeof item.content === 'string' ? item.content : JSON.stringify(item.content || {});
     const bScore = matchScore(queryWords, `${item.title || ''} ${item.notes || ''} ${content}`);
@@ -328,7 +335,37 @@ export async function retrieveScribeContext(
     });
   }
 
+  const mirroredNodeIds = new Set(
+    projectEvidenceAtoms
+      .map((atom) => (atom.sourceMetadata as { tailorEvidenceNodeId?: string })?.tailorEvidenceNodeId)
+      .filter(Boolean),
+  );
+
+  for (const atom of projectEvidenceAtoms) {
+    if (atom.userReaction === "rejected") continue;
+    const meta = atom.sourceMetadata as { title?: string; tailorEvidenceNodeId?: string };
+    const text = `${meta.title || ""} ${atom.semanticDescription || ""} ${atom.originalSource}`;
+    const bScore = matchScore(queryWords, text);
+    candidates.push({
+      id: atom.id,
+      kind: "specimen",
+      title: meta.title || atom.originalSource.slice(0, 80) || "Evidence atom",
+      excerpt: (atom.semanticDescription || atom.originalSource).slice(0, 300),
+      approvalStatus:
+        atom.userReaction === "accepted"
+          ? "approved"
+          : atom.processingState === "analyzed"
+            ? "approved"
+            : "unapproved",
+      relevance: bScore * 0.55 + AUTHORITY_MODIFIERS.specimen,
+      retrievalReason: "Canonical taste evidence atom linked to this project.",
+      sourceUrl: atom.assetUrl || atom.thumbnailUrl,
+    });
+  }
+
+  // Legacy Tailor evidence nodes — only when not yet mirrored to evidenceAtoms
   for (const ev of evidenceNodes) {
+    if (mirroredNodeIds.has(ev.id)) continue;
     const text = `${ev.title} ${ev.description || ''} ${ev.userCaption || ''}`;
     const bScore = matchScore(queryWords, text);
     candidates.push({
