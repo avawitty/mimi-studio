@@ -18,17 +18,17 @@
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
 | **Scribe** | `/scribe` | shipped | ResearchMemory nested in Atomize tab | Mobile density pass on long capture sessions |
-| **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
+| **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes; **Owner Slide Templates** UI; 10 editorial calibration plates (incl. Used Context, contact sheet, material specimen, forecast drift) | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
 | **Studio (orientation intake)** | `/studio` | shipped | Imagen-first toolbar (Stock / References toggles); inspo carousel + “Publish my rendition”; Unsplash via `/api/inspo/search`; Pinterest board import | Promote compose shell (instrument rail + footnote dock) from legacy console after intake |
 | **Studio (compose console)** | `/studio/worktable-legacy` | partial | Extracted `StudioInstrumentRail`, footnote dock (Continuum · Pocket · Telemetry), polaroid media bar, auto cover index; spectrogram reverse-transcribe not wired | Mount post-intake on `/studio`; live telemetry beyond decorative dash |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
-| **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab |
+| **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab; Export Chamber wired from Publisher Console destinations |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
-| **Taste Signature** | `/signature` | shipped | Expanded reading (thesis, touchpoints, directions, recommendations); approve → `mark_signature` taste event | Public-face mobile review after chrome changes |
-| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; embedding centroid; Studio/Scry auto-embed | Ops: `taste:backfill-floor-sovereign`, `taste:analyze-evidence-atoms` |
-| **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring | Wire candidate embeddings from Scry/Studio paths |
-| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor publish mirrors; embed on analyze; Used Context conflict UI | Semantic retrieval (#223); historical floor backfill job |
+| **Taste Signature** | `/signature` | shipped | Expanded reading (thesis, touchpoints, directions); public `/u/:handle/signature` OG; incremental evidence patch; approve → `mark_signature` | Public-face mobile review |
+| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; Phase 1 `EvidenceAtom` layer + correction UI; embedding centroid; Studio/Scry auto-embed | Ops: `taste:backfill-floor-sovereign`, `taste:analyze-evidence-atoms`; shadow audit after Gateway model bumps |
+| **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring (label + cosine); server-side recompile on ingest | Wire candidate embeddings at all Scry/Studio call sites; embedding space migrations on model change |
+| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context conflict UI; legacy graph coexists | Semantic retrieval (#223); ops backfill scripts |
 | **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
 
 ---
@@ -37,13 +37,14 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Scry** | `/scry` | shipped | Unified retrieval service deferred; taste rerank uses snapshot + refusals when signed in | Keep lane honesty + taste rerank tests in `verify:*` / unit suite |
+| **Scry** | `/scry` | shipped | Curiosity records (local + Firestore); readings ground on profile + celestial + web; unified retrieval service still deferred | Keep lane honesty + curiosity `verify:curiosity-tracking` |
+| **Mesopic Lens** | `/mesopic-lens` | **shipped** | Personal twilight Q&A (distinct from Observatory collective Mesopic); curiosity pattern reports | Celestial handoff when calibration inactive |
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
-| **Observatory** | `/observatory` | **stub** | **Default `loadMeanMedianModeReport("demonstration")`** + demo Mesopic | Live aggregates gated on Proscenium consent pipeline |
-| **Mean Median Mode** | `/mean-median-mode` | **stub** | Same demonstration fixture as Observatory | Collapse or differentiate from Observatory overview |
-| **Forecast** | `/forecast` | partial | Observed panel uses **demonstration** MMM; content vectors key-gated | Remove any residual costume metrics; add Forecast to menu (`prd/chamber-loop-…`) |
+| **Observatory** | `/observatory` | **partial** | Live MMM + Mesopic API, cycle notes, window selector (7–90d), in-chamber withdraw | Mesopic promotion rules tuning; cycle inference calibration |
+| **Mean Median Mode** | `/mean-median-mode` | **partial** | In-chamber segment (same shell as Observatory) | Route alias only — no separate UI fork |
+| **Forecast** | `/forecast` | partial | Intake + Apify queries + **POST /api/forecast** snapshot + Residue artifact panel; cultural vector uses **live** MMM API (empty when no corpus) | Remove residual costume metrics; approved RSS ingest |
 | **Celestial Calibration** | `/celestial-calibration` | shipped | Rising/houses need time + geocoded place | — |
 | **Oracle** | `/oracle` | **partial** | Cyberdeck voice overlay shipped; chamber reports + theme analysis now local-first (`oracleChamberService`); not in `CANON_MODULES` yet; celestial readings ephemeral | Register in canon; optional Neon sync for cross-device reports |
 
@@ -62,7 +63,7 @@
 | **Sanctuary** | `/sanctuary` | shipped | Local-only boundary | — |
 | **The Ward** | `/ward` | shipped | — | — |
 | **Atelier** | `/atelier` | shipped | Soft cap 40 objects | Verify Shopify touchpoint metadata path |
-| **The Proscenium** | `/proscenium` | **stub** | **`mock_1`…`mock_3` Local Echoes** hardcoded in `ProsceniumView` | Replace demo specimens with consented live transmissions or honest empty |
+| **The Proscenium** | `/proscenium` | **partial** | Stage shows consent badges + Observatory handoff; Local Echoes demo specimens illustrate MMM states | Live transmission corpus still thin without signed-in staging |
 | **Studio Map** | `/chamber-map` | shipped | — | — |
 | **Codex** | `/codex` | shipped | — | — |
 
@@ -72,7 +73,7 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Mimi Dolls** | `/mimi-dolls` | partial | Shell-first shipped; **scenario projection deferred**; Rip uses `dolls[0]` only | Add Rip CTA; doll picker for Rip input |
+| **Mimi Dolls** | `/mimi-dolls` | partial | Omni Loop onboarding + time-travel scenes shipped; Rip uses `dolls[0]` only | Rip CTA; cross-user public scene feed |
 | **mimi.rip** | `/rip` | shipped | Deterministic inverse read (v0, no AI enrichment) | Public OG via server HTML on publish routes |
 | **Aesthetic Intelligence** | `/aesthetic-intelligence` | shipped | Aliased → `/tailor/diagnostics` | — |
 | **Art Style Scryer** | `/art-style` | shipped | Aliased → `/tailor/style-lab` | — |
@@ -103,8 +104,8 @@
 | `mimi.you` (skin `you`) | shipped | Full app; canonical identity |
 | `mimi.fish` (skin `fish`) | partial | Share plates + creator shelf; domains attached — run `setup:mimi-fish-domains` for Firebase Auth |
 | `mimi.rip` (skin `rip`) | partial | Inverse public plates + `/rip` chamber; domains attached — run `setup:mimi-rip-domains` |
-| `/u/:handle` | shipped | Public doll/profile cards (skin selects rip/fish/you variant on host) |
-| `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`); canonical share origin `mimi.fish` |
+| `/u/:handle` | shipped | `PublicProfileCard` + compact directory tiles + OG + external links; public doll/profile cards (skin selects rip/fish/you variant on host) |
+| `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`); canonical share origin `mimi.fish`; inline **Refractions** (text + voice) on published issues |
 | `/u/:handle/feed.xml` | shipped | Keep Tabs RSS |
 | `/api/feed` | shipped | Creator feed API |
 
@@ -118,18 +119,18 @@
 | `functions/src/commerceService.ts` | Duplicate `MOCK_PRODUCTS` | Firebase functions path |
 | `components/TheEdit.tsx` | Resolves product cards from `MOCK_PRODUCTS` | Forecast/commerce UI |
 | `services/tailorMockAnalyzer.ts` | `runMockTailorAnalysis` / `createMockTailorAnalysisOutput` | **Unused in app** — dead stub path; remove or gate behind explicit dev flag |
-| `services/collective/loadMeanMedianModeReport.ts` | Default `"demonstration"` source | Observatory, Forecast observed panel |
+| `services/collective/loadMeanMedianModeReport.ts` | Sync `demonstration` / `empty` for tests & opt-in preview | verify scripts, Observatory demo toggle |
 | `services/collective/loadMesopicReport.ts` | Default `"demonstration"` source | Observatory Mesopic lens |
 | `fixtures/collective/demo*.ts` | Labeled demo reports | Collective intelligence offline review |
 | `components/ProsceniumView.tsx` | `mock_1`…`mock_3` transmissions | Local Echoes demo specimens |
-| `components/chambers/ObservatoryChamber.tsx` | Loads demonstration reports on mount | Collective UI default |
+| `components/chambers/ObservatoryChamber.tsx` | Live API fetch + opt-in demo | Collective UI default |
 | `services/geminiClient.ts` | `mockAi` object when keys absent | Test/dev fallback only — must not surface as live output |
 
 ---
 
 ## Cross-cutting debt
 
-1. **Perception loop handoffs** — Observatory → Forecast → Edit not fully wired; Forecast missing from live menu (see `prd/chamber-loop-forecast-observatory-rip-dolls.md`).
+1. **Perception loop handoffs** — Observatory → Forecast → Edit not fully wired; Forecast intake, server snapshot, and Residue panel shipped; live collective MMM still demonstration.
 2. **Identity loop handoffs** — Dolls ↔ Rip ↔ Tailor CTAs incomplete; Rip reads first doll only.
 3. **Demonstration labeling** — Collective modules label demos; commerce mock catalog does not yet say "demonstration".
 4. **Font stack drift** — Shell uses Geist Variable; house style names DM Sans — converge on tokens in new UI.
@@ -162,8 +163,8 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | --- | --- | --- |
 | P0 | Unified menu, Studio toolbar instruments, `/tailor` + contract wiring, `/scry` + `/mesopic` stubs | **queued** (Lovable build queue) |
 | P1 | Profile identity + `/u/$handle`, Pocket polish, The Edit chamber, fish/rip hosts | **queued** |
-| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **queued** |
-| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **queued** |
+| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **partial** — Omni Loop onboarding + time-travel in production Express; Mesopic Lens chamber shipped (#251) |
+| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **shipped** — curiosity records + pattern reports in Mesopic Lens + Scry (`verify:curiosity-tracking`); Export Chamber opens from The Press destinations with PDF/ZIP/Shopify export + publish consent |
 | P4a | Workflow bar wired to issue pipeline (COLLECT→SAVE) | **queued** |
 | P4b | Registry completion + handoff chips + chamber map | **queued** |
 | P4c | Identity strip (Dolls↔Rip↔Tailor), Rip doll picker | **queued** |
@@ -171,7 +172,7 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | P5 | Darkroom: Pinterest board + multi-image extract + `imageEditingRules` / `applicationLogic` | **queued** |
 | P5b | Thimble / Brief / Darkroom Studio handoffs | **queued** |
 | P5c | Aesthetic entry plates + mobile Studio layout | **queued** |
-| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **queued** |
+| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **partial** — Mesopic Lens chamber shipped; panel unification still queued |
 | **Platform** | Lovable Cloud + Lovable AI as default stack; migrate AI to edge fns | **queued** |
 | **Refactor** | Align P0–P6 AI paths with Lovable AI + Cloud (no BYOK /api) | **queued** |
 | P7 | Scribe, Stand, Signature, Residue/Proscenium stubs, Find anchor, OG/RSS, notifications | **queued** |

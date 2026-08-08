@@ -122,6 +122,21 @@ export function unpublishFieldsForZine(now = Date.now()): {
   };
 }
 
+/**
+ * Withdraw from live Mean Median Mode windows while remaining public on Proscenium.
+ */
+export function withdrawMmmContributionFields(now = Date.now()): {
+  contributeToMeanMedianMode: false;
+  mmmContributionStatus: "withdrawn";
+  mmmWithdrawnAt: number;
+} {
+  return {
+    contributeToMeanMedianMode: false,
+    mmmContributionStatus: "withdrawn",
+    mmmWithdrawnAt: now,
+  };
+}
+
 export function publishToastMessage(input: {
   contribute: boolean;
   handle?: string | null;

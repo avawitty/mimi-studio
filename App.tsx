@@ -14,6 +14,7 @@ import { PublicSharePage } from "./components/PublicSharePage";
 import { PublicZineSharePage } from "./components/PublicZineSharePage";
 import { PublicDnaBadge } from "./components/PublicDnaBadge";
 import { MimiYouPublicRoute } from "./components/MimiYouPublicRoute";
+import { PublicSignaturePage } from "./components/PublicSignaturePage";
 import { RipPublicRoute } from "./components/RipPublicRoute";
 import { RipLandingPage } from "./components/RipLandingPage";
 import { FishLandingPage } from "./components/FishLandingPage";
@@ -282,6 +283,11 @@ const ObservatoryChamber = lazy(() =>
 const CelestialCalibrationChamber = lazy(() =>
   import("./components/chambers/CelestialCalibrationChamber").then((m) => ({
     default: m.CelestialCalibrationChamber,
+  })),
+);
+const MesopicLensChamber = lazy(() =>
+  import("./components/chambers/MesopicLensChamber").then((m) => ({
+    default: m.MesopicLensChamber,
   })),
 );
 const TheOracle = lazy(() =>
@@ -1017,6 +1023,7 @@ const RESTORABLE_TOP_LEVEL_ROUTES = new Set([
   "observatory",
   "mean-median-mode",
   "celestial-calibration",
+  "mesopic-lens",
   "sanctuary",
   "scribe",
   "scry",
@@ -2483,10 +2490,18 @@ export const App: React.FC = () => {
     }
   }
 
+  if (/^\/u\/[^/]+\/signature\/?$/i.test(window.location.pathname)) {
+    const handle = window.location.pathname.split("/u/")[1]?.split("/")[0];
+    if (handle) {
+      return <PublicSignaturePage handle={handle} navigate={navigate} />;
+    }
+  }
+
   if (
     window.location.pathname.startsWith("/u/") &&
     !window.location.pathname.endsWith("/dna") &&
-    !/^\/u\/[^/]+\/feed\.xml$/i.test(window.location.pathname)
+    !/^\/u\/[^/]+\/feed\.xml$/i.test(window.location.pathname) &&
+    !/^\/u\/[^/]+\/signature\/?$/i.test(window.location.pathname)
   ) {
     const handle = window.location.pathname.split("/u/")[1]?.split("/")[0];
     if (handle) {
@@ -2573,6 +2588,7 @@ export const App: React.FC = () => {
     "mean-median-mode": "Mean Median Mode",
     forecast: "Forecast",
     "celestial-calibration": "Celestial Calibration",
+    "mesopic-lens": "Mesopic Lens",
   };
 
   const currentTitle = viewModeTitles[viewMode] || "Studio View";
@@ -3079,6 +3095,9 @@ export const App: React.FC = () => {
                         )}
                         {viewMode === "celestial-calibration" && (
                           <CelestialCalibrationChamber navigate={navigate} />
+                        )}
+                        {viewMode === "mesopic-lens" && (
+                          <MesopicLensChamber navigate={navigate} />
                         )}
                         {viewMode === "geo_engine" && (
                           <div className="h-full w-full overflow-y-auto">

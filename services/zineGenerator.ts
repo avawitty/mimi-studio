@@ -20,7 +20,16 @@ import {
 import { celestialTimingForGeneration } from "../lib/celestial/compileCelestialReadout";
 import { applyCelestialToZine } from "../lib/celestial/applyCelestialToZine";
 import {
+    applyChromaticPaletteToZine,
+    applyContactSheetToZine,
+    applyForecastDriftToZine,
+    applyMaterialSpecimenToZine,
+    applyOwnerPlatesToZine,
+    applyUsedContextToZine,
+} from "../lib/zine/applyEditorialStamps";
+import {
     draftZineArtifactId,
+    editorialPlateOptionsFromProfile,
     enhanceZineGenerationLayout,
 } from "../lib/zine/enhanceZineGenerationLayout";
 
@@ -95,10 +104,18 @@ async function realizeGeneratedZineContent(
     _text: string,
     _opts: any,
     _media: any[],
+    profile?: UserProfile | null,
 ): Promise<{ content: any }> {
+    let stamped = applyChromaticPaletteToZine(content, profile);
+    stamped = applyOwnerPlatesToZine(stamped, profile);
+    stamped = applyMaterialSpecimenToZine(stamped, profile);
+    stamped = applyForecastDriftToZine(stamped, profile);
+    stamped = applyUsedContextToZine(stamped, _opts?.usedContext);
+    stamped = applyContactSheetToZine(stamped, _media);
     const enhanced = enhanceZineGenerationLayout({
-        content,
+        content: stamped,
         artifactId: draftZineArtifactId(),
+        plateOptions: editorialPlateOptionsFromProfile(profile),
     });
     return { content: enhanced };
 }
@@ -331,8 +348,9 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             13. originalThought: The raw "debris" that started it (a brief summary of the user's input).
             14. poetic_provocation: A final, stinging, and insightful question to leave the user with.
             15. pages: 3-5 distinct "pages" of the zine, each containing a 'headline', 'bodyCopy', an 'imagePrompt', and a 'supportingText' (REQUIRED for the last three pages). These should expand on the themes in the oracular_mirror. Keep each 'bodyCopy' under 200 words.
-            16. sonic_layer: A detailed, evocative prompt for an ambient soundscape that reflects the zine's aesthetic. Describe the textures, instruments, mood, and temporal qualities (e.g., "A low-frequency industrial hum layered with the distant, reverb-soaked sound of a cello playing a minor key melody, punctuated by the sharp, metallic click of a typewriter").
-            17. archetype_weights: An object with keys 'Architect', 'Dreamer', 'Archivist', 'Catalyst' and numeric values summing to 1.
+            16. screenwrite_excerpt: A short screenplay excerpt (8-16 lines) in standard script format (scene heading, action, sparse dialogue) that sets the zine's scene before the reading. No camera directions beyond what serves mood.
+            17. sonic_layer: A detailed, evocative prompt for an ambient soundscape that reflects the zine's aesthetic. Describe the textures, instruments, mood, and temporal qualities (e.g., "A low-frequency industrial hum layered with the distant, reverb-soaked sound of a cello playing a minor key melody, punctuated by the sharp, metallic click of a typewriter").
+            18. archetype_weights: An object with keys 'Architect', 'Dreamer', 'Archivist', 'Catalyst' and numeric values summing to 1.
             
             Ensure the output is sophisticated, editorial, and intellectually grounded. Avoid all business jargon. Keep the 'oracular_mirror' under 500 words.`;
 
@@ -450,9 +468,10 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                             } 
                         },
                         sonic_layer: { type: Type.STRING },
+                        screenwrite_excerpt: { type: Type.STRING },
                         archetype_weights: { type: Type.OBJECT }
                     },
-                    required: ["title", "headlines", "vocal_summary_blurb", "header_image_prompt", "oracular_mirror", "strategic_hypothesis", "resonance_score", "semiotic_signals", "aesthetic_touchpoints", "celestial_calibration", "visual_plates", "roadmap", "originalThought", "poetic_provocation", "pages", "sonic_layer", "archetype_weights"]
+                    required: ["title", "headlines", "vocal_summary_blurb", "header_image_prompt", "oracular_mirror", "strategic_hypothesis", "resonance_score", "semiotic_signals", "aesthetic_touchpoints", "celestial_calibration", "visual_plates", "roadmap", "originalThought", "poetic_provocation", "pages", "screenwrite_excerpt", "sonic_layer", "archetype_weights"]
                 };
             } else {
                 parts.push({ text: "CRITICAL: You MUST output strictly valid JSON matching the following schema. Do NOT wrap in markdown blocks. Schema: { title: string, headlines: string[], vocal_summary_blurb: string, header_image_prompt: string, oracular_mirror: string, strategic_hypothesis: string, resonance_score: string, semiotic_signals: { motif: string, context: string, visual_directive: string, type: string, link: string, semantic_trigger: string, targeting_rationale: string, image_url: string, vendor: string, price: string, commerce_source: string, product_id: string }[], aesthetic_touchpoints: { motif: string, type: string }[], celestial_calibration: string, visual_plates: string[], roadmap: { strategicThesis: string, positioningAxis: string, phases: { type: string, objective: string, strategicMove: string }[] }, originalThought: string, poetic_provocation: string, pages: { headline: string, bodyCopy: string, supportingText: string, imagePrompt: string }[], sonic_layer: string, archetype_weights: any }" });
@@ -637,7 +656,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                 console.warn("MIMI // Failed to generate execution layer or GEO block", e);
             }
 
-            return await realizeGeneratedZineContent(content, text, opts, effectiveMedia);
+            return await realizeGeneratedZineContent(content, text, opts, effectiveMedia, profileToUse);
         });
     } catch (error: any) {
         console.error("MIMI // Zine Generation Error:", error);
@@ -648,7 +667,7 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             profile?.tailorDraft?.celestialCalibration ||
             profile?.extensions?.celestialCalibration;
         const stampedSimulated = applyCelestialToZine(simulated, celestialDraft);
-        return await realizeGeneratedZineContent(stampedSimulated, text, opts, media || []);
+        return await realizeGeneratedZineContent(stampedSimulated, text, opts, media || [], profile);
     }
 };
 
@@ -701,6 +720,8 @@ export const generateSimulatedZine = (text: string, opts: any, profile: any) => 
                 imagePrompt: "Close-up of highly textured, raw linen being folded by an invisible force, soft directional shadows."
             }
         ],
+        screenwrite_excerpt:
+            "INT. STUDIO — NIGHT\n\nA desk lamp pools light over scattered notes. Rain ticks against glass.\n\nCREATOR\n(quietly)\nIf the mirror is dark, we still write.",
         sonic_layer: "Deep, microtonal sub-bass humming at 60Hz, punctuated by slow, warm tape-hiss cycles.",
         archetype_weights: {
             Architect: 0.40,

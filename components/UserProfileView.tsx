@@ -114,6 +114,7 @@ export const UserProfileView: React.FC = () => {
   };
 
   const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [genderExpression, setGenderExpression] = useState("");
   const [formerPresentation, setFormerPresentation] = useState("");
@@ -306,6 +307,7 @@ export const UserProfileView: React.FC = () => {
     if (profile) {
       setHandle(profile.handle || "");
       setDisplayName(profile.displayName || "");
+      setBio(profile.bio || "");
       setAvatar(profile.photoURL || null);
       setGenderExpression(profile.genderExpression || "");
       setFormerPresentation(profile.formerPresentation || "");
@@ -377,6 +379,7 @@ export const UserProfileView: React.FC = () => {
         ...profile,
         handle: handle.trim().toLowerCase(),
         displayName: displayName,
+        bio: bio.trim() || undefined,
         photoURL: avatar,
         genderExpression: genderExpression,
         formerPresentation: formerPresentation,
@@ -410,6 +413,7 @@ export const UserProfileView: React.FC = () => {
     profile &&
       (handle !== (profile.handle || "") ||
         displayName !== (profile.displayName || "") ||
+        bio !== (profile.bio || "") ||
         avatar !== (profile.photoURL || null) ||
         genderExpression !== (profile.genderExpression || "") ||
         formerPresentation !== (profile.formerPresentation || "") ||
@@ -673,7 +677,8 @@ export const UserProfileView: React.FC = () => {
                   {profile?.displayName || handle || "Untitled Curator"}
                 </h2>
                 <p className="font-sans text-sm text-nous-subtle leading-relaxed max-w-lg">
-                  {profile?.tasteProfile?.aestheticSignature?.moodCluster ||
+                  {profile?.bio ||
+                    profile?.tasteProfile?.aestheticSignature?.moodCluster ||
                     profile?.tailorDraft?.strategicSummary?.identityVector ||
                     "Aesthetic intelligence in progress. Publish issues to The Stand to flesh this card."}
                 </p>
@@ -866,6 +871,22 @@ export const UserProfileView: React.FC = () => {
                 className="w-full bg-transparent font-serif text-xl border-b border-nous-border pb-1 focus:outline-none focus:border-nous-border dark:focus:border-nous-border"
                 placeholder="Display Name..."
               />
+              <div>
+                <label className="text-[10px] uppercase tracking-widest font-mono text-nous-subtle block mb-2">
+                  Public bio
+                </label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={3}
+                  maxLength={280}
+                  placeholder="A short line for your mimi.you public card…"
+                  className="w-full bg-transparent font-serif text-sm border border-nous-border/40 p-3 focus:outline-none focus:border-nous-border resize-y min-h-[4.5rem]"
+                />
+                <p className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle mt-2">
+                  Shown on your public card · doll likeness becomes your avatar when published
+                </p>
+              </div>
             </div>
           </div>
 
@@ -2037,6 +2058,7 @@ export const UserProfileView: React.FC = () => {
                       if (!profile) return;
                       setHandle(profile.handle || "");
                       setDisplayName(profile.displayName || "");
+                      setBio(profile.bio || "");
                       setAvatar(profile.photoURL || null);
                       setGenderExpression(profile.genderExpression || "");
                       setFormerPresentation(profile.formerPresentation || "");

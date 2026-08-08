@@ -97,8 +97,11 @@ export const DEMO_MEAN_MEDIAN_MODE_REPORT = meanMedianModeReportSchema.parse({
   },
 });
 
-export function emptyMeanMedianModeReport(now = Date.now()) {
-  const start = now - 7 * 24 * 60 * 60 * 1000;
+export function emptyMeanMedianModeReport(
+  now = Date.now(),
+  windowMs = 7 * 24 * 60 * 60 * 1000,
+) {
+  const start = now - windowMs;
   return meanMedianModeReportSchema.parse({
     runId: `empty-mmm-${now}`,
     status: "empty",

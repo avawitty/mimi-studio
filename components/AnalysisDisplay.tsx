@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { ZineMetadata, PocketItem, LineageEntry, NarrativeThread, MemoryAtom, AtelierObject, SemioticSignal } from '../types';
@@ -61,6 +61,15 @@ import {
 } from '../lib/zineSpreadLayout';
 import type { EditorElement } from '../types';
 import { normalizeZineArtifact } from '../lib/zine/normalizeZineArtifact';
+import { isCalibrationPlate } from '../lib/zine/insertEditorialPlates';
+import {
+  editorialPlateOptionsFromProfile,
+  refreshEditorialPlatesInContent,
+} from '../lib/zine/enhanceZineGenerationLayout';
+import { enrichEditorialPlateContent } from '../lib/zine/enrichEditorialPlateContent';
+import { ZinePageRenderer } from './zine/ZinePageRenderer';
+import { ZineOwnerPlatesEditor } from './ZineOwnerPlatesEditor';
+import type { ZineOwnerPlateSlide } from '../types';
 import { CELESTIAL_BODY_LABELS } from '../lib/celestial/bodyLabels';
 import { ZODIAC_SIGN_LABELS } from '../lib/celestial/sunSign';
 import {
@@ -241,6 +250,42 @@ export const AnalysisDisplay: React.FC<{
  const normalizedArtifact = useMemo(
    () => normalizeZineArtifact(metadata),
    [metadata],
+ );
+ const revealContent = useMemo(
+   () =>
+     enrichEditorialPlateContent(metadata.content, {
+       artifactId: metadata.id,
+       profile: profile ?? undefined,
+       usedContextSnapshots: metadata.usedContextSnapshots,
+       intakeArtifacts: metadata.artifacts,
+     }),
+   [
+     metadata.content,
+     metadata.id,
+     metadata.usedContextSnapshots,
+     metadata.artifacts,
+     profile,
+   ],
+ );
+ const hasCelestialPlate = useMemo(
+   () => revealContent.pages?.some((page) => page.grammar === 'celestial') ?? false,
+   [revealContent.pages],
+ );
+ const hasUsedContextPlate = useMemo(
+   () => revealContent.pages?.some((page) => page.grammar === 'used-context') ?? false,
+   [revealContent.pages],
+ );
+
+ const handleOwnerPlatesChange = useCallback(
+   (slides: ZineOwnerPlateSlide[]) => {
+     const nextContent = refreshEditorialPlatesInContent(
+       { ...metadata.content, owner_plates: slides },
+       metadata.id,
+       profile ?? undefined,
+     );
+     onUpdateMetadata({ ...metadata, content: nextContent });
+   },
+   [metadata, onUpdateMetadata, profile],
  );
 
  useEffect(() => {
@@ -2163,7 +2208,8 @@ export const AnalysisDisplay: React.FC<{
  </div>
  </motion.section>
 
- {/* 7. CELESTIAL CALIBRATION */}
+ {/* 7. CELESTIAL CALIBRATION — skip when rendered as a calibration plate */}
+ {!hasCelestialPlate ? (
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center snap-start bg-stone-950 text-white print:min-h-0 print:py-12">
  <div className="w-full space-y-12 px-6 md:px-24">
  <SectionHeader label="Celestial Calibration"icon={Moon} color="text-white"/>
@@ -2228,6 +2274,7 @@ export const AnalysisDisplay: React.FC<{
  </div>
  </div>
  </motion.section>
+ ) : null}
 
  {/* 8. VISUAL PLATES - EDITORIAL SPREADS (+ COMPOSED LAYOUTS) */}
  <div className="bg-white py-32 space-y-32" data-surface="public">
@@ -2239,8 +2286,25 @@ export const AnalysisDisplay: React.FC<{
  </p>
  </div>
  
- {metadata.content.pages?.map((page, i) => {
+ {isOwner ? (
+   <motion.section
+     initial={{ opacity: 0, y: 30 }}
+     whileInView={{ opacity: 1, y: 0 }}
+     viewport={{ once: true, margin: '-10%' }}
+     transition={{ duration: 0.8 }}
+     className="px-6 md:px-24 flex justify-center"
+   >
+     <ZineOwnerPlatesEditor
+       slides={metadata.content.owner_plates || []}
+       ownerUid={user?.uid}
+       onChange={handleOwnerPlatesChange}
+     />
+   </motion.section>
+ ) : null}
+
+ {revealContent.pages?.map((page, i) => {
  const composed = pageHasCustomLayout(page);
+ const calibration = isCalibrationPlate(page);
  return (
  <motion.section
    key={page.pageNumber ?? i}
@@ -2250,8 +2314,22 @@ export const AnalysisDisplay: React.FC<{
    transition={{ duration: 1, ease: 'easeOut' }}
    className="min-h-[100dvh] flex flex-col justify-center snap-start w-full"
    data-plate-mode={issueMode}
+   data-plate-grammar={page.grammar}
  >
- {composed ? (
+ {calibration ? (
+ <div className="w-full px-6 md:px-24 flex flex-col items-center gap-8">
+   <div className="w-full max-w-3xl">
+     <ZinePageRenderer
+       artifact={normalizedArtifact}
+       page={page}
+       pageIndex={i}
+     />
+   </div>
+   <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-[var(--mimi-stone,#78716C)]">
+     {page.grammar?.replace('-', ' ')} plate
+   </p>
+ </div>
+ ) : composed ? (
  <div className="w-full px-6 md:px-24 flex flex-col items-center gap-8">
    <div className="w-full max-w-3xl">
      <ZineSpreadCanvas page={page} />
@@ -2520,7 +2598,7 @@ export const AnalysisDisplay: React.FC<{
  )}
 
  {/* 9b. USED CONTEXT — colophon: what approved knowledge shaped this issue */}
- {(scribeFragments.length > 0 || (metadata.fragmentsUsed?.length ?? 0) > 0) && (
+ {!hasUsedContextPlate && (scribeFragments.length > 0 || (metadata.fragmentsUsed?.length ?? 0) > 0) && (
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center px-6 md:px-24 snap-start bg-nous-base text-nous-text print:min-h-0 print:py-12">
  <div className="max-w-3xl w-full space-y-12">
  <div className="space-y-4 border-b border-nous-border pb-8">
@@ -2689,6 +2767,31 @@ export const AnalysisDisplay: React.FC<{
  )}
 
  {/* 11. THE GOLDEN THREAD - NEXT STEPS */}
+ {metadata.isPublic ? (
+   <motion.section
+     initial={{ opacity: 0, y: 40 }}
+     whileInView={{ opacity: 1, y: 0 }}
+     viewport={{ once: true, margin: '-10%' }}
+     transition={{ duration: 0.8 }}
+     className="min-h-[60dvh] flex flex-col justify-center snap-start bg-[var(--mimi-field,#FDFBF7)] py-24 px-6 md:px-24 print:hidden"
+   >
+     <div className="w-full max-w-3xl mx-auto space-y-8">
+       <div className="space-y-2 text-center md:text-left">
+         <span className="font-mono text-[9px] uppercase tracking-[0.32em] text-nous-subtle">
+           Public discourse
+         </span>
+         <h3 className="font-serif text-3xl md:text-4xl italic text-nous-text">
+           Refractions
+         </h3>
+         <p className="font-sans text-sm text-nous-subtle leading-relaxed max-w-xl">
+           Respond to Mimi&apos;s reading — text or voice memo. Commentary on the commentary.
+         </p>
+       </div>
+       <ZineComments zineId={metadata.id} variant="inline" />
+     </div>
+   </motion.section>
+ ) : null}
+
  <footer className="min-h-[100dvh] flex flex-col items-center justify-center p-12 snap-start print:hidden text-center space-y-24 bg-white">
    <div className="space-y-6 w-full px-6 md:px-24 max-w-4xl">
      <span className="font-sans text-[10px] uppercase tracking-[0.5em] font-black" style={{ color: accentColor }}>The Golden Thread</span>

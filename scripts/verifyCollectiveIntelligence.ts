@@ -23,13 +23,19 @@ import {
   MMM_METHODOLOGY_VERSION,
   consentFieldsForZine,
   unpublishFieldsForZine,
+  withdrawMmmContributionFields,
   observationsFromEligibleSignals,
   opaqueContributorKeyFromUserId,
   extractSignalsFromPublicZine,
 } from "../services/collective";
-import { collectiveSignalSchema } from "../schemas/collectiveIntelligenceContracts";
+import {
+  buildMeanMedianModeReportFromSignals,
+  buildCollectivePerceptionReports,
+} from "../services/collective/buildMeanMedianModeReport";
+import { inferCycleNotesFromGroups } from "../services/collective/inferCycleNotes";
 import {
   centralTendencyProfileSchema,
+  collectiveSignalSchema,
   meanMedianModeReportSchema,
   mesopicReportSchema,
   forecastReportSchema,
@@ -363,6 +369,119 @@ function testContributePipeline() {
   assert(ok.receipt?.contributedSignalIds.length === ok.signals.length, "receipt ids");
 }
 
+function testBuildLiveReport() {
+  const now = Date.UTC(2026, 7, 2, 12, 0, 0);
+  const signals = Array.from({ length: 12 }, (_, i) =>
+    collectiveSignalSchema.parse({
+      id: `live-s${i}`,
+      canonicalLabel: i < 9 ? "twilight archive" : "counter-read",
+      aliases: [],
+      category: "motif",
+      sourceArtifactId: `z-${i}`,
+      sourceType: "public_zine",
+      observedAt: now - i * 3600_000,
+      extractedAt: now,
+      extractionMethod: "user_tagged",
+      opaqueContributorKey: `c_${i % 4}`,
+      publicContributionAllowed: true,
+      anonymizationStatus: "eligible",
+      sensitivityFlags: [],
+      provenance: {
+        sourceId: `z-${i}`,
+        sourceKind: "public_zine",
+        extractorVersion: "mmm-extract-v1",
+      },
+    }),
+  );
+  const report = buildMeanMedianModeReportFromSignals(signals, { now });
+  meanMedianModeReportSchema.parse(report);
+  assert(report.demonstration !== true, "live report not demonstration");
+  assert(report.profiles.length >= 1, "live report has profiles");
+  assert(report.status === "success" || report.status === "partial", "live status");
+
+  const faintSignals = [
+    collectiveSignalSchema.parse({
+      id: "faint-1",
+      canonicalLabel: "veil stitch",
+      aliases: [],
+      category: "motif",
+      sourceArtifactId: "z-f1",
+      sourceType: "public_zine",
+      observedAt: now - 1000,
+      extractedAt: now,
+      extractionMethod: "user_tagged",
+      opaqueContributorKey: "c_a",
+      publicContributionAllowed: true,
+      anonymizationStatus: "eligible",
+      sensitivityFlags: [],
+      provenance: {
+        sourceId: "z-f1",
+        sourceKind: "public_zine",
+        extractorVersion: "mmm-extract-v1",
+      },
+    }),
+    collectiveSignalSchema.parse({
+      id: "faint-2",
+      canonicalLabel: "veil stitch",
+      aliases: [],
+      category: "motif",
+      sourceArtifactId: "z-f2",
+      sourceType: "public_zine",
+      observedAt: now - 2000,
+      extractedAt: now,
+      extractionMethod: "user_tagged",
+      opaqueContributorKey: "c_b",
+      publicContributionAllowed: true,
+      anonymizationStatus: "eligible",
+      sensitivityFlags: [],
+      provenance: {
+        sourceId: "z-f2",
+        sourceKind: "public_zine",
+        extractorVersion: "mmm-extract-v1",
+      },
+    }),
+  ];
+
+  const { meanMedianMode, mesopic } = buildCollectivePerceptionReports(
+    [...signals, ...faintSignals],
+    { now },
+  );
+  meanMedianModeReportSchema.parse(meanMedianMode);
+  mesopicReportSchema.parse(mesopic);
+  assert(
+    mesopic.findings.some((f) => f.canonicalLabel === "veil stitch"),
+    "mesopic captures below-threshold motif",
+  );
+  assert(mesopic.demonstration !== true, "live mesopic not demonstration");
+
+  const cycleNotes = inferCycleNotesFromGroups({
+    groups: meanMedianMode.profiles.map((p) => ({
+      signalId: p.signalId,
+      label: p.mode.label,
+      observations: Array.from({ length: p.sampleSize }, (_, i) => ({
+        value: 0.4,
+        artifactId: `cy-${i}`,
+        contributorId: `c${i}`,
+        label: p.mode.label,
+      })),
+      profile: p,
+    })),
+    windowStart: now - 7 * 24 * 60 * 60 * 1000,
+    windowEnd: now,
+    signalTimesByArtifact: new Map(
+      Array.from({ length: 12 }, (_, i) => [`cy-${i}`, now - i * 3600_000]),
+    ),
+  });
+  assert(
+    cycleNotes.length === 0 || cycleNotes.every((n) => n.evidence.length >= 1),
+    "cycle notes carry evidence",
+  );
+
+  const withdrawn = withdrawMmmContributionFields();
+  assert(withdrawn.mmmContributionStatus === "withdrawn", "withdraw fields");
+  assert(withdrawn.contributeToMeanMedianMode === false, "withdraw stops contribute");
+}
+
 function testMesopicAndForecast() {
   const mesopic = loadMesopicReport("demonstration");
   mesopicReportSchema.parse(mesopic);
@@ -476,6 +595,15 @@ function testCanonAndFiles() {
     "services/collective/buildForecastReport.ts",
     "services/collective/loadMesopicReport.ts",
     "services/collective/approvedFeeds.ts",
+    "services/collective/buildMeanMedianModeReport.ts",
+    "services/collective/loadConsentedPublicCorpus.ts",
+    "services/collective/fetchMeanMedianModeReport.ts",
+    "lib/collectiveMmmReportRoute.ts",
+    "api/collective/mmm-report.ts",
+    "components/observatory/ObservatoryEyePlate.tsx",
+    "services/collective/buildMesopicReport.ts",
+    "services/collective/inferCycleNotes.ts",
+    "components/observatory/ObservatoryWindowSelector.tsx",
     "components/chambers/ObservatoryChamber.tsx",
     "components/observatory/MeanMedianModePanel.tsx",
     "components/observatory/MesopicLensPanel.tsx",
@@ -489,6 +617,10 @@ function testCanonAndFiles() {
     assert(fs.existsSync(path.join(root, rel)), `missing ${rel}`);
   }
 
+  const chamber = fs.readFileSync(path.join(root, "components/chambers/ObservatoryChamber.tsx"), "utf8");
+  assert(chamber.includes("ObservatoryEyePlate"), "chamber mounts eye plate");
+  assert(chamber.includes("ObservatoryWindowSelector"), "chamber has window selector");
+
   const legal = fs.readFileSync(path.join(root, "components/LegalOverlay.tsx"), "utf8");
   assert(legal.includes("Mean Median Mode"), "legal names Mean Median Mode");
   assert(!legal.includes("Social Floor"), "legal drops Social Floor label");
@@ -501,6 +633,11 @@ function testCanonAndFiles() {
   assert(analysis.includes("ProsceniumPublishConsentModal"), "AnalysisDisplay stages via consent modal");
   assert(analysis.includes("buildConsentAwareTransmission"), "AnalysisDisplay consent-aware transmissions");
 
+  const prosceniumView = fs.readFileSync(path.join(root, "components/ProsceniumView.tsx"), "utf8");
+  assert(prosceniumView.includes("ProsceniumContributionBadge"), "ProsceniumView shows contribution badges");
+  assert(prosceniumView.includes("ProsceniumCollectiveBrief"), "ProsceniumView links collective brief");
+  assert(prosceniumView.includes("mayContributeToMeanMedianMode"), "ProsceniumView reads consent eligibility");
+
   const savePath = fs.readFileSync(path.join(root, "services/firebaseUtils.ts"), "utf8");
   assert(savePath.includes("mmmPublishConsent"), "saveZineToProfile accepts MMM consent");
   assert(savePath.includes("refused silent public stage"), "saveZineToProfile refuses silent public");
@@ -511,6 +648,7 @@ function main() {
   testConsent();
   testContributePipeline();
   testReportFixture();
+  testBuildLiveReport();
   testMesopicAndForecast();
   testNamespaceSeparation();
   testCanonAndFiles();

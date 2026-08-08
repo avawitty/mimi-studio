@@ -55,6 +55,7 @@ export type VisualPacketId =
   | "diagnostics-sheet"
   | "style-specimen"
   | "celestial-chart"
+  | "twilight-mirror"
   | "identity-portrait"
   | "mortuary-file"
   | "editorial-signal"
@@ -180,6 +181,9 @@ export const CANON_ROUTE_ALIASES: Record<string, string> = {
   celestial: "celestial-calibration",
   natal: "celestial-calibration",
   zodiac: "celestial-calibration",
+  "mesopic-lens": "mesopic-lens",
+  mesopic: "mesopic-lens",
+  "twilight-lens": "mesopic-lens",
   // Social surfaces live on The Proscenium (wings via nested path).
   connections: "proscenium",
   correspondents: "proscenium",
@@ -347,7 +351,7 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow:
       "Ask a question or name a drift signal; inspect evidence by lane (archive, web, reading, shadow) before drafting.",
     notes:
-      "Lanes stay distinct — no shared result overwrite. Empty ≠ complete; missing personal memory is empty not partial. Synthesis uses AI Gateway when available; Google Search grounding stays on Gemini. Mobile: one dark surface, query-led first viewport (Architecture Update 20).",
+      "Lanes stay distinct — no shared result overwrite. Empty ≠ complete; missing personal memory is empty not partial. Synthesis uses AI Gateway when available; Google Search grounding stays on Gemini. Readings weave profile + celestial calibration + web signals. Curiosity questions log for pattern reports. Mobile: one dark surface, query-led first viewport (Architecture Update 20).",
     family: "capture",
     phase: "understand",
     visibility: "primary",
@@ -545,7 +549,7 @@ export const CANON_MODULES: CanonModule[] = [
       "Keep Tabs RSS (/u/:handle/feed.xml)",
     ],
     userFlow: "Package approved work into a shareable or portfolio-ready artifact. Making a zine public files it in the creator Keep Tabs feed for subscribe-once readers. Share actions emit mimi.fish/s/:id attention plates.",
-    notes: "Artifact-specific export exists inside AnalysisDisplay via ExportChamber; the canonical top-level route currently opens PublisherDashboard. Public issues also project to RSS via /api/feed?handle=. Attention/share loop surface is mimi.fish (host skin over PublicZineSharePage).",
+    notes: "Artifact-specific export via ExportChamber; the canonical `/the-press` route opens PublisherDashboard with in-place Export Chamber for PDF/ZIP/Shopify export and web publish consent. Public issues also project to RSS via /api/feed?handle=. Attention/share loop surface is mimi.fish (host skin over PublicZineSharePage).",
     family: "publishing",
     phase: "publish",
     visibility: "primary",
@@ -1185,11 +1189,11 @@ export const CANON_MODULES: CanonModule[] = [
     userFlow:
       "Open The Observatory to read Mean Median Mode — mean, median, mode, and their joint profile over consented public signals. Per-run M/M/M stays in Residue.",
     notes:
-      "Prototype may show labeled demonstration aggregates. Live contribution requires Proscenium publish disclosure. Do not alias this module as MMM (Residue keeps that short alias).",
+      "Live aggregates from consented Proscenium publishes; demonstration specimens are opt-in preview only. Do not alias this module as MMM (Residue keeps that short alias).",
     family: "intelligence",
     phase: "understand",
     visibility: "contextual",
-    atmosphere: ["specimen", "signal-dense"],
+    atmosphere: ["dark-plate", "specimen", "signal-dense"],
     primaryAction: {
       label: "Observe the present atmosphere",
       intent: { type: "research" },
@@ -1332,6 +1336,54 @@ export const CANON_MODULES: CanonModule[] = [
       reason: "Optional calibration belongs to the same persistent profile.",
     },
     visualPacket: "celestial-chart",
+  },
+  {
+    id: "mesopic-lens",
+    name: "Mesopic Lens",
+    layer: "chamber",
+    engine: "Twilight Reading Engine",
+    priority: 11.6,
+    status: "live",
+    canonicalRoute: "/mesopic-lens",
+    implementedMode: "mesopic-lens",
+    component: "MesopicLensChamber",
+    aliases: ["Obsidian Mirror", "Twilight Lens", "Mesopic"],
+    inputs: [
+      "natural-language question",
+      "curiosity chips",
+      "Tailor profile context",
+      "celestial calibration readout",
+    ],
+    generations: [
+      "live web signal retrieval (Gemini Google Search)",
+      "profile × celestial twilight reading synthesis",
+      "curiosity record persistence",
+      "pattern report compilation",
+    ],
+    outputs: [
+      "grounded twilight reading",
+      "web citation list",
+      "curiosity records",
+      "recurring-theme pattern report",
+    ],
+    userFlow:
+      "Ask a personal question in the twilight — profile taste and celestial calibration orient the reading; live web signals ground it. Curiosities log for pattern reports.",
+    notes:
+      "Distinct from Observatory Mesopic Lens (collective weak signals). Symbolic celestial context only — never fabricated positions. Web grounding via Gemini; synthesis via AI Gateway. Curiosity records are not approved Taste Graph memory.",
+    family: "intelligence",
+    phase: "understand",
+    visibility: "primary",
+    atmosphere: ["dark-plate", "specimen", "signal-dense"],
+    primaryAction: {
+      label: "Ask in twilight vision",
+      intent: { type: "research" },
+    },
+    suggestedNext: {
+      mode: "scry",
+      label: "Trace evidence in Scry",
+      reason: "Mesopic readings orient; Scry returns lane-separated evidence.",
+    },
+    visualPacket: "twilight-mirror",
   },
 ];
 

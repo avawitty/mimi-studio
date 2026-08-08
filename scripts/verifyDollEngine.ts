@@ -143,9 +143,9 @@ check("identity view prompts include lock language", () => {
   const prompt = buildIdentityViewPrompt(fixtureDoll, "profile");
   assert(/Doll Profile/i.test(prompt) || /profile/i.test(prompt), "profile framing");
   assert(prompt.includes(fixtureDoll.name), "name lock");
-  assert(/shell-v1|Mimi Shell/i.test(prompt), "shell staple version");
+  assert(/shell-v1|omni-loop|Mimi Shell/i.test(prompt), "shell staple version");
   assert(/elongated slender neck/i.test(prompt), "shell proportions");
-  assert(/porcelain/i.test(prompt), "porcelain medium");
+  assert(/resin|ball-joint/i.test(prompt), "resin BJD medium");
 });
 
 check("default masks + companion bundle", () => {

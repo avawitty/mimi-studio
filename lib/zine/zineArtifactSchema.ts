@@ -29,6 +29,16 @@ export const zinePageGrammarSchema = z.enum([
   "editorial-split",
   "dark-plate",
   "debris",
+  "celestial",
+  "screenwrite",
+  "sonic",
+  "signal-index",
+  "chromatic",
+  "owner-carousel",
+  "used-context",
+  "contact-sheet",
+  "material-specimen",
+  "forecast-drift",
 ]);
 
 export const zineSectionTypeSchema = z.enum([
