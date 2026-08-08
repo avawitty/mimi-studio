@@ -19,6 +19,7 @@ import {
   ThermometerSun,
   User,
   Wind,
+  RefreshCw,
 } from "lucide-react";
 import { useUser } from "../contexts/UserContext";
 import { ChamberShell } from "./chambers/ChamberShell";
@@ -38,6 +39,13 @@ import {
 } from "../services/collective";
 import type { ForecastReport } from "../schemas/collectiveIntelligenceContracts";
 import { ForecastObservedPanel } from "./forecast/ForecastObservedPanel";
+import { ForecastIntakePanel } from "./forecast/ForecastIntakePanel";
+import {
+  type ForecastIntakeSnapshot,
+  intakeSummaryLabel,
+  isForecastScopeReady,
+} from "../lib/forecastIntake";
+import type { UserProfile } from "../types";
 
 type ForecastScope = "personal" | "company";
 type ForecastVector = "overview" | "content" | "culture";
@@ -65,7 +73,7 @@ const VECTOR_TABS: { id: ForecastVector; label: string; icon: React.ReactNode }[
 export const TheForecast: React.FC<{
   navigate?: (path: string) => void;
 }> = ({ navigate }) => {
-  const { user, profile, apiKeys } = useUser();
+  const { user, profile, apiKeys, updateProfile } = useUser();
   const [forecastingScope, setForecastingScope] = useState<ForecastScope>("personal");
   const [selectedVector, setSelectedVector] = useState<ForecastVector>(
     user ? "overview" : "culture",
@@ -73,6 +81,19 @@ export const TheForecast: React.FC<{
   const [contentForecast, setContentForecast] = useState<ResearchSynthesisResponse | null>(null);
   const [cultureReport, setCultureReport] = useState<ForecastReport | null>(null);
   const [isPingingLabs, setIsPingingLabs] = useState(false);
+  const [showIntakeEditor, setShowIntakeEditor] = useState(false);
+  const [contentQueryKey, setContentQueryKey] = useState(0);
+
+  const intakeScope = forecastingScope === "company" ? "brand" : "personal";
+  const forecastIntake = profile?.forecastIntake ?? null;
+  const scopeReady = isForecastScopeReady(intakeScope, profile, forecastIntake);
+  const needsIntake = Boolean(user) && (!scopeReady || showIntakeEditor);
+
+  const queryContext = {
+    scope: intakeScope,
+    intake: forecastIntake,
+    profile: profile ?? null,
+  } as const;
 
   useEffect(() => {
     if (!user && selectedVector !== "culture") {
@@ -81,10 +102,16 @@ export const TheForecast: React.FC<{
   }, [user, selectedVector]);
 
   useEffect(() => {
-    if (selectedVector !== "content" || contentForecast) return;
+    setContentForecast(null);
+    setCultureReport(null);
+    setContentQueryKey((k) => k + 1);
+  }, [forecastingScope, forecastIntake?.completedAt, intakeScope]);
+
+  useEffect(() => {
+    if (!user || selectedVector !== "content" || needsIntake) return;
     let cancelled = false;
     setIsPingingLabs(true);
-    void fetchContentForecast(apiKeys)
+    void fetchContentForecast(apiKeys, queryContext)
       .then((res) => {
         if (cancelled) return;
         setContentForecast(res);
@@ -95,14 +122,13 @@ export const TheForecast: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [selectedVector, contentForecast, apiKeys]);
+  }, [selectedVector, apiKeys, user, needsIntake, contentQueryKey, intakeScope, forecastIntake?.completedAt]);
 
   useEffect(() => {
     if (selectedVector !== "culture") return;
     let cancelled = false;
     const observed = loadMeanMedianModeReport("demonstration");
     const feedEntryCount = loadApprovedFeedEntries().length;
-    // Always compose from MMM first so Cultural never hangs on research fetch.
     setCultureReport(
       buildForecastReport({
         observed,
@@ -112,14 +138,13 @@ export const TheForecast: React.FC<{
       }),
     );
 
-    // Anonymous culture views keep the offline MMM report only — no gateway synthesis.
-    if (contentForecast || !user) {
+    if (contentForecast || !user || needsIntake) {
       return () => {
         cancelled = true;
       };
     }
 
-    void fetchContentForecast(apiKeys)
+    void fetchContentForecast(apiKeys, queryContext)
       .then((external) => {
         if (cancelled) return;
         setCultureReport(
@@ -139,7 +164,38 @@ export const TheForecast: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [selectedVector, contentForecast, apiKeys, user]);
+  }, [
+    selectedVector,
+    contentForecast,
+    apiKeys,
+    user,
+    needsIntake,
+    contentQueryKey,
+    intakeScope,
+    forecastIntake?.completedAt,
+  ]);
+
+  const handleIntakeComplete = async (
+    snapshot: ForecastIntakeSnapshot,
+    profilePatch?: Partial<UserProfile>,
+  ) => {
+    if (!profile) return;
+    await updateProfile({
+      ...profile,
+      ...profilePatch,
+      forecastIntake: snapshot,
+    });
+    setShowIntakeEditor(false);
+    setContentForecast(null);
+    setCultureReport(null);
+    setContentQueryKey((k) => k + 1);
+  };
+
+  const refreshContentForecast = () => {
+    setContentForecast(null);
+    setCultureReport(null);
+    setContentQueryKey((k) => k + 1);
+  };
 
   const go = (view: string) => {
     if (navigate) {
@@ -149,8 +205,13 @@ export const TheForecast: React.FC<{
     window.location.assign(`/${view}`);
   };
 
-  const currentSeason = profile?.currentSeason || "rotting";
+  const currentSeason =
+    (intakeScope === "personal" && forecastIntake?.personal?.season) ||
+    profile?.currentSeason ||
+    "rotting";
   const dna = profile?.aestheticDNA || null;
+  const intakePersonal = forecastIntake?.personal;
+  const intakeBrand = forecastIntake?.brand;
   const geo = profile?.geoProfile || null;
   const tasteVector = profile?.tasteVector || null;
   const vectorEntropy = Number(
@@ -169,6 +230,8 @@ export const TheForecast: React.FC<{
       : driftScore > 50
         ? "Severe Turbulence"
         : "Stable Micro-Climate";
+
+  const intakeLabel = intakeSummaryLabel(intakeScope, forecastIntake);
 
   const contentUnavailable =
     !!contentForecast &&
@@ -275,6 +338,36 @@ export const TheForecast: React.FC<{
                 })}
               </div>
 
+              {user && scopeReady && !showIntakeEditor ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 border border-nous-border/50 px-3 py-2 bg-nous-surface/40">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">
+                    {intakeScope === "brand"
+                      ? `Brand intake: ${intakeLabel || intakeBrand?.brandName || "calibrated"}`
+                      : intakeLabel
+                        ? `Profile intake: ${intakeLabel}`
+                        : "Profile signals calibrated"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowIntakeEditor(true)}
+                    className="font-mono text-[8px] uppercase tracking-widest text-nous-subtle hover:text-nous-text underline underline-offset-4"
+                  >
+                    {FORECAST_COPY.intakeRecalibrate}
+                  </button>
+                </div>
+              ) : null}
+
+              {user && needsIntake ? (
+                <ForecastIntakePanel
+                  scope={intakeScope}
+                  existingIntake={forecastIntake}
+                  onComplete={handleIntakeComplete}
+                  onOpenFullBrandIntake={
+                    intakeScope === "brand" ? () => go("brand-intake") : undefined
+                  }
+                />
+              ) : null}
+
               {!user && selectedVector !== "culture" ? (
                 <div className="min-h-[160px] flex items-center justify-center border border-dashed border-nous-border px-6 py-12">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle text-center">
@@ -283,7 +376,7 @@ export const TheForecast: React.FC<{
                 </div>
               ) : null}
 
-              {user && selectedVector === "overview" && (
+              {user && !needsIntake && selectedVector === "overview" && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[minmax(160px,auto)]">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -349,6 +442,40 @@ export const TheForecast: React.FC<{
                         </p>
                         <div className="flex flex-wrap gap-2 mt-auto">
                           {dna.archetypes.map((a) => (
+                            <span
+                              key={a}
+                              className="px-2 py-1 border border-nous-text/20 font-mono text-[8px] uppercase tracking-widest"
+                            >
+                              {a}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    ) : intakeScope === "brand" && intakeBrand ? (
+                      <>
+                        <p className="font-serif text-lg leading-snug mb-4">
+                          &ldquo;{intakeBrand.vibe}&rdquo;
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-auto">
+                          {[intakeBrand.brandName, ...intakeBrand.keywords].map((a) => (
+                            <span
+                              key={a}
+                              className="px-2 py-1 border border-nous-text/20 font-mono text-[8px] uppercase tracking-widest"
+                            >
+                              {a}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    ) : intakePersonal ? (
+                      <>
+                        <p className="font-serif text-lg leading-snug mb-4">
+                          {intakePersonal.vibe
+                            ? `“${intakePersonal.vibe}”`
+                            : "Profile intake calibrated — run Tailor for full DNA."}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-auto">
+                          {intakePersonal.keywords.map((a) => (
                             <span
                               key={a}
                               className="px-2 py-1 border border-nous-text/20 font-mono text-[8px] uppercase tracking-widest"
@@ -464,16 +591,19 @@ export const TheForecast: React.FC<{
                       </div>
                       <div className="hidden md:block w-px self-stretch bg-nous-border opacity-50" />
                       <p className="flex-1 font-mono text-xs md:text-sm leading-relaxed text-nous-text/80">
-                        {geo?.semanticSignature?.stylisticLanguage ||
-                          dna?.poeticExpansion ||
-                          "Observation mode. Calibrate GEO or generate DNA to crystallize a higher-resolution forecast."}
+                        {intakeScope === "brand" && intakeBrand
+                          ? intakeBrand.positioning || intakeBrand.vibe
+                          : geo?.semanticSignature?.stylisticLanguage ||
+                            dna?.poeticExpansion ||
+                            intakePersonal?.vibe ||
+                            "Observation mode. Calibrate GEO or generate DNA to crystallize a higher-resolution forecast."}
                       </p>
                     </div>
                   </motion.div>
                 </div>
               )}
 
-              {user && selectedVector === "content" && (
+              {user && !needsIntake && selectedVector === "content" && (
                 <div className="flex flex-col gap-4">
                   <div className="border border-nous-border/60 bg-nous-surface/60 px-3 py-2">
                     <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle leading-relaxed">
@@ -482,13 +612,24 @@ export const TheForecast: React.FC<{
                         : FORECAST_COPY.contentLiveBanner}
                     </p>
                   </div>
-                  <h2 className="font-serif italic text-2xl flex flex-wrap items-center gap-3">
-                    <Target size={20} /> Content Forecasting
-                    <span className="text-[10px] uppercase font-sans tracking-widest text-nous-subtle bg-nous-border/30 px-2 py-1 inline-flex items-center gap-2">
-                      {contentForecast ? contentForecast.provider : "Research Synthesis"}
-                      {isPingingLabs ? <Loader2 size={10} className="animate-spin" /> : null}
-                    </span>
-                  </h2>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="font-serif italic text-2xl flex flex-wrap items-center gap-3">
+                      <Target size={20} /> Content Forecasting
+                      <span className="text-[10px] uppercase font-sans tracking-widest text-nous-subtle bg-nous-border/30 px-2 py-1 inline-flex items-center gap-2">
+                        {contentForecast ? contentForecast.provider : "Research Synthesis"}
+                        {isPingingLabs ? <Loader2 size={10} className="animate-spin" /> : null}
+                      </span>
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={refreshContentForecast}
+                      disabled={isPingingLabs}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-nous-border font-mono text-[8px] uppercase tracking-widest text-nous-subtle hover:text-nous-text disabled:opacity-40"
+                    >
+                      <RefreshCw size={10} className={isPingingLabs ? "animate-spin" : ""} />
+                      Refresh evidence
+                    </button>
+                  </div>
 
                   {isPingingLabs && !contentForecast ? (
                     <div className="min-h-[240px] flex flex-col items-center justify-center border border-nous-border border-dashed p-10 text-nous-subtle">
@@ -591,6 +732,14 @@ export const TheForecast: React.FC<{
                   ) : null}
                 </div>
               )}
+
+              {user && needsIntake && selectedVector !== "culture" ? (
+                <div className="min-h-[120px] flex items-center justify-center border border-dashed border-nous-border px-6 py-8">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle text-center max-w-md">
+                    {FORECAST_COPY.intakeRequired}
+                  </p>
+                </div>
+              ) : null}
 
               {selectedVector === "culture" && (
                 cultureReport ? (

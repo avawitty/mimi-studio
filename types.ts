@@ -1794,6 +1794,8 @@ export interface UserProfile extends UserPreferences {
   displayName?: string;
   externalLinks?: { title: string; url: string }[];
   pocket?: PocketItem[];
+  /** Lightweight personal/brand calibration for Forecast chamber vectors. */
+  forecastIntake?: import("./lib/forecastIntake").ForecastIntakeSnapshot;
 }
 
 export interface Notification {

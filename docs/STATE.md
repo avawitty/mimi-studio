@@ -43,7 +43,7 @@
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
 | **Observatory** | `/observatory` | **stub** | **Default `loadMeanMedianModeReport("demonstration")`** + demo Mesopic | Live aggregates gated on Proscenium consent pipeline |
 | **Mean Median Mode** | `/mean-median-mode` | **stub** | Same demonstration fixture as Observatory | Collapse or differentiate from Observatory overview |
-| **Forecast** | `/forecast` | partial | Observed panel uses **demonstration** MMM; content vectors key-gated | Remove any residual costume metrics; add Forecast to menu (`prd/chamber-loop-…`) |
+| **Forecast** | `/forecast` | partial | Personal/brand **intake onboarding** + personalized You.com/Apify content queries shipped; cultural vector still uses **demonstration** MMM | Live MMM aggregates when Proscenium consent ships; Residue → Forecast handoff |
 | **Celestial Calibration** | `/celestial-calibration` | shipped | Rising/houses need time + geocoded place | — |
 | **Oracle** | `/oracle` | **partial** | Cyberdeck voice overlay shipped; chamber reports + theme analysis now local-first (`oracleChamberService`); not in `CANON_MODULES` yet; celestial readings ephemeral | Register in canon; optional Neon sync for cross-device reports |
 
@@ -129,7 +129,7 @@
 
 ## Cross-cutting debt
 
-1. **Perception loop handoffs** — Observatory → Forecast → Edit not fully wired; Forecast missing from live menu (see `prd/chamber-loop-forecast-observatory-rip-dolls.md`).
+1. **Perception loop handoffs** — Observatory → Forecast → Edit not fully wired; Forecast intake + Apify search path shipped; live collective MMM still demonstration.
 2. **Identity loop handoffs** — Dolls ↔ Rip ↔ Tailor CTAs incomplete; Rip reads first doll only.
 3. **Demonstration labeling** — Collective modules label demos; commerce mock catalog does not yet say "demonstration".
 4. **Font stack drift** — Shell uses Geist Variable; house style names DM Sans — converge on tokens in new UI.

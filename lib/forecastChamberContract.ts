@@ -17,7 +17,7 @@ export const FORECAST_COPY = {
   thesis:
     "Aesthetic meteorology — personal season, drift when calibrated, and content vectors. Observatory’s “what next,” not a second collective readout.",
   contentLiveBanner:
-    "Live content vector — You.com evidence synthesized through Mimi Gateway. Citations only from returned search URLs.",
+    "Live content vector — You.com or Apify web evidence synthesized through Mimi Gateway. Citations only from returned search URLs.",
   contentUnavailableBanner:
     "Content forecast offline or empty — configure AI Gateway / You.com, or sign in with membership credits. No costume trends invented.",
   cultureAwaiting:
@@ -27,9 +27,18 @@ export const FORECAST_COPY = {
   cultureDemoBanner:
     "Demonstration Observatory baselines — trajectories are derived from labeled specimens, not a live collective corpus.",
   brandScopeNote:
-    "Brand OS scope reframes the same calibrated profile signals. Dedicated brand-guideline forecasting is not wired yet.",
+    "Brand OS scope reads your brand intake and searches live cultural evidence for that positioning.",
   personalScopeNote:
-    "Sovereign Curator scope reads your season, DNA, GEO, and taste vector when present.",
+    "Sovereign Curator scope reads your season, DNA, GEO, taste vector, or profile intake when present.",
+  intakePersonalTitle: "Calibrate your atmospheric read",
+  intakePersonalBody:
+    "A tiny profile intake — season, keywords, and vibe — so content and cultural vectors search with your coordinates instead of generic trends.",
+  intakeBrandTitle: "Calibrate brand forecasting",
+  intakeBrandBody:
+    "Name the brand and its vibe. Forecast will query live editorial evidence (You.com / Apify) for format and cultural trajectories aligned to that positioning.",
+  intakeRequired:
+    "Complete intake for this scope to unlock Overview and Content vectors.",
+  intakeRecalibrate: "Recalibrate intake",
   driftUncalibrated: "Drift uncalibrated — run GEO Engine or gather more signal.",
   identityRequired: "Identity not established — sign in to read your forecast.",
 } as const;

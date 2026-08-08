@@ -547,3 +547,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/tailor/tailorDefaults.ts`, `contexts/UserContext.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`
 
+---
+
+## 2026-08-08 — Forecast intake + Apify-backed evidence
+
+**Decision:** Forecast chamber requires lightweight **profile intake** (personal) or **brand intake** (Brand OS scope) before Overview/Content vectors run. Intake persists on `UserProfile.forecastIntake` and drives personalized search queries through existing `/api/you-search` (You.com → Apify `rag-web-browser` → Gateway fallback).
+
+**Alternatives rejected:** (1) Force Tailor/GEO completion first — too heavy for a first forecast read. (2) Duplicate full `BrandIntakeView` inside Forecast — link to full report instead.
+
+**Why:** Makes Forecast operable without full DNA/GEO calibration; brand scope gets real positioning inputs; reuses billable Apify path already wired for search.
+
+**Ref:** `lib/forecastIntake.ts`, `components/forecast/ForecastIntakePanel.tsx`, `components/TheForecast.tsx`, `services/researchService.ts`
+
