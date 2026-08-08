@@ -25,7 +25,7 @@
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
-| **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
+| **Taste Signature** | `/signature` | shipped | Expanded reading (thesis, touchpoints, directions, recommendations); approve → `mark_signature` taste event | Public-face mobile review after chrome changes |
 | **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; embedding space migrations on model change | Complete atom migration; run shadow audit after Gateway model bumps |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
