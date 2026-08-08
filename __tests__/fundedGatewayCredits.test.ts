@@ -146,10 +146,17 @@ describe("isPaidSubscriptionActive", () => {
 
 describe("hasAdminGrantedPatronSeat", () => {
   it("trusts server-written patron activation", async () => {
-    const { hasAdminGrantedPatronSeat } = await import("../lib/mimiFundedGateway.js");
+    const { hasAdminGrantedPatronSeat, hasPromoGrantedBilling } = await import(
+      "../lib/mimiFundedGateway.js"
+    );
     expect(hasAdminGrantedPatronSeat({ isPatron: true, patronActivatedAt: Date.now() })).toBe(true);
+    expect(
+      hasAdminGrantedPatronSeat({ patronKey: "MIMIMUSE", patronActivatedAt: Date.now() }),
+    ).toBe(true);
     expect(hasAdminGrantedPatronSeat({ isPatron: true })).toBe(false);
     expect(hasAdminGrantedPatronSeat({ patronActivatedAt: Date.now() })).toBe(false);
+    expect(hasPromoGrantedBilling({ source: "promo" })).toBe(true);
+    expect(hasPromoGrantedBilling({ source: "stripe" })).toBe(false);
   });
 });
 

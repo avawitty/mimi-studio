@@ -190,6 +190,12 @@ const resolveTrustedPaidBilling = async (
   if (userData?.isPatron === true && Number(userData.patronActivatedAt ?? 0) > 0) {
     return true;
   }
+  if (String(userData?.patronKey || '').trim().length > 0 && Number(userData?.patronActivatedAt ?? 0) > 0) {
+    return true;
+  }
+  for (const source of sources) {
+    if (source && String(source.source || '').trim().toLowerCase() === 'promo') return true;
+  }
   for (const customerId of collectStripeCustomerIdCandidates(...sources)) {
     if (await verifyStripeCustomerEntitlement(customerId, uid, email)) return true;
   }
@@ -205,6 +211,21 @@ const isTrialDayPassTier = (plan: string, planStatus: unknown, grantedBaseline: 
   if (plan === 'free' || planStatus === 'ghost') return true;
   return plan === 'trial' && grantedBaseline <= 12;
 };
+
+const hasAdminGrantedPatronSeat = (data: Record<string, unknown>) => {
+  const activatedAt = Number(data.patronActivatedAt ?? 0);
+  if (activatedAt <= 0) return false;
+  if (data.isPatron === true) return true;
+  return String(data.patronKey || '').trim().length > 0;
+};
+
+const hasPromoGrantedBilling = (billingData: Record<string, unknown>) =>
+  String(billingData.source || '').trim().toLowerCase() === 'promo';
+
+const hasFundedGatewayPatronSeat = (
+  userData: Record<string, unknown>,
+  billingData: Record<string, unknown>,
+) => hasAdminGrantedPatronSeat(userData) || hasPromoGrantedBilling(billingData);
 
 const writeMembershipEntitlements = async ({
   uid,
@@ -420,10 +441,23 @@ app.post('/api/funded-gateway/access', async (req, res) => {
     const profileRef = db.collection('profiles_public').doc(decoded.uid);
     const [userDoc, profileDoc] = await Promise.all([userRef.get(), profileRef.get()]);
     const data = { ...(profileDoc.data() || {}), ...(userDoc.data() || {}) };
+    const userData = data as Record<string, unknown>;
     const plan = normalizeMimiPlan(
       data.plan || data.planStatus || data.mimiPlan || data.membershipPlan,
     );
-    const paid = isPaidMimiPlan(plan);
+
+    let billingData: Record<string, unknown> = {};
+    try {
+      const billingSnap = await userRef.collection('billing').doc('subscription').get();
+      billingData = (billingSnap.data() || {}) as Record<string, unknown>;
+    } catch {
+      billingData = {};
+    }
+
+    const isPatronSeat = hasFundedGatewayPatronSeat(userData, billingData);
+    const membershipPlan =
+      isPatronSeat && !isPaidMimiPlan(plan) ? normalizeMimiPlan('lab') : plan;
+    const paid = isPaidMimiPlan(plan) || isPatronSeat;
 
     let remaining = 0;
     if (paid) {
@@ -432,14 +466,6 @@ app.post('/api/funded-gateway/access', async (req, res) => {
       if (!active) {
         res.status(200).send({ allowed: false, billable: false, uid: decoded.uid, cost });
         return;
-      }
-
-      let billingData: Record<string, unknown> = {};
-      try {
-        const billingSnap = await userRef.collection('billing').doc('subscription').get();
-        billingData = (billingSnap.data() || {}) as Record<string, unknown>;
-      } catch {
-        billingData = {};
       }
 
       // Never trust top-level subscription.credits (owner-writable forge vector).
@@ -456,24 +482,36 @@ app.post('/api/funded-gateway/access', async (req, res) => {
           ? await resolveTrustedPaidBilling(
               decoded.uid,
               decoded.email,
-              [billingData, data as Record<string, unknown>],
-              data as Record<string, unknown>,
+              [billingData, userData],
+              userData,
             )
           : false;
       const needsTrustedMint = needsMint && trustedBilling;
 
       if ((needsPeriodReload && trustedBilling) || needsTrustedMint) {
-        const interval = (data.subscriptionInterval === 'year' ? 'year' : 'month') as MimiBillingInterval;
+        const interval = (data.subscriptionInterval === 'year' || billingData.interval === 'year' || isPatronSeat
+          ? 'year'
+          : 'month') as MimiBillingInterval;
+        const existingPeriodEnd = Number(grant?.periodEndsAt ?? billingData.currentPeriodEnd ?? 0);
         // Period reload preserves stored allowance; mint derives from plan.
         const credits = needsPeriodReload
           ? rollForwardMembershipGrant(grant, interval, now)
-          : periodEndsAt > now
-            ? { ...buildCreditGrant(plan, interval), periodEndsAt }
-            : buildCreditGrant(plan, interval);
+          : existingPeriodEnd > now
+            ? { ...buildCreditGrant(membershipPlan, interval), periodEndsAt: existingPeriodEnd }
+            : buildCreditGrant(membershipPlan, interval);
         const healPatch = {
           membershipCredits: credits,
           subscriptionStatus: data.subscriptionStatus || 'active',
-          mimiPlan: plan,
+          mimiPlan: membershipPlan,
+          ...(isPatronSeat
+            ? {
+                plan: 'lab',
+                planStatus: 'lab',
+                membershipPlan: 'lab',
+                isPatron: true,
+                patronActivatedAt: Number(userData.patronActivatedAt ?? now),
+              }
+            : {}),
         };
         await Promise.all([
           userRef.set(healPatch, { merge: true }),
@@ -557,9 +595,10 @@ app.post('/api/funded-gateway/charge', async (req, res) => {
     const profileRef = db.collection('profiles_public').doc(access.uid);
     const userDoc = await userRef.get();
     const userData = userDoc.data() || {};
-    const paid = isPaidMimiPlan(
-      userData.plan || userData.planStatus || userData.mimiPlan || userData.membershipPlan,
-    );
+    const paid =
+      isPaidMimiPlan(
+        userData.plan || userData.planStatus || userData.mimiPlan || userData.membershipPlan,
+      ) || hasAdminGrantedPatronSeat(userData as Record<string, unknown>);
     const field = paid ? 'membershipCredits' : 'trial';
     const cost = Number(access.cost || 1);
     const patch = {
