@@ -24,6 +24,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Public signature route + incremental evidence patch
+
+**Decision:** Ship `/u/:handle/signature` as a public plate surface (approved signatures only) with server-visible OG HTML on Express (`server.ts`) and Vercel crawler rewrite (`api/og/signature.ts`). Share links point to this URL. When only approved Used Context atoms change, `patchSignatureFromEvidence` updates the reading in-place (debounced) and resets approval to draft; full Re-sync remains for zine/Tailor/taste-model changes.
+
+**Alternatives rejected:** (1) Publishing draft signatures publicly. (2) Full gateway re-generation on every atom toggle. (3) Client-only OG (no crawlable meta).
+
+**Why:** Share cards need a stable public URL and honest visibility (approved only). Evidence approval is frequent enough that full re-sync felt heavy; fingerprint-gated patches keep the reading current without recomputing the whole signature.
+
+**Ref:** `components/PublicSignaturePage.tsx`, `lib/signature/publicSignature.ts`, `lib/signature/signatureFingerprint.ts`, `api/og/signature.ts`, `vercel.json`, `server.ts`, `components/SignatureView.tsx`
+
+---
+
 **Decision:** Redesign `/oracle` with cyberdeck instrument plates (matching `TheScribe` atmosphere). Persist Cyberdeck sessions locally via `services/oracleChamberService.ts` on chamber close/export; surface **Chamber Reports** (past transmissions) and **Recurring Themes** (client-side frequency extraction) on the Oracle page. Pocket export remains the durable archive path.
 
 **Alternatives rejected:** (1) Firestore collection for every voice snippet (quota + latency). (2) AI-generated theme summaries on each page load (cost + latency). (3) Flattening Oracle to quiet public kit (product exempts Oracle cyberdeck density).
