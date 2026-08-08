@@ -6,7 +6,7 @@
  */
 
 import type { Doll } from "../../types";
-import type { DollLikenessTraits } from "../../types";
+import { mergeLikenessTraits } from "../dollLikeness";
 
 export const MIMI_SHELL_STAPLE_VERSION = "omni-loop-resin-v1" as const;
 
@@ -168,7 +168,10 @@ export function buildLikenessAsDollImagePrompt(
   >,
   options: BuildShellPromptOptions = {},
 ): string {
-  const traits = doll.onboardingRefs?.likenessTraits;
+  const traits = mergeLikenessTraits(
+    doll.onboardingRefs?.declaredAttributes,
+    doll.onboardingRefs?.likenessTraits,
+  );
   const likenessLines = [
     traits?.hairDescription ? `Creator hair as resin sculpt: ${traits.hairDescription}` : "",
     traits?.eyeColor ? `Creator eye color in glass doll eyes: ${traits.eyeColor}` : "",
@@ -178,6 +181,8 @@ export function buildLikenessAsDollImagePrompt(
       : "",
     traits?.resinSkinTone ? `Resin skin tone echo: ${traits.resinSkinTone}` : "",
     traits?.expressionBaseline ? `Baseline expression: ${traits.expressionBaseline}` : "",
+    traits?.styleNotes ? `Style / wardrobe notes: ${traits.styleNotes}` : "",
+    traits?.userNotes ? `Creator notes: ${traits.userNotes}` : "",
   ].filter(Boolean);
 
   const base = buildMimiShellImagePrompt(doll, { ...options, view: options.view ?? "portrait" });
@@ -186,6 +191,9 @@ export function buildLikenessAsDollImagePrompt(
     base,
     "LIKENESS AS DOLL (PRIMARY GOAL): The creator reference photo must be translated into this ball-jointed resin BJD — recognizable as the same person, but unmistakably a manufactured art doll with visible resin joints and doll-scale features. Carry hairstyle, eye color, beauty marks, and bone-structure echoes into the resin sculpt. This is you-as-a-doll, not a photoreal human photograph or face-swap.",
     likenessLines.length ? `Creator likeness carriers: ${likenessLines.join(". ")}.` : "",
+    doll.onboardingRefs?.declaredAttributes
+      ? "USER-DECLARED ATTRIBUTES are authoritative — prioritize them over generic house defaults when sculpting the doll face and hair."
+      : "",
   ]
     .filter(Boolean)
     .join(" ");

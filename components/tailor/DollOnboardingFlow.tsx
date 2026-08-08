@@ -3,7 +3,11 @@ import { Sparkles, Upload, ArrowRight, ImagePlus } from 'lucide-react';
 import { compressImage } from '../../services/imageUtils';
 import { createDollFromOnboarding } from '../../services/dollOnboardingService';
 import { OMNI_LOOP_CULT } from '../../services/dollEngine';
-import type { Doll } from '../../types';
+import type { Doll, DollDeclaredAttributes } from '../../types';
+import {
+  DollDeclaredAttributesForm,
+  emptyDeclaredAttributes,
+} from './DollDeclaredAttributesForm';
 
 interface DollOnboardingFlowProps {
   userId: string;
@@ -11,7 +15,7 @@ interface DollOnboardingFlowProps {
   onCancel?: () => void;
 }
 
-type Step = 'intro' | 'photo' | 'refs' | 'thought' | 'projecting';
+type Step = 'intro' | 'photo' | 'refs' | 'attributes' | 'thought' | 'projecting';
 
 export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
   userId,
@@ -21,6 +25,9 @@ export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
   const [step, setStep] = useState<Step>('intro');
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [aestheticRefs, setAestheticRefs] = useState<string[]>([]);
+  const [declaredAttributes, setDeclaredAttributes] = useState<DollDeclaredAttributes>(
+    emptyDeclaredAttributes(),
+  );
   const [rawThought, setRawThought] = useState('');
   const [dollName, setDollName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +66,7 @@ export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
         aestheticRefDataUrls: aestheticRefs,
         rawThought: rawThought.trim() || undefined,
         dollName: dollName.trim() || undefined,
+        declaredAttributes,
       });
       onComplete(doll);
     } catch (err: unknown) {
@@ -92,7 +100,7 @@ export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
         <h2 className="font-serif text-3xl text-nous-text">Initiation</h2>
         <p className="text-sm text-nous-subtle max-w-md mx-auto leading-relaxed">
           Upload your photo — we translate you into a ball-jointed resin BJD you can still recognize.
-          Same species for everyone; your hair, eyes, and marks echo in the sculpt. Aesthetic refs dress the shell.
+          Write key features so the sculpt matches what you see in yourself.
         </p>
       </header>
 
@@ -105,9 +113,10 @@ export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
       {step === 'intro' && (
         <div className="space-y-6 text-center">
           <ol className="text-left space-y-3 text-sm text-nous-subtle max-w-sm mx-auto">
-            <li>1. Your photo — translated into you-as-a-doll (recognizable resin BJD)</li>
-            <li>2. Two or more images that represent your aesthetic, symbols, or motifs</li>
-            <li>3. A raw thought — seeds your time-travel scenes</li>
+            <li>1. Your photo — translated into you-as-a-doll</li>
+            <li>2. Two or more aesthetic / motif reference images</li>
+            <li>3. Key attributes — hair, eyes, marks, features you want locked in</li>
+            <li>4. A raw thought — seeds your time-travel scenes</li>
           </ol>
           <button
             type="button"
@@ -184,18 +193,34 @@ export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
           {aestheticRefs.length >= 2 && (
             <button
               type="button"
-              onClick={() => setStep('thought')}
+              onClick={() => setStep('attributes')}
               className="w-full py-3 font-mono text-[9px] uppercase tracking-widest border border-nous-border"
             >
-              Continue
+              Continue to your attributes
             </button>
           )}
         </div>
       )}
 
+      {step === 'attributes' && (
+        <div className="space-y-6">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">
+            Step 3 — Your key features
+          </p>
+          <DollDeclaredAttributesForm value={declaredAttributes} onChange={setDeclaredAttributes} />
+          <button
+            type="button"
+            onClick={() => setStep('thought')}
+            className="w-full py-3 font-mono text-[9px] uppercase tracking-widest border border-nous-border"
+          >
+            Continue
+          </button>
+        </div>
+      )}
+
       {step === 'thought' && (
         <div className="space-y-6">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">Step 3 — Raw thought</p>
+          <p className="font-mono text-[9px] uppercase tracking-widest text-nous-subtle">Step 4 — Name & thought</p>
           <input
             type="text"
             placeholder="Doll name (optional)"

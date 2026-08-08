@@ -2390,12 +2390,28 @@ export interface DollLikenessTraits {
   distinguishingMarks?: string[];
   resinSkinTone?: string;
   expressionBaseline?: string;
+  styleNotes?: string;
+  userNotes?: string;
+}
+
+/** User-written likeness carriers — authoritative over photo inference when set. */
+export interface DollDeclaredAttributes {
+  hair?: string;
+  eyes?: string;
+  faceFeatures?: string;
+  distinguishingMarks?: string;
+  skinTone?: string;
+  expression?: string;
+  styleNotes?: string;
+  otherNotes?: string;
 }
 
 export interface DollOnboardingRefs {
   userPhotoDataUrl?: string;
   aestheticRefDataUrls?: string[];
   rawThought?: string;
+  /** Creator-authored likeness attributes for doll generation. */
+  declaredAttributes?: DollDeclaredAttributes;
   /** Features extracted from creator photo for doll-as-you translation. */
   likenessTraits?: DollLikenessTraits;
   completedAt?: number;

@@ -5,7 +5,7 @@ import { Type } from '@google/genai';
 import { withResilience } from './geminiClient';
 import { ORACLE_PERSONA } from './geminiService';
 import { sanitizeTailorText, TAILOR_PRODUCT_CONSTITUTION } from '../constants/tailorSafetyRules';
-import type { Doll, DollOnboardingRefs, DollLikenessTraits } from '../types';
+import type { Doll, DollOnboardingRefs, DollLikenessTraits, DollDeclaredAttributes } from '../types';
 import {
   addEvidenceNode,
   createTailorProject,
@@ -14,6 +14,7 @@ import {
   updateDoll,
 } from './tailorService';
 import { deriveProceduralAesthetic, buildLikenessAsDollImagePrompt } from './dollEngine';
+import { formatDeclaredAttributesForPrompt, mergeLikenessTraits } from './dollLikeness';
 
 const ONBOARDING_CONSTITUTION = `${ORACLE_PERSONA}
 
@@ -31,6 +32,7 @@ export interface DollOnboardingInput {
   aestheticRefDataUrls: string[];
   rawThought?: string;
   dollName?: string;
+  declaredAttributes?: DollDeclaredAttributes;
 }
 
 function dataUrlToInline(dataUrl: string): { inlineData: { mimeType: string; data: string } } | null {
@@ -57,8 +59,10 @@ async function analyzeOnboardingRefs(input: DollOnboardingInput): Promise<Record
   parts.push({
     text: `Raw thought from creator: ${input.rawThought?.trim() || 'none provided'}
 Doll name hint: ${input.dollName?.trim() || 'Omni Loop Proxy'}
+Creator-declared attributes (AUTHORITATIVE when present):
+${formatDeclaredAttributesForPrompt(input.declaredAttributes) || 'none'}
 
-Return JSON with: name, description, visualLanguage[], palette[], materials[], silhouette, motifs[], eyeTreatment, emotionalRegister, creativePhilosophy, strengths[], blindSpots[], signatureMotifs[], suggestedExperiments[], likenessTraits { hairDescription, eyeColor, faceShape, distinguishingMarks[], resinSkinTone, expressionBaseline }`,
+Return JSON with: name, description, visualLanguage[], palette[], materials[], silhouette, motifs[], eyeTreatment, emotionalRegister, creativePhilosophy, strengths[], blindSpots[], signatureMotifs[], suggestedExperiments[], likenessTraits { hairDescription, eyeColor, faceShape, distinguishingMarks[], resinSkinTone, expressionBaseline, styleNotes, userNotes }`,
   });
 
   const result = await withResilience(async (ai) => {
@@ -93,6 +97,8 @@ Return JSON with: name, description, visualLanguage[], palette[], materials[], s
                 distinguishingMarks: { type: Type.ARRAY, items: { type: Type.STRING } },
                 resinSkinTone: { type: Type.STRING },
                 expressionBaseline: { type: Type.STRING },
+                styleNotes: { type: Type.STRING },
+                userNotes: { type: Type.STRING },
               },
             },
           },
@@ -172,11 +178,15 @@ export async function createDollFromOnboarding(input: DollOnboardingInput): Prom
 
   const analyzed = await analyzeOnboardingRefs(input);
 
+  const extractedTraits = analyzed.likenessTraits as DollLikenessTraits | undefined;
+  const mergedTraits = mergeLikenessTraits(input.declaredAttributes, extractedTraits);
+
   const onboardingRefs: DollOnboardingRefs = {
     userPhotoDataUrl: input.userPhotoDataUrl,
     aestheticRefDataUrls: input.aestheticRefDataUrls,
     rawThought: input.rawThought?.trim() || undefined,
-    likenessTraits: analyzed.likenessTraits as DollLikenessTraits | undefined,
+    declaredAttributes: input.declaredAttributes,
+    likenessTraits: mergedTraits,
     completedAt: Date.now(),
   };
 
