@@ -297,7 +297,18 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 
 ---
 
-## 2026-08-04 — Publisher Console artifact-first release desk
+## 2026-08-08 — The Press Export Chamber wired end-to-end
+
+**Decision:** Wire `ExportChamber` into `PublisherDashboard` so destination cards and the Release desk open the artifact export surface in-place — with destination-aware initial modes (PDF, asset ZIP, Shopify pack), publish consent for web issues, and Firestore `exportState` recording after successful exports.
+
+**Alternatives rejected:** (1) Keep routing export actions to `/studio`. (2) Duplicate export UI inside PublisherDashboard. (3) Silent publish without Proscenium consent modal.
+
+**Why:** The Press release desk already derives readiness and destinations; creators need one honest handoff to extract artifacts and publish without leaving the chamber. Studio remains the proof/edit surface; export and publication happen after approval in The Press.
+
+**Ref:** `components/PublisherDashboard.tsx`, `components/ExportChamber.tsx`, `lib/publisher/artifactExportActions.ts`
+
+---
+
 
 **Decision:** Restructure The Press around **Release** (artifact readiness, destinations, approvals) and **Performance** (post-publication metrics only when connected). Derive readiness deterministically from proof diagnostics, export manifest, Intel handoff, and Shopify pack inspection — no simulated reach/revenue/deliverability cards.
 
