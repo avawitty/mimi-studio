@@ -25,11 +25,19 @@
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab; Export Chamber wired from Publisher Console destinations |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
+<<<<<<< HEAD
 | **Taste Signature** | `/signature` | shipped | Expanded reading + public `/u/:handle/signature` OG; incremental evidence patch; approve → `mark_signature` | Public-face mobile review |
 | **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; ingest mirrors + Used Context conflict UI; merge/split behind `TASTE_GRAPH_MERGE_SPLIT` | Ops backfill/analyze scripts |
 | **Computational Taste Model** | — (derived) | **shipped** | Centroid blend + embedding similarity in candidate score (hash fallback + vectors); server-side recompile on ingest | Embedding space migrations on model change |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context merge hydrate | Semantic retrieval (#223); batch analyze backfill |
 | **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; negative taste + graph editing (merge/split when flagged); Scry rerank; Studio compiler + post-generation critic with embedding-aware alignment | Collaborative contract UI; evaluation dashboard |
+=======
+| **Taste Signature** | `/signature` | shipped | Expanded reading; **approved** (memory) vs **published** (public snapshot) split; public `/u/:handle/signature` reads published snapshot only; incremental evidence patch | Publish/unpublish UX polish |
+| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; Phase 1 `EvidenceAtom` layer + correction UI; embedding centroid; Studio/Scry auto-embed; ingest mirrors + Used Context conflict UI | Ops backfill/analyze scripts; shadow audit after Gateway model bumps |
+| **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring (label + cosine); server-side recompile on ingest | Embedding space migrations on model change |
+| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context merge hydrate; legacy graph coexists | Semantic retrieval (#223) |
+| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
+>>>>>>> 49986d1 (feat(zine): restore editorial compiler behind direct Studio path)
 
 ---
 
