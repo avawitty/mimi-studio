@@ -235,4 +235,22 @@ describe('scoreTasteCandidate', () => {
     expect(score.fitScore).toBeLessThanOrEqual(100);
     expect(score.confidence).toBeLessThanOrEqual(0.95);
   });
+
+  it('blends embedding similarity when centroid is available', () => {
+    const centroid = [1, 0, 0];
+    const withCentroid = {
+      ...snapshot,
+      diagnostics: {
+        ...snapshot.diagnostics,
+        embeddingCentroid: centroid,
+        embeddingSampleCount: 3,
+      },
+    };
+    const labelOnly = scoreTasteCandidate({ id: 'x', tags: ['unknown-tag'] }, withCentroid);
+    const withEmbed = scoreTasteCandidate(
+      { id: 'x', tags: ['unknown-tag'], embedding: [1, 0, 0] },
+      withCentroid,
+    );
+    expect(withEmbed.fitScore).toBeGreaterThan(labelOnly.fitScore);
+  });
 });

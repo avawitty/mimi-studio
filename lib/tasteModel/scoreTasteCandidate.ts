@@ -3,6 +3,7 @@ import type {
   TasteCandidateScore,
   TasteModelSnapshot,
 } from './contracts';
+import { cosineSimilarity } from '../taste/evidenceEmbeddingMath';
 import {
   NOVELTY_SWEET_SPOT_MAX,
   NOVELTY_SWEET_SPOT_MIN,
@@ -69,6 +70,20 @@ function semanticAffinity(
   const raw = totalPositive - totalNegative;
   const normalized = Math.max(0, Math.min(1, (raw + 2) / 4));
   return { score: normalized, positives, negatives };
+}
+
+function blendSemanticAffinity(
+  labelScore: number,
+  candidate: TasteCandidateInput,
+  snapshot: TasteModelSnapshot,
+): number {
+  const centroid = snapshot.diagnostics.embeddingCentroid;
+  const candidateEmb = candidate.embedding;
+  if (!centroid || !candidateEmb || centroid.length !== candidateEmb.length) {
+    return labelScore;
+  }
+  const vectorScore = cosineSimilarity(candidateEmb, centroid);
+  return labelScore * 0.55 + vectorScore * 0.45;
 }
 
 function ruleFit(
@@ -257,6 +272,7 @@ export function scoreTasteCandidate(
   const candidateFeatures = extractCandidateFeatures(candidate);
 
   const affinity = semanticAffinity(candidateFeatures, snapshot);
+  const blendedAffinity = blendSemanticAffinity(affinity.score, candidate, snapshot);
   const rule = ruleFit(candidateFeatures, snapshot);
   const ctx = contextFit(snapshot, context);
   const traj = trajectoryFit(candidateFeatures, snapshot);
@@ -266,7 +282,7 @@ export function scoreTasteCandidate(
 
   const coeffs = SCORE_COEFFICIENTS;
   const rawFit =
-    affinity.score * coeffs.semanticAffinity +
+    blendedAffinity * coeffs.semanticAffinity +
     rule * coeffs.ruleFit +
     ctx * coeffs.contextFit +
     traj * coeffs.trajectoryFit +
