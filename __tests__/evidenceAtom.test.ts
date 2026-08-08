@@ -212,6 +212,7 @@ describe("tasteStateToPromptContext", () => {
     id: `c-${label}`,
     userId: "u1",
     label,
+    labelNormalized: label.toLowerCase(),
     isInferred: false,
     confidence: 0.8,
     contexts: [{ scope: "global", strength: 0.8, confidence: 0.8, trend: "rising", updatedAt: Date.now() }],

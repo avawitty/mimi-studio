@@ -15,7 +15,6 @@
  * Processing (embeddings, AI analysis) happens asynchronously via separate
  * POST /api/mimi/analyze-image or POST /api/mimi/embed calls.
  */
-import { z } from "zod";
 import {
   cors,
   readJsonBody,
@@ -25,6 +24,8 @@ import {
   validateBody,
 } from "./apiUtils.js";
 import { verifyMimiSession, getServerFirebaseAdmin } from "./serverFirebaseAdmin.js";
+import { createEvidenceAtomSchema } from "./taste/evidenceAtomSchema.js";
+import type { CreateEvidenceAtomInput } from "./taste/evidenceAtomSchema.js";
 import type { EvidenceAtom, StabilityClass, TasteScope } from "../types.js";
 
 const uid = () =>
@@ -32,28 +33,26 @@ const uid = () =>
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-const createEvidenceAtomSchema = z.object({
-  kind: z.enum(["image", "url", "text", "note", "screenshot", "film", "product", "brand", "generated", "rejection"]),
-  sourceType: z.enum([
-    "image", "book", "artwork", "website", "screenshot", "note",
-    "quote", "fashion", "object", "music", "film", "architecture", "product", "moodboard",
-  ]),
-  originalSource: z.string().min(1).max(10_000),
-  assetUrl: z.string().url().optional(),
-  thumbnailUrl: z.string().url().optional(),
-  projectId: z.string().optional(),
-  contextScope: z.enum([
-    "global", "project", "brand", "fashion", "interface", "editorial", "experimental",
-  ]).optional(),
-  sourceMetadata: z.record(z.string(), z.unknown()).optional(),
-  ingestSource: z
-    .enum(["tailor", "scribe", "pocket", "darkroom", "api", "direct"])
-    .default("direct"),
-  tasteImpact: z.boolean().default(true),
-  stabilityClass: z
-    .enum(["stable", "recurring", "fascination", "project", "temporary", "declared"])
-    .default("temporary"),
-});
+// ─── In-process rate limiter ──────────────────────────────────────────────────
+// Token-bucket: 30 evidence writes per user per minute.
+// Blunts burst abuse on a single Node isolate; not a distributed limiter.
+type RateBucket = { tokens: number; updatedAt: number };
+const evidenceBuckets = new Map<string, RateBucket>();
+const EVIDENCE_CAPACITY = 30;
+const EVIDENCE_REFILL_PER_MS = EVIDENCE_CAPACITY / 60_000;
+
+function allowEvidenceWrite(userId: string): boolean {
+  const now = Date.now();
+  const current = evidenceBuckets.get(userId) || { tokens: EVIDENCE_CAPACITY, updatedAt: now };
+  const elapsed = Math.max(0, now - current.updatedAt);
+  const tokens = Math.min(EVIDENCE_CAPACITY, current.tokens + elapsed * EVIDENCE_REFILL_PER_MS);
+  if (tokens < 1) {
+    evidenceBuckets.set(userId, { tokens, updatedAt: now });
+    return false;
+  }
+  evidenceBuckets.set(userId, { tokens: tokens - 1, updatedAt: now });
+  return true;
+}
 
 export async function handleMimiEvidenceRoute(req: any, res: any) {
   if (cors(req, res)) return;
@@ -62,6 +61,11 @@ export async function handleMimiEvidenceRoute(req: any, res: any) {
   try {
     const decoded = await verifyMimiSession(req.headers || {});
     const userId = decoded.uid;
+
+    if (!allowEvidenceWrite(userId)) {
+      sendError(res, 429, "Too many evidence submissions. Please wait a moment.", "RATE_LIMITED");
+      return;
+    }
 
     const body = await readJsonBody(req);
     const input = validateBody(res, createEvidenceAtomSchema, body);
