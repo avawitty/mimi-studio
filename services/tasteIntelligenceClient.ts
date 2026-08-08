@@ -6,10 +6,22 @@ import type {
   CalibrationChoice,
   TasteCalibrationPair,
   TasteCalibrationSession,
+  TasteModelEdit,
+  TasteModelEditOperation,
   TasteRefusal,
+  TasteRefusalType,
+  GenerationMedium,
+  GenerationMode,
+  TasteGenerationContract,
+  TasteCritique,
   SavedReasonHypothesis,
 } from "../schemas/tasteIntelligenceContracts.js";
 import type { TasteModelSnapshot } from "../lib/tasteModel/contracts.js";
+import type { TasteModelDelta } from "../lib/tasteIntelligence/computeModelDelta.js";
+import type {
+  GenerationContractReconciliation,
+  TailorGenerationContractInput,
+} from "../lib/tasteIntelligence/mergeGenerationContracts.js";
 
 async function authHeaders(): Promise<HeadersInit> {
   const { auth } = await import("./firebaseInit");
@@ -102,6 +114,62 @@ export async function listTasteRefusals(projectId?: string): Promise<{
   return apiFetch(`/refusals${qs}`);
 }
 
+export async function createTasteRefusal(input: {
+  featureIds: string[];
+  refusalType: TasteRefusalType;
+  projectId?: string;
+  scope?: "persistent" | "project" | "session";
+  signedWeight?: number;
+  confidence?: number;
+  sourceIds?: string[];
+  snapshot?: TasteModelSnapshot;
+  idempotencyKey?: string;
+}): Promise<{
+  refusal: TasteRefusal;
+  snapshot: TasteModelSnapshot | null;
+  modelDelta: TasteModelDelta | null;
+}> {
+  return apiFetch("/refusals", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function submitTasteModelEdit(input: {
+  operation: TasteModelEditOperation;
+  targetIds: string[];
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+  projectId?: string;
+  rationale?: string;
+  snapshot: TasteModelSnapshot;
+  idempotencyKey?: string;
+}): Promise<{
+  edit: TasteModelEdit;
+  snapshot: TasteModelSnapshot;
+  modelDelta: TasteModelDelta;
+}> {
+  return apiFetch("/model-edits", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function undoTasteModelEdit(input: {
+  editId: string;
+  projectId?: string;
+  snapshot: TasteModelSnapshot;
+}): Promise<{
+  edit: TasteModelEdit;
+  snapshot: TasteModelSnapshot;
+  modelDelta: TasteModelDelta;
+}> {
+  return apiFetch("/model-edits/undo", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function proposeSavedReasonHypotheses(input: {
   artifactId: string;
   tags?: string[];
@@ -140,6 +208,51 @@ export async function persistTasteModelSnapshot(input: {
   workspaceId?: string;
 }): Promise<{ ok: true }> {
   return apiFetch("/snapshot/persist", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function compileTasteGenerationContract(input: {
+  medium: GenerationMedium;
+  mode: GenerationMode;
+  projectId?: string;
+  workspaceId?: string;
+  modelSnapshotId?: string;
+  persist?: boolean;
+  tailorGenerationContract?: TailorGenerationContractInput;
+}): Promise<{
+  contract: TasteGenerationContract;
+  reconciliation: GenerationContractReconciliation;
+  snapshotId: string;
+  promptBlock: string;
+}> {
+  return apiFetch("/compiler/compile", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function critiqueTasteCandidate(input: {
+  contractId?: string;
+  contract?: TasteGenerationContract;
+  candidate: {
+    id: string;
+    featureIds?: string[];
+    tags?: string[];
+  };
+  persist?: boolean;
+  projectId?: string;
+}): Promise<{
+  critique: TasteCritique;
+  extracted: {
+    featureIds: string[];
+    labels: string[];
+    tags: string[];
+    evidenceIds: string[];
+  };
+}> {
+  return apiFetch("/critic/critique", {
     method: "POST",
     body: JSON.stringify(input),
   });

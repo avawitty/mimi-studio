@@ -1,32 +1,64 @@
 import React, { useMemo } from 'react';
 import type { TasteFeatureWeight, TasteModelSnapshot } from '../../lib/tasteModel';
 import { explainFeature, formatSignedStrength } from '../../lib/tasteModel';
+import type { TasteModelEdit, TasteRefusal } from '../../schemas/tasteIntelligenceContracts';
+import type { TasteModelDelta } from '../../lib/tasteIntelligence/computeModelDelta';
+import type { CreativeLaw } from '../../types';
+import { describeInteractionRule } from '../tailor/TasteSignalGraphView';
 
 interface TasteModelInspectorProps {
   snapshot: TasteModelSnapshot | null;
   selectedFeatureId?: string | null;
-  onCurate?: (featureId: string, action: 'accept' | 'reject' | 'reduce' | 'context_only' | 'note') => void;
+  refusals?: TasteRefusal[];
+  laws?: CreativeLaw[];
+  lastEdit?: TasteModelEdit | null;
+  lastDelta?: TasteModelDelta | null;
   loading?: boolean;
   stale?: boolean;
+  scopeLabel?: string;
   onRecompile?: () => void;
+  onRefine?: () => void;
+  onRename?: (nextLabel: string) => void;
+  onDisconnect?: (otherFeatureId: string) => void;
+  onUndo?: () => void;
+  canUndo?: boolean;
 }
 
 const TREND_ICONS: Record<string, string> = {
-  emerging: '↑ new',
-  strengthening: '↗ growing',
-  stable: '→ steady',
-  declining: '↘ fading',
-  uncertain: '? unclear',
+  emerging: '↑ Emerging',
+  strengthening: '↗ Strengthening',
+  stable: '→ Steady',
+  declining: '↘ Fading',
+  uncertain: '? Uncertain',
+};
+
+const EPISTEMIC_LABELS: Record<string, string> = {
+  observed: 'Observed',
+  inferred: 'Inferred',
+  user_confirmed: 'Creator confirmed',
+  user_rejected: 'Creator rejected',
+  speculative: 'Uncertain',
 };
 
 export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
   snapshot,
   selectedFeatureId,
-  onCurate,
+  refusals = [],
+  laws = [],
+  lastEdit,
+  lastDelta,
   loading,
   stale,
+  scopeLabel,
   onRecompile,
+  onRefine,
+  onRename,
+  onDisconnect,
+  onUndo,
+  canUndo,
 }) => {
+  const [renameDraft, setRenameDraft] = React.useState('');
+
   const feature = useMemo(() => {
     if (!snapshot || !selectedFeatureId) return null;
     return snapshot.featureWeights.find((f) => f.featureId === selectedFeatureId) ?? null;
@@ -36,6 +68,28 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
     if (!feature || !snapshot) return null;
     return explainFeature(feature, snapshot);
   }, [feature, snapshot]);
+
+  const activeRefusals = useMemo(() => {
+    if (!selectedFeatureId) return [];
+    return refusals.filter((r) => r.featureIds.includes(selectedFeatureId));
+  }, [refusals, selectedFeatureId]);
+
+  const interactionRules = useMemo(() => {
+    if (!selectedFeatureId || !snapshot) return [];
+    return snapshot.interactionRules.filter((rule) =>
+      rule.featureIds.includes(selectedFeatureId),
+    );
+  }, [snapshot, selectedFeatureId]);
+
+  const linkedLaws = useMemo(() => {
+    if (!selectedFeatureId) return [];
+    const clusterId = selectedFeatureId.replace('pattern_cluster:', '');
+    return laws.filter((law) => law.supportingPatternClusterIds?.includes(clusterId));
+  }, [laws, selectedFeatureId]);
+
+  React.useEffect(() => {
+    setRenameDraft(feature?.label ?? '');
+  }, [feature?.label, selectedFeatureId]);
 
   if (!snapshot) {
     return (
@@ -61,10 +115,15 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
         <p className="text-sm text-mimi-stone">
           Select a pattern or signal to inspect Mimi&apos;s reasoning.
         </p>
-        <ModelSummary snapshot={snapshot} />
+        <ModelSummary snapshot={snapshot} scopeLabel={scopeLabel} />
       </aside>
     );
   }
+
+  const saturationNote =
+    feature.trend === 'declining'
+      ? 'May be resting or overexposed — check refusals and recent reuse.'
+      : undefined;
 
   return (
     <aside
@@ -77,12 +136,18 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
           <button
             type="button"
             onClick={onRecompile}
-            className="text-[10px] uppercase tracking-wider text-mimi-cobalt border border-mimi-cobalt/30 px-2 py-1"
+            className="text-[10px] uppercase tracking-wider text-mimi-cobalt border border-mimi-cobalt/30 px-2 py-1 min-h-[44px]"
           >
             Refresh model
           </button>
         )}
       </div>
+
+      {scopeLabel && (
+        <p className="text-[10px] uppercase tracking-wider text-mimi-stone mb-3">
+          Active scope: {scopeLabel}
+        </p>
+      )}
 
       {stale && (
         <p className="text-xs text-mimi-stone mb-4 border border-mimi-hairline/30 p-2">
@@ -94,10 +159,18 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
         <div>
           <p className="text-[10px] uppercase tracking-wider text-mimi-stone mb-1">Signal</p>
           <p className="font-display text-xl text-mimi-ink">{explanation.label}</p>
+          <p className="text-[10px] text-mimi-stone mt-1">
+            {feature.explicitMass > feature.implicitMass
+              ? EPISTEMIC_LABELS.user_confirmed
+              : feature.confidence < 0.35
+                ? EPISTEMIC_LABELS.speculative
+                : EPISTEMIC_LABELS.inferred}
+            {feature.contextScopes.includes('project') ? ' · Contextual' : ''}
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Metric label="Strength" value={formatSignedStrength(explanation.signedStrength)} />
+          <Metric label="Signed strength" value={formatSignedStrength(explanation.signedStrength)} />
           <Metric
             label="Confidence"
             value={`${explanation.confidenceLabel} (${Math.round(explanation.confidence * 100)}%)`}
@@ -106,26 +179,113 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
           <Metric label="Scope" value={explanation.scopeLabel} />
         </div>
 
+        {saturationNote && (
+          <p className="text-xs text-mimi-stone border border-mimi-hairline/20 p-2">
+            Saturation: {saturationNote}
+          </p>
+        )}
+
         <p className="text-sm text-mimi-stone">{explanation.trend}</p>
 
         {explanation.supportingEvidence.length > 0 && (
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-mimi-stone mb-2">
-              Supported by {explanation.evidenceCount} reference{explanation.evidenceCount === 1 ? '' : 's'}
-            </p>
+          <Section title="Positive evidence">
             <ul className="text-xs text-mimi-stone space-y-1">
               {explanation.supportingEvidence.map((id) => (
                 <li key={id} className="font-mono truncate">{id}</li>
               ))}
             </ul>
-          </div>
+          </Section>
         )}
 
         {explanation.topContradiction && (
-          <div className="border border-mimi-hairline/30 p-3">
-            <p className="text-[10px] uppercase tracking-wider text-mimi-stone mb-1">Contradiction</p>
+          <Section title="Contradictory evidence">
             <p className="text-sm text-mimi-stone">{explanation.topContradiction}</p>
-          </div>
+          </Section>
+        )}
+
+        {activeRefusals.length > 0 && (
+          <Section title="Active refusals">
+            <ul className="text-xs text-mimi-stone space-y-2">
+              {activeRefusals.map((refusal) => (
+                <li key={refusal.id} className="border border-mimi-hairline/20 p-2">
+                  <span className="uppercase tracking-wider text-[9px]">
+                    {refusal.refusalType.replace(/_/g, ' ')}
+                  </span>
+                  <p className="mt-1">
+                    {refusal.explicit ? 'Creator rejected' : 'Inferred'}{' '}
+                    · scope {refusal.scope}
+                  </p>
+                  {refusal.sourceIds.length > 0 && (
+                    <p className="mt-1 font-mono truncate text-[10px]">
+                      {refusal.sourceIds.join(', ')}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
+        {interactionRules.length > 0 && (
+          <Section title="Interaction rules">
+            <ul className="text-xs text-mimi-stone space-y-2">
+              {interactionRules.map((rule) => {
+                const otherId = rule.featureIds.find((id) => id !== selectedFeatureId);
+                const other = snapshot.featureWeights.find((f) => f.featureId === otherId);
+                return (
+                  <li key={rule.id} className="border border-mimi-hairline/20 p-2">
+                    <p>{describeInteractionRule(rule)}</p>
+                    {other && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span>{other.label}</span>
+                        {onDisconnect && otherId && (
+                          <button
+                            type="button"
+                            onClick={() => onDisconnect(otherId)}
+                            className="text-[10px] uppercase tracking-wider border border-mimi-hairline/30 px-2 py-1 min-h-[44px]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Section>
+        )}
+
+        {linkedLaws.length > 0 && (
+          <Section title="Creative Laws using this signal">
+            <ul className="text-xs text-mimi-stone space-y-1">
+              {linkedLaws.map((law) => (
+                <li key={law.id}>{law.principle}</li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
+        {lastEdit && (
+          <Section title="Last explicit correction">
+            <p className="text-xs text-mimi-stone">
+              {lastEdit.operation.replace(/_/g, ' ')} ·{' '}
+              {new Date(lastEdit.createdAt).toLocaleString()}
+            </p>
+          </Section>
+        )}
+
+        {lastDelta && lastDelta.changedFeatures.length > 0 && (
+          <Section title="Model delta">
+            <ul className="text-xs text-mimi-stone space-y-1">
+              {lastDelta.changedFeatures.map((delta) => (
+                <li key={delta.featureId}>
+                  {delta.label}: strength {delta.signedStrengthBefore.toFixed(2)} →{' '}
+                  {delta.signedStrengthAfter.toFixed(2)}
+                </li>
+              ))}
+            </ul>
+          </Section>
         )}
 
         {explanation.lastUpdate && (
@@ -134,18 +294,63 @@ export const TasteModelInspector: React.FC<TasteModelInspectorProps> = ({
           </p>
         )}
 
-        {onCurate && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-mimi-hairline/20">
-            <CurateButton label="Keep" onClick={() => onCurate(feature.featureId, 'accept')} />
-            <CurateButton label="Not why I like it" onClick={() => onCurate(feature.featureId, 'reject')} />
-            <CurateButton label="Reduce weight" onClick={() => onCurate(feature.featureId, 'reduce')} />
-            <CurateButton label="Context only" onClick={() => onCurate(feature.featureId, 'context_only')} />
-          </div>
-        )}
+        <div className="flex flex-col gap-2 pt-2 border-t border-mimi-hairline/20">
+          {onRefine && (
+            <button
+              type="button"
+              onClick={onRefine}
+              className="min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-cobalt/40 px-3 py-2 text-mimi-cobalt"
+            >
+              Refine this signal
+            </button>
+          )}
+
+          {onRename && (
+            <label className="block">
+              <span className="text-[10px] uppercase tracking-wider text-mimi-stone">
+                Rename (stable ID preserved)
+              </span>
+              <div className="mt-1 flex gap-2">
+                <input
+                  value={renameDraft}
+                  onChange={(e) => setRenameDraft(e.target.value)}
+                  className="flex-1 border border-mimi-hairline/30 bg-transparent px-2 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => onRename(renameDraft)}
+                  disabled={!renameDraft.trim()}
+                  className="min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-hairline/40 px-3"
+                >
+                  Save
+                </button>
+              </div>
+            </label>
+          )}
+
+          {canUndo && onUndo && (
+            <button
+              type="button"
+              onClick={onUndo}
+              className="min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-hairline/40 px-3 py-2"
+            >
+              Undo last edit
+            </button>
+          )}
+        </div>
       </div>
     </aside>
   );
 };
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-mimi-stone mb-2">{title}</p>
+      {children}
+    </div>
+  );
+}
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
@@ -156,23 +361,24 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CurateButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-[10px] uppercase tracking-wider border border-mimi-hairline/40 px-3 py-2 min-h-[44px] text-mimi-ink hover:bg-mimi-hairline/10"
-    >
-      {label}
-    </button>
-  );
-}
-
-function ModelSummary({ snapshot }: { snapshot: TasteModelSnapshot }) {
+function ModelSummary({
+  snapshot,
+  scopeLabel,
+}: {
+  snapshot: TasteModelSnapshot;
+  scopeLabel?: string;
+}) {
   return (
     <div className="mt-6 text-xs text-mimi-stone space-y-1">
-      <p>{snapshot.featureWeights.length} features · {snapshot.interactionRules.length} combination rules</p>
-      <p>{snapshot.diagnostics.eventCount} learning events · {snapshot.diagnostics.explicitEventCount} explicit</p>
+      {scopeLabel && <p>Scope: {scopeLabel}</p>}
+      <p>
+        {snapshot.featureWeights.length} features · {snapshot.interactionRules.length}{' '}
+        combination rules
+      </p>
+      <p>
+        {snapshot.diagnostics.eventCount} learning events ·{' '}
+        {snapshot.diagnostics.explicitEventCount} explicit
+      </p>
     </div>
   );
 }
