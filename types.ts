@@ -50,6 +50,55 @@ export interface TransformationPath {
   stages: TransformationStage[];
 }
 
+export type SignatureConfidenceBand =
+  | "well_supported"
+  | "emerging"
+  | "speculative";
+
+export interface SignatureEvidenceRef {
+  id: string;
+  title: string;
+  source?: string;
+}
+
+export interface SignatureSemioticTouchpoint {
+  motif: string;
+  context: string;
+  visualDirective: string;
+  rationale: string;
+  confidence: SignatureConfidenceBand;
+  evidenceRefIds?: string[];
+}
+
+export interface SignatureCreativeDirection {
+  title: string;
+  thesis: string;
+  constraints?: string[];
+  handoff?: "studio" | "tailor" | "the-edit" | "darkroom" | "scribe";
+}
+
+export interface SignatureRecommendation {
+  title: string;
+  hypothesis: string;
+  action: string;
+  handoff?: string;
+  evidenceRefIds?: string[];
+}
+
+export interface SignatureDriftNote {
+  aspect: string;
+  statedIntent?: string;
+  manifestedOutput?: string;
+  read: string;
+}
+
+export interface SignatureReading {
+  thesis: string;
+  supportingParagraphs?: string[];
+  confidence: SignatureConfidenceBand;
+  coverageNote?: string;
+}
+
 export interface AestheticSignature {
   primaryAxis: string;
   secondaryAxis: string;
@@ -65,6 +114,18 @@ export interface AestheticSignature {
   tactileBias?: { dominant: string; secondary: string };
   typographicPairing?: { serif: string; sans: string };
   promptMatrix?: string[];
+  /** Editorial reading with provenance — in-app back matter, not on export plate. */
+  reading?: SignatureReading;
+  /** Hard refusals and off-limits combinations. */
+  antiSignature?: string[];
+  semioticTouchpoints?: SignatureSemioticTouchpoint[];
+  creativeDirections?: SignatureCreativeDirection[];
+  recommendations?: SignatureRecommendation[];
+  driftNotes?: SignatureDriftNote[];
+  evidenceRefs?: SignatureEvidenceRef[];
+  status?: "draft" | "approved";
+  approvedAt?: number;
+  version?: number;
 }
 
 export interface InfluenceLineageItem {

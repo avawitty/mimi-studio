@@ -12,7 +12,17 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-08 — Oracle chamber reports (local-first cyberdeck UX)
+## 2026-08-08 — Taste Signature as evidence-backed editorial reading
+
+**Decision:** Expand `/signature` from DNA-card + charts into a layered artifact: exportable **plate** (unchanged public face) → **editorial reading** (thesis, confidence, Used Context refs) → semiotic touchpoints, creative directions, recommendations, anti-signature, drift notes → collapsed analytics. Generation pulls zines, Tailor draft, approved Used Context, and taste model snapshot via AI Gateway (`textDeep`) with Gemini JSON fallback. Explicit **Approve signature** persists `status: approved` and records `mark_signature` through `recordAndRecompile`; **Repair** routes to Tailor.
+
+**Alternatives rejected:** (1) Dashboard-first layout with charts above the fold. (2) Personality-diagnosis copy without provenance. (3) Signature as pure LLM summary of zines only (ignores approved context and taste model).
+
+**Why:** Product canon places Signature in the **Approve** phase; creators need a sufficient, citable reading they can approve or repair before it becomes durable taste memory. Plate stays shareable; reading stays honest about confidence and evidence.
+
+**Ref:** `services/signatureService.ts`, `lib/signature/signatureSchema.ts`, `components/SignatureView.tsx`, `components/signature/SignatureReading.tsx`, `types.ts` (`AestheticSignature`)
+
+---
 
 **Decision:** Redesign `/oracle` with cyberdeck instrument plates (matching `TheScribe` atmosphere). Persist Cyberdeck sessions locally via `services/oracleChamberService.ts` on chamber close/export; surface **Chamber Reports** (past transmissions) and **Recurring Themes** (client-side frequency extraction) on the Oracle page. Pocket export remains the durable archive path.
 
