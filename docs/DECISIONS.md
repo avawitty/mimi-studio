@@ -563,3 +563,13 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `lib/zine/chromaticPlatePalette.ts`, `components/zine/grammars/ChromaticPlatePage.tsx`, `components/zine/grammars/OwnerCarouselPage.tsx`, `components/ZineOwnerPlatesEditor.tsx`
 
+---
+
+## 2026-08-08 — Owner slide templates UI (Tailor)
+
+**Decision:** Expose `ownerPlateTemplates` in Tailor **Owner Slide Templates** field group (below Editorial Plates). Reuses `ZineOwnerPlatesEditor` with `variant="template"`; `updateOwnerPlateTemplates` persists to `userPreferences` alongside `disabledPlates` / `disabledAlgos`.
+
+**Alternatives rejected:** (1) Templates only editable per-zine in reveal — forces re-entry every issue. (2) Separate template component — duplicates upload/text UX already in `ZineOwnerPlatesEditor`.
+
+**Ref:** `components/TailorView.tsx`, `components/ZineOwnerPlatesEditor.tsx`, `contexts/UserContext.tsx`, `lib/zine/applyEditorialStamps.ts`
+
