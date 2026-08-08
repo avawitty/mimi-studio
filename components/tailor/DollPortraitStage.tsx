@@ -43,7 +43,7 @@ export const DollPortraitStage: React.FC<DollPortraitStageProps> = ({
         <img
           src={identityUrl}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover mix-blend-lighten opacity-70 pointer-events-none"
+          className="absolute inset-0 w-full h-full object-cover object-[center_18%] mix-blend-lighten opacity-70 pointer-events-none"
           referrerPolicy="no-referrer"
         />
       ) : null}
