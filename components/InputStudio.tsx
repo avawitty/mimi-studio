@@ -116,6 +116,11 @@ import { MENU_STRUCTURE } from "./navigationConfig";
 import { useStudioTheme } from "../hooks/useStudioTheme";
 import { useTheme } from "../contexts/ThemeContext";
 import { useStudioDollSelection } from "../hooks/useStudioDollSelection";
+import { useStudioTasteCompiler } from "../hooks/useStudioTasteCompiler";
+import type { GenerationMode } from "../schemas/tasteIntelligenceContracts";
+import { TasteGenerationModePicker } from "./studio/TasteGenerationModePicker";
+import { TasteGenerationContractCard } from "./studio/TasteGenerationContractCard";
+import { TasteCritiqueCard } from "./studio/TasteCritiqueCard";
 import { StudioDollToggle } from "./StudioDollToggle";
 import { PearlButton } from "./ui/PearlButton";
 import { dispatchStudioAlert } from "../lib/studioAlert";
@@ -484,6 +489,25 @@ export const InputStudio: React.FC<{
   const [deepThinking, setDeepThinking] = useState(false);
   const [liteMode, setLiteMode] = useState(false);
   const [useTailorProfile, setUseTailorProfile] = useState(true);
+  const [tasteCompilerEnabled, setTasteCompilerEnabled] = useState(true);
+  const [tasteGenerationMode, setTasteGenerationMode] =
+    useState<GenerationMode>("aligned");
+  const tasteCompiler = useStudioTasteCompiler({
+    enabled: tasteCompilerEnabled,
+    mode: tasteGenerationMode,
+    useTailorProfile,
+    tailorDraft: profile?.tailorDraft,
+    signedIn: Boolean(currentUser?.uid),
+  });
+  const wasThinkingRef = useRef(false);
+
+  useEffect(() => {
+    if (wasThinkingRef.current && !isThinking && tasteCompilerEnabled) {
+      void tasteCompiler.runPendingCritique();
+    }
+    wasThinkingRef.current = isThinking;
+  }, [isThinking, tasteCompilerEnabled, tasteCompiler.runPendingCritique]);
+
   const [isHighFidelity, setIsHighFidelity] = useState(
     initialHighFidelity || false,
   );
@@ -1168,7 +1192,7 @@ export const InputStudio: React.FC<{
     onUrlAppend: (url) => setInput((prev) => (prev ? `${prev}\n${url}` : url)),
   });
 
-  const triggerAccession = useCallback((isQuickPreview = false) => {
+  const triggerAccession = useCallback(async (isQuickPreview = false) => {
     let finalInput = input;
     if (activeThread && activeThread.narrative) {
       finalInput = `${input}\n\n[THREAD CONTEXT: ${activeThread.narrative}]`;
@@ -1232,6 +1256,16 @@ ${finalInput}`;
 
     if (studioDoll.enabled && studioDoll.dollPromptContext) {
       finalInput = `${studioDoll.dollPromptContext}\n\n${finalInput}`;
+    }
+
+    if (tasteCompilerEnabled && currentUser?.uid) {
+      const prepared = await tasteCompiler.prepareForGeneration(
+        `studio-${Date.now()}`,
+        activeTags,
+      );
+      if (prepared?.promptBlock) {
+        finalInput = `${prepared.promptBlock}\n\n${finalInput}`;
+      }
     }
 
     const coverExport = buildStudioCoverExportMeta(
@@ -1298,6 +1332,10 @@ ${finalInput}`;
     mediaFiles,
     linkedZineIds,
     recentZines,
+    tasteCompilerEnabled,
+    tasteCompiler.prepareForGeneration,
+    currentUser?.uid,
+    activeTags,
   ]);
 
   const handleComposeCover = useCallback(async () => {
@@ -2645,6 +2683,29 @@ ${finalInput}`;
                   className="w-full max-w-2xl shrink-0"
                 />
               )}
+
+              <div className="w-full max-w-2xl mt-4 space-y-3 shrink-0 z-10">
+                <TasteGenerationContractCard
+                  contract={tasteCompiler.contract}
+                  reconciliation={tasteCompiler.reconciliation}
+                  loading={tasteCompiler.compileLoading}
+                  error={tasteCompiler.error}
+                  entitlementBlocked={tasteCompiler.entitlementBlocked}
+                  enabled={tasteCompilerEnabled}
+                  onToggleEnabled={setTasteCompilerEnabled}
+                />
+                {tasteCompilerEnabled && (
+                  <TasteGenerationModePicker
+                    mode={tasteGenerationMode}
+                    onChange={setTasteGenerationMode}
+                    disabled={tasteCompiler.compileLoading || isThinking}
+                  />
+                )}
+                <TasteCritiqueCard
+                  critique={tasteCompiler.critique}
+                  loading={tasteCompiler.critiqueLoading}
+                />
+              </div>
 
               {/* Used by Mimi // Active Context Strip */}
               <div className="w-full max-w-2xl mt-4 border-t border-dotted studio-border pt-3 select-none z-10 shrink-0">

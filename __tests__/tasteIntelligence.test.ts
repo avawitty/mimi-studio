@@ -17,6 +17,8 @@ import {
   compileTasteGenerationContract,
   critiqueAgainstContract,
   extractCandidateFeatures,
+  mergeGenerationContracts,
+  formatGenerationContractPrompt,
   rerankTasteSearchResults,
   buildTastePassport,
   computePairwiseAccuracy,
@@ -229,6 +231,31 @@ describe("taste intelligence compiler and critic", () => {
     const b = critiqueAgainstContract({ contract, snapshot, candidate, extracted });
     expect(a.alignmentScore).toBe(b.alignmentScore);
     expect(a.violatedRules).toEqual(b.violatedRules);
+  });
+
+  it("merges tailor v2 generationContract into compiler output", () => {
+    const snapshot = minimalSnapshot();
+    const compiled = compileTasteGenerationContract(
+      snapshot,
+      { ownerId: "u1" },
+      "editorial",
+      "aligned",
+    );
+    const { contract, reconciliation } = mergeGenerationContracts(compiled, {
+      objective: "Hold editorial rhythm under pressure.",
+      preserve: ["Quiet authority"],
+      emphasize: ["Asymmetric layouts"],
+      transform: [{ input: "reference", method: "synthesize", strength: 0.8 }],
+      avoid: ["Stock futurism"],
+      globalRefusals: ["Neon gradients"],
+      projectConstraints: ["Issue must cite prior zine"],
+    });
+    expect(reconciliation.sources).toContain("tailor_profile_v2");
+    expect(contract.preserve).toContain("Quiet authority");
+    expect(contract.avoid).toContain("Neon gradients");
+    expect(contract.contextRules.some((r) => r.startsWith("Objective:"))).toBe(true);
+    const prompt = formatGenerationContractPrompt(contract, reconciliation);
+    expect(prompt).toContain("Reconciled with Tailor Profile v2");
   });
 });
 
