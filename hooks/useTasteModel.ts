@@ -65,7 +65,7 @@ export function useTasteModel(opts: UseTasteModelOptions): UseTasteModelResult {
     setError(null);
     try {
       const result = await rebuildTasteModel(userId, projectId);
-      setGlobalSnapshot(result.global);
+      if (result.global) setGlobalSnapshot(result.global);
       if (result.project) setProjectSnapshot(result.project);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Recompilation failed');

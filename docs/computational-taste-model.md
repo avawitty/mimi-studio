@@ -148,9 +148,25 @@ Based on comparing recent (30-day) vs historical (90-day) normalized signed supp
 
 1. User curates in Tailor (Keep / Not why I like it / Rename / etc.)
 2. Canonical curation object updated (existing flow)
-3. Immutable `TasteEventV2` appended to `tasteLearningEvents`
-4. `compileAndSaveTasteModel()` recomputes snapshot
+3. Immutable `TasteEventV2` appended to `tasteLearningEvents` using the **dedupe key as document ID**
+4. `compileAndSaveTasteModel({ scope: 'project' })` recomputes **project** snapshot only
 5. Inspector shows updated reasoning
+
+### Idempotent event persistence
+
+Explicit curation actions use a **stable dedupe key** (`userId:action:targetType:targetId`) as both `event.id` and the Firestore document path. Replaying the same curation overwrites the prior event instead of appending a duplicate.
+
+Passive behavioral events (view, linger) use a **minute bucket** suffix so repeated engagement within a session can accumulate without unbounded duplication.
+
+### Global vs project compilation
+
+| Scope | Events loaded | Graph data | Snapshot written |
+| --- | --- | --- | --- |
+| `global` | All learning events | Caller-provided or empty | `tasteModelSnapshots/global` |
+| `project` | Project-filtered events | Project graph entities | `tasteModelSnapshots/project-{id}` |
+| `both` | Respective filters per scope | Respective graph data | Both paths |
+
+**Project-scoped recompilation never overwrites the global snapshot.** Global rebuild requires an explicit `scope: 'global'` (or `both`).
 
 ## Firestore Paths
 
@@ -178,7 +194,6 @@ npm run test:unit -- __tests__/tasteCandidateScoring.test.ts
 - Interaction rules use co-occurrence heuristics, not learned coefficients
 - No embedding similarity in scoring (tag/feature overlap fallback only)
 - Trajectory uses simple recent vs historical window comparison
-- Global model aggregates all project evidence when compiled with project data
 - No server-side compilation trigger (client-initiated after curation)
 - Demo/anonymous users get in-memory compilation only
 

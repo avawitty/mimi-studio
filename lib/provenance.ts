@@ -17,6 +17,12 @@ export interface ProvenanceRecord {
   originMetadata: Record<string, unknown>;
   creatorTags: string[];
   transformationHistory: ProvenanceTransfer[];
+  /**
+   * When true, this artifact has been flagged as evidence that contributes
+   * to taste modeling. Used by the Taste Intelligence layer to filter
+   * provenance records that should inform TasteState computation.
+   */
+  tasteImpact?: boolean;
   createdAt: number;
   updatedAt: number;
 }
