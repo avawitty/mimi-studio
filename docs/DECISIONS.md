@@ -321,7 +321,18 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 
 ---
 
-## 2026-08-04 — Publisher Console artifact-first release desk
+## 2026-08-08 — The Press Export Chamber wired end-to-end
+
+**Decision:** Wire `ExportChamber` into `PublisherDashboard` so destination cards and the Release desk open the artifact export surface in-place — with destination-aware initial modes (PDF, asset ZIP, Shopify pack), publish consent for web issues, and Firestore `exportState` recording after successful exports.
+
+**Alternatives rejected:** (1) Keep routing export actions to `/studio`. (2) Duplicate export UI inside PublisherDashboard. (3) Silent publish without Proscenium consent modal.
+
+**Why:** The Press release desk already derives readiness and destinations; creators need one honest handoff to extract artifacts and publish without leaving the chamber. Studio remains the proof/edit surface; export and publication happen after approval in The Press.
+
+**Ref:** `components/PublisherDashboard.tsx`, `components/ExportChamber.tsx`, `lib/publisher/artifactExportActions.ts`
+
+---
+
 
 **Decision:** Restructure The Press around **Release** (artifact readiness, destinations, approvals) and **Performance** (post-publication metrics only when connected). Derive readiness deterministically from proof diagnostics, export manifest, Intel handoff, and Shopify pack inspection — no simulated reach/revenue/deliverability cards.
 
@@ -636,4 +647,40 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Studio output should include celestial timing and core algos without a setup gate; users turn off what they don't want.
 
 **Ref:** `lib/tailor/tailorDefaults.ts`, `contexts/UserContext.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`
+
+---
+
+---
+
+## 2026-08-08 — Forecast intake + Apify-backed evidence
+
+**Decision:** Forecast chamber requires lightweight **profile intake** (personal) or **brand intake** (Brand OS scope) before Overview/Content vectors run. Intake persists on `UserProfile.forecastIntake` and drives personalized search queries through existing `/api/you-search` (You.com → Apify `rag-web-browser` → Gateway fallback).
+
+**Alternatives rejected:** (1) Force Tailor/GEO completion first — too heavy for a first forecast read. (2) Duplicate full `BrandIntakeView` inside Forecast — link to full report instead.
+
+**Why:** Makes Forecast operable without full DNA/GEO calibration; brand scope gets real positioning inputs; reuses billable Apify path already wired for search.
+
+**Ref:** `lib/forecastIntake.ts`, `components/forecast/ForecastIntakePanel.tsx`, `components/TheForecast.tsx`, `services/researchService.ts`
+
+---
+
+## 2026-08-08 — Forecast server compose + Residue handoff
+
+**Decision:** Add `POST /api/forecast` to server-compose `ForecastReport` (You.com/Apify evidence + demonstration MMM), persist on `userPreferences.forecastSnapshot`, and surface latest `ResidueForecastArtifact` in `/forecast` Overview and Cultural vectors.
+
+**Alternatives rejected:** (1) Client-only persistence — no cross-device sync. (2) Merging Residue scenarios into collective cultural trajectories — keep namespaces distinct with explicit provenance.
+
+**Why:** Completes the Residue → Forecast handoff; gives signed-in users a durable snapshot without re-fetching on every device.
+
+**Ref:** `lib/forecast/serverComposeForecast.ts`, `lib/forecastRoute.ts`, `api/forecast.ts`, `components/forecast/ForecastResiduePanel.tsx`
+
+---
+
+## 2026-08-08 — Proscenium showcases collective consent on Stage
+
+**Decision:** Stage wing surfaces Mean Median Mode consent states on each transmission (`ProsceniumContributionBadge`) and a collective brief panel with Observatory / MMM handoffs (`ProsceniumCollectiveBrief`). Local Echoes demo specimens illustrate contributing, staged-only, and withdrawn states — never mixed into live counts.
+
+**Why:** Collective intelligence consent shipped in Pocket / ZineCard / AnalysisDisplay but Proscenium had no visible readout of what staging means for Observatory aggregates.
+
+**Ref:** `components/proscenium/ProsceniumContributionBadge.tsx`, `components/proscenium/ProsceniumCollectiveBrief.tsx`, `components/ProsceniumView.tsx`
 

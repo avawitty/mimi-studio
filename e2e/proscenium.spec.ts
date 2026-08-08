@@ -96,6 +96,36 @@ test.describe("Proscenium social chamber", () => {
     await expect(page.getByRole("heading", { name: /Cliques/i })).toBeVisible();
   });
 
+  test("local echoes showcase consent states and collective brief", async ({ page }) => {
+    await seedQuietSession(page);
+    await page.goto("/proscenium");
+    await waitForStableUI(page);
+
+    await page.getByRole("button", { name: "Local Echoes" }).click();
+    await waitForStableUI(page);
+
+    await expect(page.getByTestId("proscenium-collective-brief")).toBeVisible();
+    await expect(
+      page.getByText(/Contributing to Mean Median Mode/i).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Staged · not contributing/i).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Withdrawn from Mean Median Mode/i).first(),
+    ).toBeVisible();
+  });
+
+  test("collective brief links open Observatory routes", async ({ page }) => {
+    await seedQuietSession(page);
+    await page.goto("/proscenium");
+    await waitForStableUI(page);
+
+    await page.getByRole("button", { name: /Mean Median Mode/i }).click();
+    await waitForStableUI(page);
+    await expect(page).toHaveURL(/\/mean-median-mode$/);
+  });
+
   test("mimi:change_view opens correspondents wing", async ({ page }) => {
     await seedQuietSession(page);
     await page.goto("/studio");

@@ -2,10 +2,11 @@
 // @ts-nocheck
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Download, Share2, FileText, LayoutGrid, Layers, Printer, Check, Copy, Shield, Info, Palette, Maximize2, Smartphone, Square, ArrowDown, ChevronDown, CheckCircle2, Terminal, Stamp, Loader2, Zap, Monitor, Scroll, Image, ShoppingBag, Upload } from 'lucide-react';
+import { X, Download, Share2, FileText, LayoutGrid, Layers, Printer, Check, Copy, Shield, Info, Palette, Maximize2, Smartphone, Square, ArrowDown, ChevronDown, CheckCircle2, Terminal, Stamp, Loader2, Zap, Monitor, Scroll, Image, ShoppingBag, Upload, Radio } from 'lucide-react';
 import { ZineMetadata } from '../types';
 import { SocialShareModal } from './SocialShareModal';
 import { ZineSyndicationBridge } from './ZineSyndicationBridge';
+import { ProsceniumPublishConsentModal } from './proscenium/ProsceniumPublishConsentModal';
 import {
   buildShopifyProductFromZine,
   downloadShopifyProductPack,
@@ -21,12 +22,20 @@ import { resolveZineExportCoverUrl } from '../lib/studioCoverExport';
 import { downloadStructuredZinePdf } from '../lib/structuredZinePdf';
 import { exportAssetUrl } from '../lib/zine/zinePerformance';
 import { hydrateLegacyZineMetadata } from '../lib/zine/zineMigrations';
-import html2canvas from 'html2canvas';
+import {
+  publishArtifactWithConsent,
+  recordArtifactExport,
+  type ExportChamberMode,
+} from '../lib/publisher/artifactExportActions';
+import { useUser } from '../contexts/UserContext';
 import JSZip from 'jszip';
 
 interface ExportChamberProps {
  metadata: ZineMetadata;
  onClose: () => void;
+ initialMode?: ExportChamberMode;
+ publishIntent?: boolean;
+ onMetadataUpdate?: (metadata: ZineMetadata) => void;
 }
 
 const SECTION_DEFS = [
@@ -54,14 +63,32 @@ const SectionHeader: React.FC<{ label: string; icon: any }> = ({ label, icon: Ic
  </div>
 );
 
-export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose }) => {
- const [exportMode, setExportMode] = useState<'scroll' | 'assets' | 'pdf' | 'shopify'>('scroll');
+export const ExportChamber: React.FC<ExportChamberProps> = ({
+ metadata,
+ onClose,
+ initialMode = 'pdf',
+ publishIntent = false,
+ onMetadataUpdate,
+}) => {
+ const { user } = useUser();
+ const [exportMode, setExportMode] = useState<ExportChamberMode>(initialMode);
  const [shopifyPrice, setShopifyPrice] = useState('0.00');
  const [shopifyPublishState, setShopifyPublishState] = useState<'idle' | 'publishing' | 'done' | 'error'>('idle');
  const [shopifyConnection, setShopifyConnection] = useState<ShopifyConnectionStatus | null>(null);
  const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set(SECTION_DEFS.map(s => s.id)));
  const [isGenerating, setIsGenerating] = useState(false);
+ const [isPublishing, setIsPublishing] = useState(false);
+ const [showPublishConsent, setShowPublishConsent] = useState(false);
+ const [localMetadata, setLocalMetadata] = useState(metadata);
   const [progressMessage, setProgressMessage] = useState("Compressing Semiotic Layers...");
+
+  useEffect(() => {
+    setLocalMetadata(metadata);
+  }, [metadata]);
+
+  useEffect(() => {
+    setExportMode(initialMode);
+  }, [initialMode]);
 
   useEffect(() => {
     if (!isGenerating) return;
@@ -96,7 +123,7 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  const [hasError, setHasError] = useState(false);
 
  // Fallback to prevent crash if metadata is incomplete
- if (!metadata || !metadata.content) {
+ if (!localMetadata || !localMetadata.content) {
  return (
  <div className="fixed inset-0 z-[20000] bg-nous-base text-nous-text flex items-center justify-center p-8">
  <div className="max-w-md text-center space-y-4">
@@ -117,44 +144,6 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  });
  };
 
- const convertImagesToBase64 = async (element: HTMLElement) => {
- const images = Array.from(element.querySelectorAll('img'));
- const promises = images.map(async (img) => {
- if (img.src.startsWith('data:')) return;
- try {
- img.crossOrigin ="anonymous";
- const response = await fetch(img.src, { mode: 'cors', cache: 'force-cache' });
- const blob = await response.blob();
- await new Promise<void>((resolve, reject) => {
- const reader = new FileReader();
- reader.onloadend = () => {
- img.srcset =""; 
- img.src = reader.result as string;
- resolve();
- };
- reader.onerror = reject;
- reader.readAsDataURL(blob);
- });
- } catch (e) {
- console.warn("MIMI // Export: Image conversion failed, fallback to CORS", e);
- }
- });
- await Promise.all(promises);
- };
-
- const waitForImages = async (element: HTMLElement) => {
- const images = Array.from(element.querySelectorAll('img'));
- const promises = images.map(img => {
- if (img.complete) return Promise.resolve();
- return new Promise(resolve => {
- img.onload = resolve;
- img.onerror = resolve;
- });
- });
- await Promise.all(promises);
- };
-
- 
   const urlToBase64 = async (url: string) => {
       if (url.startsWith('data:')) return url.split(',')[1];
       const res = await fetch(url);
@@ -169,7 +158,7 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
 
   const generateAssetsZip = async () => {
     try {
-      const hydratedMetadata = hydrateLegacyZineMetadata(metadata);
+      const hydratedMetadata = hydrateLegacyZineMetadata(localMetadata);
       const zip = new JSZip();
       let imgCount = 0;
       
@@ -223,10 +212,39 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
   };
 
   const generatePDF = async () => {
-    await downloadStructuredZinePdf(metadata, {
+    await downloadStructuredZinePdf(localMetadata, {
       sections: selectedSections,
       includeCustomLayouts: true,
     });
+  };
+
+  const persistExportRecord = async (mode: ExportChamberMode) => {
+    if (!user?.uid || localMetadata.userId !== user.uid) return;
+    try {
+      const updated = await recordArtifactExport(localMetadata, mode);
+      setLocalMetadata(updated);
+      onMetadataUpdate?.(updated);
+    } catch (err) {
+      console.warn("MIMI // Export record failed", err);
+    }
+  };
+
+  const handlePublishConsentConfirm = async (contributeToMeanMedianMode: boolean) => {
+    if (!user?.uid || localMetadata.userId !== user.uid || isPublishing) return;
+    setIsPublishing(true);
+    try {
+      const updated = await publishArtifactWithConsent(localMetadata, contributeToMeanMedianMode);
+      setLocalMetadata(updated);
+      onMetadataUpdate?.(updated);
+      setShowPublishConsent(false);
+    } catch (err) {
+      console.error("Publish failed", err);
+      window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+        detail: { message: 'Publish failed. Try again from The Press.', type: 'error' }
+      }));
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
  const handleExport = async () => {
@@ -237,26 +255,15 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  // Allow UI to update before processing
  await new Promise(r => setTimeout(r, 500));
 
- if (exportMode === 'link') {
- try {
- await navigator.clipboard.writeText(window.location.href);
- alert('Encrypted Link copied to clipboard.');
- } catch (err) {
- console.error('Failed to copy link:', err);
- alert('Failed to copy link to clipboard. You can copy the URL from your browser address bar.');
- }
- setIsGenerating(false);
- return;
- }
-
  try {
  if (exportMode === 'pdf') {
-        // Structured path — no DOM capture / no mutation of #export-target.
         await generatePDF();
+        await persistExportRecord('pdf');
     } else if (exportMode === 'assets') {
         await generateAssetsZip();
+        await persistExportRecord('assets');
     } else if (exportMode === 'shopify') {
-        const manifest = buildExportManifest(metadata);
+        const manifest = buildExportManifest(localMetadata);
         const { ok, failures } = validateExportManifest(manifest);
         if (!ok) {
           window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
@@ -265,32 +272,10 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
           setHasError(true);
           return;
         }
-        const product = buildShopifyProductFromZine(metadata, { price: shopifyPrice });
+        const product = buildShopifyProductFromZine(localMetadata, { price: shopifyPrice });
         await downloadShopifyProductPack(product, manifest);
-    } else {
- const element = document.getElementById('export-target');
- if (!element) throw new Error("Capture target not found");
- await convertImagesToBase64(element);
- await waitForImages(element);
- // Scroll Mode (PNG/JPG) — still rasterizes the preview strip.
- const canvas = await html2canvas(element, {
- scale: 2,
- useCORS: true,
- backgroundColor: exportMode === 'scroll_jpg' ? '#ffffff' : null, 
- logging: false,
- windowWidth: element.scrollWidth,
- windowHeight: element.scrollHeight
- });
-
- const link = document.createElement('a');
- const ext = exportMode === 'scroll_jpg' ? 'jpg' : 'png';
- const mime = exportMode === 'scroll_jpg' ? 'image/jpeg' : 'image/png';
- link.download = `Mimi_${metadata.title.replace(/[^a-z0-9]/gi, '_')}_scroll.${ext}`;
- link.href = canvas.toDataURL(mime, exportMode === 'scroll_jpg' ? 0.9 : 1.0);
- document.body.appendChild(link);
- link.click();
- document.body.removeChild(link);
- }
+        await persistExportRecord('shopify');
+    }
  } catch (e) {
  console.error("Export Failed:", e);
  setHasError(true);
@@ -299,7 +284,9 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  }
  };
 
- const content = metadata.content;
+ const content = localMetadata.content;
+ const isPublished = Boolean(localMetadata.isPublic);
+ const showPublishSection = publishIntent || !isPublished;
  
  // Dynamic styles based on mode
  const containerStyle = useMemo(() => {
@@ -310,11 +297,9 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
 
  const blockClass = useMemo(() => {
  const base ="export-section bg-white flex flex-col justify-center overflow-hidden relative";
- // PDF/Print/Asset Mode: Forced Page Dimensions for reliable canvas capture
     if (exportMode === 'pdf' || exportMode === 'assets') {
       return `${base} w-full aspect-[210/297] p-16 mb-8 border border-nous-border `;
     }
- // Scroll Mode: Continuous Flow
  return `${base} py-16 px-10 border-b border-nous-border last:border-0`;
  }, [exportMode]);
 
@@ -372,7 +357,7 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
          onClick={async () => {
            setShopifyPublishState('publishing');
            try {
-             const product = buildShopifyProductFromZine(metadata, { price: shopifyPrice });
+             const product = buildShopifyProductFromZine(localMetadata, { price: shopifyPrice });
              const result = await publishProductToShopify(product);
              setShopifyPublishState('done');
              window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
@@ -416,8 +401,45 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  </div>
 
  <div className="mt-auto pt-12 space-y-4">
+  {showPublishSection && (
+    <section className="space-y-3 border border-nous-border p-4 bg-nous-base/40">
+      <span className="font-sans text-[9px] uppercase tracking-widest font-black text-nous-subtle block">
+        Web publication
+      </span>
+      <p className="font-serif italic text-[11px] leading-relaxed text-nous-subtle">
+        {isPublished
+          ? `Issue is public at mimi.fish/s/${localMetadata.id}.`
+          : "Publish requires Mean Median Mode disclosure consent before the share route goes live."}
+      </p>
+      {isPublished ? (
+        <button
+          type="button"
+          onClick={() => {
+            const url = `https://mimi.fish/s/${localMetadata.id}`;
+            void navigator.clipboard?.writeText(url);
+            window.dispatchEvent(new CustomEvent('mimi:registry_alert', {
+              detail: { message: 'Share link copied.', type: 'success' },
+            }));
+          }}
+          className="w-full py-3 border border-nous-border font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-2 hover:bg-nous-base transition-all"
+        >
+          <Copy size={14} /> Copy share link
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={isPublishing}
+          onClick={() => setShowPublishConsent(true)}
+          className="w-full py-3 border border-emerald-500/30 text-emerald-700 font-sans text-[9px] uppercase tracking-widest font-black flex items-center justify-center gap-2 hover:bg-emerald-500/10 transition-all disabled:opacity-50"
+        >
+          {isPublishing ? <Loader2 size={14} className="animate-spin" /> : <Radio size={14} />}
+          Publish to web
+        </button>
+      )}
+    </section>
+  )}
   <section className="space-y-4 border-t border-nous-border pt-4">
-    <ZineSyndicationBridge metadata={metadata} />
+    <ZineSyndicationBridge metadata={localMetadata} />
   </section>
  {hasError && <p className="text-red-500 text-xs font-mono text-center">Export Handshake Failed. Try refreshing.</p>}
  <button onClick={handleExport} disabled={isGenerating} className="w-full py-5 bg-nous-text text-nous-base rounded-none font-sans text-[10px] tracking-[0.4em] uppercase font-black flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50">
@@ -451,7 +473,7 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
     )}
   </AnimatePresence>
  
- <div id="export-target"className={`transition-all duration-500 ${exportMode === 'scroll' ? 'bg-white ' : ''}`} style={containerStyle}>
+ <div id="export-target"className="transition-all duration-500 bg-white" style={containerStyle}>
  
  {/* 1. COVER */}
  {selectedSections.has('cover') && (
@@ -460,16 +482,16 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  <div className="space-y-4">
  <span className="font-sans text-[10px] uppercase tracking-[0.6em] font-black text-nous-subtle">Issue Manifest</span>
  <h1 className="font-serif text-6xl md:text-8xl italic tracking-tighter leading-[0.85] uppercase text-nous-text text-nous-text">
- {metadata.title}
+ {localMetadata.title}
  </h1>
  </div>
  <div className="h-px w-24 bg-stone-200"/>
  <div className="space-y-2">
- <p className="font-serif italic text-2xl text-nous-subtle">@{metadata.userHandle}</p>
- <p className="font-sans text-[9px] uppercase tracking-widest text-nous-subtle font-black">{metadata.tone} // {new Date(metadata.timestamp).toLocaleDateString()}</p>
+ <p className="font-serif italic text-2xl text-nous-subtle">@{localMetadata.userHandle}</p>
+ <p className="font-sans text-[9px] uppercase tracking-widest text-nous-subtle font-black">{localMetadata.tone} // {new Date(localMetadata.timestamp).toLocaleDateString()}</p>
  </div>
  </div>
- {exportMode !== 'scroll' && <div className="absolute bottom-8 right-8"><Stamp size={64} className="text-nous-text -rotate-12"/></div>}
+ {exportMode !== 'shopify' && <div className="absolute bottom-8 right-8"><Stamp size={64} className="text-nous-text -rotate-12"/></div>}
  </div>
  )}
 
@@ -490,11 +512,11 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  )}
 
  {/* 3. SIGNALS (ARCHETYPE) */}
- {selectedSections.has('signals') && metadata.content.semiotic_signals && (
+ {selectedSections.has('signals') && localMetadata.content.semiotic_signals && (
  <div className={`${blockClass} bg-nous-base text-nous-text `}>
  <SectionHeader label="Archetype Index"icon={<Layers />} />
  <div className="flex-1 flex flex-col justify-center space-y-8">
- {metadata.content.semiotic_signals.slice(0, 4).map((t, i) => (
+ {localMetadata.content.semiotic_signals.slice(0, 4).map((t, i) => (
  <div key={i} className="border-l-2 border-nous-border pl-6 space-y-1">
  <h4 className="font-serif text-2xl italic text-nous-text">{t.motif}</h4>
  <p className="font-sans text-[8px] uppercase tracking-widest text-nous-subtle leading-relaxed">{t.context}</p>
@@ -556,14 +578,14 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
  )}
 
  {/* 6. DEBRIS (NEW) */}
- {selectedSections.has('debris') && (metadata.originalInput || metadata.content.meta?.intent) && (
+ {selectedSections.has('debris') && (localMetadata.originalInput || localMetadata.content.meta?.intent) && (
  <div className={`${blockClass} bg-nous-base `}>
  <SectionHeader label="Field Debris"icon={<Info />} />
  <div className="flex-1 flex flex-col justify-center">
  <div className="p-8 border-l-4 border-nous-border">
  <span className="font-mono text-[9px] text-nous-subtle mb-4 block">// RAW_INPUT_LOG</span>
  <p className="font-mono text-xs md:text-sm text-nous-subtle leading-relaxed whitespace-pre-wrap">
- {metadata.originalInput || metadata.content.meta?.intent ||"Debris data obscured."}
+ {localMetadata.originalInput || localMetadata.content.meta?.intent ||"Debris data obscured."}
  </p>
  </div>
  </div>
@@ -575,6 +597,15 @@ export const ExportChamber: React.FC<ExportChamberProps> = ({ metadata, onClose 
 
  </div>
  </main>
+ <ProsceniumPublishConsentModal
+   open={showPublishConsent}
+   artifactTitle={localMetadata.title}
+   busy={isPublishing}
+   onCancel={() => {
+     if (!isPublishing) setShowPublishConsent(false);
+   }}
+   onConfirm={handlePublishConsentConfirm}
+ />
  </motion.div>
  );
 };
