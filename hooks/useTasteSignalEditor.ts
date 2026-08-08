@@ -177,6 +177,7 @@ export function useTasteSignalEditor(opts: UseTasteSignalEditorOptions) {
       return null;
     } finally {
       setLoading(false);
+      setLastEdit(null);
     }
   }, [userId, snapshot, lastEdit, projectId, enabled, onSnapshotChange]);
 

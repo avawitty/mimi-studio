@@ -46,6 +46,15 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Safe undo semantics for Taste Intelligence model edits
+
+**Decision:** Limit undo to single-edit reversal (most recent forward model edit only) with explicit UI copy; server recomputes authoritative snapshot via `replayTasteSnapshot` from derived baseline + immutable edit/refusal log instead of trusting client snapshot. Returns `409 UNDO_NOT_ALLOWED` when undo target is not the latest forward edit.
+
+**Alternatives rejected:** Full historical rollback UI (misleading without full event replay); client-authoritative undo (non-deterministic on reload).
+
+
+---
+
 ## 2026-08-08 — Negative taste + graph model editing (Tailor Pattern Graph slice)
 
 **Decision:** Ship creator-facing negative taste and direct model editing inside Tailor `PatternGraphScreen` + `TasteModelInspector`, backed by existing Taste Intelligence OS v2 contracts (`taste_refusals`, `taste_model_edits`, `computeModelDelta`, `applyEditsToSnapshot`). New API routes: `POST /api/mimi/taste-intelligence/refusals`, `POST /model-edits`, `POST /model-edits/undo`. Merge/split remain behind `TASTE_GRAPH_MERGE_SPLIT=1`.
