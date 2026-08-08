@@ -6,6 +6,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Studio compose console restored as primary /studio surface
+
+**Decision:** `/studio` mounts `InputStudio` (floating pill toolbar, Tools drawer, cover composer) by default again. Calm orientation intake moves to `?orientation=1` instead of displacing the compose console after merge with main (#271).
+
+**Alternatives rejected:** (1) Keep orientation as default and require `?console=1` for compose — hides shipped UI work from every Studio visit. (2) Delete orientation intake — still useful as a lighter first-run surface.
+
+**Why:** Merge with main restored orientation routing; creators returning to Studio expected the compose desk with recent toolbar work.
+
+**Ref:** `App.tsx`, `lib/productCanon.ts`, `components/studio/StudioOrientationEntry.tsx`
+
+---
+
 ## 2026-08-08 — Studio floating pill + funded gateway credit heal
 
 **Decision:** Consolidate Studio compose chrome into one scrollable floating pill (`buildDefaultStudioInstruments`) with a universal Tools drawer (Anchors, Continuum, Treatments, Used Context, noise). Retire desktop footer tabs and vertical rail. Cover composer uses compact `UsedContextColophon`. Funded gateway heals patron seats (`isPatron` + `patronActivatedAt`) without Stripe verify; assessment trial users get initial 150-credit grant and skip day-pass drip reset.

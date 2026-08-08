@@ -427,12 +427,12 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
               type="button"
               onClick={() => {
                 if (onNavigatePath) {
-                  onNavigatePath("/studio?console=1");
+                  onNavigatePath("/studio");
                   return;
                 }
                 window.dispatchEvent(
                   new CustomEvent("mimi:route-request", {
-                    detail: { path: "/studio?console=1" },
+                    detail: { path: "/studio" },
                   }),
                 );
               }}

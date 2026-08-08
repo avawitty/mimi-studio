@@ -1648,19 +1648,26 @@ export const App: React.FC = () => {
     ZineCoverVariant[] | undefined
   >(undefined);
   const [threadHighFidelity, setThreadHighFidelity] = useState(false);
-  /** Escape hatch: dense InputStudio console under legacy worktable only */
-  const [studioConsoleOpen, setStudioConsoleOpen] = useState(false);
+  /** Compose console is primary at /studio; orientation intake is ?orientation=1 */
+  const [studioConsoleOpen, setStudioConsoleOpen] = useState(true);
 
   useEffect(() => {
-    if (viewMode !== "studio") setStudioConsoleOpen(false);
+    if (viewMode !== "studio") setStudioConsoleOpen(true);
   }, [viewMode]);
 
   useEffect(() => {
     if (viewMode !== "studio") return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("console") === "1") {
-      setStudioConsoleOpen(true);
+    if (params.get("orientation") === "1") {
+      setStudioConsoleOpen(false);
+      return;
     }
+    if (params.get("console") === "0") {
+      setStudioConsoleOpen(false);
+      return;
+    }
+    // /studio and ?console=1 both land on the full compose console.
+    setStudioConsoleOpen(true);
   }, [viewMode, path]);
   const [showCaptiveSentinel, setShowCaptiveSentinel] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -2907,7 +2914,7 @@ export const App: React.FC = () => {
                               type="button"
                               onClick={() => {
                                 setStudioConsoleOpen(false);
-                                navigate("/studio", { replace: true });
+                                navigate("/studio?orientation=1", { replace: true });
                               }}
                               className="min-h-10 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-ink,#0a0a0a)] border border-[var(--mimi-hairline,#d4d4d4)]"
                             >

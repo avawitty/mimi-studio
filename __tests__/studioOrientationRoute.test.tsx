@@ -24,7 +24,7 @@ describe("/studio routing", () => {
     cleanup();
   });
 
-  it("wires App.tsx so /studio mounts StudioOrientationEntry by default", () => {
+  it("wires App.tsx so /studio mounts InputStudio by default", () => {
     const appSource = readFileSync(resolve(process.cwd(), "App.tsx"), "utf8");
 
     expect(appSource).toMatch(
@@ -34,7 +34,7 @@ describe("/studio routing", () => {
     expect(appSource).toMatch(/pathParts\[1\] === "worktable-legacy"/);
     expect(appSource).toMatch(/isStudioWorktableLegacy/);
     expect(appSource).toMatch(/studioConsoleOpen/);
-    expect(appSource).toMatch(/params\.get\("console"\) === "1"/);
+    expect(appSource).toMatch(/params\.get\("orientation"\) === "1"/);
 
     const studioMountIdx = appSource.indexOf(
       '{viewMode === "studio" &&\n                      (isStudioWorktableLegacy',
@@ -54,10 +54,11 @@ describe("/studio routing", () => {
     expect(studioMountSection).toContain("<StudioWorktable");
     expect(studioMountSection).toContain("Legacy worktable · experimental");
 
-    // Default branch is orientation; console opens InputStudio
+    // Default branch is compose console; orientation is ?orientation=1
     expect(studioMountSection).toMatch(
       /studioConsoleOpen\s*\?\s*\([\s\S]*?<InputStudio[\s\S]*?\)\s*:\s*\(\s*<StudioOrientationEntry/,
     );
+    expect(appSource).toMatch(/useState\(true\)/);
   });
 
   it("points LAZY_CHAMBERS.studio at StudioOrientationEntry", () => {
