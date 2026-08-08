@@ -5,6 +5,8 @@
  *
  * Requires Firebase Admin (FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_FILE).
  */
+import fs from "node:fs";
+import path from "node:path";
 import { config as loadEnv } from "dotenv";
 import type { ZineMetadata } from "../types";
 import {
@@ -18,6 +20,16 @@ import {
 
 loadEnv({ path: ".env.local", override: false, quiet: true });
 loadEnv({ path: ".env", override: false, quiet: true });
+
+if (
+  !process.env.FIREBASE_SERVICE_ACCOUNT &&
+  process.env.FIREBASE_SERVICE_ACCOUNT_FILE
+) {
+  const serviceAccountPath = path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT_FILE);
+  if (fs.existsSync(serviceAccountPath)) {
+    process.env.FIREBASE_SERVICE_ACCOUNT = fs.readFileSync(serviceAccountPath, "utf8");
+  }
+}
 
 interface BackfillStats {
   zinesRead: number;

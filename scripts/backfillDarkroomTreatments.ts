@@ -4,8 +4,10 @@
  *   npx tsx scripts/backfillDarkroomTreatments.ts [--dry-run] [--limit=200] [--user=uid]
  *
  * Requires Firebase Admin (FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_FILE).
- * Scans profiles_public (savedTreatments live on the public profile doc).
+ * Scans profiles_public and userPreferences (legacy split) for savedTreatments.
  */
+import fs from "node:fs";
+import path from "node:path";
 import { config as loadEnv } from "dotenv";
 import type { StyleTreatment, UserProfile } from "../types";
 import {
@@ -20,8 +22,19 @@ import {
 loadEnv({ path: ".env.local", override: false, quiet: true });
 loadEnv({ path: ".env", override: false, quiet: true });
 
+if (
+  !process.env.FIREBASE_SERVICE_ACCOUNT &&
+  process.env.FIREBASE_SERVICE_ACCOUNT_FILE
+) {
+  const serviceAccountPath = path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT_FILE);
+  if (fs.existsSync(serviceAccountPath)) {
+    process.env.FIREBASE_SERVICE_ACCOUNT = fs.readFileSync(serviceAccountPath, "utf8");
+  }
+}
+
 interface BackfillStats {
   profilesRead: number;
+  prefsRead: number;
   profilesWithTreatments: number;
   treatmentsRead: number;
   created: number;
@@ -95,10 +108,41 @@ async function mirrorTreatmentAdmin(
   return "created";
 }
 
+async function processTreatmentsForUser(
+  db: { collection: (path: string) => any },
+  userId: string,
+  rawTreatments: unknown,
+  stats: BackfillStats,
+  dryRun: boolean,
+): Promise<void> {
+  if (!Array.isArray(rawTreatments) || rawTreatments.length === 0) return;
+
+  stats.profilesWithTreatments += 1;
+
+  for (const raw of rawTreatments) {
+    const treatment = normalizeTreatment(raw);
+    if (!treatment) {
+      stats.skipped += 1;
+      continue;
+    }
+
+    stats.treatmentsRead += 1;
+    try {
+      const outcome = await mirrorTreatmentAdmin(db, userId, treatment, dryRun);
+      if (outcome === "created") stats.created += 1;
+      else if (outcome === "updated") stats.updated += 1;
+      else stats.skipped += 1;
+    } catch (err) {
+      stats.errors.push(`${userId}/${treatment.id}:${String(err)}`);
+    }
+  }
+}
+
 async function main() {
   const opts = parseArgs();
   const stats: BackfillStats = {
     profilesRead: 0,
+    prefsRead: 0,
     profilesWithTreatments: 0,
     treatmentsRead: 0,
     created: 0,
@@ -119,44 +163,57 @@ async function main() {
     process.exit(1);
   }
 
-  let profileDocs: Array<{ id: string; data: () => UserProfile }>;
-
   if (opts.userId) {
-    const snap = await db.collection("profiles_public").doc(opts.userId).get();
-    profileDocs = snap.exists
-      ? [{ id: snap.id, data: () => snap.data() as UserProfile }]
-      : [];
+    const pubSnap = await db.collection("profiles_public").doc(opts.userId).get();
+    if (pubSnap.exists) {
+      stats.profilesRead += 1;
+      const profile = pubSnap.data() as UserProfile;
+      await processTreatmentsForUser(
+        db,
+        profile.uid || pubSnap.id,
+        profile.savedTreatments,
+        stats,
+        opts.dryRun,
+      );
+    }
+    const prefSnap = await db.collection("userPreferences").doc(opts.userId).get();
+    if (prefSnap.exists) {
+      stats.prefsRead += 1;
+      const prefs = prefSnap.data() as UserProfile;
+      await processTreatmentsForUser(
+        db,
+        opts.userId,
+        prefs.savedTreatments,
+        stats,
+        opts.dryRun,
+      );
+    }
   } else {
-    const snap = await db.collection("profiles_public").limit(opts.limit).get();
-    profileDocs = snap.docs;
-  }
+    const pubSnap = await db.collection("profiles_public").limit(opts.limit).get();
+    stats.profilesRead = pubSnap.size;
+    for (const docSnap of pubSnap.docs) {
+      const profile = docSnap.data() as UserProfile;
+      const userId = profile.uid || docSnap.id;
+      await processTreatmentsForUser(
+        db,
+        userId,
+        profile.savedTreatments,
+        stats,
+        opts.dryRun,
+      );
+    }
 
-  stats.profilesRead = profileDocs.length;
-
-  for (const docSnap of profileDocs) {
-    const profile = docSnap.data() as UserProfile;
-    const userId = profile.uid || docSnap.id;
-    const rawTreatments = profile.savedTreatments;
-    if (!Array.isArray(rawTreatments) || rawTreatments.length === 0) continue;
-
-    stats.profilesWithTreatments += 1;
-
-    for (const raw of rawTreatments) {
-      const treatment = normalizeTreatment(raw);
-      if (!treatment) {
-        stats.skipped += 1;
-        continue;
-      }
-
-      stats.treatmentsRead += 1;
-      try {
-        const outcome = await mirrorTreatmentAdmin(db, userId, treatment, opts.dryRun);
-        if (outcome === "created") stats.created += 1;
-        else if (outcome === "updated") stats.updated += 1;
-        else stats.skipped += 1;
-      } catch (err) {
-        stats.errors.push(`${userId}/${treatment.id}:${String(err)}`);
-      }
+    const prefSnap = await db.collection("userPreferences").limit(opts.limit).get();
+    stats.prefsRead = prefSnap.size;
+    for (const docSnap of prefSnap.docs) {
+      const prefs = docSnap.data() as UserProfile;
+      await processTreatmentsForUser(
+        db,
+        docSnap.id,
+        prefs.savedTreatments,
+        stats,
+        opts.dryRun,
+      );
     }
   }
 
