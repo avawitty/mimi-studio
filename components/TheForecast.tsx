@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
-  Activity,
   Brain,
   Building2,
   CloudRain,
