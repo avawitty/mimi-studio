@@ -4,6 +4,7 @@
 import { doc, setDoc } from "firebase/firestore";
 import type { PocketItem } from "../../types";
 import { db } from "../firebaseInit";
+import { sanitizeFirestoreData } from "../firebaseUtils";
 import {
   pocketEvidenceAtomId,
   pocketItemToAtomInput,
@@ -32,6 +33,6 @@ export async function mirrorPocketItemToEvidenceAtom(
   const input = pocketItemToAtomInput(pocketItemId, type, content, title);
   const atom = buildEvidenceAtomFromInput(userId, input, { id: atomId });
 
-  await setDoc(evidenceAtomDoc(userId, atomId), atom);
+  await setDoc(evidenceAtomDoc(userId, atomId), sanitizeFirestoreData(atom));
   scheduleEvidenceAtomAnalysis(atomId);
 }

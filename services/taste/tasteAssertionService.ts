@@ -26,6 +26,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../firebaseInit";
+import { sanitizeFirestoreData } from "../firebaseUtils";
 import type {
   ClaimType,
   CorrectionState,
@@ -85,7 +86,7 @@ export async function createTasteAssertion(
     updatedAt: now,
   };
 
-  await setDoc(assertionRef(userId, id), assertion);
+  await setDoc(assertionRef(userId, id), sanitizeFirestoreData(assertion));
   return assertion;
 }
 
@@ -121,7 +122,7 @@ export async function upsertTasteAssertion(
     updatedAt: now,
   };
 
-  await setDoc(assertionRef(userId, assertionId), assertion);
+  await setDoc(assertionRef(userId, assertionId), sanitizeFirestoreData(assertion));
   return assertion;
 }
 
