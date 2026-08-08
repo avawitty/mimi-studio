@@ -1,6 +1,6 @@
 # Mimi Chamber Implementation Audit
 
-Date: 2026-08-03 (Architecture Update 20 reconciliation; Milestones 2–3 complete; Studio OS + feedback + zine artifact maps below)
+Date: 2026-08-08 (Studio archival desk reinstated at `/studio`; Taste Intelligence OS v2 surfaces mapped)
 
 Source of truth: product canon + `lib/productCanon.ts` (+ `CANON_INFRASTRUCTURE`). Every canonical chamber has a dedicated route mode, chamber shell (where applicable), and `CanonModule` registry. Living architecture: [mimi-system-architecture.md](./mimi-system-architecture.md), [architecture-update-20.md](./architecture-update-20.md).
 
@@ -12,7 +12,7 @@ All 18 canonical modules are registered. Chamber shells live under `components/c
 
 | Canon chamber | Route | Component | Status |
 | --- | --- | --- | --- |
-| Studio / Worktable | `/studio` | `InputStudio` | Live |
+| Studio / Worktable | `/studio` | `StudioWorktable` (Console → `InputStudio`; `/studio/orientation` alternate) | Live |
 | Scribe / Semantic Portal | `/scribe` | `ScribeChamber` | Live |
 | Tailor / Profile Logic | `/tailor` | `TailorHub` | Live |
 | Taste Signature | `/signature` | `SignatureView` | Live (artifact) |
@@ -142,6 +142,22 @@ Ask → Atomize → Retrieve → Show Used Context
 ## Current developer map (2026-08)
 
 Scan-friendly notes for subsystems that landed after the July milestones. Prefer this section over digging through PRDs when onboarding or debugging.
+
+### Studio routes (archival desk primary)
+
+| Route | Component | Role |
+| --- | --- | --- |
+| `/studio` | `StudioWorktable` (`components/worktable/StudioWorktable.tsx`) | **Primary** archival desk — prompt cycles, instruments, aura meter, context strip |
+| `/studio` + Console escape | `InputStudio` | Dense compose console (instrument rail, footnote dock, compiler/critic cards) |
+| `/studio/orientation` | `StudioOrientationEntry` | Optional calm intake; must not show archival desk chrome (`FIG. 01`, `Spark · Generate`, DESK/SCRY rail) |
+| `/studio/worktable-legacy` | redirect → `/studio` | Compatibility alias only |
+
+Canon registry: `lib/productCanon.ts` (`component: "StudioWorktable"`). Lazy map: `lib/routes.tsx`. Route assertions: `__tests__/studioOrientationRoute.test.tsx`.
+
+**Pitfalls**
+
+- Do not document `/studio` as orientation-first — that decision was superseded (see `DECISIONS.md` 2026-08-08 archival desk entry).
+- Taste compiler/critic UI lives on the Console (`InputStudio`) path via `hooks/useStudioTasteCompiler.ts` + `/api/mimi/taste-intelligence/compiler|critic/*`.
 
 ### Studio OS (Phase 1 shell)
 
@@ -340,6 +356,30 @@ npm run setup:mimi-rip-domains
 npm run verify:fish
 ```
 
+### Taste Intelligence OS v2
+
+Operational taste layer on Neon (ADR 001). Full inventory: [`taste-intelligence-os-v2.md`](./taste-intelligence-os-v2.md). Calibration Lab UX: [`taste-calibration-lab.md`](./taste-calibration-lab.md).
+
+| Surface | Route / entry | Notes |
+| --- | --- | --- |
+| Calibration Lab | `/tailor/calibrate` → `CalibrationLab` | Pairwise active learning; Neon session/judgment persistence |
+| Negative taste + graph edits | Tailor `PatternGraphScreen` / `TasteModelInspector` | `POST …/refusals`, `…/model-edits`, `…/model-edits/undo` |
+| Why-saved | Pocket `WhySavedSheet` | Queued multi-upload review; `saved_reason_hypotheses` |
+| Compiler / critic | Studio Console (`InputStudio`) | Reconciles with Tailor Profile v2 via `mergeGenerationContracts` |
+| Scry taste rerank | `ScryView` + `lib/scry/tasteScryRerank.ts` | Snapshot + refusals when signed in |
+
+```bash
+npm run verify:taste-intelligence
+npm run verify:taste-model
+npm run test:unit -- __tests__/tasteIntelligence.test.ts
+```
+
+**Pitfalls**
+
+- Do not revive the superseded parallel stack (`lib/tasteCalibration/*`, `/api/mimi/taste-calibration/*`).
+- Neon `DATABASE_URL` + `npm run db:migrate` required for durable calibration/write paths; without Neon the app stays navigable but TI writes fail closed.
+- Merge/split graph ops stay behind `TASTE_GRAPH_MERGE_SPLIT=1`.
+
 ### Residue engine adapters
 
 Cultural → product adapters live under `services/residue/` (Phases 3–7). Status notes: `docs/residue-engine-phase*.md`. Verify: `npm run verify:residue`.
@@ -362,6 +402,8 @@ Cultural → product adapters live under `services/residue/` (Phases 3–7). Sta
 | Firestore quota / ghost Pocket | Pocket / Floor | Live — listener suppression + identity cancel |
 | Gateway entitlements | funded AI path | Live — server Stripe verification; no BYOK nag |
 | Studio OS Phase 1 | `/chamber-map` (+ shared shells) | Live — Map · seal · Find; Hub/Worktable keep prior chrome |
+| Studio archival desk | `/studio` | Live — `StudioWorktable` primary; `/studio/orientation` alternate; legacy worktable redirects |
+| Taste Intelligence OS v2 | `/tailor/calibrate` + Neon APIs | Partial → foundation shipped — calibration, refusals, model edits, why-saved, compiler/critic |
 | Feedback / motion | app-wide | Live — `useFeedback()` semantic events; confirmation-gated haptics |
 | Zine artifact schema | Press / Edit / export | Live contract v1 — `lib/zine/` + verify scripts |
 | Legal documents | `/privacy`, `/tos` | Live — `/terms` aliases to Terms |

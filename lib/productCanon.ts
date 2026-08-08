@@ -280,7 +280,7 @@ export const CANON_MODULES: CanonModule[] = [
     phase: "compose",
     visibility: "primary",
     // Keep worktable atmosphere so the App main shell stays full-bleed;
-    // the archival desk itself is not mounted at /studio.
+    // primary /studio mounts the archival StudioWorktable desk.
     atmosphere: ["paper", "worktable"],
     primaryAction: {
       label: "Begin with this",

@@ -105,7 +105,8 @@ This is the practical bridge from research and taste to production. Collection d
 | Domain Workflows | Coordinate domain-specific steps and enforce ownership boundaries | Research intake, evidence-lane retrieval, taste reading, collective statistics, editorial direction, product briefing, publishing |
 | Capabilities | Provide reusable user-facing operations shared across workflows | Capture, Interpretation, Highlight, Approval, Retrieval, Composition, Export, Consent, Feedback (semantic motion/haptics) |
 | Knowledge Objects | Hold durable, typed, versioned product state | Source Object, Evidence, Approval, Memory Atom, Context Packet, Build Brief, CentralTendencyProfile |
-| Shared Intelligence Infrastructure | Route models, embeddings, entitlements, and provenance across chambers | AI Gateway, Gateway embeddings, provider adapters, entitlement verification, model provenance |
+| Shared Intelligence Infrastructure | Route models, embeddings, entitlements, and provenance across chambers | AI Gateway (`getServerAiGatewayKey` prefers Vercel OIDC on deployments), Gateway embeddings, provider adapters, entitlement verification, model provenance |
+| Taste Intelligence (ops) | Persist calibration, refusals, model edits, generation contracts, and why-saved hypotheses as Neon operational state | `lib/tasteIntelligence/*`, `/api/mimi/taste-intelligence/*` — see [`taste-intelligence-os-v2.md`](./taste-intelligence-os-v2.md) |
 | Platform Services | Persist, index, authorize, relate, validate, and synchronize objects | Neon Postgres repositories, Firebase identity, object storage, legacy migration adapters, IndexedDB cache, search, permissions, event log |
 | Generation / Composition | Assemble explicit context and produce or arrange candidates | Prompt assembly, model generation, layout composition, hi-fi plate baking, rendering |
 | Published Artifacts | Represent validated outputs and their handoff or publication state | Zine, Report, export bundle, provenance manifest |
@@ -569,7 +570,7 @@ The current creator-facing interfaces are projections onto the architecture, not
 
 | Interface | Canonical route | Current component |
 | --- | --- | --- |
-| Studio | `/studio` | `InputStudio` |
+| Studio | `/studio` | `StudioWorktable` (Console → `InputStudio`; alternate `/studio/orientation`) |
 | Scribe | `/scribe` | `ScribeChamber` |
 | Scry | `/scry` | `ScryView` |
 | Residue | `/residue` | `ResidueChamber` |

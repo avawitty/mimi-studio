@@ -124,6 +124,18 @@ large exports stay in object storage; Postgres stores references.
 See [`docs/adr-001-neon-operational-database.md`](docs/adr-001-neon-operational-database.md)
 and [`prd/neon-operational-spine.md`](prd/neon-operational-spine.md).
 
+### Taste Intelligence (Neon operational APIs)
+
+Calibration, refusals, model edits, why-saved hypotheses, and generation contracts persist under `/api/mimi/taste-intelligence/*` (Express `server/operationalRoutes.ts` + Vercel `api/mimi/taste-intelligence/[[...path]].ts`). Creator surfaces: `/tailor/calibrate`, Tailor Pattern Graph, Pocket why-saved sheet, Studio Console compiler/critic cards.
+
+```bash
+npm run db:migrate
+npm run verify:taste-intelligence
+npm run verify:taste-model
+```
+
+Docs: [`docs/taste-intelligence-os-v2.md`](docs/taste-intelligence-os-v2.md), [`docs/taste-calibration-lab.md`](docs/taste-calibration-lab.md). Without Neon the SPA stays navigable; TI write endpoints fail closed.
+
 ## Legacy Sovereign archive
 
 The **sovereign archive** remains a compatibility read plane for Stand Floor,
@@ -167,6 +179,8 @@ AI_GATEWAY_API_KEY=
 ```
 
 See `.env.example` for gateway model overrides. Gateway model IDs live in `lib/models.ts`; runtime resolution is in `services/modelConfig.ts`. AI SDK + gateway helpers are in `lib/ai/generate.ts`; the first production consumer is `POST /api/mimi/generate-text` (`npm run verify:gateway-generate-text`).
+
+**AI Gateway credentials:** server code resolves keys through `getServerAiGatewayKey()` (`lib/aiGatewayCompat.ts`). On Vercel deployments (`process.env.VERCEL`), **prefer `VERCEL_OIDC_TOKEN` over `AI_GATEWAY_API_KEY`** so a stale API key cannot shadow deployment identity. Local/dev prefers `AI_GATEWAY_API_KEY` (alias `AI_GATEWAY_KEY` via `npm run sync:cloud-env`).
 
 Firebase, Stripe, Shopify, and other integrations require their own credentials. Keep service-account files and secrets outside the repository.
 
@@ -259,6 +273,17 @@ Recovery path (`lib/staleChunkRecovery.ts`, wired from `index.tsx` + `ErrorBound
 3. Hard-reload once with `?recovered=1` (45s cooldown to avoid loops).
 
 `public/sw.js` intentionally avoids caching `/assets/*` and rejects HTML-as-asset responses. If a user is stuck after a ship, a hard refresh or clearing site data recovers; the automated path should fire first.
+
+### Studio routes
+
+| Route | Surface |
+| --- | --- |
+| `/studio` | Archival worktable desk (`StudioWorktable`) — **primary** |
+| `/studio` → Console escape | Dense compose console (`InputStudio`) |
+| `/studio/orientation` | Optional calm orientation intake |
+| `/studio/worktable-legacy` | Redirects to `/studio` |
+
+Do not treat orientation intake as the default land. See [`docs/mimi-chamber-implementation-audit.md`](docs/mimi-chamber-implementation-audit.md#studio-routes-archival-desk-primary) and `docs/DECISIONS.md` (2026-08-08 archival desk).
 
 ### Studio OS chrome
 

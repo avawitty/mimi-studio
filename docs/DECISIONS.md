@@ -6,7 +6,27 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — `/studio` primary route is archival worktable (supersedes 2026-08-04 orientation-first)
+
+**Decision:** Mount `StudioWorktable` at `/studio`. Keep calm orientation intake at `/studio/orientation`. Treat `/studio/worktable-legacy` as a redirect alias to `/studio`. Dense `InputStudio` remains a Console escape hatch on the archival desk, not the default land.
+
+**Alternatives rejected:** (1) Keeping orientation intake as the primary `/studio` land (2026-08-04 decision). (2) Deleting the orientation surface before callers finish migrating.
+
+**Why:** Product intent returned the archival desk as the primary Studio composition surface while preserving orientation as an explicit alternate path. Route tests assert worktable chrome (`FIG. 01`, `Spark · Generate`) on `/studio` and forbid that chrome on `/studio/orientation`.
+
+**Ref:** PR #234; `lib/productCanon.ts` (`component: "StudioWorktable"`); `lib/routes.tsx`; `App.tsx`; `__tests__/studioOrientationRoute.test.tsx`
+
 ---
+
+## 2026-08-08 — Prefer Vercel OIDC for AI Gateway on deployments
+
+**Decision:** Centralize server Gateway credential resolution in `getServerAiGatewayKey()` (`lib/aiGatewayCompat.ts`). When `process.env.VERCEL` is set, prefer `VERCEL_OIDC_TOKEN` over `AI_GATEWAY_API_KEY`. Local/dev and non-Vercel runtimes keep API key first, then OIDC.
+
+**Alternatives rejected:** (1) Always prefer `AI_GATEWAY_API_KEY` (stale/revoked keys can shadow deployment identity). (2) Duplicating env-order logic in each caller.
+
+**Why:** Vercel AI Gateway supports deployment OIDC; preferring it on Vercel avoids long-lived keys masking the platform credential. Call sites (`providerKey("gateway")`, funded gateway, embeddings, provider helpers) go through the shared resolver.
+
+**Ref:** `lib/aiGatewayCompat.ts`, `lib/apiUtils.ts`, `lib/mimiFundedGateway.ts`, `lib/mimiProvider.ts`, `lib/sovereign/embeddings.ts`
 
 ---
 
@@ -397,6 +417,8 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 ---
 
 ## 2026-08-04 — `/studio` primary route is orientation intake (not archival desk)
+
+> **Superseded** by [2026-08-08 — `/studio` primary route is archival worktable](#2026-08-08--studio-primary-route-is-archival-worktable-supersedes-2026-08-04-orientation-first) (PR #234). Orientation intake now lives at `/studio/orientation`.
 
 **Decision:** Mount `StudioOrientationEntry` at `/studio`. Keep `StudioWorktable` only at `/studio/worktable-legacy`, explicitly labeled legacy/experimental. Route-level tests forbid `FIG. 01`, `Spark · Generate`, and the six-folder DESK/SCRY rail on the primary entry.
 
