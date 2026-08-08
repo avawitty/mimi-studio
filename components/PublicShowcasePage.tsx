@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import type { PublicProfileShowcase } from "../services/publicShowcaseService";
 import { loadPublicProfileShowcase } from "../services/publicShowcaseService";
+import { buildPublicProfileSeoData } from "../lib/publicProfileSeo";
+import { setPublicProfileMetaTags } from "../utils/seoHelper";
 import { CookieConsentBanner } from "./CookieConsentBanner";
 import { PublicField, PublicProfileCard } from "./public-face";
 
@@ -26,6 +28,17 @@ export const PublicShowcasePage: React.FC<PublicShowcasePageProps> = ({
       cancelled = true;
     };
   }, [handle]);
+
+  useEffect(() => {
+    if (!data?.profile) return;
+    const seo = buildPublicProfileSeoData(data.profile);
+    setPublicProfileMetaTags({
+      title: seo.title,
+      description: seo.description,
+      imageUrl: seo.imageUrl,
+      url: seo.pageUrl,
+    });
+  }, [data]);
 
   if (data === undefined) {
     return (

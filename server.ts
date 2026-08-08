@@ -61,8 +61,14 @@ import sovereignImportHandler from "./api/sovereign/import";
 import sovereignReindexHandler from "./api/sovereign/reindex";
 import sovereignEventsHandler from "./api/sovereign/events";
 import sovereignPingHandler from "./api/sovereign/ping";
-import { sovereignStatus } from "./lib/sovereign/store";
+import { sovereignStatus, getProfileByHandle } from "./lib/sovereign/store";
 import { isPaidPatronPlan } from "./constants";
+import { normalizeFeedHandle } from "./lib/publicFeedQuery.js";
+import { getPublicBaseUrl } from "./lib/publicBaseUrl.js";
+import {
+  buildPublicProfileSeoData,
+  injectPublicProfileSEOMetadata,
+} from "./lib/publicProfileSeo.js";
 
 loadEnv({ path: ".env.local", override: false, quiet: true });
 loadEnv({ path: ".env.firebase.local", override: false, quiet: true });
@@ -1911,6 +1917,29 @@ async function startServer() {
     return null;
   }
 
+  async function fetchProfileServerSide(handle: string): Promise<Record<string, unknown> | null> {
+    const normalized = normalizeFeedHandle(handle);
+    if (!normalized) return null;
+
+    try {
+      const sovereign = await getProfileByHandle(normalized);
+      if (sovereign) return sovereign as unknown as Record<string, unknown>;
+    } catch (e) {
+      console.warn("MIMI // Sovereign profile fetch failed:", e);
+    }
+
+    if (db) {
+      try {
+        const snap = await db.collection("profiles_public").where("handle", "==", normalized).limit(1).get();
+        if (!snap.empty) return snap.docs[0].data() || null;
+      } catch (e) {
+        console.warn("MIMI // Admin SDK profile fetch failed:", e);
+      }
+    }
+
+    return null;
+  }
+
   function replaceMeta(html: string, propertyValue: string, contentValue: string, isProperty: boolean): string {
     const attr = isProperty ? 'property' : 'name';
     const regex = new RegExp(`<meta\\s+[^>]*?${attr}="${propertyValue}"[^>]*?>`, 'i');
@@ -1996,6 +2025,51 @@ async function startServer() {
         res.sendFile(path.join(process.cwd(), 'index.html'));
       } else {
         res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+      }
+    }
+  });
+
+  app.get("/u/:handle", async (req, res) => {
+    try {
+      const handle = normalizeFeedHandle(req.params.handle || "");
+      if (!handle) {
+        return res.status(404).send("Handle required");
+      }
+
+      console.log(`MIMI // Server-side SEO requested for public profile: @${handle}`);
+
+      const profile = await fetchProfileServerSide(handle);
+
+      let htmlPath = "";
+      if (process.env.NODE_ENV !== "production" && viteAvailable) {
+        htmlPath = path.join(process.cwd(), "index.html");
+      } else {
+        htmlPath = path.join(process.cwd(), "dist", "index.html");
+      }
+
+      if (!fs.existsSync(htmlPath)) {
+        return res.status(404).send("Index template not found");
+      }
+
+      let html = fs.readFileSync(htmlPath, "utf8");
+
+      if (profile) {
+        const baseUrl = getPublicBaseUrl(req);
+        const seo = buildPublicProfileSeoData(profile as any, baseUrl);
+        html = injectPublicProfileSEOMetadata(html, seo);
+      }
+
+      if (process.env.NODE_ENV !== "production" && viteInstance) {
+        html = await viteInstance.transformIndexHtml(req.originalUrl, html);
+      }
+
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    } catch (err: unknown) {
+      console.error("MIMI // Error generating public profile SEO:", err);
+      if (process.env.NODE_ENV !== "production" && viteAvailable) {
+        res.sendFile(path.join(process.cwd(), "index.html"));
+      } else {
+        res.sendFile(path.join(process.cwd(), "dist", "index.html"));
       }
     }
   });

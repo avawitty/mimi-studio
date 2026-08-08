@@ -14,6 +14,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Public profile OG + bio editing
+
+**Decision:** Add server-visible SEO for `/u/:handle` via `lib/publicProfileSeo.ts`, Express `app.get("/u/:handle")` metadata injection, and Vercel bot rewrite to `api/og/profile.ts`. Add bio textarea to `UserProfileView` (280 chars) saved to `profiles_public`. Client SPA navigation updates meta via `setPublicProfileMetaTags` on `PublicShowcasePage`.
+
+**Alternatives rejected:** (1) Client-only SEO for share previews (crawlers need server HTML). (2) Separate bio field on `publicShowcase` snapshot (bio is identity, not doll token).
+
+**Why:** Completes the public card loop — creators can write bio in settings; link previews show doll portrait, bio, and handle.
+
+**Ref:** `lib/publicProfileSeo.ts`, `api/og/profile.ts`, `server.ts`, `components/UserProfileView.tsx`, `vercel.json`
+
+---
+
 ## 2026-08-08 — Unified `PublicProfileCard` for `/u/:handle`
 
 **Decision:** Extract a shared `PublicProfileCard` (`components/public-face/PublicProfileCard.tsx`) backed by `lib/publicProfileCard.ts` helpers. Canonical mimi.you showcase composes identity (photo, display name, bio, handle), taste signature excerpt (`aestheticSignature` → `semantic_signature` → doll philosophy), opt-in inverse reading teaser when `publicRip` is published, doll specimen, public zine grid, Keep Tabs, and cross-links to mimi.fish / mimi.rip.

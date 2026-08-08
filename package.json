@@ -63,6 +63,7 @@
     "verify:fish": "tsx scripts/verifyFishShare.ts",
     "verify:doll-staple": "tsx scripts/verifyDollStaplePrompt.ts",
     "verify:rss-feed": "tsx scripts/verifyCreatorRssFeed.ts",
+    "verify:public-profile-seo": "tsx scripts/verifyPublicProfileSeo.ts",
     "cursor:prompt": "tsx scripts/cursorAgentPrompt.ts",
     "cursor:cloud-review": "tsx scripts/cursorCloudReview.ts",
     "cursor:fix-bot-comments": "tsx scripts/cursorFixBotComments.ts",
