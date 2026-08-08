@@ -734,3 +734,13 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `components/proscenium/ProsceniumContributionBadge.tsx`, `components/proscenium/ProsceniumCollectiveBrief.tsx`, `components/ProsceniumView.tsx`
 
+---
+
+## 2026-08-08 — Dolls ↔ Rip identity loop handoffs
+
+**Decision:** Close the identity mirror loop with bidirectional chamber actions and shared doll binding. **Mimi Dolls** exposes `mimi.rip` in chrome plus shell-level “Open inverse reading”; empty shell state shows Tailor → Shell → Rip path before onboarding. **Rip** uses `useStudioDollSelection` (same `mimi_studio_active_doll_id` as Studio/Dolls) with a shell picker, stale-reading banner when `sourceDollId` ≠ active doll, and Tailor/Dolls empty-state CTAs when no shells exist. **Public profile** adds owner **Manage inverse** when `publicRip` is published (visitor “Read inverse” unchanged).
+
+**Alternatives rejected:** (1) Rip-only `dolls[0]` binding — breaks when Studio/Dolls pick a different active shell. (2) Per-chamber doll storage — duplicates Studio companion state.
+
+**Ref:** `components/chambers/MimiDollsChamber.tsx`, `components/chambers/RipChamber.tsx`, `hooks/useStudioDollSelection.ts`, `components/public-face/PublicProfileCard.tsx`, `prd/chamber-loop-forecast-observatory-rip-dolls.md`
+

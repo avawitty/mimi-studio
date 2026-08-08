@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ExternalLink, Sparkles } from "lucide-react";
+import { ArrowRight, ExternalLink, Sparkles } from "lucide-react";
 import { ChamberShell } from "./ChamberShell";
 import { useUser } from "../../contexts/UserContext";
-import { getDoll, listDolls } from "../../services/tailorService";
-import { readStoredActiveDollId } from "../../services/dollEngine";
+import { useStudioDollSelection } from "../../hooks/useStudioDollSelection";
 import {
   generateRipReading,
   listRipReadings,
@@ -26,11 +25,20 @@ interface RipChamberProps {
 
 export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
   const { user, profile, updateProfile } = useUser();
+  const {
+    dolls,
+    activeDoll,
+    activeDollId,
+    setActiveDollId,
+    loading: dollsLoading,
+  } = useStudioDollSelection(user?.uid);
   const [reading, setReading] = useState<RipReading | null>(null);
   const [insights, setInsights] = useState<RipSavableInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const readingDollStale =
+    Boolean(reading?.sourceDollId && activeDollId && reading.sourceDollId !== activeDollId);
 
   const handle =
     profile?.handle ||
@@ -43,11 +51,10 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
     setLoading(true);
     setError(null);
     try {
-      const boundId = readStoredActiveDollId();
-      const doll: Doll | null = boundId
-        ? await getDoll(user.uid, boundId)
-        : (await listDolls(user.uid))[0] || null;
-      // Prefer explicitly bound doll + its project/graph ids — never invent a cross-join.
+      const doll: Doll | null = activeDoll ?? dolls[0] ?? null;
+      if (doll && doll.id !== activeDollId) {
+        setActiveDollId(doll.id);
+      }
       const next = await generateRipReading({
         userId: user.uid,
         projectId: doll?.projectId,
@@ -64,7 +71,16 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid, profile?.evidenceDossier, profile?.likenessManifest, profile?.tailorDraft]);
+  }, [
+    user?.uid,
+    activeDoll,
+    activeDollId,
+    dolls,
+    setActiveDollId,
+    profile?.evidenceDossier,
+    profile?.likenessManifest,
+    profile?.tailorDraft,
+  ]);
 
   const refreshInsights = useCallback(async () => {
     if (!user?.uid || user.uid === "ghost") return;
@@ -106,7 +122,7 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
   };
 
   useEffect(() => {
-    if (!user?.uid || user.uid === "ghost") return;
+    if (!user?.uid || user.uid === "ghost" || dollsLoading) return;
     let cancelled = false;
     void (async () => {
       setLoading(true);
@@ -118,16 +134,15 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
           setReading(existing[0]);
           return;
         }
-        // Auto-derive once when no reading exists — bind via stored doll id when present.
-        const boundId = readStoredActiveDollId();
-        const doll = boundId
-          ? await getDoll(user.uid, boundId)
-          : (await listDolls(user.uid))[0] || null;
-        if (cancelled) return;
+        if (dolls.length === 0) {
+          return;
+        }
+        const doll = activeDoll ?? dolls[0] ?? null;
+        if (!doll) return;
         const next = await generateRipReading({
           userId: user.uid,
-          projectId: doll?.projectId,
-          tasteGraphId: doll?.tasteGraphId,
+          projectId: doll.projectId,
+          tasteGraphId: doll.tasteGraphId,
           dossier: profile?.evidenceDossier || null,
           likeness: profile?.likenessManifest || null,
           doll,
@@ -145,9 +160,9 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
     return () => {
       cancelled = true;
     };
-    // Intentionally once per signed-in user; regenerate via explicit action.
+    // Intentionally once per signed-in user + doll list ready; regenerate via explicit action.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [user?.uid, dollsLoading, dolls.length]);
 
   const handleTogglePublish = async () => {
     if (!user?.uid || !reading || !updateProfile) return;
@@ -202,7 +217,25 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
       hideHandoff
       tone="void"
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {dolls.length > 0 ? (
+            <label className="flex items-center gap-2">
+              <span className="font-mono text-[7px] uppercase tracking-widest text-stone-500">
+                Shell
+              </span>
+              <select
+                value={activeDollId ?? dolls[0]?.id ?? ""}
+                onChange={(e) => setActiveDollId(e.target.value || null)}
+                className="border border-white/15 bg-[#050506] text-stone-200 font-mono text-[8px] px-2 py-1.5 max-w-[180px]"
+              >
+                {dolls.map((doll) => (
+                  <option key={doll.id} value={doll.id}>
+                    {doll.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <button
             type="button"
             onClick={() => navigate("/mimi-dolls")}
@@ -260,8 +293,49 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
             Retry
           </button>
         </div>
+      ) : dolls.length === 0 && !dollsLoading ? (
+        <div className="flex flex-col items-center justify-center h-full gap-6 p-8 text-center bg-[#050506] max-w-lg mx-auto">
+          <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-stone-500">
+            Identity loop
+          </p>
+          <p className="font-serif italic text-lg text-stone-200 leading-relaxed">
+            Rip reads refusals and blind spots from your Taste Graph — start with Tailor, project a
+            doll shell, then return here.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
+            <button
+              type="button"
+              onClick={() => navigate("/tailor")}
+              className={`${voidBtn} uppercase`}
+            >
+              Tailor
+            </button>
+            <ArrowRight size={14} className="text-stone-600 hidden sm:block" />
+            <button
+              type="button"
+              onClick={() => navigate("/mimi-dolls")}
+              className={`${voidBtn} uppercase`}
+            >
+              Mimi Dolls
+            </button>
+          </div>
+        </div>
       ) : reading ? (
         <div className="h-full overflow-y-auto">
+          {readingDollStale ? (
+            <div className="mx-4 mt-4 border border-amber-500/30 bg-amber-950/20 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+              <p className="font-mono text-[8px] uppercase tracking-widest text-amber-200/90">
+                Active shell changed — regenerate to refresh this inverse reading.
+              </p>
+              <button
+                type="button"
+                onClick={() => void derive()}
+                className={`${voidBtn} uppercase self-start`}
+              >
+                Regenerate
+              </button>
+            </div>
+          ) : null}
           <RipReadingView
             reading={reading}
             handle={handle}
@@ -283,15 +357,26 @@ export const RipChamber: React.FC<RipChamberProps> = ({ navigate }) => {
       ) : (
         <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center bg-[#050506]">
           <p className="font-serif italic text-lg text-stone-200 max-w-md">
-            Accept a Tailor likeness or generate a Doll first — rip reads your refusals and blind spots.
+            {activeDoll
+              ? `Derive an inverse reading from ${activeDoll.name} — refusals, blind spots, and shadow motifs.`
+              : "Accept a Tailor likeness or generate a Doll first — rip reads your refusals and blind spots."}
           </p>
-          <button
-            type="button"
-            onClick={() => void derive()}
-            className={`${voidBtn} uppercase`}
-          >
-            Derive anyway
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => void derive()}
+              className={`${voidBtn} uppercase`}
+            >
+              Derive reading
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/mimi-dolls")}
+              className={`${voidBtn} uppercase`}
+            >
+              Open Dolls
+            </button>
+          </div>
         </div>
       )}
     </ChamberShell>

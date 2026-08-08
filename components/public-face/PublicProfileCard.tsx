@@ -145,6 +145,15 @@ export const PublicProfileCard: React.FC<PublicProfileCardProps> = ({
               <div className="pt-1">
                 <KeepTabsButton handle={publicHandle} variant="stamp" />
               </div>
+              {isOwner && ripPublished ? (
+                <button
+                  type="button"
+                  onClick={() => onNavigate("/rip")}
+                  className="font-mono text-[8px] uppercase tracking-widest border border-rose-900/25 text-rose-900/80 px-3 py-1.5 inline-flex items-center gap-1 hover:border-rose-900/40"
+                >
+                  Manage inverse <ArrowUpRight size={10} />
+                </button>
+              ) : null}
               {externalLinks.length > 0 ? (
                 <div className="flex flex-wrap gap-2 pt-2">
                   {externalLinks.map((link) => (

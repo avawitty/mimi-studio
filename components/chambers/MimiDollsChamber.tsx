@@ -200,6 +200,13 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
           </button>
           <button
             type="button"
+            onClick={() => navigate("/rip")}
+            className="px-3 py-1.5 border border-nous-border font-mono text-[8px] uppercase tracking-widest hover:bg-nous-base0/30"
+          >
+            mimi.rip
+          </button>
+          <button
+            type="button"
             onClick={openPublicProfile}
             className="px-3 py-1.5 border border-nous-border font-mono text-[8px] uppercase tracking-widest flex items-center gap-1 hover:bg-nous-base0/30"
           >
@@ -235,14 +242,46 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
             ) : loadingDolls ? (
               <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle">Loading shells…</p>
             ) : dolls.length === 0 ? (
-              <DollOnboardingFlow
-                userId={user.uid}
-                onComplete={(doll) => {
-                  setDolls([doll]);
-                  setBoundDollId(doll.id);
-                  writeStoredActiveDollId(doll.id);
-                }}
-              />
+              <div className="space-y-6">
+                <div className="border border-dashed border-nous-border/50 p-6 space-y-4">
+                  <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-nous-subtle">
+                    Identity loop
+                  </p>
+                  <p className="font-serif italic text-nous-subtle max-w-xl leading-relaxed">
+                    Calibrate in Tailor, project your shell here, then open mimi.rip for the inverse
+                    reading of what you refuse.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate("/tailor")}
+                      className="px-4 py-2 border border-nous-border font-mono text-[8px] uppercase tracking-widest hover:bg-nous-base0/30"
+                    >
+                      Tailor
+                    </button>
+                    <ArrowRight size={14} className="text-nous-subtle" />
+                    <span className="font-mono text-[8px] uppercase tracking-widest text-nous-text px-2">
+                      Shell
+                    </span>
+                    <ArrowRight size={14} className="text-nous-subtle" />
+                    <button
+                      type="button"
+                      onClick={() => navigate("/rip")}
+                      className="px-4 py-2 border border-nous-border font-mono text-[8px] uppercase tracking-widest hover:bg-nous-base0/30"
+                    >
+                      mimi.rip
+                    </button>
+                  </div>
+                </div>
+                <DollOnboardingFlow
+                  userId={user.uid}
+                  onComplete={(doll) => {
+                    setDolls([doll]);
+                    setBoundDollId(doll.id);
+                    writeStoredActiveDollId(doll.id);
+                  }}
+                />
+              </div>
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-3">
@@ -308,6 +347,13 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
                           className="px-5 py-3 border border-nous-border font-mono text-[9px] uppercase tracking-widest"
                         >
                           Time travel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate("/rip")}
+                          className="px-5 py-3 border border-nous-border font-mono text-[9px] uppercase tracking-widest"
+                        >
+                          Open inverse reading
                         </button>
                         <button
                           type="button"

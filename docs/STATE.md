@@ -73,7 +73,7 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Mimi Dolls** | `/mimi-dolls` | partial | Omni Loop onboarding + time-travel scenes shipped; Rip uses `dolls[0]` only | Rip CTA; cross-user public scene feed |
+| **Mimi Dolls** | `/mimi-dolls` | partial | Omni Loop onboarding + time-travel scenes shipped; Rip binding via shared active-doll storage + picker in Rip chamber | Cross-user public scene feed |
 | **mimi.rip** | `/rip` | shipped | Deterministic inverse read (v0, no AI enrichment) | Public OG via server HTML on publish routes |
 | **Aesthetic Intelligence** | `/aesthetic-intelligence` | shipped | Aliased → `/tailor/diagnostics` | — |
 | **Art Style Scryer** | `/art-style` | shipped | Aliased → `/tailor/style-lab` | — |
@@ -131,7 +131,7 @@
 ## Cross-cutting debt
 
 1. **Perception loop handoffs** — Observatory → Forecast → Edit not fully wired; Forecast intake, server snapshot, and Residue panel shipped; live collective MMM still demonstration.
-2. **Identity loop handoffs** — Dolls ↔ Rip ↔ Tailor CTAs incomplete; Rip reads first doll only.
+2. **Identity loop handoffs** — Dolls ↔ Rip ↔ Tailor CTAs shipped; public profile owner link when rip published. Remaining: public/private rip field parity, multi-doll public cards deferred.
 3. **Demonstration labeling** — Collective modules label demos; commerce mock catalog does not yet say "demonstration".
 4. **Font stack drift** — Shell uses Geist Variable; house style names DM Sans — converge on tokens in new UI.
 5. **Research instrumentation** — `?research=1` + optional `?task=` enables session event logger (`research_sessions` Firestore + local JSON export); no dashboard.
