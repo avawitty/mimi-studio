@@ -610,6 +610,90 @@ describe("negative taste and model editing slice", () => {
     expect(feature?.label).toBe("Soft contrast");
   });
 
+  it("undo set_signature restores prior signedWeight", () => {
+    const snapshot = minimalSnapshot();
+    const originalWeight =
+      snapshot.featureWeights.find((f) => f.featureId === "pattern_cluster:c1")
+        ?.signedWeight ?? 0.6;
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "set_signature",
+      targetIds: ["pattern_cluster:c1"],
+      before: { signedWeight: originalWeight },
+      after: { signedWeight: 1.2, userWeight: "signature" },
+    });
+    const undo = createUndoEdit(edit);
+    const edited = applyEditsToSnapshot(snapshot, [edit]);
+    expect(
+      edited.featureWeights.find((f) => f.featureId === "pattern_cluster:c1")
+        ?.signedWeight,
+    ).toBe(1.2);
+    const restored = applyEditsToSnapshot(edited, [undo]);
+    expect(
+      restored.featureWeights.find((f) => f.featureId === "pattern_cluster:c1")
+        ?.signedWeight,
+    ).toBe(originalWeight);
+  });
+
+  it("undo connect removes the added relationship", () => {
+    const snapshot = minimalSnapshot();
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "connect",
+      targetIds: ["pattern_cluster:c1", "tag:x"],
+      before: {},
+      after: { relation: "reinforces", signedWeight: 0.8 },
+    });
+    const undo = createUndoEdit(edit);
+    const edited = applyEditsToSnapshot(snapshot, [edit]);
+    expect(edited.interactionRules).toHaveLength(1);
+    const restored = applyEditsToSnapshot(edited, [undo]);
+    expect(restored.interactionRules).toHaveLength(0);
+  });
+
+  it("undo disconnect restores the removed relationship", () => {
+    const snapshot = {
+      ...minimalSnapshot(),
+      interactionRules: [
+        {
+          id: "rule-1",
+          featureIds: ["pattern_cluster:c1", "tag:x"] as [string, string],
+          relation: "reinforces" as const,
+          signedWeight: 0.8,
+          supportCount: 2,
+          confidence: 0.7,
+          contextScopes: ["persistent"],
+          sourceIds: [] as string[],
+        },
+      ],
+    };
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "disconnect",
+      targetIds: ["pattern_cluster:c1", "tag:x"],
+      before: { connected: true, relation: "reinforces", signedWeight: 0.8 },
+      after: { connected: false },
+    });
+    const undo = createUndoEdit(edit);
+    const edited = applyEditsToSnapshot(snapshot, [edit]);
+    expect(edited.interactionRules).toHaveLength(0);
+    const restored = applyEditsToSnapshot(edited, [undo]);
+    expect(restored.interactionRules).toHaveLength(1);
+  });
+
+  it("replay persisted edits preserves corrections after recompile", () => {
+    const compiled = minimalSnapshot();
+    const edit = createModelEdit({
+      ownerId: "u1",
+      operation: "set_signature",
+      targetIds: ["pattern_cluster:c1"],
+      before: { signedWeight: compiled.featureWeights[0]!.signedWeight },
+      after: { signedWeight: 1.2 },
+    });
+    const replayed = applyEditsToSnapshot(compiled, [edit]);
+    expect(replayed.featureWeights[0]?.signedWeight).toBe(1.2);
+  });
+
   it("project-scoped refusal does not leak global", () => {
     const refusal = buildRefusalFromExplicit({
       ownerId: "u1",

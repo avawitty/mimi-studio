@@ -105,6 +105,17 @@ export async function listTasteRefusals(projectId?: string): Promise<{
   return apiFetch(`/refusals${qs}`);
 }
 
+export async function listTasteModelEdits(input?: {
+  projectId?: string;
+  limit?: number;
+}): Promise<{ edits: TasteModelEdit[] }> {
+  const params = new URLSearchParams();
+  if (input?.projectId) params.set("projectId", input.projectId);
+  if (input?.limit) params.set("limit", String(input.limit));
+  const qs = params.toString() ? `?${params.toString()}` : "";
+  return apiFetch(`/model-edits${qs}`);
+}
+
 export async function createTasteRefusal(input: {
   featureIds: string[];
   refusalType: TasteRefusalType;

@@ -99,29 +99,52 @@ function applyEditToSnapshot(
       }
       break;
     }
-    case "set_signature":
+    case "set_signature": {
+      const patch: Partial<TasteFeatureWeight> = {};
+      if (typeof edit.after.signedWeight === "number") {
+        patch.signedWeight = edit.after.signedWeight;
+      } else {
+        patch.signedWeight = 1.2;
+      }
+      next.featureWeights = applyFeaturePatch(next.featureWeights, targetId, patch);
+      break;
+    }
+    case "set_contextual": {
+      const scopes = edit.after.contextScopes;
       next.featureWeights = applyFeaturePatch(next.featureWeights, targetId, {
-        signedWeight: 1.2,
+        contextScopes: Array.isArray(scopes)
+          ? scopes.filter((s): s is string => typeof s === "string")
+          : ["project"],
       });
       break;
-    case "set_contextual":
-      next.featureWeights = applyFeaturePatch(next.featureWeights, targetId, {
-        contextScopes: ["project"],
-      });
-      break;
-    case "set_saturated":
-      next.featureWeights = applyFeaturePatch(next.featureWeights, targetId, {
-        signedWeight:
+    }
+    case "set_saturated": {
+      const patch: Partial<TasteFeatureWeight> = {};
+      if (typeof edit.after.signedWeight === "number") {
+        patch.signedWeight = edit.after.signedWeight;
+      } else {
+        patch.signedWeight =
           (next.featureWeights.find((f) => f.featureId === targetId)
-            ?.signedWeight ?? 0.6) * 0.5,
-      });
+            ?.signedWeight ?? 0.6) * 0.5;
+      }
+      next.featureWeights = applyFeaturePatch(next.featureWeights, targetId, patch);
       break;
-    case "set_dormant":
-      next.featureWeights = applyFeaturePatch(next.featureWeights, targetId, {
-        signedWeight: 0.1,
-        confidence: 0.2,
-      });
+    }
+    case "set_dormant": {
+      const patch: Partial<TasteFeatureWeight> = {};
+      if (typeof edit.after.signedWeight === "number") {
+        patch.signedWeight = edit.after.signedWeight;
+      } else {
+        patch.signedWeight = 0.1;
+      }
+      if (typeof edit.after.confidence === "number") {
+        patch.confidence = edit.after.confidence;
+      } else if (patch.signedWeight === 0.1) {
+        patch.confidence = 0.2;
+      }
+      next.featureWeights = applyFeaturePatch(next.featureWeights, targetId, patch);
       break;
+    }
     case "correct_provenance": {
       const sourceIds = edit.after.sourceIds;
       if (Array.isArray(sourceIds)) {
@@ -134,6 +157,18 @@ function applyEditToSnapshot(
     case "connect": {
       const [a, b] = edit.targetIds;
       if (!a || !b) break;
+      const pair = new Set(edit.targetIds);
+      const shouldRemove =
+        edit.after.connected === false ||
+        (typeof edit.after.relation !== "string" &&
+          typeof edit.after.signedWeight !== "number");
+      if (shouldRemove) {
+        next.interactionRules = next.interactionRules.filter(
+          (rule) =>
+            !(pair.has(rule.featureIds[0]) && pair.has(rule.featureIds[1])),
+        );
+        break;
+      }
       const relation =
         typeof edit.after.relation === "string"
           ? (edit.after.relation as TasteInteractionRule["relation"])
@@ -155,12 +190,33 @@ function applyEditToSnapshot(
       break;
     }
     case "disconnect": {
+      const [a, b] = edit.targetIds;
+      if (!a || !b) break;
+      if (edit.after.connected === true) {
+        const relation =
+          typeof edit.before.relation === "string"
+            ? (edit.before.relation as TasteInteractionRule["relation"])
+            : "reinforces";
+        const rule: TasteInteractionRule = {
+          id: edit.id,
+          featureIds: [a, b],
+          relation,
+          signedWeight:
+            typeof edit.before.signedWeight === "number"
+              ? edit.before.signedWeight
+              : 0.6,
+          supportCount: 1,
+          confidence: 0.8,
+          contextScopes: ["persistent"],
+          sourceIds: [edit.id],
+        };
+        next.interactionRules = [...next.interactionRules, rule];
+        break;
+      }
       const pair = new Set(edit.targetIds);
       next.interactionRules = next.interactionRules.filter(
         (rule) =>
-          !(
-            pair.has(rule.featureIds[0]) && pair.has(rule.featureIds[1])
-          ),
+          !(pair.has(rule.featureIds[0]) && pair.has(rule.featureIds[1])),
       );
       break;
     }

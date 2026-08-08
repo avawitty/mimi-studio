@@ -174,10 +174,21 @@ export const PatternGraphScreen: React.FC<PatternGraphScreenProps> = ({
 
   const handleDisconnect = async (otherFeatureId: string) => {
     if (!selectedFeatureId || !activeSnapshot) return;
+    const rule = activeSnapshot.interactionRules.find(
+      (r) =>
+        (r.featureIds[0] === selectedFeatureId &&
+          r.featureIds[1] === otherFeatureId) ||
+        (r.featureIds[1] === selectedFeatureId &&
+          r.featureIds[0] === otherFeatureId),
+    );
     await signalEditor.applyModelEdit({
       operation: 'disconnect',
       targetIds: [selectedFeatureId, otherFeatureId],
-      before: { connected: true },
+      before: {
+        connected: true,
+        relation: rule?.relation,
+        signedWeight: rule?.signedWeight,
+      },
       after: { connected: false },
       rationale: 'Creator disconnected relationship',
     });

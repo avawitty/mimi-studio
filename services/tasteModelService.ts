@@ -80,6 +80,28 @@ async function readSnapshotViaApi(
   }
 }
 
+async function applyPersistedCorrections(
+  snapshot: TasteModelSnapshot,
+  projectId?: string,
+): Promise<TasteModelSnapshot> {
+  try {
+    const { listTasteRefusals, listTasteModelEdits } = await import(
+      './tasteIntelligenceClient'
+    );
+    const { applyEditsToSnapshot } = await import(
+      '../lib/tasteIntelligence/applySnapshotEdits'
+    );
+    const [{ refusals }, { edits }] = await Promise.all([
+      listTasteRefusals(projectId),
+      listTasteModelEdits({ projectId, limit: 500 }),
+    ]);
+    const sortedEdits = [...edits].sort((a, b) => a.createdAt - b.createdAt);
+    return applyEditsToSnapshot(snapshot, sortedEdits, refusals);
+  } catch {
+    return snapshot;
+  }
+}
+
 const EXPLICIT_CURATION_ACTIONS = new Set<TasteLearningAction>([
   'accept_cluster',
   'reject_cluster',
@@ -299,6 +321,7 @@ export async function compileAndSaveTasteModel(
     };
 
     globalSnapshot = compileTasteModel(globalInput);
+    globalSnapshot = await applyPersistedCorrections(globalSnapshot);
     await setDoc(
       snapshotDoc(input.userId, 'global'),
       stripUndefined(globalSnapshot as unknown as Record<string, unknown>),
@@ -345,6 +368,10 @@ export async function compileAndSaveTasteModel(
     };
 
     projectSnapshot = compileTasteModel(projectInput);
+    projectSnapshot = await applyPersistedCorrections(
+      projectSnapshot,
+      input.projectId,
+    );
     await setDoc(
       snapshotDoc(input.userId, `project-${input.projectId}`),
       stripUndefined(projectSnapshot as unknown as Record<string, unknown>),

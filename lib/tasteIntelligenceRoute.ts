@@ -173,6 +173,10 @@ export async function handleTasteIntelligenceRoute(req: any, res: any) {
     return handleUndoModelEdit(req, res);
   }
   if (action === "model-edits") {
+    if (req.method === "GET") {
+      if (!requireOperationalMethod(req, res, "GET")) return;
+      return handleListModelEdits(req, res);
+    }
     if (!requireOperationalMethod(req, res, "POST")) return;
     return handleCreateModelEdit(req, res);
   }
@@ -582,6 +586,31 @@ async function handleCreateRefusal(req: any, res: any) {
   }
 }
 
+async function handleListModelEdits(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const projectId = req.query?.projectId
+      ? String(req.query.projectId)
+      : undefined;
+    const limit = req.query?.limit ? Number(req.query.limit) : undefined;
+    const { getNeonTasteIntelligenceRepository } = await import(
+      "../infrastructure/database/neon/tasteIntelligenceRuntime.js"
+    );
+    const edits = await getNeonTasteIntelligenceRepository().listModelEdits(
+      decoded.uid,
+      { projectId, limit: limit && Number.isFinite(limit) ? limit : undefined },
+    );
+    sendJson(res, 200, { edits });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "MODEL_EDITS_READ_FAILED",
+      publicOperationalMessage(500, "Model edits unavailable.", String(error)),
+    );
+  }
+}
+
 async function handleCreateModelEdit(req: any, res: any) {
   try {
     const decoded = await verifyMimiSession(req.headers || {});
@@ -620,12 +649,10 @@ async function handleCreateModelEdit(req: any, res: any) {
     const uow = getNeonUnitOfWork();
     const beforeSnapshot = body.data.snapshot;
 
+    const afterSnapshot = applyEditsToSnapshot(beforeSnapshot, [edit]);
+
     await uow.transaction(async (repositories) => {
       await repositories.tasteIntelligence.appendModelEdit(edit);
-    });
-
-    const afterSnapshot = applyEditsToSnapshot(beforeSnapshot, [edit]);
-    await uow.transaction(async (repositories) => {
       await repositories.tasteIntelligence.saveSnapshot(
         decoded.uid,
         afterSnapshot,
