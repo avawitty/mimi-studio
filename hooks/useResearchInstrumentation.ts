@@ -1,10 +1,11 @@
-import { useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import {
   downloadResearchExport,
   exportResearchSession,
   getResearchEvents,
   logResearchEvent,
   logResearchNote,
+  subscribeResearchEvents,
 } from "../services/researchInstrumentation";
 import { isResearchMode } from "../lib/researchMode";
 import type { ResearchEventName } from "../types/researchInstrumentation";
@@ -29,7 +30,11 @@ export function useResearchInstrumentation() {
     downloadResearchExport();
   }, []);
 
-  const events = getResearchEvents();
+  const events = useSyncExternalStore(
+    subscribeResearchEvents,
+    getResearchEvents,
+    getResearchEvents,
+  );
 
   return {
     enabled,
