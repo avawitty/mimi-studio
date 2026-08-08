@@ -23,6 +23,7 @@ import {
   computeBrierScore,
   proposeSavedReasonHypotheses,
   applySavedReasonReview,
+  epistemicLabelForHypothesis,
 } from "../lib/tasteIntelligence";
 
 const NOW = Date.now();
@@ -439,5 +440,50 @@ describe("taste intelligence why saved", () => {
     );
     expect(reviewed.userStatus).toBe("edited");
     expect(reviewed.hypothesis).toContain("grain");
+  });
+
+  it("skip does not mutate hypothesis status or source", () => {
+    const snapshot = minimalSnapshot();
+    const [hypothesis] = proposeSavedReasonHypotheses("artifact-5", snapshot);
+    expect(hypothesis).toBeTruthy();
+    const skipped = applySavedReasonReview(hypothesis!, "skip");
+    expect(skipped).toEqual(hypothesis);
+    expect(skipped.userStatus).toBe("unreviewed");
+    expect(skipped.source).toBe("model_proposed");
+  });
+
+  it("unavailable taste snapshot uses tag-based rule hypotheses only", () => {
+    const hypotheses = proposeSavedReasonHypotheses(
+      "artifact-6",
+      null,
+      ["composition", "image/jpeg"],
+    );
+    expect(hypotheses.every((h) => h.source === "rule_based")).toBe(true);
+    expect(hypotheses.length).toBeGreaterThan(0);
+  });
+
+  it("epistemic labels distinguish inferred, observed, and creator review", () => {
+    const snapshot = minimalSnapshot();
+    const [modelHypothesis, ruleHypothesis] = proposeSavedReasonHypotheses(
+      "artifact-7",
+      snapshot,
+      ["composition"],
+    );
+    expect(modelHypothesis?.source).toBe("model_proposed");
+    expect(epistemicLabelForHypothesis(modelHypothesis!)).toBe("Inferred");
+
+    const ruleOnly = ruleHypothesis?.source === "rule_based"
+      ? ruleHypothesis
+      : proposeSavedReasonHypotheses("artifact-7b", null, ["composition"])[0]!;
+    expect(epistemicLabelForHypothesis(ruleOnly)).toBe("Observed");
+
+    const confirmed = applySavedReasonReview(modelHypothesis!, "confirm");
+    expect(epistemicLabelForHypothesis(confirmed)).toBe("Creator confirmed");
+
+    const rejected = applySavedReasonReview(modelHypothesis!, "reject");
+    expect(epistemicLabelForHypothesis(rejected)).toBe("Creator rejected");
+
+    const edited = applySavedReasonReview(modelHypothesis!, "edit", "My reason");
+    expect(epistemicLabelForHypothesis(edited)).toBe("Creator corrected");
   });
 });

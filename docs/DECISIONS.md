@@ -10,6 +10,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Why-saved sheet hardening (queue + a11y + review state)
+
+**Decision:** Serialize multi-image why-saved prompts through `useWhySavedPrompt` artifact queue (one sheet at a time; Done exits queue; dismiss advances). Per-hypothesis review pending/error state; `epistemicLabelForHypothesis` centralizes Inferred/Observed/Creator labels; `useModalFocus` traps focus in `WhySavedSheet`.
+
+**Alternatives rejected:** (1) Prompting only the final image in a batch (loses per-artifact capture). (2) Global `loading` disabling all hypothesis actions during one review.
+
+**Why:** Prevents racing propose requests and overlapping review state; meets dialog a11y contract without a parallel sheet primitive.
+
+**Ref:** `hooks/useWhySavedPrompt.ts`, `components/pocket/WhySavedSheet.tsx`, `lib/a11y/useModalFocus.ts`, `lib/tasteIntelligence/savedReason.ts`
+
+---
+
 ## 2026-08-08 — Pocket why-saved surface (Taste Intelligence #13)
 
 **Decision:** Wire `proposeSavedReasonHypotheses` / `applySavedReasonReview` to Pocket capture via `WhySavedSheet` + `/api/mimi/taste-intelligence/saved-reason/*` routes. Hypotheses persist in Neon `saved_reason_hypotheses`; language distinguishes Inferred / Observed / Creator confirmed / Creator rejected.
