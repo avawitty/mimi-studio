@@ -4,6 +4,8 @@ import type { PublicProfileShowcase } from "../../services/publicShowcaseService
 import type { ZineMetadata } from "../../types";
 import {
   buildPublicSignatureExcerpt,
+  formatPublicLinkLabel,
+  getPublicExternalLinks,
   hasPublishedRip,
   resolvePublicProfileIdentity,
 } from "../../lib/publicProfileCard";
@@ -75,6 +77,7 @@ export const PublicProfileCard: React.FC<PublicProfileCardProps> = ({
   const ripPublished = hasPublishedRip(publicRip);
   const compact = variant === "compact";
   const publicHandle = identity.handle;
+  const externalLinks = getPublicExternalLinks(profile);
 
   const handleZineSelect = (zine: ZineMetadata) => {
     if (onZineSelect) {
@@ -142,6 +145,22 @@ export const PublicProfileCard: React.FC<PublicProfileCardProps> = ({
               <div className="pt-1">
                 <KeepTabsButton handle={publicHandle} variant="stamp" />
               </div>
+              {externalLinks.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {externalLinks.map((link) => (
+                    <a
+                      key={link.url}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-[8px] uppercase tracking-widest border border-[var(--mimi-hairline,rgba(0,0,0,0.12))] px-3 py-1.5 inline-flex items-center gap-1 hover:border-[var(--mimi-ink,#0a0a0a)]/25"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {formatPublicLinkLabel(link)} <ArrowUpRight size={10} />
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
 

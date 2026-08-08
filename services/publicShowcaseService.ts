@@ -90,3 +90,21 @@ export const loadPublicProfileShowcase = async (
     zines,
   };
 };
+
+export const loadPublicProfilesByHandles = async (
+  handles: string[],
+): Promise<Map<string, PublicProfileShowcase>> => {
+  const unique = [...new Set(handles.map((h) => h.trim().toLowerCase()).filter(Boolean))];
+  const entries = await Promise.all(
+    unique.map(async (handle) => {
+      const data = await loadPublicProfileShowcase(handle);
+      return [handle, data] as const;
+    }),
+  );
+
+  const map = new Map<string, PublicProfileShowcase>();
+  for (const [handle, data] of entries) {
+    if (data) map.set(handle, data);
+  }
+  return map;
+};

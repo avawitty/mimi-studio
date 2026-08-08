@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPublicSignatureExcerpt,
+  formatPublicLinkLabel,
+  getPublicExternalLinks,
   hasPublishedRip,
   resolvePublicProfileIdentity,
 } from "../lib/publicProfileCard";
@@ -101,5 +103,19 @@ describe("publicProfileCard helpers", () => {
 
     expect(hasPublishedRip(rip)).toBe(true);
     expect(hasPublishedRip(null)).toBe(false);
+  });
+
+  it("filters external links to public http(s) urls", () => {
+    const links = getPublicExternalLinks({
+      externalLinks: [
+        { title: "Portfolio", url: "https://example.com" },
+        { title: "Bad", url: "javascript:alert(1)" },
+        { title: "Link", url: "not-a-url" },
+      ],
+    } as any);
+
+    expect(links).toHaveLength(1);
+    expect(links[0]?.url).toBe("https://example.com");
+    expect(formatPublicLinkLabel(links[0]!)).toBe("Portfolio");
   });
 });

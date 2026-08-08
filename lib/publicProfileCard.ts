@@ -86,3 +86,38 @@ export const buildPublicSignatureExcerpt = (
 
 export const hasPublishedRip = (rip: PublicRipSnapshot | null | undefined): rip is PublicRipSnapshot =>
   Boolean(rip?.shadowThesis || rip?.title);
+
+export type PublicExternalLink = {
+  title: string;
+  url: string;
+};
+
+const isPublicHttpUrl = (raw: string): boolean => {
+  try {
+    const parsed = new URL(raw.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+export const formatPublicLinkLabel = (link: PublicExternalLink): string => {
+  const title = link.title?.trim();
+  if (title && title.toLowerCase() !== "link") return title;
+  try {
+    return new URL(link.url.trim()).hostname.replace(/^www\./, "");
+  } catch {
+    return title || "Link";
+  }
+};
+
+export const getPublicExternalLinks = (
+  profile: Pick<UserProfile, "externalLinks">,
+): PublicExternalLink[] =>
+  (profile.externalLinks || [])
+    .filter((link) => link?.url && isPublicHttpUrl(link.url))
+    .map((link) => ({
+      title: link.title?.trim() || "Link",
+      url: link.url.trim(),
+    }))
+    .slice(0, 6);
