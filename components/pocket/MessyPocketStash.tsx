@@ -235,6 +235,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
     );
     if (!list.length) return;
     const uid = user?.uid || "local-guest";
+    const savedImages: { artifactId: string; tags: string[] }[] = [];
     for (const file of list) {
       if (file.type.startsWith("image/")) {
         const artifactId = await archiveManager.saveToPocket(
@@ -247,7 +248,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
           [file],
         );
         if (artifactId && user?.uid && !user.isAnonymous) {
-          await whySaved.openForArtifact(artifactId, [file.name, file.type]);
+          savedImages.push({ artifactId, tags: [file.name, file.type] });
         }
       } else {
         const text = await file.text();
@@ -257,6 +258,9 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
           origin: "messy-pocket-stash",
         });
       }
+    }
+    if (savedImages.length > 0) {
+      whySaved.enqueueArtifacts(savedImages);
     }
     flashDropped();
     await loadItems();
@@ -506,11 +510,16 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
       </div>
       <WhySavedSheet
         open={Boolean(whySaved.prompt)}
-        onClose={whySaved.close}
+        onDismiss={whySaved.dismiss}
+        onDone={whySaved.done}
         hypotheses={whySaved.hypotheses}
         loading={whySaved.loading}
         error={whySaved.error}
         snapshotAvailable={whySaved.snapshotAvailable}
+        queuePosition={whySaved.queuePosition}
+        queueLength={whySaved.queueLength}
+        isReviewing={whySaved.isReviewing}
+        reviewErrors={whySaved.reviewErrors}
         onReview={whySaved.review}
       />
     </div>

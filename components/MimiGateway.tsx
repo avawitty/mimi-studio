@@ -32,7 +32,7 @@ export const MimiGateway: React.FC<MimiGatewayProps> = ({ isOpen, onClose }) => 
   const handleGuestContinue = async () => {
     try {
       await speedGhostEntrance();
-      handleDismiss();
+      onClose();
     } catch (e: any) {
       setError(e.message || "Could not start guest session.");
     }

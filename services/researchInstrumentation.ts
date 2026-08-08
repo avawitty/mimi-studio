@@ -15,9 +15,30 @@ const STARTED_AT_KEY = "mimi_research_started_at";
 const TASK_START_KEY = "mimi_research_task_started";
 
 const eventBuffer: ResearchEvent[] = [];
+const eventListeners = new Set<() => void>();
 let startedAt: number | null = null;
 let firstMeaningfulClickAt: number | null = null;
 let abandonmentLogged = false;
+
+function notifyEventListeners(): void {
+  eventListeners.forEach((listener) => listener());
+}
+
+export function subscribeResearchEvents(listener: () => void): () => void {
+  eventListeners.add(listener);
+  return () => {
+    eventListeners.delete(listener);
+  };
+}
+
+/** Test-only reset — clears in-memory session state between unit tests. */
+export function __resetResearchInstrumentationForTests(): void {
+  eventBuffer.length = 0;
+  eventListeners.clear();
+  startedAt = null;
+  firstMeaningfulClickAt = null;
+  abandonmentLogged = false;
+}
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "server";
@@ -63,6 +84,7 @@ function currentPath(): string | undefined {
 
 async function persistEvent(event: ResearchEvent): Promise<void> {
   eventBuffer.push(event);
+  notifyEventListeners();
   devLog.info("[research]", event);
 
   if (!isResearchMode()) return;

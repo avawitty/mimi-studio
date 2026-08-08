@@ -1,15 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useModalFocus } from "../../lib/a11y/useModalFocus";
+import { epistemicLabelForHypothesis } from "../../lib/tasteIntelligence/savedReason";
 import { resolveMotionVariant } from "../../lib/motion";
 import type { SavedReasonHypothesis } from "../../schemas/tasteIntelligenceContracts";
 
 interface WhySavedSheetProps {
   open: boolean;
-  onClose: () => void;
+  onDismiss: () => void;
+  onDone: () => void;
   hypotheses: SavedReasonHypothesis[];
   loading?: boolean;
   error?: string | null;
   snapshotAvailable?: boolean;
+  queuePosition?: number;
+  queueLength?: number;
+  isReviewing?: (hypothesisId: string) => boolean;
+  reviewErrors?: Record<string, string>;
   onReview: (
     hypothesis: SavedReasonHypothesis,
     action: "confirm" | "reject" | "edit" | "skip",
@@ -17,25 +24,27 @@ interface WhySavedSheetProps {
   ) => void | Promise<void>;
 }
 
-const SOURCE_LABEL: Record<SavedReasonHypothesis["source"], string> = {
-  model_proposed: "Inferred",
-  rule_based: "Observed",
-  creator_authored: "Creator confirmed",
-};
-
 export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
   open,
-  onClose,
+  onDismiss,
+  onDone,
   hypotheses,
   loading,
   error,
   snapshotAvailable = true,
+  queuePosition = 0,
+  queueLength = 0,
+  isReviewing = () => false,
+  reviewErrors = {},
   onReview,
 }) => {
   const reduceMotion = Boolean(useReducedMotion());
   const sheet = resolveMotionVariant("sheetEnter", reduceMotion);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
+
+  useModalFocus(open, panelRef);
 
   useEffect(() => {
     if (!open) {
@@ -47,11 +56,13 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onDismiss();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onDismiss]);
+
+  const showQueueMeta = queueLength > 1 && queuePosition > 0;
 
   return (
     <AnimatePresence>
@@ -63,17 +74,20 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
           exit={{ opacity: 0 }}
           transition={sheet.transition}
           role="dialog"
+          aria-modal="true"
           aria-label="Why did you save this?"
         >
           <button
             type="button"
             aria-label="Dismiss why-saved sheet"
             className="absolute inset-0 bg-mimi-ink/20 backdrop-blur-[1px]"
-            onClick={onClose}
+            onClick={onDismiss}
           />
 
           <motion.div
-            className="relative max-h-[85vh] overflow-y-auto border-t border-mimi-hairline/40 bg-mimi-field px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-xl"
+            ref={panelRef}
+            tabIndex={-1}
+            className="relative max-h-[85vh] overflow-y-auto border-t border-mimi-hairline/40 bg-mimi-field px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-xl outline-none"
             initial={sheet.initial}
             animate={sheet.animate}
             exit={sheet.exit}
@@ -82,6 +96,11 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
             <div className="mx-auto w-full max-w-lg">
               <p className="text-[10px] uppercase tracking-[0.25em] text-mimi-stone">
                 Why saved
+                {showQueueMeta ? (
+                  <span className="ml-2 tabular-nums">
+                    · {queuePosition} of {queueLength}
+                  </span>
+                ) : null}
               </p>
               <h3 className="mt-1 font-display text-xl text-mimi-ink">
                 What drew you to this?
@@ -105,26 +124,13 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
 
               {loading && hypotheses.length === 0 ? (
                 <p className="mt-4 text-sm text-mimi-stone">Reading your taste model…</p>
-              ) : hypotheses.length === 0 ? (
-                <div className="mt-4 space-y-3">
-                  <p className="text-sm text-mimi-stone">
-                    Mimi could not infer a saved-reason hypothesis for this capture yet.
-                    That is normal when your taste model is sparse or the file tags do not
-                    match a known dimension.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="w-full min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-hairline/40"
-                  >
-                    Done
-                  </button>
-                </div>
               ) : (
                 <ul className="mt-4 space-y-3">
                   {hypotheses.map((hypothesis) => {
                     const isEditing = editingId === hypothesis.id;
                     const reviewed = hypothesis.userStatus !== "unreviewed";
+                    const pending = isReviewing(hypothesis.id);
+                    const itemError = reviewErrors[hypothesis.id];
                     return (
                       <li
                         key={hypothesis.id}
@@ -132,19 +138,22 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
                       >
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <span className="text-[9px] uppercase tracking-wider text-mimi-stone">
-                            {SOURCE_LABEL[hypothesis.source]}
-                            {reviewed && hypothesis.userStatus === "rejected"
-                              ? " · Creator rejected"
-                              : reviewed && hypothesis.userStatus === "confirmed"
-                                ? " · Creator confirmed"
-                                : reviewed && hypothesis.userStatus === "edited"
-                                  ? " · Creator corrected"
-                                  : ""}
+                            {epistemicLabelForHypothesis(hypothesis)}
                           </span>
                           <span className="text-[9px] text-mimi-stone tabular-nums">
                             {Math.round(hypothesis.confidence * 100)}% confidence
                           </span>
                         </div>
+
+                        {itemError && (
+                          <p className="mb-2 text-xs text-red-700" role="alert">
+                            {itemError}
+                          </p>
+                        )}
+
+                        {pending && !isEditing && (
+                          <p className="mb-2 text-xs text-mimi-stone">Saving review…</p>
+                        )}
 
                         {isEditing ? (
                           <div className="space-y-2">
@@ -157,7 +166,7 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
                             <div className="flex gap-2">
                               <button
                                 type="button"
-                                disabled={loading || !editDraft.trim()}
+                                disabled={pending || !editDraft.trim()}
                                 onClick={() => {
                                   void onReview(hypothesis, "edit", editDraft.trim());
                                   setEditingId(null);
@@ -168,6 +177,7 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
                               </button>
                               <button
                                 type="button"
+                                disabled={pending}
                                 onClick={() => setEditingId(null)}
                                 className="min-h-[44px] px-3 text-[10px] uppercase tracking-wider text-mimi-stone"
                               >
@@ -182,7 +192,7 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
                               <div className="mt-3 grid grid-cols-2 gap-2">
                                 <button
                                   type="button"
-                                  disabled={loading}
+                                  disabled={pending}
                                   onClick={() => void onReview(hypothesis, "confirm")}
                                   className="min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-hairline/40"
                                 >
@@ -190,7 +200,7 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
                                 </button>
                                 <button
                                   type="button"
-                                  disabled={loading}
+                                  disabled={pending}
                                   onClick={() => void onReview(hypothesis, "reject")}
                                   className="min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-hairline/40"
                                 >
@@ -198,7 +208,7 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
                                 </button>
                                 <button
                                   type="button"
-                                  disabled={loading}
+                                  disabled={pending}
                                   onClick={() => {
                                     setEditingId(hypothesis.id);
                                     setEditDraft(hypothesis.hypothesis);
@@ -209,7 +219,7 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
                                 </button>
                                 <button
                                   type="button"
-                                  disabled={loading}
+                                  disabled={pending}
                                   onClick={() => void onReview(hypothesis, "skip")}
                                   className="min-h-[44px] text-[10px] uppercase tracking-wider text-mimi-stone"
                                 >
@@ -228,10 +238,10 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
               {hypotheses.length > 0 && (
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={onDone}
                   className="mt-4 w-full min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-hairline/40"
                 >
-                  Done
+                  {queueLength > queuePosition ? "Done — skip remaining" : "Done"}
                 </button>
               )}
             </div>

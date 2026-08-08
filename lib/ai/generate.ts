@@ -14,7 +14,15 @@
  * The Gemini-compat proxy still uses lib/aiGatewayCompat.embedGeminiContentViaGateway
  * (OpenAI-compatible POST /v1/embeddings) for client embedContent remaps.
  */
-import { generateText, Output, createGateway, gateway, embed, embedMany } from "ai";
+import {
+  generateText,
+  Output,
+  createGateway,
+  gateway,
+  embed,
+  embedMany,
+  experimental_generateSpeech as generateSpeech,
+} from "ai";
 import type { ZodType } from "zod";
 import { modelFor } from "../../services/modelConfig.js";
 
@@ -129,5 +137,42 @@ export async function embedManyGatewayText(options: {
     model: modelId,
     usage: result.usage,
     dims: embeddings[0]?.length ?? 0,
+  };
+}
+
+const resolveSpeechProvider = (apiKey?: string) =>
+  apiKey ? createGateway({ apiKey }) : gateway;
+
+/**
+ * Text-to-speech via AI Gateway (default: xai/grok-tts or env override).
+ * See https://vercel.com/docs/ai-gateway/modalities/text-to-speech
+ */
+export async function generateGatewaySpeech(options: {
+  text: string;
+  voice?: string;
+  instructions?: string;
+  outputFormat?: "mp3" | "wav";
+  model?: string;
+  apiKey?: string;
+}) {
+  const modelId = options.model || modelFor("tts", "gateway");
+  const provider = resolveSpeechProvider(options.apiKey);
+  const result = await generateSpeech({
+    model: provider.speechModel(modelId),
+    text: options.text,
+    voice: options.voice,
+    instructions: options.instructions,
+    outputFormat: options.outputFormat || "mp3",
+  });
+  const audio = result.audio.uint8Array;
+  const mimeType =
+    options.outputFormat === "wav" || modelId.includes("gemini")
+      ? "audio/wav"
+      : "audio/mpeg";
+  return {
+    audio,
+    mimeType,
+    model: modelId,
+    warnings: result.warnings,
   };
 }

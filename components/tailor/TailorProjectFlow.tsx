@@ -57,6 +57,14 @@ import {
   compileAndSaveTasteModel,
   recordCurationAsTasteEvent,
 } from '../../services/tasteModelService';
+import {
+  buildE2eTasteSnapshot,
+  E2E_EVIDENCE,
+  E2E_OBSERVATIONS,
+  E2E_PATTERN_CLUSTERS,
+  E2E_TAILOR_PROJECT,
+  isE2eTailorPatternsFixture,
+} from '../../lib/e2e/tailorPatternGraphFixture';
 
 type FlowStep =
   | 'start'
@@ -85,8 +93,9 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
   initialEvidence = [],
 }) => {
   const { user, profile, updateProfile, login } = useUser();
-  const uid = user?.uid ?? '';
-  const isSignedIn = Boolean(uid && !user?.isAnonymous);
+  const e2eFixture = isE2eTailorPatternsFixture();
+  const uid = e2eFixture ? E2E_TAILOR_PROJECT.userId : (user?.uid ?? '');
+  const isSignedIn = e2eFixture || Boolean(uid && !user?.isAnonymous);
 
   const [step, setStep] = useState<FlowStep>(initialProject ? 'upload' : 'start');
   const [project, setProject] = useState<TailorProject | null>(initialProject ?? null);
@@ -105,12 +114,25 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
   const [intakeHandoff, setIntakeHandoff] = useState<EvidenceIntakeHandoffPayload | null>(null);
   const [generationBlock, setGenerationBlock] = useState<GenerationBlocked | null>(null);
   const bootstrappedRef = useRef(Boolean(initialProject));
+  const [e2eSnapshot, setE2eSnapshot] = useState(
+  () => (e2eFixture ? buildE2eTasteSnapshot() : null),
+  );
 
   const tasteModel = useTasteModel({
     userId: uid,
     projectId: project?.id,
-    autoLoad: Boolean(uid && project?.id),
+    autoLoad: Boolean(uid && project?.id) && !e2eFixture,
   });
+
+  useEffect(() => {
+    if (!e2eFixture || bootstrappedRef.current) return;
+    bootstrappedRef.current = true;
+    setProject(E2E_TAILOR_PROJECT);
+    setEvidence(E2E_EVIDENCE);
+    setObservations(E2E_OBSERVATIONS);
+    setClusters(E2E_PATTERN_CLUSTERS);
+    setStep('patterns');
+  }, [e2eFixture]);
 
   const refreshProjectData = useCallback(async (projectId: string) => {
     if (!uid) return;
@@ -572,12 +594,16 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
           observations={observations}
           laws={laws}
           projectId={project?.id}
+          editorUserId={e2eFixture ? uid : undefined}
           onCurate={handleCurate}
           onContinue={() => setStep('laws')}
-          tasteSnapshot={tasteModel.activeSnapshot}
+          tasteSnapshot={e2eSnapshot ?? tasteModel.activeSnapshot}
           tasteLoading={tasteModel.loading}
           tasteStale={tasteModel.stale}
           onRecompileTasteModel={tasteModel.recompile}
+          onTasteSnapshotChange={(snapshot) => {
+            if (e2eFixture) setE2eSnapshot(snapshot);
+          }}
         />
       )}
       {step === 'laws' && (

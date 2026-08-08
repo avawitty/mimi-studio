@@ -60,6 +60,37 @@ export function proposeSavedReasonHypotheses(
   return hypotheses.slice(0, 5);
 }
 
+/** Epistemic label for UI — review status overrides source when reviewed. */
+export function epistemicLabelForHypothesis(
+  hypothesis: SavedReasonHypothesis,
+): string {
+  switch (hypothesis.userStatus) {
+    case "confirmed":
+      return "Creator confirmed";
+    case "rejected":
+      return "Creator rejected";
+    case "edited":
+      return "Creator corrected";
+    case "unreviewed":
+      switch (hypothesis.source) {
+        case "model_proposed":
+          return "Inferred";
+        case "rule_based":
+          return "Observed";
+        case "creator_authored":
+          return "Creator confirmed";
+        default: {
+          const _exhaustive: never = hypothesis.source;
+          return _exhaustive;
+        }
+      }
+    default: {
+      const _exhaustive: never = hypothesis.userStatus;
+      return _exhaustive;
+    }
+  }
+}
+
 export function applySavedReasonReview(
   hypothesis: SavedReasonHypothesis,
   action: "confirm" | "reject" | "edit" | "skip",

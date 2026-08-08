@@ -59,6 +59,7 @@ export const SignalRefineSheet: React.FC<SignalRefineSheetProps> = ({
           transition={sheet.transition}
           role="dialog"
           aria-label="Refine this signal"
+          data-testid="signal-refine-sheet"
         >
           <button
             type="button"
@@ -98,6 +99,7 @@ export const SignalRefineSheet: React.FC<SignalRefineSheetProps> = ({
                           key={neighbor.featureId}
                           type="button"
                           disabled={loading}
+                          data-testid={`signal-refine-combined-${neighbor.featureId}`}
                           onClick={() => {
                             onRefine("not_when_combined", neighbor.featureId);
                             onClose();
@@ -123,6 +125,7 @@ export const SignalRefineSheet: React.FC<SignalRefineSheetProps> = ({
                       key={option}
                       type="button"
                       disabled={loading}
+                      data-testid={`signal-refine-option-${option}`}
                       onClick={() => {
                         if (option === "not_when_combined") {
                           setPendingCombined(option);

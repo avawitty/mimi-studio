@@ -10,7 +10,9 @@ export type MimiAiTaskKind =
   | "tailor_analysis"
   | "zine_lite"
   | "zine_full"
-  | "zine_deep";
+  | "zine_deep"
+  | "tts"
+  | "live_voice";
 
 export type MimiCreditRoute = "funded_gateway" | "local_or_byok" | "image_route" | "free_internal";
 
@@ -106,6 +108,20 @@ export const MIMI_AI_CREDIT_POLICIES: Record<MimiAiTaskKind, MimiAiCreditPolicy>
     credits: 3,
     route: "funded_gateway",
     commentary: "High-fidelity or deeper reasoning runs that should cost more by design.",
+  },
+  tts: {
+    task: "tts",
+    label: "Speech Synthesis",
+    credits: 1,
+    route: "funded_gateway",
+    commentary: "Text-to-speech for zine narration, Oracle readings, and editorial playback.",
+  },
+  live_voice: {
+    task: "live_voice",
+    label: "Live Vocal Sync",
+    credits: 2,
+    route: "funded_gateway",
+    commentary: "Realtime bidirectional voice for the Oracle Cyberdeck chamber.",
   },
 };
 
