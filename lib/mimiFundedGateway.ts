@@ -3,6 +3,7 @@ import { getServerAiGatewayKey } from "./aiGatewayCompat.js";
 import { extractMimiSessionToken } from "./mimiSessionToken.js";
 import {
   buildCreditGrant,
+  entitlementForPlan,
   isPaidMimiPlan,
   normalizeMimiPlan,
   type MimiBillingInterval,
@@ -87,6 +88,36 @@ export function isPaidSubscriptionActive(subscriptionStatus: unknown): boolean {
  */
 export function hasTrustedPaidBillingSignal(data: Record<string, unknown>): boolean {
   return String(data.stripeCustomerId || "").trim().startsWith("cus_");
+}
+
+/** Admin / promo-granted patron seat — only server routes may write these fields. */
+export function hasAdminGrantedPatronSeat(data: Record<string, unknown>): boolean {
+  return data.isPatron === true && Number(data.patronActivatedAt ?? 0) > 0;
+}
+
+async function resolveTrustedBillingForHeal(opts: {
+  uid: string;
+  email?: string | null;
+  sources: Array<Record<string, unknown> | null | undefined>;
+  userData: Record<string, unknown>;
+}): Promise<boolean> {
+  if (hasAdminGrantedPatronSeat(opts.userData)) return true;
+  return resolveTrustedPaidBilling({
+    uid: opts.uid,
+    email: opts.email,
+    sources: opts.sources,
+  });
+}
+
+function trialDayPassBaseline(plan: string, planStatus: unknown): number {
+  if (plan === "free" || planStatus === "ghost") return 4;
+  return 12;
+}
+
+function isTrialDayPassTier(plan: string, planStatus: unknown, grantedBaseline: number): boolean {
+  if (plan === "free" || planStatus === "ghost") return true;
+  // Assessment / paid trial pools are not reset to the day-pass drip.
+  return plan === "trial" && grantedBaseline <= 12;
 }
 
 /** Roll an expired grant forward without re-deriving allowance from client plan. */
@@ -277,10 +308,11 @@ export const resolveMimiFundedGatewayAccess = async (
         // Only hit Stripe when a heal would actually run.
         const trustedBilling =
           shouldReloadPeriod || needsMint
-            ? await resolveTrustedPaidBilling({
+            ? await resolveTrustedBillingForHeal({
                 uid: decoded.uid,
                 email: decoded.email,
                 sources: [billingData, data as Record<string, unknown>],
+                userData: data as Record<string, unknown>,
               })
             : false;
         const shouldMintMissing = needsMint && trustedBilling;
@@ -323,16 +355,44 @@ export const resolveMimiFundedGatewayAccess = async (
           return { allowed: false, billable: false, uid: decoded.uid, cost };
         }
       } else {
-        let trialCredits = Number(data.trial?.remainingCredits ?? 0);
-        const lastReload = Number(data.trial?.lastReloadedAt ?? 0);
+        const trial = (data.trial || {}) as Record<string, unknown>;
+        let trialCredits = Number(trial.remainingCredits ?? 0);
+        const lastReload = Number(trial.lastReloadedAt ?? 0);
+        const grantedBaseline = Number(trial.grantedCredits ?? 0);
         const now = Date.now();
-        const baseline = plan === "free" || data.planStatus === "ghost" ? 4 : 12;
+        const baseline = trialDayPassBaseline(plan, data.planStatus);
 
-        if (now - lastReload > 24 * 60 * 60 * 1000) {
+        // First-time assessment grant for signed-in trial users missing a pool.
+        if (
+          plan === "trial" &&
+          grantedBaseline <= 0 &&
+          trialCredits <= 0 &&
+          data.planStatus !== "ghost"
+        ) {
+          const assessmentCredits = entitlementForPlan("trial").monthlyCredits;
+          trialCredits = assessmentCredits;
+          const initialTrial = {
+            ...trial,
+            grantedCredits: assessmentCredits,
+            remainingCredits: assessmentCredits,
+            usedCredits: Number(trial.usedCredits ?? 0),
+            lastReloadedAt: now,
+            startedAt: Number(trial.startedAt ?? now),
+            endsAt: Number(trial.endsAt ?? now + 7 * 24 * 60 * 60 * 1000),
+          };
+          await Promise.all([
+            userRef.set({ trial: initialTrial }, { merge: true }),
+            profileRef.set({ trial: initialTrial }, { merge: true }),
+          ]);
+        } else if (
+          isTrialDayPassTier(plan, data.planStatus, grantedBaseline) &&
+          now - lastReload > 24 * 60 * 60 * 1000
+        ) {
           trialCredits = baseline;
           const reloadUpdate = {
             "trial.remainingCredits": baseline,
             "trial.lastReloadedAt": now,
+            ...(grantedBaseline <= 0 ? { "trial.grantedCredits": baseline } : {}),
           };
           await Promise.all([
             userRef.set(reloadUpdate, { merge: true }),

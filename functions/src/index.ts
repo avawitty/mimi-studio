@@ -185,11 +185,25 @@ const resolveTrustedPaidBilling = async (
   uid: string,
   email: string | undefined,
   sources: Array<Record<string, unknown> | null | undefined>,
+  userData?: Record<string, unknown>,
 ) => {
+  if (userData?.isPatron === true && Number(userData.patronActivatedAt ?? 0) > 0) {
+    return true;
+  }
   for (const customerId of collectStripeCustomerIdCandidates(...sources)) {
     if (await verifyStripeCustomerEntitlement(customerId, uid, email)) return true;
   }
   return false;
+};
+
+const trialDayPassBaseline = (plan: string, planStatus: unknown) => {
+  if (plan === 'free' || planStatus === 'ghost') return 4;
+  return 12;
+};
+
+const isTrialDayPassTier = (plan: string, planStatus: unknown, grantedBaseline: number) => {
+  if (plan === 'free' || planStatus === 'ghost') return true;
+  return plan === 'trial' && grantedBaseline <= 12;
 };
 
 const writeMembershipEntitlements = async ({
@@ -443,6 +457,7 @@ app.post('/api/funded-gateway/access', async (req, res) => {
               decoded.uid,
               decoded.email,
               [billingData, data as Record<string, unknown>],
+              data as Record<string, unknown>,
             )
           : false;
       const needsTrustedMint = needsMint && trustedBilling;
@@ -471,7 +486,51 @@ app.post('/api/funded-gateway/access', async (req, res) => {
 
       remaining = Number(grant?.remaining ?? 0);
     } else {
-      remaining = Number(data.trial?.remainingCredits ?? 0);
+      const trial = (data.trial || {}) as Record<string, unknown>;
+      let trialCredits = Number(trial.remainingCredits ?? 0);
+      const lastReload = Number(trial.lastReloadedAt ?? 0);
+      const grantedBaseline = Number(trial.grantedCredits ?? 0);
+      const now = Date.now();
+      const baseline = trialDayPassBaseline(plan, data.planStatus);
+
+      if (
+        plan === 'trial' &&
+        grantedBaseline <= 0 &&
+        trialCredits <= 0 &&
+        data.planStatus !== 'ghost'
+      ) {
+        const assessmentCredits = 150;
+        trialCredits = assessmentCredits;
+        const initialTrial = {
+          ...trial,
+          grantedCredits: assessmentCredits,
+          remainingCredits: assessmentCredits,
+          usedCredits: Number(trial.usedCredits ?? 0),
+          lastReloadedAt: now,
+          startedAt: Number(trial.startedAt ?? now),
+          endsAt: Number(trial.endsAt ?? now + 7 * 24 * 60 * 60 * 1000),
+        };
+        await Promise.all([
+          userRef.set({ trial: initialTrial }, { merge: true }),
+          profileRef.set({ trial: initialTrial }, { merge: true }),
+        ]);
+      } else if (
+        isTrialDayPassTier(plan, data.planStatus, grantedBaseline) &&
+        now - lastReload > 24 * 60 * 60 * 1000
+      ) {
+        trialCredits = baseline;
+        const reloadUpdate = {
+          'trial.remainingCredits': baseline,
+          'trial.lastReloadedAt': now,
+          ...(grantedBaseline <= 0 ? { 'trial.grantedCredits': baseline } : {}),
+        };
+        await Promise.all([
+          userRef.set(reloadUpdate, { merge: true }),
+          profileRef.set(reloadUpdate, { merge: true }),
+        ]);
+      }
+
+      remaining = trialCredits;
     }
 
     res.status(200).send({

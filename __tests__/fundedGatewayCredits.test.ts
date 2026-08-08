@@ -144,6 +144,15 @@ describe("isPaidSubscriptionActive", () => {
   });
 });
 
+describe("hasAdminGrantedPatronSeat", () => {
+  it("trusts server-written patron activation", async () => {
+    const { hasAdminGrantedPatronSeat } = await import("../lib/mimiFundedGateway.js");
+    expect(hasAdminGrantedPatronSeat({ isPatron: true, patronActivatedAt: Date.now() })).toBe(true);
+    expect(hasAdminGrantedPatronSeat({ isPatron: true })).toBe(false);
+    expect(hasAdminGrantedPatronSeat({ patronActivatedAt: Date.now() })).toBe(false);
+  });
+});
+
 describe("lab plan credit grant", () => {
   it("normalizes lab and grants plan credits for funded gateway", () => {
     expect(normalizeMimiPlan("lab")).toBe("lab");

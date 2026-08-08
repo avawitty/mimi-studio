@@ -128,7 +128,7 @@ import { UsedContextColophon } from "./provenance/UsedContextColophon";
 import { CoverContactStrip } from "./studio/CoverContactStrip";
 import {
   StudioInstrumentRail,
-  buildStudioFloatingInstruments,
+  buildDefaultStudioInstruments,
 } from "./studio/StudioInstrumentRail";
 import { StudioCoverComposer } from "./studio/StudioCoverComposer";
 import {
@@ -1173,9 +1173,19 @@ export const InputStudio: React.FC<{
       setShowShapeReview(true);
     } catch (err) {
       console.error("MIMI // Error shaping brief:", err);
-      dispatchStudioAlert({message: "Brief shaping failed.",
-            type: "error",
-            icon: <AlertCircle size={14} />,});
+      const code = (err as { code?: string })?.code;
+      const message = String((err as Error)?.message || "");
+      if (
+        code !== "credits_exhausted" &&
+        !message.includes("membership credits") &&
+        !message.includes("sign-in")
+      ) {
+        dispatchStudioAlert({
+          message: "Brief shaping failed.",
+          type: "error",
+          icon: <AlertCircle size={14} />,
+        });
+      }
     } finally {
       setIsShapingBrief(false);
     }
@@ -2193,15 +2203,10 @@ ${finalInput}`;
       />
       {/* MAIN STUDIO AREA */}
       <div
-        className="flex-1 w-full flex overflow-hidden relative pb-14 md:pb-14"
-        style={
-          isMobile
-            ? {
-                /* thin instrument rail + brand footer + safe area */
-                paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-              }
-            : undefined
-        }
+        className="flex-1 w-full flex overflow-hidden relative"
+        style={{
+          paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+        }}
         {...(isMobile
           ? { onTouchStart: handleStudioTouchStart, onTouchEnd: handleStudioTouchEnd }
           : {})}
@@ -2211,7 +2216,7 @@ ${finalInput}`;
         {(!isMobile || mobileStudioView === "editor") && (
           <div className="flex-1 min-w-0 h-full flex overflow-hidden studio-bg-workspace border-r border-dotted studio-divider">
             {/* 3a: Vertical Icon Rail */}
-            <div className="studio-rail w-[50px] studio-bg-surface border-r studio-border hidden md:flex flex-col items-center justify-start py-4 gap-2.5 shrink-0 overflow-y-auto md:overflow-visible no-scrollbar max-h-full">
+            <div className="studio-rail w-[50px] studio-bg-surface border-r studio-border hidden flex-col items-center justify-start py-4 gap-2.5 shrink-0 overflow-y-auto no-scrollbar max-h-full">
               
               {/* Icon 1: Attachment clip */}
               <button
@@ -2609,23 +2614,6 @@ ${finalInput}`;
 
               {/* Progressive Editorial Brief Form Container */}
               <div className={`w-full max-w-2xl flex flex-col gap-5 relative z-15 ${isMobile ? "min-h-[160px]" : "min-h-[220px]"}`}>
-                {/* Ambient brown-noise toggle — opt-in only; never auto-plays */}
-                <div className="absolute -top-8 right-0 z-20">
-                  <button
-                    type="button"
-                    onClick={() => setAmbientDroneOn((v) => !v)}
-                    aria-pressed={ambientDroneOn}
-                    title={ambientDroneOn ? "Brown noise on during generation" : "Brown noise off (default)"}
-                    className={`flex items-center gap-1.5 px-2 py-1 border font-mono text-[7px] uppercase tracking-widest transition-colors ${
-                      ambientDroneOn
-                        ? "border-amber-600/50 text-amber-700 bg-amber-500/10"
-                        : "border-stone-300 dark:border-stone-700 text-stone-400 hover:text-stone-600"
-                    }`}
-                  >
-                    {ambientDroneOn ? <Volume2 size={10} /> : <VolumeX size={10} />}
-                    {ambientDroneOn ? "Noise On" : "Noise Off"}
-                  </button>
-                </div>
                 {/* Thinking Pulse Overlay */}
                 {isThinking && (
                   <div className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center bg-transparent">
@@ -3539,6 +3527,7 @@ ${finalInput}`;
                 shrink-0 + solid field keeps it pinned below the scrollport. */}
             <UsedContextColophon
               target="studio"
+              variant="compact"
               className="shrink-0 z-10 mt-1 border-t studio-border bg-[var(--mimi-field,#ffffff)]"
               onOpenScribe={() => {
                 window.dispatchEvent(
@@ -3573,8 +3562,8 @@ ${finalInput}`;
 
       </div>
 
-      {/* BOTTOM CONTROL/TABS NAVIGATION — desktop only */}
-      <div className="hidden md:grid md:grid-cols-5 md:overflow-hidden w-full border-t studio-border studio-bg-tab py-2 text-left px-4 absolute bottom-0 left-0 right-0 h-14 z-30 select-none shrink-0">
+      {/* BOTTOM CONTROL/TABS NAVIGATION — retired; floating pill + tools drawer */}
+      <div className="hidden w-full border-t studio-border studio-bg-tab py-2 text-left px-4 absolute bottom-0 left-0 right-0 h-14 z-30 select-none shrink-0">
         
         {/* Tab 1: ANCHORS */}
         <button
@@ -3675,59 +3664,51 @@ ${finalInput}`;
       </div>
 
       {/* Floating cylindrical scrollable toolbar */}
-      {!toolsSheetOpen && !moreSheetOpen && (
+      {!toolsSheetOpen && !moreSheetOpen && !activePanel && (
         <StudioInstrumentRail
-            items={buildStudioFloatingInstruments({
-              onTools: isMobile ? () => setToolsSheetOpen(true) : undefined,
+            items={buildDefaultStudioInstruments({
+              onTools: () => setToolsSheetOpen(true),
               onAttach: () => mediaInputRef.current?.click(),
               onCompose: () => {
                 setActivePanel(null);
                 setMobileStudioView("editor");
               },
-              onCover: () => setMobileStudioView("cover"),
-              onShape: () => {
+              onTailor: () => {
                 void handleShapeBrief();
               },
+              onCover: () => setMobileStudioView("cover"),
+              onGround: () => setUseSearch((v) => !v),
               onMic: () => {
                 void startRecording();
                 playClick();
               },
-              onSpark: async () => {
-                setIsGeneratingPrompt(true);
-                try {
-                  const newPrompt = await generateAutoAwesomePrompt();
-                  setInput(newPrompt);
-                } catch (e) {
-                  console.error(e);
-                } finally {
-                  setIsGeneratingPrompt(false);
-                }
-                playClick();
-              },
-              onDeep: () => setDeepThinking((v) => !v),
-              onWeb: () => setUseSearch((v) => !v),
+              onTreatment: () => togglePanel("treatments"),
+              onContinuum: () => togglePanel("continuum"),
               onPocket: () => togglePanel("procurement"),
+              onTelemetry: () => togglePanel("telemetry"),
+              onAnchors: () => togglePanel("signal"),
               onMore: () => setMoreSheetOpen(true),
               active: {
                 tools: toolsSheetOpen,
                 attach: mediaFiles.length > 0,
                 compose: activePanel === null && mobileStudioView === "editor",
-                cover: mobileStudioView === "cover",
                 tailor: isShapingBrief,
+                cover: mobileStudioView === "cover",
+                ground: useSearch,
                 mic: isRecording || isTranscribing,
-                spark: isGeneratingPrompt,
-                brain: deepThinking,
-                globe: useSearch,
+                treatment: activePanel === "treatments",
+                continuum: activePanel === "continuum",
                 pocket: activePanel === "procurement",
+                telemetry: activePanel === "telemetry",
+                anchors: activePanel === "signal",
                 more: moreSheetOpen,
               },
             })}
           />
       )}
 
-      {/* MOBILE TOOLS SHEET */}
-      {isMobile && (
-        <AnimatePresence>
+      {/* TOOLS SHEET — floating pill overflow drawer */}
+      <AnimatePresence>
           {toolsSheetOpen && (
             <>
               <motion.div
@@ -3850,6 +3831,47 @@ ${finalInput}`;
                       },
                     },
                     {
+                      key: "anchors",
+                      label: "Anchors",
+                      icon: <Layers size={18} strokeWidth={1.6} />,
+                      active: activePanel === "signal",
+                      onClick: () => {
+                        togglePanel("signal");
+                        setToolsSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "continuum",
+                      label: "Continuum",
+                      icon: <GitMerge size={18} strokeWidth={1.6} />,
+                      active: activePanel === "continuum",
+                      onClick: () => {
+                        togglePanel("continuum");
+                        setToolsSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "context",
+                      label: "Used Context",
+                      icon: <BookOpen size={18} strokeWidth={1.6} />,
+                      active: activePanel === "orchestrator",
+                      onClick: () => {
+                        togglePanel("orchestrator");
+                        setToolsSheetOpen(false);
+                      },
+                    },
+                    {
+                      key: "noise",
+                      label: ambientDroneOn ? "Noise On" : "Noise Off",
+                      icon: ambientDroneOn ? (
+                        <Volume2 size={18} strokeWidth={1.6} />
+                      ) : (
+                        <VolumeX size={18} strokeWidth={1.6} />
+                      ),
+                      active: ambientDroneOn,
+                      onClick: () => setAmbientDroneOn((v) => !v),
+                    },
+                    {
                       key: "treatments",
                       label: "Treatments",
                       icon: <Paintbrush size={18} strokeWidth={1.6} />,
@@ -3922,7 +3944,6 @@ ${finalInput}`;
             </>
           )}
         </AnimatePresence>
-      )}
 
       {/* MOBILE "MORE" SHEET */}
       {isMobile && (

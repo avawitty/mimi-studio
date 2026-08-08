@@ -3,6 +3,7 @@
   "short_name": "Mimi",
   "description": "Private AI editorial studio for taste, identity, and image-making.",
   "start_url": "/",
+  "display_override": ["fullscreen", "standalone"],
   "display": "standalone",
   "background_color": "#FDFBF7",
   "theme_color": "#FDFBF7",
@@ -44,7 +45,7 @@
       "src": "/mimi-app-icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }

@@ -291,6 +291,7 @@ test.describe("Service worker", () => {
     expect(manifest.name).toBeTruthy();
     expect(manifest.start_url).toBeTruthy();
     expect(manifest.display).toBe("standalone");
+    expect(manifest.display_override).toContain("fullscreen");
     expect(Array.isArray(manifest.icons)).toBe(true);
     expect(manifest.icons.length).toBeGreaterThan(0);
   });
