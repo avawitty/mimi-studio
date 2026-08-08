@@ -26,9 +26,9 @@
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | Expanded reading + public `/u/:handle/signature` OG; incremental evidence patch; approve → `mark_signature` | Public-face mobile review |
-| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; embedding centroid on compile; Studio/Scry auto-embed candidates; Pocket/Scribe/Floor publish mirrors; Used Context conflict UI | Run `npm run taste:backfill-floor-atoms`; Darkroom mirror |
+| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; embedding centroid on compile; Studio/Scry auto-embed; Pocket/Scribe/Floor/Darkroom ingest mirrors; Used Context conflict UI | Run `npm run taste:backfill-floor-atoms` + `taste:backfill-darkroom-treatments` |
 | **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring; map reads snapshot projection | Server-side recompile trigger on ingest |
-| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor publish mirrors; embed on analyze; Used Context merge hydrate | Semantic retrieval (#223); batch analyze backfill |
+| **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor + Darkroom mirrors; embed on analyze; Used Context merge hydrate | Semantic retrieval (#223); batch analyze backfill |
 | **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
 
 ---
