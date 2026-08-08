@@ -66,6 +66,7 @@ import {
   editorialPlateOptionsFromProfile,
   refreshEditorialPlatesInContent,
 } from '../lib/zine/enhanceZineGenerationLayout';
+import { enrichEditorialPlateContent } from '../lib/zine/enrichEditorialPlateContent';
 import { ZinePageRenderer } from './zine/ZinePageRenderer';
 import { ZineOwnerPlatesEditor } from './ZineOwnerPlatesEditor';
 import type { ZineOwnerPlateSlide } from '../types';
@@ -250,13 +251,29 @@ export const AnalysisDisplay: React.FC<{
    () => normalizeZineArtifact(metadata),
    [metadata],
  );
+ const revealContent = useMemo(
+   () =>
+     enrichEditorialPlateContent(metadata.content, {
+       artifactId: metadata.id,
+       profile: profile ?? undefined,
+       usedContextSnapshots: metadata.usedContextSnapshots,
+       intakeArtifacts: metadata.artifacts,
+     }),
+   [
+     metadata.content,
+     metadata.id,
+     metadata.usedContextSnapshots,
+     metadata.artifacts,
+     profile,
+   ],
+ );
  const hasCelestialPlate = useMemo(
-   () => metadata.content?.pages?.some((page) => page.grammar === 'celestial') ?? false,
-   [metadata.content?.pages],
+   () => revealContent.pages?.some((page) => page.grammar === 'celestial') ?? false,
+   [revealContent.pages],
  );
  const hasUsedContextPlate = useMemo(
-   () => metadata.content?.pages?.some((page) => page.grammar === 'used-context') ?? false,
-   [metadata.content?.pages],
+   () => revealContent.pages?.some((page) => page.grammar === 'used-context') ?? false,
+   [revealContent.pages],
  );
 
  const handleOwnerPlatesChange = useCallback(
@@ -2285,7 +2302,7 @@ export const AnalysisDisplay: React.FC<{
    </motion.section>
  ) : null}
 
- {metadata.content.pages?.map((page, i) => {
+ {revealContent.pages?.map((page, i) => {
  const composed = pageHasCustomLayout(page);
  const calibration = isCalibrationPlate(page);
  return (
