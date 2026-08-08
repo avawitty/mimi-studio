@@ -702,6 +702,17 @@ export class NeonTasteIntelligenceRepository implements TasteIntelligenceReposit
   ): Promise<SavedReasonHypothesis> {
     this.requireTransaction();
     savedReasonHypothesisSchema.parse(hypothesis);
+
+    const [existing] = await this.db
+      .select({ ownerId: savedReasonHypotheses.ownerId })
+      .from(savedReasonHypotheses)
+      .where(eq(savedReasonHypotheses.id, hypothesis.id))
+      .limit(1);
+
+    if (existing && existing.ownerId !== ownerId) {
+      throw new Error("Saved reason hypothesis is not owned by caller");
+    }
+
     await this.db
       .insert(savedReasonHypotheses)
       .values({
@@ -717,6 +728,7 @@ export class NeonTasteIntelligenceRepository implements TasteIntelligenceReposit
           hypothesisPayload: hypothesis as unknown as Record<string, unknown>,
           userStatus: hypothesis.userStatus,
         },
+        where: eq(savedReasonHypotheses.ownerId, ownerId),
       });
     return hypothesis;
   }

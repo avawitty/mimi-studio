@@ -1182,7 +1182,7 @@ ${activeAudit.designDirectives?.map(d => `- ${d}`).join('\n') || 'None'}
  const fullItem: PocketItem = { id, userId: user?.uid || 'ghost', type, savedAt: Date.now(), content: newItem, deltaVerdict };
  window.dispatchEvent(new CustomEvent('mimi:shard_added', { detail: fullItem }));
  if (type === 'image' && id && user?.uid && !user?.isAnonymous) {
-  void whySaved.openForArtifact(id, [file.name, file.type]);
+  await whySaved.openForArtifact(id, [file.name, file.type]);
  }
  }
  await loadPocket(true);

@@ -247,7 +247,7 @@ export const MessyPocketStash: React.FC<MessyPocketStashProps> = ({
           [file],
         );
         if (artifactId && user?.uid && !user.isAnonymous) {
-          void whySaved.openForArtifact(artifactId, [file.name, file.type]);
+          await whySaved.openForArtifact(artifactId, [file.name, file.type]);
         }
       } else {
         const text = await file.text();

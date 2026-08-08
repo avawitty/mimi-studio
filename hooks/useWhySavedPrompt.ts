@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { SavedReasonHypothesis } from "../schemas/tasteIntelligenceContracts";
 import {
   proposeSavedReasonHypotheses,
@@ -22,32 +22,52 @@ export function useWhySavedPrompt(userId: string | null | undefined) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [snapshotAvailable, setSnapshotAvailable] = useState(true);
+  const queueRef = useRef<WhySavedPromptState[]>([]);
+  const sheetOpenRef = useRef(false);
+
+  const loadArtifact = useCallback(async (entry: WhySavedPromptState) => {
+    setPrompt(entry);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await proposeSavedReasonHypotheses({
+        artifactId: entry.artifactId,
+        tags: entry.tags,
+      });
+      setHypotheses(res.hypotheses);
+      setSnapshotAvailable(res.snapshotAvailable);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load hypotheses");
+      setHypotheses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const drainQueue = useCallback(async () => {
+    if (sheetOpenRef.current) return;
+    const next = queueRef.current.shift();
+    if (!next) return;
+    sheetOpenRef.current = true;
+    await loadArtifact(next);
+  }, [loadArtifact]);
 
   const openForArtifact = useCallback(
     async (artifactId: string, tags?: string[]) => {
       if (!userId || userId === "ghost" || userId.startsWith("local_")) return;
-      setPrompt({ artifactId, tags });
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await proposeSavedReasonHypotheses({ artifactId, tags });
-        setHypotheses(res.hypotheses);
-        setSnapshotAvailable(res.snapshotAvailable);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not load hypotheses");
-        setHypotheses([]);
-      } finally {
-        setLoading(false);
-      }
+      queueRef.current.push({ artifactId, tags });
+      await drainQueue();
     },
-    [userId],
+    [userId, drainQueue],
   );
 
   const close = useCallback(() => {
     setPrompt(null);
     setHypotheses([]);
     setError(null);
-  }, []);
+    sheetOpenRef.current = false;
+    void drainQueue();
+  }, [drainQueue]);
 
   const review = useCallback(
     async (
@@ -55,6 +75,11 @@ export function useWhySavedPrompt(userId: string | null | undefined) {
       action: "confirm" | "reject" | "edit" | "skip",
       editedText?: string,
     ) => {
+      if (action === "skip") {
+        setHypotheses((prev) => prev.filter((h) => h.id !== hypothesis.id));
+        return;
+      }
+
       setLoading(true);
       setError(null);
       try {

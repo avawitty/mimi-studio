@@ -105,6 +105,21 @@ export const WhySavedSheet: React.FC<WhySavedSheetProps> = ({
 
               {loading && hypotheses.length === 0 ? (
                 <p className="mt-4 text-sm text-mimi-stone">Reading your taste model…</p>
+              ) : hypotheses.length === 0 ? (
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm text-mimi-stone">
+                    Mimi could not infer a saved-reason hypothesis for this capture yet.
+                    That is normal when your taste model is sparse or the file tags do not
+                    match a known dimension.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full min-h-[44px] text-[10px] uppercase tracking-wider border border-mimi-hairline/40"
+                  >
+                    Done
+                  </button>
+                </div>
               ) : (
                 <ul className="mt-4 space-y-3">
                   {hypotheses.map((hypothesis) => {
