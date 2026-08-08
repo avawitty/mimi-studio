@@ -16,11 +16,13 @@ const TASK_START_KEY = "mimi_research_task_started";
 
 const eventBuffer: ResearchEvent[] = [];
 const eventListeners = new Set<() => void>();
+let eventsSnapshot: readonly ResearchEvent[] = [];
 let startedAt: number | null = null;
 let firstMeaningfulClickAt: number | null = null;
 let abandonmentLogged = false;
 
 function notifyEventListeners(): void {
+  eventsSnapshot = eventBuffer.length > 0 ? [...eventBuffer] : [];
   eventListeners.forEach((listener) => listener());
 }
 
@@ -34,6 +36,7 @@ export function subscribeResearchEvents(listener: () => void): () => void {
 /** Test-only reset — clears in-memory session state between unit tests. */
 export function __resetResearchInstrumentationForTests(): void {
   eventBuffer.length = 0;
+  eventsSnapshot = [];
   eventListeners.clear();
   startedAt = null;
   firstMeaningfulClickAt = null;
@@ -166,7 +169,7 @@ export function logAbandonment(reason: string): void {
 }
 
 export function getResearchEvents(): readonly ResearchEvent[] {
-  return [...eventBuffer];
+  return eventsSnapshot;
 }
 
 export function exportResearchSession(): ResearchSessionExport {
