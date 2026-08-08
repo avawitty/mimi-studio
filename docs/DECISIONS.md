@@ -12,6 +12,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Omni Loop Cult dolls: onboarding + art-history time travel
+
+**Decision:** Ship Omni Loop Cult as `omni-loop-resin-v1` staple (ball-jointed resin BJD species). Doll onboarding: user photo + 2+ aesthetic refs + user-declared likeness attributes → Gemini analysis → `saveDoll` + shell portrait via `/api/mimi-image`. Time travel: era picker + Met public-domain refs → `generateRedepictionPrompt` (when Tailor project exists) or fallback shell prompt → scene image with doll + artwork + friend portrait refs. Persist scenes in `users/{uid}/dollScenes`; public gallery tab for shared scenes.
+
+**Alternatives rejected:** (1) Require full Tailor evidence loop before any doll. (2) Copy artwork compositions without transformative prompt layer. (3) Separate API routes for doll scenes (reuse Firestore + mimi-image).
+
+**Why:** Product vision needs a direct dolls chamber entry (photo + motif refs) and generative art-history reinterpretation for memes/marketing; existing `generateRedepictionPrompt` was unused.
+
+**Ref:** `services/dollOnboardingService.ts`, `services/dollSceneService.ts`, `services/dollLikeness.ts`, `components/tailor/DollOnboardingFlow.tsx`, `components/tailor/TimeTravelStudio.tsx`, `services/dollEngine/staplePrompt.ts`
+
+---
+
 ## 2026-08-08 — Taste Signature as evidence-backed editorial reading
 
 **Decision:** Expand `/signature` from DNA-card + charts into a layered artifact: exportable **plate** (unchanged public face) → **editorial reading** (thesis, confidence, Used Context refs) → semiotic touchpoints, creative directions, recommendations, anti-signature, drift notes → collapsed analytics. Generation pulls zines, Tailor draft, approved Used Context, and taste model snapshot via AI Gateway (`textDeep`) with Gemini JSON fallback. Explicit **Approve signature** persists `status: approved` and records `mark_signature` through `recordAndRecompile`; **Repair** routes to Tailor.
@@ -23,6 +37,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Ref:** `services/signatureService.ts`, `lib/signature/signatureSchema.ts`, `components/SignatureView.tsx`, `components/signature/SignatureReading.tsx`, `types.ts` (`AestheticSignature`)
 
 ---
+
+## 2026-08-08 — Oracle chamber reports (local-first cyberdeck UX)
 
 **Decision:** Redesign `/oracle` with cyberdeck instrument plates (matching `TheScribe` atmosphere). Persist Cyberdeck sessions locally via `services/oracleChamberService.ts` on chamber close/export; surface **Chamber Reports** (past transmissions) and **Recurring Themes** (client-side frequency extraction) on the Oracle page. Pocket export remains the durable archive path.
 
@@ -45,6 +61,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Ref:** `lib/ai/generate.ts`, `lib/aiGatewayCompat.ts`, `api/live/token.ts`, `hooks/gatewayLiveConnection.ts`, `hooks/useLiveSession.ts`, `services/liveAuth.ts`
 
 ---
+
+## 2026-08-08 — Pocket why-saved prompt queue (a11y)
 
 **Decision:** Serialize multi-image why-saved prompts through `useWhySavedPrompt` artifact queue (one sheet at a time; Done exits queue; dismiss advances). Per-hypothesis review pending/error state; `epistemicLabelForHypothesis` centralizes Inferred/Observed/Creator labels; `useModalFocus` traps focus in `WhySavedSheet`.
 

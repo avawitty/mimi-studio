@@ -2443,6 +2443,64 @@ export interface DollIdentityReferences {
   calibratedAt?: number;
 }
 
+/** Omni Loop onboarding intake — user likeness + aesthetic reference plates. */
+export interface DollLikenessTraits {
+  hairDescription?: string;
+  eyeColor?: string;
+  faceShape?: string;
+  distinguishingMarks?: string[];
+  resinSkinTone?: string;
+  expressionBaseline?: string;
+  styleNotes?: string;
+  userNotes?: string;
+}
+
+/** User-written likeness carriers — authoritative over photo inference when set. */
+export interface DollDeclaredAttributes {
+  hair?: string;
+  eyes?: string;
+  faceFeatures?: string;
+  distinguishingMarks?: string;
+  skinTone?: string;
+  expression?: string;
+  styleNotes?: string;
+  otherNotes?: string;
+}
+
+export interface DollOnboardingRefs {
+  userPhotoDataUrl?: string;
+  aestheticRefDataUrls?: string[];
+  rawThought?: string;
+  /** Creator-authored likeness attributes for doll generation. */
+  declaredAttributes?: DollDeclaredAttributes;
+  /** Features extracted from creator photo for doll-as-you translation. */
+  likenessTraits?: DollLikenessTraits;
+  completedAt?: number;
+}
+
+/** Time-travel scene: doll(s) reinterpreted through public-domain art + raw thought. */
+export interface DollScene {
+  id: string;
+  userId: string;
+  dollId: string;
+  projectId?: string;
+  rawThought: string;
+  artworkTitle: string;
+  artist: string;
+  artworkImageUrl?: string;
+  artworkSourceUrl: string;
+  publicDomainStatus?: string;
+  eraLabel?: string;
+  sceneImageUrl?: string;
+  generationPrompt?: string;
+  citation?: string;
+  transformationNotes?: string;
+  friendUserIds: string[];
+  visibility: 'private' | 'public';
+  createdAt: number;
+  updatedAt: number;
+}
+
 /** Procedural dresser params derived from (or locked over) Doll projection fields. */
 export interface ProceduralDollAesthetic {
   pattern: "ripples" | "grid" | "marble" | "halftone";
@@ -2485,6 +2543,8 @@ export interface Doll {
   generatedImageUrl?: string;
   /** Multi-view identity pack (portrait / full body / profile). */
   identityReferences?: DollIdentityReferences;
+  /** Omni Loop onboarding intake refs (user photo + aesthetic plates). */
+  onboardingRefs?: DollOnboardingRefs;
   /** Shader dresser aesthetic bound to this Doll record. */
   proceduralAesthetic?: ProceduralDollAesthetic;
   /** Currently preferred mask role for companion injection. */
