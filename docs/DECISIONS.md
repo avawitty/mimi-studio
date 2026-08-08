@@ -6,6 +6,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
 ## 2026-08-08 — Celestial place autocomplete + autosave + Mesopic scroll
 
 **Decision:** Add Nominatim-backed `/api/celestial/geocode-suggest` for birth-location autocomplete; extend `/api/celestial/geocode` to accept resolved suggestion coordinates (timezone via `tz-lookup` without re-search). Celestial Calibration autosaves draft changes to `tailorDraft.celestialCalibration` after 900ms debounce. Clear stale lat/lon/timezone when birth location text changes after a resolved place. Mesopic Lens chamber root uses `h-full overflow-y-auto` instead of `overflow-hidden`.
@@ -15,6 +17,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Resolve place failed silently when coords stayed stale; users need searchable locations and durable profile writes without an explicit save click; Mesopic content was clipped by chamber overflow.
 
 **Ref:** `components/celestial/BirthLocationField.tsx`, `components/chambers/CelestialCalibrationChamber.tsx`, `lib/celestial/geocodePlace.ts`, `api/celestial/geocode-suggest.ts`, `components/chambers/MesopicLensChamber.tsx`
+
+---
+
+## 2026-08-08 — Tailor evidence local-first + readable errors
+
+**Decision:** Let Mimi Read You saves evidence to IndexedDB first (`tailorEvidenceLocalStore`), strips oversized inline blobs before Firestore writes, and merges local + cloud on read. Quota/offline cloud failures return saved nodes instead of blocking intake. User-facing errors use `formatUserError` (no JSON auth dumps); registry toasts truncate and sit top-safe on mobile.
+
+**Alternatives rejected:** (1) Firestore-only evidence with full base64 in every doc. (2) Surfacing raw Firestore `errInfo` JSON in UI toasts. (3) Blocking reads when cloud sync fails.
+
+**Why:** Free-tier Firestore quota was preventing reference saves and flooding mobile UI with technical errors; analysis can still consume local data URLs.
+
+**Ref:** `services/tailorEvidenceLocalStore.ts`, `services/tailorService.ts`, `lib/formatUserError.ts`, `components/tailor/EvidenceUploadScreen.tsx`, `components/RegistryAlert.tsx`
 
 ---
 
@@ -28,6 +42,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 **Ref:** `components/InputStudio.tsx`, `lib/mimiFundedGateway.ts`, `functions/src/index.ts`, `components/provenance/UsedContextColophon.tsx`, `metadata.json`
 
+---
+
 ## 2026-08-08 — Zine save taste boundaries + legacy /@ redirect
 
 **Decision:** Stop auto-calling `updateTasteGraph` from `saveZineToProfile`; remove `scryShadowMemory` from `createZine` prompts (approved Used Context + recent zines only). Upload `data:` cover URLs via `archiveManager` before Firestore persist (fail closed). Legacy `/@:handle` redirects to `/u/:handle` without rendering private `tasteProfile` fields.
@@ -38,6 +54,7 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 **Ref:** `services/firebaseUtils.ts`, `services/zineGenerator.ts`, `components/PublicSharePage.tsx`, `__tests__/stabilizationInvariants.test.ts`
 
+---
 ---
 
 ## 2026-08-08 — Observatory follow-up: Mesopic live, cycles, withdraw, windows
@@ -891,4 +908,16 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Mirrors Rip publish pattern; keeps fast in-chamber approve flow while requiring deliberate consent for public exposure.
 
 **Ref:** `lib/signature/publishSignature.ts`, `lib/signature/publicSignature.ts`, `lib/publicProfileCard.ts`, `components/SignatureView.tsx`
+
+---
+
+## 2026-08-08 — Tailor local archive when Firestore quota is exhausted
+
+**Decision:** When Firestore hits free-tier daily read/write quota (`resource-exhausted` / “Quota limit exceeded”), `handleFirestoreError` no longer throws — it surfaces a one-time announcement and allows local fallback. Tailor chamber data (projects, evidence nodes, observations, pattern clusters, creative laws, taste graphs) mirrors to IndexedDB (`services/tailorLocalArchive.ts`) on successful cloud reads and writes locally when cloud is blocked.
+
+**Alternatives rejected:** (1) Hard crash + System Dissonance JSON toast — blocked all Tailor work until quota reset. (2) Migrate Tailor subgraph to Neon in this pass — broader scope; local archive matches existing Pocket ghost pattern.
+
+**Why:** Unblocks creators on exhausted Firebase free tier until daily quota resets; preserves work on-device without requiring billing upgrade on a capped free database.
+
+**Ref:** `services/firebaseUtils.ts`, `services/tailorLocalArchive.ts`, `services/tailorService.ts`, `__tests__/tailorLocalArchive.test.ts`
 

@@ -109,11 +109,14 @@ test.describe('Mimi E2E Experience', () => {
     await seedQuietSession(page);
     await page.goto('/studio');
     await waitForStableUI(page);
+    await expect(page.locator('[data-studio-entry="orientation"]')).toBeVisible({
+      timeout: 15000,
+    });
     await expect(
-      page.getByRole('heading', { name: /Turn source material into an editorial issue/i }),
+      page.getByText('Start with a thought, image, or fragment.'),
     ).toBeVisible({ timeout: 15000 });
 
-    await expect(page).toHaveScreenshot('studio-input-console.png', {
+    await expect(page).toHaveScreenshot('studio-orientation-entry.png', {
       fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.03,
