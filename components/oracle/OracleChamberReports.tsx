@@ -20,6 +20,50 @@ import {
   type OracleEntityId,
   type OracleThemeFrequency,
 } from '../../services/oracleChamberService';
+import {
+  loadChamberConversationReports,
+  type ChamberConversationReport,
+} from '../../lib/oracleChamberArchive';
+
+function archiveReportToSession(report: ChamberConversationReport): OracleChamberSession {
+  const entity: OracleEntityId =
+    report.entity === 'mimi' || report.entity === 'cyrus' || report.entity === 'synthesis'
+      ? report.entity
+      : 'cyrus';
+  const iso = new Date(report.timestamp).toISOString();
+  return {
+    id: report.id,
+    entity,
+    entityLabel: report.entity === 'unknown' ? 'Chamber' : report.entity,
+    role: 'archive',
+    startedAt: iso,
+    endedAt: iso,
+    transcript: report.fullText,
+    notes: report.tags,
+    excerpt: report.preview,
+    wordCount: report.fullText.split(/\s+/).filter(Boolean).length,
+  };
+}
+
+function mergeThemeFrequencies(
+  local: OracleThemeFrequency[],
+  archive: OracleThemeFrequency[],
+): OracleThemeFrequency[] {
+  const byTheme = new Map<string, OracleThemeFrequency>();
+  for (const entry of [...local, ...archive]) {
+    const existing = byTheme.get(entry.theme);
+    if (!existing) {
+      byTheme.set(entry.theme, { ...entry });
+      continue;
+    }
+    byTheme.set(entry.theme, {
+      theme: entry.theme,
+      count: existing.count + entry.count,
+      sessions: existing.sessions + entry.sessions,
+    });
+  }
+  return [...byTheme.values()].sort((a, b) => b.count - a.count);
+}
 
 const ENTITY_ICONS: Record<OracleEntityId, React.ReactElement> = {
   mimi: <Sparkles size={12} />,
@@ -48,20 +92,43 @@ export const OracleChamberReports: React.FC<OracleChamberReportsProps> = ({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [themes, setThemes] = useState<OracleThemeFrequency[]>([]);
 
-  const refresh = useCallback(() => {
-    const list = listOracleSessions(userId);
-    setSessions(list);
-    setThemes(extractConversationThemes(list));
+  const refresh = useCallback(async () => {
+    const localSessions = listOracleSessions(userId);
+    let archiveSessions: OracleChamberSession[] = [];
+    try {
+      const archiveReports = await loadChamberConversationReports(userId);
+      archiveSessions = archiveReports.map(archiveReportToSession);
+    } catch {
+      archiveSessions = [];
+    }
+
+    const localIds = new Set(localSessions.map((s) => s.id));
+    const merged = [
+      ...localSessions,
+      ...archiveSessions.filter((s) => !localIds.has(s.id)),
+    ].sort((a, b) => new Date(b.endedAt).getTime() - new Date(a.endedAt).getTime());
+
+    setSessions(merged);
+    setThemes(
+      mergeThemeFrequencies(
+        extractConversationThemes(localSessions),
+        extractConversationThemes(archiveSessions),
+      ),
+    );
   }, [userId]);
 
   useEffect(() => {
-    refresh();
-    const onChange = () => refresh();
+    void refresh();
+    const onChange = () => {
+      void refresh();
+    };
     window.addEventListener('mimi:oracle_session_saved', onChange);
     window.addEventListener('mimi:oracle_sessions_changed', onChange);
+    window.addEventListener('mimi:pocket_updated', onChange);
     return () => {
       window.removeEventListener('mimi:oracle_session_saved', onChange);
       window.removeEventListener('mimi:oracle_sessions_changed', onChange);
+      window.removeEventListener('mimi:pocket_updated', onChange);
     };
   }, [refresh]);
 
@@ -73,9 +140,11 @@ export const OracleChamberReports: React.FC<OracleChamberReportsProps> = ({
   const maxThemeCount = themes[0]?.count ?? 1;
 
   const handleDelete = (id: string) => {
-    deleteOracleSession(userId, id);
+    if (!id.startsWith('pocket_') && !id.startsWith('atom_')) {
+      deleteOracleSession(userId, id);
+    }
     if (selectedId === id) setSelectedId(null);
-    refresh();
+    void refresh();
   };
 
   return (
@@ -246,14 +315,16 @@ export const OracleChamberReports: React.FC<OracleChamberReportsProps> = ({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(selected.id)}
-                    className="p-2 border border-white/15 text-white/40 hover:text-red-400/80 hover:border-red-400/30 transition-colors"
-                    title="Delete report"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {!selected.id.startsWith('pocket_') && !selected.id.startsWith('atom_') && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(selected.id)}
+                      className="p-2 border border-white/15 text-white/40 hover:text-red-400/80 hover:border-red-400/30 transition-colors"
+                      title="Delete report"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setSelectedId(null)}
