@@ -32,6 +32,16 @@ import {
 } from "../lib/taste/tasteStateLogic";
 import { buildEvidenceAtomFromInput } from "../lib/taste/buildEvidenceAtom";
 import { evidenceNodeToAtomInput } from "../lib/taste/evidenceNodeBridge";
+import { pocketItemToAtomInput } from "../lib/taste/pocketItemBridge";
+import { evidenceAtomEmbeddingRef } from "../lib/taste/evidenceAtomEmbedding";
+import {
+  rankEvidenceAtomsByEmbedding,
+  MIN_EVIDENCE_SEMANTIC_SCORE,
+} from "../lib/taste/evidenceAtomRetrieval";
+import {
+  atomIdsForEvidenceNodes,
+  buildTailorNodeToAtomMap,
+} from "../lib/taste/tailorEvidenceAtomMap";
 import {
   tasteStateToPromptContext,
   tasteConfidenceLabel,
@@ -304,6 +314,45 @@ describe("tasteStateToPromptContext", () => {
     expect(prompt).toContain("CURRENT EXPLORATIONS");
     expect(prompt).toContain("archival melancholy");
   });
+
+  it("includes relevant evidence atoms when present", () => {
+    const state: TasteState = {
+      userId: "u1",
+      stablePreferences: [],
+      negativePreferences: [],
+      emergingPreferences: [],
+      currentExplorations: [],
+      tensions: [],
+      inferredAxes: [],
+      relevantEvidence: [
+        {
+          id: "atom-1",
+          userId: "u1",
+          kind: "image",
+          sourceType: "image",
+          originalSource: "https://example.com/ref.jpg",
+          sourceMetadata: {},
+          observationIds: [] as string[],
+          ingestSource: "tailor",
+          tasteImpact: true,
+          userReaction: "suggested",
+          confidence: 0.5,
+          stabilityClass: "project",
+          processingState: "analyzed",
+          semanticDescription: "Sparse editorial spread with high-contrast serif.",
+          embeddingRef: "users/u1/evidenceAtomEmbeddings/atom-1",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      confidence: 0.4,
+      recentChanges: [],
+      generatedAt: Date.now(),
+    };
+    const prompt = tasteStateToPromptContext(state);
+    expect(prompt).toContain("RELEVANT EVIDENCE");
+    expect(prompt).toContain("Sparse editorial spread");
+  });
 });
 
 describe("capAssertionConfidence", () => {
@@ -390,6 +439,134 @@ describe("evidenceNodeToAtomInput", () => {
     expect(input.ingestSource).toBe("tailor");
     expect(input.kind).toBe("image");
     expect(input.sourceMetadata?.tailorEvidenceNodeId).toBe("ev-1");
+  });
+});
+
+describe("pocketItemToAtomInput", () => {
+  it("mirrors pocket link items into atom ingest shape", () => {
+    const input = pocketItemToAtomInput({
+      id: "item_1",
+      userId: "u1",
+      title: "",
+      source: "",
+      timestamp: Date.now(),
+      type: "link",
+      savedAt: Date.now(),
+      content: { url: "https://example.com/article", title: "Editorial ref" },
+      tags: ["editorial"],
+    });
+    expect(input.ingestSource).toBe("pocket");
+    expect(input.kind).toBe("url");
+    expect(input.originalSource).toBe("https://example.com/article");
+    expect((input.sourceMetadata as { pocketItemId?: string }).pocketItemId).toBe("item_1");
+  });
+
+  it("maps pocket images to http asset urls", () => {
+    const input = pocketItemToAtomInput({
+      id: "item_2",
+      userId: "u1",
+      title: "",
+      source: "",
+      timestamp: Date.now(),
+      type: "image",
+      savedAt: Date.now(),
+      content: { imageUrl: "https://cdn.example.com/plate.jpg" },
+    });
+    expect(input.kind).toBe("image");
+    expect(input.assetUrl).toBe("https://cdn.example.com/plate.jpg");
+  });
+});
+
+describe("classifyEvidenceAtomQueryError", () => {
+  it("maps failed-precondition to INDEX_REQUIRED", async () => {
+    const { classifyEvidenceAtomQueryError } = await import(
+      "../lib/taste/evidenceAtomQuery"
+    );
+    const err = classifyEvidenceAtomQueryError({
+      code: "failed-precondition",
+      message: "The query requires an index",
+    });
+    expect(err.code).toBe("INDEX_REQUIRED");
+    expect(err.message).toContain("composite index");
+  });
+
+  it("maps permission-denied distinctly from index failures", async () => {
+    const { classifyEvidenceAtomQueryError } = await import(
+      "../lib/taste/evidenceAtomQuery"
+    );
+    const err = classifyEvidenceAtomQueryError({ code: "permission-denied" });
+    expect(err.code).toBe("PERMISSION_DENIED");
+  });
+});
+
+describe("evidenceAtomEmbeddingRef", () => {
+  it("returns a stable users-scoped path", () => {
+    expect(evidenceAtomEmbeddingRef("u1", "atom-1")).toBe(
+      "users/u1/evidenceAtomEmbeddings/atom-1",
+    );
+  });
+});
+
+describe("rankEvidenceAtomsByEmbedding", () => {
+  const baseAtom = {
+    userId: "u1",
+    kind: "image" as const,
+    sourceType: "image" as const,
+    originalSource: "ref",
+    sourceMetadata: {},
+    observationIds: [] as string[],
+    ingestSource: "tailor" as const,
+    tasteImpact: true,
+    userReaction: "suggested" as const,
+    confidence: 0.5,
+    stabilityClass: "project" as const,
+    processingState: "analyzed" as const,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  it("ranks atoms by cosine similarity above threshold", () => {
+    const atoms = [
+      { ...baseAtom, id: "a1", embeddingRef: "users/u1/evidenceAtomEmbeddings/a1" },
+      { ...baseAtom, id: "a2", embeddingRef: "users/u1/evidenceAtomEmbeddings/a2" },
+    ];
+    const embeddings = new Map<string, number[]>([
+      ["a1", [1, 0]],
+      ["a2", [0, 1]],
+    ]);
+    const ranked = rankEvidenceAtomsByEmbedding([1, 0], atoms, embeddings, {
+      minScore: MIN_EVIDENCE_SEMANTIC_SCORE,
+      maxResults: 2,
+    });
+    expect(ranked[0]?.atom.id).toBe("a1");
+    expect(ranked[0]?.score).toBeGreaterThan(0.9);
+  });
+});
+
+describe("tailorEvidenceAtomMap", () => {
+  it("maps tailor node ids to mirrored atom ids", () => {
+    const map = buildTailorNodeToAtomMap([
+      {
+        id: "atom-99",
+        userId: "u1",
+        projectId: "p1",
+        kind: "image",
+        sourceType: "image",
+        originalSource: "ref",
+        sourceMetadata: { tailorEvidenceNodeId: "ev-1" },
+        observationIds: [] as string[],
+        ingestSource: "tailor",
+        tasteImpact: true,
+        userReaction: "suggested",
+        confidence: 0.5,
+        stabilityClass: "project",
+        processingState: "analyzed",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    ]);
+    expect(atomIdsForEvidenceNodes(["ev-1"], map)).toEqual(["atom-99"]);
+    expect(atomIdsForEvidenceNodes(["missing"], map)).toEqual([]);
   });
 });
 

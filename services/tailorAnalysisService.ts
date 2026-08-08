@@ -16,6 +16,7 @@ import type {
   ArtworkMatch,
   MarketingAsset,
   PatternCluster as PatternClusterType,
+  EvidenceAtom,
 } from '../types';
 import {
   listEvidenceNodes,
@@ -40,6 +41,8 @@ import {
   isMarketingAssetType,
 } from './tailorReadiness';
 import { assertProjectGraphBinding } from './tailorProjection';
+import { queryEvidenceAtoms } from './taste/evidenceAtomService';
+import { atomIdsForEvidenceNodes, buildTailorNodeToAtomMap } from '../lib/taste/tailorEvidenceAtomMap';
 
 const TAILOR_ANALYSIS_CONSTITUTION = `${ORACLE_PERSONA}
 
@@ -264,6 +267,13 @@ export async function runTailorAnalysis(
     const evidence = await listEvidenceNodes(userId, projectId);
     if (evidence.length < 1) throw new Error('At least one evidence node required');
 
+    const projectAtoms = await queryEvidenceAtoms(userId, {
+      projectId,
+      tasteImpact: true,
+      maxResults: 200,
+    }).catch((): EvidenceAtom[] => []);
+    const nodeToAtom = buildTailorNodeToAtomMap(projectAtoms);
+
     await updateTailorProject(userId, projectId, { analysisStatus: 'processing', blurb });
 
     const allObservations: Observation[] = [];
@@ -322,12 +332,14 @@ Rules:
       sanitizeOutput(patternResult?.patternClusters ?? []).map((c, idx) => {
         const raw = patternResult?.patternClusters?.[idx];
         const observationIndices = (raw as { observationIndices?: number[] })?.observationIndices ?? [];
+        const nodeIds = c.supportingEvidenceNodeIds ?? evidence.map((e) => e.id);
         return {
           name: c.name ?? `Pattern ${idx + 1}`,
           description: c.description ?? '',
           category: (c.category as PatternClusterType['category']) ?? 'visual',
           observationIds: observationIndices.map((i) => obsIds[i]).filter(Boolean),
-          supportingEvidenceNodeIds: c.supportingEvidenceNodeIds ?? evidence.map((e) => e.id),
+          supportingEvidenceNodeIds: nodeIds,
+          supportingEvidenceAtomIds: atomIdsForEvidenceNodes(nodeIds, nodeToAtom),
           frequency: c.frequency ?? 1,
           confidence: c.confidence ?? 0.5,
           possibleInterpretations: c.possibleInterpretations ?? [],
@@ -344,12 +356,14 @@ Rules:
       sanitizeOutput(patternResult?.creativeLaws ?? []).map((law, idx) => {
         const raw = patternResult?.creativeLaws?.[idx];
         const patternIndices = (raw as { supportingPatternIndices?: number[] })?.supportingPatternIndices ?? [];
+        const lawNodeIds = law.supportingEvidenceNodeIds ?? evidence.map((e) => e.id);
         return {
           title: law.title ?? `Law ${idx + 1}`,
           principle: law.principle ?? '',
           explanation: law.explanation ?? '',
           supportingPatternClusterIds: patternIndices.map((i) => clusterIds[i]).filter(Boolean),
-          supportingEvidenceNodeIds: law.supportingEvidenceNodeIds ?? evidence.map((e) => e.id),
+          supportingEvidenceNodeIds: lawNodeIds,
+          supportingEvidenceAtomIds: atomIdsForEvidenceNodes(lawNodeIds, nodeToAtom),
           confidence: law.confidence ?? 0.5,
           claimType: 'inferred' as const,
           userStatus: 'suggested' as const,

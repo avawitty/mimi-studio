@@ -693,8 +693,10 @@ export function compileTailorProfileFromGraph(input: GraphCompileInput): TailorP
     notes: node.sourceUrl ?? '',
   }));
   const evidenceIds = unique([
-    ...usableClusters.flatMap((cluster) => cluster.supportingEvidenceNodeIds),
-    ...usableLaws.flatMap((law) => law.supportingEvidenceNodeIds),
+    ...usableClusters.flatMap(
+      (cluster) => cluster.supportingEvidenceAtomIds ?? cluster.supportingEvidenceNodeIds,
+    ),
+    ...usableLaws.flatMap((law) => law.supportingEvidenceAtomIds ?? law.supportingEvidenceNodeIds),
   ]);
   const clusterConfidence = average(usableClusters.map((cluster) => cluster.confidence), 0.45);
   const lawConfidence = average(usableLaws.map((law) => law.confidence), clusterConfidence);

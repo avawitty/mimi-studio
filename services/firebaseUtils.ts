@@ -853,6 +853,13 @@ export const addToPocket = async (uid: string, type: PocketItem['type'], content
       syncToShadowMemory(item);
       // Asynchronously update the taste graph
       updateTasteGraph(uid, type, contentForAnalysis);
+      {
+        const { createEvidenceAtom } = await import("./taste/evidenceAtomService");
+        const { pocketItemToAtomInput } = await import("../lib/taste/pocketItemBridge");
+        void createEvidenceAtom(uid, pocketItemToAtomInput(item)).catch((err) => {
+          console.warn("MIMI // Pocket → EvidenceAtom mirror failed (non-blocking):", err);
+        });
+      }
       invalidatePocketCache();
     } catch (e) { console.warn("MIMI // Pocket Sync Skipped:", e.code); }
   }

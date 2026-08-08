@@ -7,9 +7,10 @@ import {
   sendJson,
   validateBody,
 } from "./apiUtils.js";
-import { runFundedGatewayObject } from "./mimiFundedText.js";
+import { runFundedGatewayObject, resolveRouteGatewayKey } from "./mimiFundedText.js";
 import { verifyMimiSession, getServerFirebaseAdmin } from "./serverFirebaseAdmin.js";
 import { getServerTastePromptContext } from "./taste/serverTasteState.js";
+import { getServerAiGatewayKey } from "./aiGatewayCompat.js";
 
 const createZineSchema = z.object({
   text: z.string().trim().min(1, "Source text is required.").max(12000),
@@ -64,7 +65,11 @@ export const handleMimiCreateZineRoute = async (req: any, res: any) => {
       const decoded = await verifyMimiSession(req.headers || {});
       const { db } = getServerFirebaseAdmin();
       if (db) {
-        const tasteBlock = await getServerTastePromptContext(db, decoded.uid, input.tasteContext);
+        const { apiKey: tasteApiKey } = await resolveRouteGatewayKey(req, "embedding");
+        const tasteBlock = await getServerTastePromptContext(db, decoded.uid, input.tasteContext, {
+          queryText: input.text,
+          apiKey: tasteApiKey || getServerAiGatewayKey(),
+        });
         if (tasteBlock) system = `${system}\n\n${tasteBlock}`;
       }
     } catch {
