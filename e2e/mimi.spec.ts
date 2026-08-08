@@ -109,7 +109,7 @@ test.describe('Mimi E2E Experience', () => {
     await seedQuietSession(page);
     await page.goto('/studio');
     await waitForStableUI(page);
-    await expect(page.getByRole('navigation', { name: 'Studio pages' })).toBeVisible({
+    await expect(page.getByRole('region', { name: 'Cover image composer' })).toBeVisible({
       timeout: 15000,
     });
     await expect(page.getByText('Compose cover')).toBeVisible({ timeout: 15000 });

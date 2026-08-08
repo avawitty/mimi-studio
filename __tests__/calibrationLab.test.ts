@@ -2,6 +2,11 @@
 import { describe, expect, it } from "vitest";
 import { deriveCalibrationCandidates } from "../components/tailor/CalibrationLab";
 import { compileTasteModel } from "../lib/tasteModel/compileTasteModel";
+import {
+  calibrationSessionMatchesScope,
+  capCalibrationTargetCount,
+  maxUniqueCalibrationPairs,
+} from "../lib/tasteIntelligence/calibrationSession";
 import type { PatternCluster } from "../types";
 
 const NOW = Date.now();
@@ -69,5 +74,54 @@ describe("deriveCalibrationCandidates", () => {
       [],
     );
     expect(deriveCalibrationCandidates(null)).toEqual([]);
+  });
+});
+
+describe("calibration session scope", () => {
+  it("global requests match only sessions without project_id", () => {
+    expect(calibrationSessionMatchesScope(undefined, undefined)).toBe(true);
+    expect(calibrationSessionMatchesScope(null, undefined)).toBe(true);
+    expect(calibrationSessionMatchesScope("project-a", undefined)).toBe(false);
+  });
+
+  it("project requests never reuse global sessions", () => {
+    expect(calibrationSessionMatchesScope(undefined, "project-a")).toBe(false);
+    expect(calibrationSessionMatchesScope(null, "project-a")).toBe(false);
+    expect(calibrationSessionMatchesScope("project-a", "project-a")).toBe(true);
+    expect(calibrationSessionMatchesScope("project-b", "project-a")).toBe(false);
+  });
+
+  it("isolates one active project session from a global calibration request", () => {
+    const activeProjectSession = { projectId: "project-a", status: "active" as const };
+    const globalQueryProjectId: string | undefined = undefined;
+    const projectQueryProjectId = "project-a";
+
+    expect(
+      calibrationSessionMatchesScope(
+        activeProjectSession.projectId,
+        globalQueryProjectId,
+      ),
+    ).toBe(false);
+    expect(
+      calibrationSessionMatchesScope(
+        activeProjectSession.projectId,
+        projectQueryProjectId,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("calibration pair exhaustion", () => {
+  it("computes max unique pairs as n * (n - 1) / 2", () => {
+    expect(maxUniqueCalibrationPairs(2)).toBe(1);
+    expect(maxUniqueCalibrationPairs(3)).toBe(3);
+    expect(maxUniqueCalibrationPairs(5)).toBe(10);
+  });
+
+  it("caps target question count to available pairs", () => {
+    expect(capCalibrationTargetCount(2, 12)).toBe(1);
+    expect(capCalibrationTargetCount(3, 12)).toBe(3);
+    expect(capCalibrationTargetCount(5, 12)).toBe(10);
+    expect(capCalibrationTargetCount(5, 4)).toBe(4);
   });
 });

@@ -88,6 +88,8 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({
   const tasteSnapshot =
     tasteSnapshotProp ?? (e2eFixture ? buildE2eTasteSnapshot() : tasteModel.activeSnapshot);
   const tasteLoading = !tasteSnapshotProp && !e2eFixture && tasteModel.loading;
+  const tasteLoadError =
+    !tasteSnapshotProp && !e2eFixture && !tasteLoading && Boolean(tasteModel.error);
   const [session, setSession] = useState<TasteCalibrationSession | null>(null);
   const [pair, setPair] = useState<TasteCalibrationPair | null>(null);
   const [left, setLeft] = useState<CalibrationCandidateInput | null>(null);
@@ -108,25 +110,55 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({
     [externalCandidates, tasteSnapshot],
   );
 
+  const applySessionPayload = useCallback(
+    (result: {
+      session: TasteCalibrationSession;
+      pair: TasteCalibrationPair | null;
+      left?: CalibrationCandidateInput;
+      right?: CalibrationCandidateInput;
+    }) => {
+      const exhausted =
+        result.session.status === "completed" ||
+        (result.pair == null &&
+          (result.session.answeredQuestionCount >= result.session.targetQuestionCount ||
+            result.session.answeredQuestionCount > 0));
+      if (exhausted) {
+        setSession({
+          ...result.session,
+          status: "completed",
+          completedAt: result.session.completedAt ?? Date.now(),
+        });
+        setPair(null);
+        setLeft(null);
+        setRight(null);
+        return;
+      }
+      setSession(result.session);
+      setPair(result.pair);
+      setLeft(result.left ?? null);
+      setRight(result.right ?? null);
+    },
+    [],
+  );
+
   const resumeActiveSession = useCallback(async () => {
     if (!user?.uid || derivedCandidates.length < 2) return;
     try {
       const { session: active } = await getActiveCalibrationSession(projectId);
       if (!active) return;
-      setSession(active);
-      if (active.status === "completed") return;
+      if (active.status === "completed") {
+        setSession(active);
+        return;
+      }
       const result = await startCalibrationSession({
         projectId,
         candidates: derivedCandidates,
       });
-      setSession(result.session);
-      setPair(result.pair);
-      setLeft(result.left ?? null);
-      setRight(result.right ?? null);
+      applySessionPayload(result);
     } catch {
       // Neon may be unavailable locally — honest empty state
     }
-  }, [user?.uid, projectId, derivedCandidates]);
+  }, [user?.uid, projectId, derivedCandidates, applySessionPayload]);
 
   useEffect(() => {
     void resumeActiveSession();
@@ -144,10 +176,7 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({
         projectId,
         candidates: derivedCandidates,
       });
-      setSession(result.session);
-      setPair(result.pair);
-      setLeft(result.left ?? null);
-      setRight(result.right ?? null);
+      applySessionPayload(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start calibration.");
     } finally {
@@ -176,33 +205,29 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({
         affectedFeatureIds: result.affectedFeatureIds,
         choice,
       });
+      const answered = session.answeredQuestionCount + 1;
+      const sessionCompleted =
+        choice === "skip" || answered >= session.targetQuestionCount;
+
       setSession((s) =>
         s
           ? {
               ...s,
-              answeredQuestionCount: s.answeredQuestionCount + 1,
-              status:
-                s.answeredQuestionCount + 1 >= s.targetQuestionCount
-                  ? "completed"
-                  : "active",
+              answeredQuestionCount: answered,
+              status: sessionCompleted ? "completed" : "active",
+              completedAt: sessionCompleted ? Date.now() : s.completedAt,
             }
           : s,
       );
       if (user?.uid && choice !== "skip") {
         await compileAndSaveTasteModel({ userId: user.uid, projectId });
       }
-      if (
-        session.answeredQuestionCount + 1 < session.targetQuestionCount &&
-        choice !== "skip"
-      ) {
+      if (!sessionCompleted) {
         const next = await startCalibrationSession({
           projectId,
           candidates: derivedCandidates,
         });
-        setPair(next.pair);
-        setLeft(next.left ?? null);
-        setRight(next.right ?? null);
-        setSession(next.session);
+        applySessionPayload(next);
       } else {
         setPair(null);
         setLeft(null);
@@ -251,30 +276,60 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({
 
       {!session && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          <p className="text-sm text-mimi-stone">
-            {tasteLoading
-              ? "Loading your taste model…"
-              : derivedCandidates.length < 2
-                ? "Compile a taste model with at least two features first — run Evidence Intake, then return here."
-                : "Start a short calibration session. Questions are chosen by active learning, not random pairs."}
-          </p>
-          <button
-            type="button"
-            onClick={() => void beginSession()}
-            disabled={loading || tasteLoading || derivedCandidates.length < 2}
-            className="min-h-[44px] rounded border border-mimi-ink bg-mimi-ink px-6 py-3 text-sm text-mimi-field disabled:opacity-40"
-          >
-            {loading ? "Starting…" : "Begin calibration"}
-          </button>
-          {derivedCandidates.length < 2 && !tasteLoading && (
-            <button
-              type="button"
-              onClick={() => navigate?.("/tailor/evidence")}
-              className="min-h-[44px] border border-mimi-hairline px-4 py-2 text-sm text-mimi-stone"
-            >
-              Go to Evidence Intake
-            </button>
+          {tasteLoadError ? (
+            <>
+              <p className="text-sm text-mimi-stone" role="alert">
+                Could not load your taste model. This is usually temporary — retry
+                before adding more evidence.
+              </p>
+              <p className="text-xs text-mimi-stone">{tasteModel.error}</p>
+              <button
+                type="button"
+                onClick={() => void tasteModel.refresh()}
+                disabled={tasteLoading}
+                className="min-h-[44px] rounded border border-mimi-ink bg-mimi-ink px-6 py-3 text-sm text-mimi-field disabled:opacity-40"
+              >
+                {tasteLoading ? "Retrying…" : "Retry load"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-mimi-stone">
+                {tasteLoading
+                  ? "Loading your taste model…"
+                  : derivedCandidates.length < 2
+                    ? "Compile a taste model with at least two features first — run Evidence Intake, then return here."
+                    : "Start a short calibration session. Questions are chosen by active learning, not random pairs."}
+              </p>
+              <button
+                type="button"
+                onClick={() => void beginSession()}
+                disabled={loading || tasteLoading || derivedCandidates.length < 2}
+                className="min-h-[44px] rounded border border-mimi-ink bg-mimi-ink px-6 py-3 text-sm text-mimi-field disabled:opacity-40"
+              >
+                {loading ? "Starting…" : "Begin calibration"}
+              </button>
+              {derivedCandidates.length < 2 && !tasteLoading && (
+                <button
+                  type="button"
+                  onClick={() => navigate?.("/tailor/evidence")}
+                  className="min-h-[44px] border border-mimi-hairline px-4 py-2 text-sm text-mimi-stone"
+                >
+                  Go to Evidence Intake
+                </button>
+              )}
+            </>
           )}
+        </div>
+      )}
+
+      {session && session.status !== "completed" && !pair && (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+          <p className="text-sm text-mimi-stone">
+            {loading
+              ? "Preparing the next comparison…"
+              : "No more unique pairs remain for this session."}
+          </p>
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { TasteIntelligenceRepository } from "../../../domain/tasteIntelligence/repository.js";
 import type {
   CreateCalibrationSessionInput,
@@ -265,6 +265,38 @@ export class NeonTasteIntelligenceRepository implements TasteIntelligenceReposit
     return session;
   }
 
+  async getCalibrationSessionById(
+    ownerId: string,
+    sessionId: string,
+  ): Promise<TasteCalibrationSession | null> {
+    const [row] = await this.db
+      .select()
+      .from(tasteCalibrationSessions)
+      .where(
+        and(
+          eq(tasteCalibrationSessions.ownerId, ownerId),
+          eq(tasteCalibrationSessions.id, sessionId),
+        ),
+      )
+      .limit(1);
+    if (!row) return null;
+    return tasteCalibrationSessionSchema.parse({
+      id: row.id,
+      ownerId: row.ownerId,
+      workspaceId: row.workspaceId ?? undefined,
+      projectId: row.projectId ?? undefined,
+      modelSnapshotId: row.modelSnapshotId,
+      status: row.status,
+      targetQuestionCount: row.targetQuestionCount,
+      answeredQuestionCount: row.answeredQuestionCount,
+      startedAt: row.startedAt.getTime(),
+      completedAt: row.completedAt?.getTime(),
+      algorithmVersion: row.algorithmVersion,
+      createdAt: row.createdAt.getTime(),
+      updatedAt: row.updatedAt.getTime(),
+    });
+  }
+
   async getActiveCalibrationSession(
     ownerId: string,
     projectId?: string,
@@ -278,7 +310,7 @@ export class NeonTasteIntelligenceRepository implements TasteIntelligenceReposit
           eq(tasteCalibrationSessions.status, "active"),
           projectId
             ? eq(tasteCalibrationSessions.projectId, projectId)
-            : sql`true`,
+            : isNull(tasteCalibrationSessions.projectId),
         ),
       )
       .orderBy(desc(tasteCalibrationSessions.updatedAt))
