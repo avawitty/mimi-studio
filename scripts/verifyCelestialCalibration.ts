@@ -257,6 +257,7 @@ function testCanonAndFiles() {
     "lib/celestial/sunSign.ts",
     "lib/celestial/seasonalAlignment.ts",
     "lib/celestial/compileCelestialReadout.ts",
+    "lib/celestial/applyCelestialToZine.ts",
     "lib/celestial/timezone.ts",
     "lib/celestial/resolveBirthInstant.ts",
     "lib/celestial/astronomyEngine.ts",
@@ -280,6 +281,10 @@ function testCanonAndFiles() {
     zineGen.includes("celestialTimingForGeneration") ||
       zineGen.includes("celestialCalibration"),
     "zineGenerator wires celestial context",
+  );
+  assert(
+    zineGen.includes("applyCelestialToZine"),
+    "zineGenerator stamps ephemeris-backed celestial_readout on content",
   );
 
   const gemini = fs.readFileSync(path.join(root, "services/geminiService.ts"), "utf8");

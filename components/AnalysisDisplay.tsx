@@ -61,6 +61,8 @@ import {
 } from '../lib/zineSpreadLayout';
 import type { EditorElement } from '../types';
 import { normalizeZineArtifact } from '../lib/zine/normalizeZineArtifact';
+import { CELESTIAL_BODY_LABELS } from '../lib/celestial/bodyLabels';
+import { ZODIAC_SIGN_LABELS } from '../lib/celestial/sunSign';
 import {
   artifactRequiresRevision,
   createArtifactRevision,
@@ -2172,6 +2174,37 @@ export const AnalysisDisplay: React.FC<{
  <p className="font-mono text-xl md:text-3xl text-white uppercase tracking-widest leading-relaxed max-w-2xl border-l-2 pl-6 md:pl-8 text-left" style={{ borderColor: accentColor, color: 'white' }}>
  {metadata.content.celestial_calibration}
  </p>
+ {metadata.content.celestial_readout?.natal?.chart?.bodies?.length ? (
+   <div className="w-full max-w-2xl text-left space-y-4 border border-white/10 bg-white/5 p-6 md:p-8">
+     <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-white/50">
+       Natal chart · astronomy-engine
+     </p>
+     <ul className="grid grid-cols-2 gap-3 font-mono text-[11px] uppercase tracking-wider text-white/80">
+       {metadata.content.celestial_readout.natal.chart.bodies.slice(0, 8).map((body) => (
+         <li key={body.body}>
+           {CELESTIAL_BODY_LABELS[body.body as keyof typeof CELESTIAL_BODY_LABELS] || body.body}{' '}
+           {ZODIAC_SIGN_LABELS[body.sign as keyof typeof ZODIAC_SIGN_LABELS] || body.sign}
+           {body.retrograde ? ' ℞' : ''}
+         </li>
+       ))}
+     </ul>
+     {metadata.content.celestial_readout.natal.chart.rising ? (
+       <p className="font-mono text-[10px] uppercase tracking-widest text-white/60">
+         Rising {ZODIAC_SIGN_LABELS[metadata.content.celestial_readout.natal.chart.rising.sign as keyof typeof ZODIAC_SIGN_LABELS]}
+       </p>
+     ) : null}
+   </div>
+ ) : null}
+ {metadata.content.celestial_readout?.issueMomentSummary ? (
+   <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/45 max-w-2xl text-left">
+     {metadata.content.celestial_readout.issueMomentSummary}
+   </p>
+ ) : null}
+ {metadata.content.celestial_readout?.scopeNotice ? (
+   <p className="font-sans text-xs text-white/35 max-w-xl text-left leading-relaxed">
+     {metadata.content.celestial_readout.scopeNotice}
+   </p>
+ ) : null}
  </div>
  </div>
  </motion.section>

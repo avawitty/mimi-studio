@@ -514,6 +514,15 @@ export interface Persona {
   };
 }
 
+/** Ephemeris-backed celestial data stamped on generated zines. */
+export interface ZineCelestialReadout {
+  calibration: string;
+  natal: import("./schemas/celestialCalibrationContracts").CelestialReadout | null;
+  issueMomentUtc: string;
+  issueMomentSummary: string;
+  scopeNotice: string;
+}
+
 export interface ZineSpec {
   id?: string;
   meta: {
@@ -555,6 +564,8 @@ export interface ZineSpec {
   semiotic_signals?: SemioticSignal[];
   aesthetic_touchpoints?: AestheticTouchpoint[];
   celestial_calibration?: string;
+  /** Ephemeris-backed celestial stamp (natal + issue-moment sky). */
+  celestial_readout?: ZineCelestialReadout;
   visual_plates?: string[];
   the_roadmap?: string;
   originalThought?: string;
