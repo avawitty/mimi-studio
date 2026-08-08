@@ -18,7 +18,11 @@
     "verify:tailor-intake": "tsx scripts/verifyTailorEvidenceIntake.ts",
     "verify:tailor-foundation": "tsx scripts/verifyTailorFoundation.ts",
     "verify:taste-model": "tsx scripts/verifyTasteModel.ts",
+    "verify:taste-calibration": "tsx scripts/verifyTasteIntelligence.ts",
     "verify:taste-intelligence": "tsx scripts/verifyTasteIntelligence.ts",
+    "verify:taste-search": "tsx scripts/verifyTasteIntelligence.ts",
+    "verify:taste-collaboration": "tsx scripts/verifyTasteIntelligence.ts",
+    "verify:taste-evaluation": "tsx scripts/verifyTasteIntelligence.ts",
     "verify:shopify-pack": "tsx scripts/verifyShopifyProductPack.ts",
     "verify:shopify-integration": "tsx scripts/verifyShopifyIntegration.ts",
     "verify:ingest-client": "tsx scripts/verifyIngestClient.ts",
@@ -79,7 +83,8 @@
     "db:check": "drizzle-kit check --config=drizzle.config.ts",
     "credits:sweep": "tsx scripts/sweepCreditReservations.ts",
     "setup:mimi-rip-domains": "node scripts/setupMimiRipDomains.mjs",
-    "setup:mimi-fish-domains": "node scripts/setupMimiFishDomains.mjs"
+    "setup:mimi-fish-domains": "node scripts/setupMimiFishDomains.mjs",
+    "migrate:mimi-domains-from-lovable": "node scripts/migrateMimiDomainsFromLovable.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

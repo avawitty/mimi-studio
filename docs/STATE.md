@@ -26,9 +26,10 @@
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
-| **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; computational model (#224) inspector wired | Wire embedding similarity into candidate score; complete atom migration |
-| **Computational Taste Model** | — (derived) | **shipped** | MVP compiler + scoring; no embedding similarity in candidate score yet | Server-side recompile trigger; atom bridge completion |
-| **Taste Intelligence (EvidenceAtom)** | — | **shipped** | Phase 1–3: semantic retrieval, atom supersession, Tailor atom id links | Optional backfill of atom ids on legacy clusters |
+| **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; embedding space migrations on model change | Complete atom migration; run shadow audit after Gateway model bumps |
+| **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
+| **Taste Intelligence (EvidenceAtom)** | — | **shipped** | Phase 1–3: semantic retrieval, atom supersession, Tailor atom id links; legacy graph coexists | Optional backfill of atom ids on legacy clusters; embedding backfill |
+| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs shipped; Scry taste rerank + why-matched shipped; Pocket/Studio integration partial | Studio compiler cards + Pocket why-saved; expand graph editor ops UI |
 
 ---
 
@@ -36,7 +37,7 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Scry** | `/scry` | shipped | Unified retrieval service deferred | Keep lane honesty tests in `verify:*` scripts |
+| **Scry** | `/scry` | shipped | Unified retrieval service deferred; taste rerank uses snapshot + refusals when signed in | Keep lane honesty + taste rerank tests in `verify:*` / unit suite |
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
