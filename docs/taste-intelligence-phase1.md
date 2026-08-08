@@ -51,9 +51,9 @@ Existing collections **remain** in Phase 1:
 ## Known debt (Phase 1.5+)
 
 - [ ] Post-ingest analysis hook (`analyze-image` / embed) after atom create
-- [ ] `GET /api/mimi/taste-state` for server-side generation
+- [x] `GET /api/mimi/taste-state` for server-side generation
 - [ ] Pocket mirror (like Tailor bridge)
-- [ ] Migrate generation routes to inject `tasteStateToPromptContext()`
+- [x] Migrate generation routes to inject `tasteStateToPromptContext()`
 - [ ] Deprecate duplicate reads from `EvidenceNode` where `EvidenceAtom` supersedes
 
 ## Correction loop

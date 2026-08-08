@@ -10,10 +10,11 @@ import {
 } from "./apiUtils.js";
 import { creditCostForTask } from "./aiCreditPolicy.js";
 import { getServerAiGatewayKey } from "./aiGatewayCompat.js";
+import { verifyMimiSession, getServerFirebaseAdmin } from "./serverFirebaseAdmin.js";
+import { getServerTastePromptContext } from "./taste/serverTasteState.js";
 
 const DENIAL_MESSAGES: Record<string, string> = {
-  sign_in_required:
-    "Sign in to use Mimi AI Gateway.",
+  sign_in_required: "Sign in to use Mimi AI Gateway.",
   credits_exhausted:
     "Mimi membership credits for AI Gateway are exhausted. Credits reload with your billing period.",
   server_gateway_unconfigured:
@@ -29,12 +30,38 @@ const generateTextSchema = z.object({
   system: z.string().trim().max(4000).optional(),
   role: z.enum(["textFast", "textDeep"]).optional(),
   temperature: z.number().min(0).max(2).optional(),
+  tasteContext: z
+    .enum([
+      "global",
+      "project",
+      "brand",
+      "fashion",
+      "interface",
+      "editorial",
+      "experimental",
+    ])
+    .optional(),
 });
+
+async function resolveTasteAugmentedSystem(
+  req: any,
+  baseSystem: string | undefined,
+  tasteContext?: string,
+): Promise<string | undefined> {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const { db } = getServerFirebaseAdmin();
+    if (!db) return baseSystem;
+    const tasteBlock = await getServerTastePromptContext(db, decoded.uid, tasteContext as any);
+    if (!tasteBlock) return baseSystem;
+    return baseSystem ? `${baseSystem}\n\n${tasteBlock}` : tasteBlock;
+  } catch {
+    return baseSystem;
+  }
+}
 
 /**
  * POST /api/mimi/generate-text
- * First production consumer of lib/ai/generate.ts (AI SDK → AI Gateway),
- * with the same funded-gateway credit gate as /api/proxy/ai-gateway.
  */
 export async function handleMimiGenerateTextRoute(req: any, res: any) {
   if (cors(req, res)) return;
@@ -83,9 +110,11 @@ export async function handleMimiGenerateTextRoute(req: any, res: any) {
     }
 
     const role = (input.role || "textFast") as GatewayTextRole;
+    const system = await resolveTasteAugmentedSystem(req, input.system, input.tasteContext);
+
     const result = await generateGatewayText({
       prompt: input.prompt,
-      system: input.system,
+      system,
       role,
       temperature: input.temperature,
       apiKey,
@@ -110,6 +139,7 @@ export async function handleMimiGenerateTextRoute(req: any, res: any) {
       role,
       usage: result.usage,
       creditsCharged: access?.billable ? cost : 0,
+      tasteContextInjected: Boolean(system?.includes("TASTE INTELLIGENCE")),
     });
   } catch (error: any) {
     console.error("MIMI // generate-text error:", error);

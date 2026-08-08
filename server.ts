@@ -40,6 +40,8 @@ import generateSpecHandler from "./api/mimi/generate-spec";
 import generateImageHandler from "./api/mimi/generate-image";
 import synthesizeDossierHandler from "./api/mimi/synthesize-dossier";
 import { handleMimiEvidenceRoute } from "./lib/mimiEvidenceRoute";
+import { handleMimiEvidenceAnalyzeRoute } from "./lib/mimiEvidenceAnalyzeRoute";
+import { handleMimiTasteStateRoute } from "./lib/mimiTasteStateRoute";
 import { fetchPinterestBoardPreview } from "./lib/pinterestBoardPreview";
 import { fetchLetterboxdFeed } from "./lib/letterboxdFeed";
 import { getShopifyConnectionStatus, publishShopifyDraft } from "./lib/shopifyAdmin";
@@ -1804,6 +1806,28 @@ async function startServer() {
       await handleMimiEvidenceRoute(req, res);
     } catch (error: any) {
       console.error("MIMI // Route error in /api/mimi/evidence:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/evidence/analyze", async (req, res) => {
+    try {
+      await handleMimiEvidenceAnalyzeRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/evidence/analyze:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.get("/api/mimi/taste-state", async (req, res) => {
+    try {
+      await handleMimiTasteStateRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/taste-state:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }
