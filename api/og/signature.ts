@@ -1,6 +1,6 @@
 import {
   buildPublicSignatureSeo,
-  extractApprovedPublicSignature,
+  extractPublishedPublicSignature,
   renderPublicSignatureOgHtml,
 } from "../../lib/signature/publicSignature.js";
 import { sendJson } from "../../lib/apiUtils.js";
@@ -53,7 +53,7 @@ export default async function handler(req: any, res: any) {
       profile = await loadProfileByHandle(db as FirestoreLike, handle);
     }
 
-    const signature = extractApprovedPublicSignature(profile);
+    const signature = extractPublishedPublicSignature(profile);
     const imageFallback =
       typeof (profile?.publicShowcase as Record<string, unknown> | undefined)?.dollPortraitUrl ===
       "string"

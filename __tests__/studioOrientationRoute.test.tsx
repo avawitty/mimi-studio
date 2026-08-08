@@ -24,16 +24,17 @@ describe("/studio routing", () => {
     cleanup();
   });
 
-  it("wires App.tsx so /studio mounts InputStudio, not StudioWorktable", () => {
+  it("wires App.tsx so /studio mounts StudioOrientationEntry by default", () => {
     const appSource = readFileSync(resolve(process.cwd(), "App.tsx"), "utf8");
 
     expect(appSource).toMatch(
-      /import\s+\{\s*InputStudio\s*\}\s+from\s+"\.\/components\/InputStudio"/,
+      /import\s+\{\s*StudioOrientationEntry\s*\}\s+from\s+"\.\/components\/studio\/StudioOrientationEntry"/,
     );
+    expect(appSource).toMatch(/import\s+\{\s*InputStudio\s*\}\s+from\s+"\.\/components\/InputStudio"/);
     expect(appSource).toMatch(/pathParts\[1\] === "worktable-legacy"/);
     expect(appSource).toMatch(/isStudioWorktableLegacy/);
-    expect(appSource).toMatch(/pathParts\[1\] === "orientation"/);
-    expect(appSource).toMatch(/isStudioOrientation/);
+    expect(appSource).toMatch(/studioConsoleOpen/);
+    expect(appSource).toMatch(/params\.get\("console"\) === "1"/);
 
     const studioMountIdx = appSource.indexOf(
       '{viewMode === "studio" &&\n                      (isStudioWorktableLegacy',
@@ -48,25 +49,24 @@ describe("/studio routing", () => {
         ? afterStudioMount.slice(0, 9000)
         : afterStudioMount.slice(0, nextSiblingIdx);
 
-    expect(studioMountSection).toContain("<InputStudio");
-    expect(studioMountSection).toContain("isStudioOrientation");
     expect(studioMountSection).toContain("<StudioOrientationEntry");
+    expect(studioMountSection).toContain("<InputStudio");
     expect(studioMountSection).toContain("<StudioWorktable");
     expect(studioMountSection).toContain("Legacy worktable · experimental");
 
-    // Primary default branch is InputStudio (after orientation ternary)
+    // Default branch is orientation; console opens InputStudio
     expect(studioMountSection).toMatch(
-      /isStudioOrientation\s*\?\s*\([\s\S]*?<StudioOrientationEntry[\s\S]*?\)\s*:\s*\(\s*<InputStudio/,
+      /studioConsoleOpen\s*\?\s*\([\s\S]*?<InputStudio[\s\S]*?\)\s*:\s*\(\s*<StudioOrientationEntry/,
     );
   });
 
-  it("points LAZY_CHAMBERS.studio at InputStudio", () => {
+  it("points LAZY_CHAMBERS.studio at StudioOrientationEntry", () => {
     const routesSource = readFileSync(
       resolve(process.cwd(), "lib/routes.tsx"),
       "utf8",
     );
     expect(routesSource).toMatch(
-      /studio:\s*lazy\([\s\S]*?InputStudio/,
+      /studio:\s*lazy\([\s\S]*?StudioOrientationEntry/,
     );
     expect(routesSource).toMatch(
       /"studio-orientation":\s*lazy\([\s\S]*?StudioOrientationEntry/,
@@ -115,7 +115,7 @@ describe("/studio routing", () => {
       screen.getByRole("button", { name: /Begin with this/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Archival worktable desk/i }),
+      screen.getByRole("link", { name: /Legacy worktable · experimental/i }),
     ).toBeInTheDocument();
 
     const bodyText = document.body.textContent || "";

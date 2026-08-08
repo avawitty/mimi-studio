@@ -4,7 +4,6 @@
 import type { ArtworkMatch, Doll, DollScene } from '../types';
 import {
   getDoll,
-  listDolls,
   saveDollScene,
   updateDollScene,
   getDollScene,
@@ -42,7 +41,8 @@ async function fetchFriendPortraitUrl(friendUserId: string): Promise<string | nu
     const snap = await getDoc(doc(db, 'profiles_public', friendUserId));
     if (!snap.exists()) return null;
     const data = snap.data();
-    return (data?.dollPortraitUrl as string) || null;
+    const showcase = data?.publicShowcase as { dollPortraitUrl?: string } | undefined;
+    return showcase?.dollPortraitUrl || null;
   } catch {
     return null;
   }
@@ -203,16 +203,16 @@ export async function listFriendDollsForScene(userId: string): Promise<
     try {
       const profileSnap = await getDoc(doc(db, 'profiles_public', friendId));
       const profile = profileSnap.exists() ? profileSnap.data() : null;
-      const dolls = await listDolls(friendId);
-      const portrait =
-        profile?.dollPortraitUrl ||
-        dolls[0]?.identityReferences?.portraitUrl ||
-        dolls[0]?.generatedImageUrl;
+      const showcase = profile?.publicShowcase as
+        | { dollPortraitUrl?: string; dollLabel?: string }
+        | undefined;
+      const portrait = showcase?.dollPortraitUrl;
+      if (!portrait) continue;
       results.push({
         userId: friendId,
         handle: String(profile?.handle || friendId.slice(0, 8)),
         dollPortraitUrl: portrait,
-        dollLabel: String(profile?.dollLabel || dolls[0]?.name || 'Friend doll'),
+        dollLabel: String(showcase?.dollLabel || 'Friend doll'),
       });
     } catch {
       // skip inaccessible friends

@@ -5,14 +5,14 @@ import type {
   UserProfile,
 } from "../types";
 
-/** Public-safe signature excerpt for creator cards — no private graph leakage. */
+/** Public-safe signature excerpt for creator cards — published snapshot only. */
 export type PublicSignatureExcerpt = {
   title: string;
   subtitle?: string;
   motifs: string[];
   semanticLine?: string;
   moodCluster?: string;
-  /** Present when an approved signature plate is published at /u/:handle/signature */
+  /** Present when a taste signature plate is published at /u/:handle/signature */
   fullPagePath?: string;
 };
 
@@ -32,23 +32,22 @@ export const getPublicSignaturePagePath = (handle: string): string => {
   return `/u/${normalized}/signature`;
 };
 
-export const hasApprovedPublicSignature = (profile: UserProfile): boolean =>
-  profile.tasteProfile?.aestheticSignature?.status === "approved";
+export const hasPublishedPublicSignature = (profile: UserProfile): boolean =>
+  Boolean(profile.publicSignature?.signature && profile.publicSignature.publishedAt);
 
 export const resolvePublicProfileIdentity = (
   profile: UserProfile,
   showcase: PublicShowcaseSnapshot | null,
 ): PublicProfileIdentity => {
-  const handle = profile.handle || "creator";
+  const handle = profile.handle || showcase?.handle || "creator";
   const dollPortrait = showcase?.dollPortraitUrl;
-  // Doll likeness is the canonical public avatar; photoURL is interim until publish.
-  const avatarUrl = dollPortrait || profile.photoURL || undefined;
-  const avatarIsDoll = Boolean(dollPortrait && avatarUrl === dollPortrait);
+  const avatarUrl = dollPortrait || undefined;
+  const avatarIsDoll = Boolean(dollPortrait);
 
   return {
     handle,
-    displayName: profile.displayName?.trim() || showcase?.dollLabel || undefined,
-    bio: profile.bio?.trim() || undefined,
+    displayName: showcase?.dollLabel || undefined,
+    bio: showcase?.philosophy?.trim() || undefined,
     avatarUrl,
     avatarIsDoll,
     dollLabel: showcase?.dollLabel,
@@ -60,30 +59,19 @@ export const buildPublicSignatureExcerpt = (
   profile: UserProfile,
   showcase: PublicShowcaseSnapshot | null,
 ): PublicSignatureExcerpt | null => {
-  const signature: AestheticSignature | undefined =
-    profile.tasteProfile?.aestheticSignature;
-  const semantic = profile.tasteProfile?.semantic_signature?.trim();
-
-  if (signature) {
-    const title = signature.primaryAxis || signature.motifs?.[0] || "Taste signature";
+  const published = profile.publicSignature?.signature;
+  if (published) {
+    const title = published.primaryAxis || published.motifs?.[0] || "Taste signature";
     const handle = profile.handle || showcase?.handle || "creator";
     return {
       title,
-      subtitle: signature.secondaryAxis || undefined,
-      motifs: (signature.motifs || signature.core_keywords || []).slice(0, 6),
-      semanticLine: semantic || signature.moodCluster || undefined,
-      moodCluster: signature.moodCluster || undefined,
-      fullPagePath: hasApprovedPublicSignature(profile)
+      subtitle: published.secondaryAxis || undefined,
+      motifs: (published.motifs || published.core_keywords || []).slice(0, 6),
+      semanticLine: published.reading?.thesis || published.moodCluster || undefined,
+      moodCluster: published.moodCluster || undefined,
+      fullPagePath: hasPublishedPublicSignature(profile)
         ? getPublicSignaturePagePath(handle)
         : undefined,
-    };
-  }
-
-  if (semantic) {
-    return {
-      title: "Taste signature",
-      motifs: (showcase?.motifCandidates || []).slice(0, 6),
-      semanticLine: semantic,
     };
   }
 
@@ -126,12 +114,5 @@ export const formatPublicLinkLabel = (link: PublicExternalLink): string => {
 };
 
 export const getPublicExternalLinks = (
-  profile: Pick<UserProfile, "externalLinks">,
-): PublicExternalLink[] =>
-  (profile.externalLinks || [])
-    .filter((link) => link?.url && isPublicHttpUrl(link.url))
-    .map((link) => ({
-      title: link.title?.trim() || "Link",
-      url: link.url.trim(),
-    }))
-    .slice(0, 6);
+  _profile: Pick<UserProfile, "externalLinks" | "publicShowcase">,
+): PublicExternalLink[] => [];

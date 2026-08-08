@@ -32,6 +32,8 @@ import {
     editorialPlateOptionsFromProfile,
     enhanceZineGenerationLayout,
 } from "../lib/zine/enhanceZineGenerationLayout";
+import { applyDirectPathEditorialIntelligence } from "../lib/zine/applyDirectPathEditorialIntelligence";
+import type { ZineIssuePlan } from "../types";
 
 function groundAcquisitionSignal(
   currentSignal: Record<string, unknown>,
@@ -105,7 +107,8 @@ async function realizeGeneratedZineContent(
     _opts: any,
     _media: any[],
     profile?: UserProfile | null,
-): Promise<{ content: any }> {
+): Promise<{ content: any; issuePlan?: ZineIssuePlan }> {
+    const artifactId = draftZineArtifactId();
     let stamped = applyChromaticPaletteToZine(content, profile);
     stamped = applyOwnerPlatesToZine(stamped, profile);
     stamped = applyMaterialSpecimenToZine(stamped, profile);
@@ -114,10 +117,27 @@ async function realizeGeneratedZineContent(
     stamped = applyContactSheetToZine(stamped, _media);
     const enhanced = enhanceZineGenerationLayout({
         content: stamped,
-        artifactId: draftZineArtifactId(),
+        artifactId,
         plateOptions: editorialPlateOptionsFromProfile(profile),
     });
-    return { content: enhanced };
+    const usedContextSnapshots = Array.isArray(_opts?.usedContext)
+        ? _opts.usedContext.map((entry: { atomId: string; title: string; content: string; source?: string }) => ({
+              atomId: entry.atomId,
+              title: entry.title,
+              content: entry.content,
+              source: entry.source,
+          }))
+        : undefined;
+    const fragmentIds = usedContextSnapshots?.map((entry: { atomId: string }) => entry.atomId);
+    const editorial = applyDirectPathEditorialIntelligence({
+        content: enhanced,
+        artifactId,
+        originalInput: _text,
+        fragmentIds,
+        usedContextSnapshots,
+        media: _media,
+    });
+    return { content: editorial.content, issuePlan: editorial.issuePlan };
 }
 
 export const createZine = async (text: string, media: any[], tone: ToneTag, profile: any, opts: any, apiKey?: string, transmissions?: any[], stackIds?: string[], selectedComponents?: any[], zineOptions?: ZineGenerationOptions): Promise<any> => {
@@ -662,12 +682,13 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
         console.error("MIMI // Zine Generation Error:", error);
         
         triggerAlert(`Aesthetic Refraction Active. Initializing Semantic Mirror Fallback: ${error.message || 'Model Timeout'}.`, "error");
-        const simulated = generateSimulatedZine(text, zineOptions || {}, opts?.bypassTailor ? null : profile);
+        const profileToUse = opts?.bypassTailor ? null : profile;
+        const simulated = generateSimulatedZine(text, zineOptions || {}, profileToUse);
         const celestialDraft =
-            profile?.tailorDraft?.celestialCalibration ||
-            profile?.extensions?.celestialCalibration;
+            profileToUse?.tailorDraft?.celestialCalibration ||
+            profileToUse?.extensions?.celestialCalibration;
         const stampedSimulated = applyCelestialToZine(simulated, celestialDraft);
-        return await realizeGeneratedZineContent(stampedSimulated, text, opts, media || [], profile);
+        return await realizeGeneratedZineContent(stampedSimulated, text, opts, media || [], profileToUse);
     }
 };
 

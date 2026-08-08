@@ -416,7 +416,7 @@ export const SignatureApproveBar: React.FC<{
   <div className="flex flex-wrap items-center gap-3 border border-[var(--mimi-hairline)] p-4 bg-[var(--mimi-field)]">
     <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] flex-1 min-w-[12rem]">
       {status === "approved"
-        ? "This signature is approved memory."
+        ? "Approved into Mimi memory — still private until you publish."
         : "Approve this reading to mark it as durable taste memory."}
     </p>
     <PublicCTA variant="ghost" onClick={onRepair} disabled={busy}>
@@ -425,5 +425,32 @@ export const SignatureApproveBar: React.FC<{
     <PublicCTA onClick={onApprove} disabled={busy || status === "approved"}>
       {status === "approved" ? "Approved" : "Approve signature"}
     </PublicCTA>
+  </div>
+);
+
+export const SignaturePublishBar: React.FC<{
+  approved: boolean;
+  published: boolean;
+  onPublish: () => void;
+  onUnpublish: () => void;
+  busy?: boolean;
+}> = ({ approved, published, onPublish, onUnpublish, busy }) => (
+  <div className="flex flex-wrap items-center gap-3 border border-[var(--mimi-hairline)] p-4 bg-[var(--mimi-field)]/80">
+    <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] flex-1 min-w-[12rem]">
+      {published
+        ? "Published public plate — visitors can read /u/:handle/signature."
+        : approved
+          ? "Publish a frozen public snapshot when you are ready to share."
+          : "Approve into memory before publishing publicly."}
+    </p>
+    {published ? (
+      <PublicCTA variant="ghost" onClick={onUnpublish} disabled={busy}>
+        Unpublish
+      </PublicCTA>
+    ) : (
+      <PublicCTA onClick={onPublish} disabled={busy || !approved}>
+        Publish public plate
+      </PublicCTA>
+    )}
   </div>
 );

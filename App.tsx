@@ -1448,9 +1448,6 @@ export const App: React.FC = () => {
       : null;
   const rawViewMode = pathParts[0] || "studio";
   const viewMode = isZineRoute ? "studio" : canonicalizeMimiRoute(rawViewMode);
-  /** Calm orientation intake — optional alternate /studio entry. */
-  const isStudioOrientation =
-    viewMode === "studio" && pathParts[1] === "orientation";
   /** Experimental archival desk — not the primary /studio entry. */
   const isStudioWorktableLegacy =
     viewMode === "studio" && pathParts[1] === "worktable-legacy";
@@ -2900,7 +2897,37 @@ export const App: React.FC = () => {
                             </div>
                           </div>
                         )
-                      ) : isStudioOrientation ? (
+                      ) : studioConsoleOpen ? (
+                        <div className="relative h-full min-h-0 flex flex-col">
+                          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--mimi-hairline,#d4d4d4)] bg-[var(--mimi-worktable,#fafafa)]">
+                            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--mimi-stone,#78716c)]">
+                              Full compose console
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStudioConsoleOpen(false);
+                                navigate("/studio", { replace: true });
+                              }}
+                              className="min-h-10 px-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-ink,#0a0a0a)] border border-[var(--mimi-hairline,#d4d4d4)]"
+                            >
+                              Back to orientation
+                            </button>
+                          </div>
+                          <div className="flex-1 min-h-0">
+                            <InputStudio
+                              onRefine={handleRefine}
+                              isThinking={appState === AppState.THINKING}
+                              initialValue={threadValue}
+                              initialMedia={threadMedia}
+                              initialCoverVariants={threadCoverVariants}
+                              initialHighFidelity={threadHighFidelity}
+                              zineOptions={zineOptions}
+                              setZineOptions={setZineOptions}
+                            />
+                          </div>
+                        </div>
+                      ) : (
                         <StudioOrientationEntry
                           onRefine={handleRefine}
                           isThinking={appState === AppState.THINKING}
@@ -2912,17 +2939,6 @@ export const App: React.FC = () => {
                           onNavigate={setViewMode}
                           onNavigatePath={navigate}
                           onOpenGuide={() => setIsGuideOpen(true)}
-                        />
-                      ) : (
-                        <InputStudio
-                          onRefine={handleRefine}
-                          isThinking={appState === AppState.THINKING}
-                          initialValue={threadValue}
-                          initialMedia={threadMedia}
-                          initialCoverVariants={threadCoverVariants}
-                          initialHighFidelity={threadHighFidelity}
-                          zineOptions={zineOptions}
-                          setZineOptions={setZineOptions}
                         />
                       ))}
                     {viewMode !== "studio" && (

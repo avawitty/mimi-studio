@@ -54,6 +54,16 @@ function seedSpreadLayout(page: ZinePageSpec): ZinePageSpec {
   };
 }
 
+/** Re-seed spread layouts after editorial plan alignment without re-inserting plates. */
+export function seedSpreadLayoutsOnPages(pages: ZinePageSpec[]): ZinePageSpec[] {
+  return pages.map((page, index) =>
+    seedSpreadLayout({
+      ...page,
+      pageNumber: index + 1,
+    }),
+  );
+}
+
 /**
  * Post-process raw model output into authored pages with stable IDs and
  * default spread layouts — without running the editorial issue-plan pipeline.

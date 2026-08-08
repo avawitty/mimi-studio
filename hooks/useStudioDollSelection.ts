@@ -43,7 +43,11 @@ export function useStudioDollSelection(userId?: string | null) {
     try {
       const list = await listDolls(userId);
       setDolls(list);
-      if (activeDollId && !list.some((d) => d.id === activeDollId)) {
+      const storedId = readStoredActiveDollId();
+      if (storedId && list.some((d) => d.id === storedId)) {
+        setActiveDollIdState(storedId);
+        setEnabled(true);
+      } else if (activeDollId && !list.some((d) => d.id === activeDollId)) {
         setActiveDollIdState(null);
         writeStoredActiveDollId(null);
         setEnabled(false);
@@ -56,6 +60,14 @@ export function useStudioDollSelection(userId?: string | null) {
   useEffect(() => {
     void refreshDolls();
   }, [refreshDolls]);
+
+  useEffect(() => {
+    if (!userId || userId === "ghost" || loading) return;
+    const storedId = readStoredActiveDollId();
+    if (!storedId || !dolls.some((doll) => doll.id === storedId)) return;
+    setActiveDollIdState((prev) => prev ?? storedId);
+    setEnabled(true);
+  }, [userId, dolls, loading]);
 
   useEffect(() => {
     const handler = () => {
