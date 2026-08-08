@@ -2572,8 +2572,12 @@ export interface DollDeclaredAttributes {
 }
 
 export interface DollOnboardingRefs {
+  /** Legacy inline data URL — prefer userPhotoUrl for new records. */
   userPhotoDataUrl?: string;
+  userPhotoUrl?: string;
+  /** Legacy inline data URLs — prefer aestheticRefUrls for new records. */
   aestheticRefDataUrls?: string[];
+  aestheticRefUrls?: string[];
   rawThought?: string;
   /** Creator-authored likeness attributes for doll generation. */
   declaredAttributes?: DollDeclaredAttributes;
