@@ -66,6 +66,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Scribe + Tailor curation ingest into taste spine
+
+**Decision:** Mirror Scribe `MemoryAtom` saves to deterministic `EvidenceAtom` ids (`scribe_{memoryId}`) with content refresh on update. On Tailor pattern/law curation, upsert matching `TasteAssertion` rows (`tailor_{targetType}_{id}`) with LIKES/DISLIKES from user status. Merge server + local Used Context on hydrate (latest `addedAt` wins per atom+target).
+
+**Alternatives rejected:** (1) Keep Scribe memory as a separate taste silo. (2) Assertions only from manual correction chips. (3) Server overwrite of local Used Context tray.
+
+**Why:** Substantial taste data requires every capture and approval path to feed the same canonical spine; curation in Tailor should immediately surface in `getTasteState()` without waiting for a separate compiler-only path.
+
+**Ref:** `lib/taste/scribeAtomBridge.ts`, `lib/taste/curationAssertionBridge.ts`, `services/taste/mirrorScribeToEvidenceAtom.ts`, `services/tasteModelService.ts` (`syncCurationToAssertion`), `services/usedContextService.ts`
+
+---
+
 ## 2026-08-08 — Unified Taste Graph summary read path
 
 **Decision:** Add `GET /api/mimi/taste-graph/summary` as the canonical server read for Taste Graph chambers: `TasteState` + latest `TasteModelSnapshot` + projected graph (`projectTasteModelToGraph` preferred over legacy `tasteGraphNodes` when signal is richer) + readiness gaps + server Used Context. Remove demonstration nodes from `/taste-graph` when empty. Mirror Pocket saves into deterministic `EvidenceAtom` ids (`pocket_{itemId}`) via `mirrorPocketItemToEvidenceAtom`. Persist Used Context tray to Firestore (`users/{uid}/studioMeta/usedContext`) with `GET/PUT /api/mimi/used-context` and client hydrate on empty local store.
