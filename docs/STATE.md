@@ -41,7 +41,7 @@
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
-| **Observatory** | `/observatory` | **partial** | Unified chamber: eye plate, segments, live `/api/collective/mmm-report`, contribution panel; demo opt-in only | Mesopic live aggregation; cycle-position inference from live corpus |
+| **Observatory** | `/observatory` | **partial** | Live MMM + Mesopic API, cycle notes, window selector (7–90d), in-chamber withdraw | Mesopic promotion rules tuning; cycle inference calibration |
 | **Mean Median Mode** | `/mean-median-mode` | **partial** | In-chamber segment (same shell as Observatory) | Route alias only — no separate UI fork |
 | **Forecast** | `/forecast` | partial | Cultural vector uses live MMM API (empty when no corpus) | Remove any residual costume metrics; approved RSS ingest |
 | **Celestial Calibration** | `/celestial-calibration` | shipped | Rising/houses need time + geocoded place | — |

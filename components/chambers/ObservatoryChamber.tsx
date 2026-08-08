@@ -4,12 +4,17 @@ import { MeanMedianModePanel } from "../observatory/MeanMedianModePanel";
 import { MesopicLensPanel } from "../observatory/MesopicLensPanel";
 import { ObservatoryEyePlate } from "../observatory/ObservatoryEyePlate";
 import { ObservatoryContributionPanel } from "../observatory/ObservatoryContributionPanel";
+import { ObservatoryWindowSelector } from "../observatory/ObservatoryWindowSelector";
 import {
   fetchLiveMeanMedianModeReport,
   loadMeanMedianModeReport,
   loadMesopicReport,
+  type ObservatoryWindowDays,
 } from "../../services/collective";
-import type { MeanMedianModeReport } from "../../schemas/collectiveIntelligenceContracts";
+import type {
+  MeanMedianModeReport,
+  MesopicReport,
+} from "../../schemas/collectiveIntelligenceContracts";
 import {
   MEAN_MEDIAN_MODE_MODULE_ID,
   OBSERVATORY_CHAMBER_MODULE_ID,
@@ -33,7 +38,9 @@ export const ObservatoryChamber: React.FC<{
   const [segment, setSegment] = useState<ObservatorySegment>(
     focus === "mmm" ? "mmm" : "overview",
   );
+  const [windowDays, setWindowDays] = useState<ObservatoryWindowDays>(7);
   const [report, setReport] = useState<MeanMedianModeReport | null>(null);
+  const [mesopicReport, setMesopicReport] = useState<MesopicReport | null>(null);
   const [corpusMeta, setCorpusMeta] = useState({
     zinesScanned: 0,
     contributingZines: 0,
@@ -42,7 +49,6 @@ export const ObservatoryChamber: React.FC<{
   const [loading, setLoading] = useState(true);
   const [showDemo, setShowDemo] = useState(false);
 
-  const mesopic = loadMesopicReport(showDemo ? "demonstration" : "empty");
   const moduleId =
     segment === "mmm" || focus === "mmm"
       ? MEAN_MEDIAN_MODE_MODULE_ID
@@ -50,9 +56,10 @@ export const ObservatoryChamber: React.FC<{
 
   const loadReport = useCallback(async () => {
     setLoading(true);
-    const live = await fetchLiveMeanMedianModeReport({ days: 7 });
+    const live = await fetchLiveMeanMedianModeReport({ days: windowDays });
     if (live) {
       setReport(live.report);
+      setMesopicReport(live.mesopic ?? loadMesopicReport("empty"));
       setCorpusMeta({
         zinesScanned: live.corpus.zinesScanned,
         contributingZines: live.corpus.contributingZines,
@@ -61,10 +68,11 @@ export const ObservatoryChamber: React.FC<{
       setShowDemo(false);
     } else {
       setReport(loadMeanMedianModeReport("empty"));
+      setMesopicReport(loadMesopicReport("empty"));
       setCorpusMeta({ zinesScanned: 0, contributingZines: 0, signalCount: 0 });
     }
     setLoading(false);
-  }, []);
+  }, [windowDays]);
 
   useEffect(() => {
     void loadReport();
@@ -87,8 +95,19 @@ export const ObservatoryChamber: React.FC<{
     report.status !== "empty" &&
     report.profiles.length > 0;
 
+  const isMesopicLive =
+    mesopicReport &&
+    !mesopicReport.demonstration &&
+    mesopicReport.status !== "empty" &&
+    mesopicReport.findings.length > 0;
+
   const displayReport =
     showDemo && !isLive ? loadMeanMedianModeReport("demonstration") : report;
+
+  const displayMesopic =
+    showDemo && !isMesopicLive
+      ? loadMesopicReport("demonstration")
+      : mesopicReport ?? loadMesopicReport("empty");
 
   const go = (view: string) => {
     if (navigate) {
@@ -129,21 +148,28 @@ export const ObservatoryChamber: React.FC<{
     >
       <div className="h-full overflow-y-auto bg-[#050506] text-stone-100">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-8">
-          <div className="flex flex-wrap gap-2 border-b border-white/10 pb-4">
-            {SEGMENTS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setSegment(tab.id)}
-                className={`px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.2em] border transition-colors ${
-                  segment === tab.id
-                    ? "bg-stone-100 text-[#050506] border-stone-100"
-                    : "border-white/15 text-stone-500 hover:text-stone-200"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div className="flex flex-wrap gap-2">
+              {SEGMENTS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSegment(tab.id)}
+                  className={`px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.2em] border transition-colors ${
+                    segment === tab.id
+                      ? "bg-stone-100 text-[#050506] border-stone-100"
+                      : "border-white/15 text-stone-500 hover:text-stone-200"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <ObservatoryWindowSelector
+              value={windowDays}
+              onChange={(days) => setWindowDays(days)}
+              variant="void"
+            />
           </div>
 
           {segment === "overview" ? (
@@ -168,6 +194,7 @@ export const ObservatoryChamber: React.FC<{
                 navigate={navigate}
                 corpusContributing={corpusMeta.contributingZines}
                 corpusScanned={corpusMeta.zinesScanned}
+                onContributionChange={() => void loadReport()}
               />
 
               <div className="flex flex-wrap gap-2">
@@ -217,7 +244,7 @@ export const ObservatoryChamber: React.FC<{
             <div className="space-y-6 observatory-mmm-readout">
               <div className="space-y-2 max-w-2xl">
                 <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-stone-500">
-                  Mean Median Mode
+                  Mean Median Mode · {windowDays}d window
                 </p>
                 <p className="font-serif italic text-xl md:text-2xl text-stone-100 leading-relaxed">
                   {OBSERVATORY_COPY.mmmThesis}
@@ -242,11 +269,11 @@ export const ObservatoryChamber: React.FC<{
 
           {segment === "mesopic" ? (
             <div className="space-y-6">
-              <MesopicLensPanel
-                report={showDemo ? loadMesopicReport("demonstration") : mesopic}
-                tone="void"
-              />
-              {!showDemo ? (
+              <p className="font-mono text-[8px] uppercase tracking-[0.28em] text-stone-500">
+                Mesopic Lens · {windowDays}d window
+              </p>
+              <MesopicLensPanel report={displayMesopic} tone="void" />
+              {!isMesopicLive && !showDemo ? (
                 <button
                   type="button"
                   onClick={() => setShowDemo(true)}

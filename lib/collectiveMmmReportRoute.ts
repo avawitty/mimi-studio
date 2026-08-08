@@ -1,10 +1,10 @@
 /**
  * GET /api/collective/mmm-report
- * Live Mean Median Mode aggregate from consented public structure — never silent demo.
+ * Live collective perception: Mean Median Mode + Mesopic from consented public structure.
  */
 
 import { cors, requireMethod, sendError, sendJson } from "./apiUtils.js";
-import { buildMeanMedianModeReportFromSignals } from "../services/collective/buildMeanMedianModeReport.js";
+import { buildCollectivePerceptionReports } from "../services/collective/buildMeanMedianModeReport.js";
 import { extractSignalsFromCorpus } from "../services/collective/loadConsentedPublicCorpus.js";
 import type { ZineMetadata } from "../types.js";
 
@@ -61,14 +61,15 @@ export async function handleCollectiveMmmReportRoute(req: any, res: any) {
 
     const zines = await loadPublicZineCorpus(200);
     const corpus = extractSignalsFromCorpus(zines);
-    const report = buildMeanMedianModeReportFromSignals(corpus.signals, {
+    const { meanMedianMode, mesopic } = buildCollectivePerceptionReports(corpus.signals, {
       windowMs,
-      runId: `live-mmm-${Date.now()}`,
+      runId: `live-collective-${Date.now()}`,
     });
 
     res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
     return sendJson(res, 200, {
-      report,
+      report: meanMedianMode,
+      mesopic,
       corpus: {
         zinesScanned: corpus.zinesScanned,
         contributingZines: corpus.contributingZines,

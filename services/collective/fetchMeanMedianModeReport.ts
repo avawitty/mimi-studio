@@ -1,12 +1,16 @@
 /**
- * Client fetch for live collective Mean Median Mode report.
+ * Client fetch for live collective perception reports (MMM + Mesopic).
  */
 
-import type { MeanMedianModeReport } from "../../schemas/collectiveIntelligenceContracts";
-import { meanMedianModeReportSchema } from "../../schemas/collectiveIntelligenceContracts";
+import type { MeanMedianModeReport, MesopicReport } from "../../schemas/collectiveIntelligenceContracts";
+import {
+  meanMedianModeReportSchema,
+  mesopicReportSchema,
+} from "../../schemas/collectiveIntelligenceContracts";
 
 export type CollectiveMmmReportResponse = {
   report: MeanMedianModeReport;
+  mesopic?: MesopicReport;
   corpus: {
     zinesScanned: number;
     contributingZines: number;
@@ -14,6 +18,9 @@ export type CollectiveMmmReportResponse = {
     windowDays: number;
   };
 };
+
+export const OBSERVATORY_WINDOW_DAYS = [7, 14, 30, 90] as const;
+export type ObservatoryWindowDays = (typeof OBSERVATORY_WINDOW_DAYS)[number];
 
 export async function fetchLiveMeanMedianModeReport(
   options?: { days?: number },
@@ -25,8 +32,12 @@ export async function fetchLiveMeanMedianModeReport(
     const data = (await res.json()) as CollectiveMmmReportResponse;
     const parsed = meanMedianModeReportSchema.safeParse(data.report);
     if (!parsed.success) return null;
+    const mesopicParsed = data.mesopic
+      ? mesopicReportSchema.safeParse(data.mesopic)
+      : null;
     return {
       report: parsed.data,
+      mesopic: mesopicParsed?.success ? mesopicParsed.data : undefined,
       corpus: data.corpus,
     };
   } catch {

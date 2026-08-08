@@ -14,6 +14,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Observatory follow-up: Mesopic live, cycles, withdraw, windows
+
+**Decision:** Extend `/api/collective/mmm-report` to return **Mesopic** findings from below-threshold consented signals; infer **cycle notes** from window-half velocity on promoted profiles; add **7/14/30/90d** window selector in UI; enable **in-chamber withdraw** (`withdrawMmmContributionFields`) and unpublish without Pocket.
+
+**Alternatives rejected:** (1) Mesopic as separate API route (same corpus, one fetch). (2) Cycle labels from volume alone without velocity gate. (3) Pocket-only withdraw (user asked for chamber action).
+
+**Ref:** `buildMesopicReport.ts`, `inferCycleNotes.ts`, `ObservatoryContributionPanel.tsx`, `ObservatoryWindowSelector.tsx`
+
+---
+
 ## 2026-08-08 — Observatory unified chamber + live collective MMM API
 
 **Decision:** Collapse Observatory UX into one void-plate chamber with segments (Overview · Mean Median Mode · Mesopic). Default readout loads **`GET /api/collective/mmm-report`** — aggregates consented public zines from sovereign archive or Firestore, never silent demonstration fixtures. Demonstration specimens are explicit opt-in. Contribution panel surfaces corpus stats + Proscenium/Pocket CTAs. MMM strips hand off to Residue via `?q=` prefill. Forecast cultural vector consumes the same live API (honest empty when corpus insufficient).

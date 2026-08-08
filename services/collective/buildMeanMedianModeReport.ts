@@ -16,12 +16,14 @@ import {
 import {
   METHODOLOGY_LIMITATIONS_DEFAULT,
   MMM_METHODOLOGY_VERSION,
+  MMM_PROMOTION_MIN_GROUP_SIZE,
 } from "./methodology";
 import { emptyMeanMedianModeReport } from "../../fixtures/collective/demoMeanMedianModeReport";
+import { inferCycleNotesFromGroups } from "./inferCycleNotes";
+import { buildMesopicReportFromSignals } from "./buildMesopicReport";
 
 const DEFAULT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_PROFILES = 6;
-const MIN_GROUP_SIZE = 3;
 
 function atmosphereFromProfiles(
   profiles: MeanMedianModeReport["profiles"],
@@ -86,9 +88,18 @@ export function buildMeanMedianModeReportFromSignals(
 
   const grouped = groupObservationsByLabel(observations);
   const ranked = [...grouped.entries()]
-    .filter(([, obs]) => obs.length >= MIN_GROUP_SIZE)
+    .filter(([, obs]) => obs.length >= MMM_PROMOTION_MIN_GROUP_SIZE)
     .sort((a, b) => b[1].length - a[1].length)
     .slice(0, MAX_PROFILES);
+
+  const signalTimesByArtifact = new Map<string, number>();
+  for (const signal of inWindow) {
+    const t = signal.observedAt ?? signal.extractedAt;
+    const prev = signalTimesByArtifact.get(signal.sourceArtifactId);
+    if (!prev || t > prev) {
+      signalTimesByArtifact.set(signal.sourceArtifactId, t);
+    }
+  }
 
   const profiles = ranked.map(([label, obs], index) =>
     buildCentralTendencyProfile({
@@ -105,6 +116,24 @@ export function buildMeanMedianModeReportFromSignals(
     (p) => p.summation.interpretation !== "insufficient_evidence",
   );
 
+  const cycleGroups = promoted.map((profile) => {
+    const label = profile.mode.label;
+    const obs = grouped.get(label) ?? [];
+    return {
+      signalId: profile.signalId,
+      label,
+      observations: obs,
+      profile,
+    };
+  });
+
+  const cycleNotes = inferCycleNotesFromGroups({
+    groups: cycleGroups,
+    windowStart,
+    windowEnd,
+    signalTimesByArtifact,
+  });
+
   if (promoted.length === 0) {
     const partial = meanMedianModeReportSchema.parse({
       ...emptyMeanMedianModeReport(now),
@@ -113,6 +142,7 @@ export function buildMeanMedianModeReportFromSignals(
       presentAtmosphere:
         "Consented structure is accumulating — motifs are not yet strong enough for a promoted collective readout.",
       seekingModes: seekingModesFromSignals(inWindow),
+      cycleNotes,
       whatMayBeMissing: [
         "More diverse consented artifacts in this window.",
         "Additional contributors staging on The Proscenium with collective contribution enabled.",
@@ -139,7 +169,7 @@ export function buildMeanMedianModeReportFromSignals(
     profiles: promoted,
     presentAtmosphere: atmosphereFromProfiles(promoted),
     seekingModes: seekingModesFromSignals(inWindow),
-    cycleNotes: [],
+    cycleNotes,
     methodologyVersion: MMM_METHODOLOGY_VERSION,
     limitations: [...METHODOLOGY_LIMITATIONS_DEFAULT],
     whatMayBeMissing: [
@@ -159,6 +189,47 @@ export function buildMeanMedianModeReportFromSignals(
       lastUpdated: now,
     },
   });
+}
+
+/** Build MMM + Mesopic from the same consented signal corpus. */
+export function buildCollectivePerceptionReports(
+  signals: CollectiveSignal[],
+  options?: {
+    now?: number;
+    windowMs?: number;
+    runId?: string;
+  },
+): {
+  meanMedianMode: MeanMedianModeReport;
+  mesopic: import("../../schemas/collectiveIntelligenceContracts").MesopicReport;
+  promotedLabels: Set<string>;
+} {
+  const now = options?.now ?? Date.now();
+  const windowMs = options?.windowMs ?? DEFAULT_WINDOW_MS;
+  const windowStart = now - windowMs;
+  const windowEnd = now;
+
+  const inWindow = signals.filter((s) => {
+    const t = s.observedAt ?? s.extractedAt;
+    return t >= windowStart && t <= windowEnd;
+  });
+
+  const observations = observationsFromEligibleSignals(inWindow);
+  const grouped = groupObservationsByLabel(observations);
+  const promotedLabels = new Set(
+    [...grouped.entries()]
+      .filter(([, obs]) => obs.length >= MMM_PROMOTION_MIN_GROUP_SIZE)
+      .map(([label]) => label),
+  );
+
+  const meanMedianMode = buildMeanMedianModeReportFromSignals(signals, options);
+  const mesopic = buildMesopicReportFromSignals(inWindow, promotedLabels, {
+    now,
+    windowMs,
+    runId: `live-mesopic-${now}`,
+  });
+
+  return { meanMedianMode, mesopic, promotedLabels };
 }
 
 function slugLabel(label: string): string {

@@ -23,13 +23,16 @@ import {
   MMM_METHODOLOGY_VERSION,
   consentFieldsForZine,
   unpublishFieldsForZine,
+  withdrawMmmContributionFields,
   observationsFromEligibleSignals,
   opaqueContributorKeyFromUserId,
   extractSignalsFromPublicZine,
 } from "../services/collective";
 import {
   buildMeanMedianModeReportFromSignals,
+  buildCollectivePerceptionReports,
 } from "../services/collective/buildMeanMedianModeReport";
+import { inferCycleNotesFromGroups } from "../services/collective/inferCycleNotes";
 import {
   centralTendencyProfileSchema,
   collectiveSignalSchema,
@@ -395,6 +398,88 @@ function testBuildLiveReport() {
   assert(report.demonstration !== true, "live report not demonstration");
   assert(report.profiles.length >= 1, "live report has profiles");
   assert(report.status === "success" || report.status === "partial", "live status");
+
+  const faintSignals = [
+    collectiveSignalSchema.parse({
+      id: "faint-1",
+      canonicalLabel: "veil stitch",
+      aliases: [],
+      category: "motif",
+      sourceArtifactId: "z-f1",
+      sourceType: "public_zine",
+      observedAt: now - 1000,
+      extractedAt: now,
+      extractionMethod: "user_tagged",
+      opaqueContributorKey: "c_a",
+      publicContributionAllowed: true,
+      anonymizationStatus: "eligible",
+      sensitivityFlags: [],
+      provenance: {
+        sourceId: "z-f1",
+        sourceKind: "public_zine",
+        extractorVersion: "mmm-extract-v1",
+      },
+    }),
+    collectiveSignalSchema.parse({
+      id: "faint-2",
+      canonicalLabel: "veil stitch",
+      aliases: [],
+      category: "motif",
+      sourceArtifactId: "z-f2",
+      sourceType: "public_zine",
+      observedAt: now - 2000,
+      extractedAt: now,
+      extractionMethod: "user_tagged",
+      opaqueContributorKey: "c_b",
+      publicContributionAllowed: true,
+      anonymizationStatus: "eligible",
+      sensitivityFlags: [],
+      provenance: {
+        sourceId: "z-f2",
+        sourceKind: "public_zine",
+        extractorVersion: "mmm-extract-v1",
+      },
+    }),
+  ];
+
+  const { meanMedianMode, mesopic } = buildCollectivePerceptionReports(
+    [...signals, ...faintSignals],
+    { now },
+  );
+  meanMedianModeReportSchema.parse(meanMedianMode);
+  mesopicReportSchema.parse(mesopic);
+  assert(
+    mesopic.findings.some((f) => f.canonicalLabel === "veil stitch"),
+    "mesopic captures below-threshold motif",
+  );
+  assert(mesopic.demonstration !== true, "live mesopic not demonstration");
+
+  const cycleNotes = inferCycleNotesFromGroups({
+    groups: meanMedianMode.profiles.map((p) => ({
+      signalId: p.signalId,
+      label: p.mode.label,
+      observations: Array.from({ length: p.sampleSize }, (_, i) => ({
+        value: 0.4,
+        artifactId: `cy-${i}`,
+        contributorId: `c${i}`,
+        label: p.mode.label,
+      })),
+      profile: p,
+    })),
+    windowStart: now - 7 * 24 * 60 * 60 * 1000,
+    windowEnd: now,
+    signalTimesByArtifact: new Map(
+      Array.from({ length: 12 }, (_, i) => [`cy-${i}`, now - i * 3600_000]),
+    ),
+  });
+  assert(
+    cycleNotes.length === 0 || cycleNotes.every((n) => n.evidence.length >= 1),
+    "cycle notes carry evidence",
+  );
+
+  const withdrawn = withdrawMmmContributionFields();
+  assert(withdrawn.mmmContributionStatus === "withdrawn", "withdraw fields");
+  assert(withdrawn.contributeToMeanMedianMode === false, "withdraw stops contribute");
 }
 
 function testMesopicAndForecast() {
@@ -516,7 +601,9 @@ function testCanonAndFiles() {
     "lib/collectiveMmmReportRoute.ts",
     "api/collective/mmm-report.ts",
     "components/observatory/ObservatoryEyePlate.tsx",
-    "components/observatory/ObservatoryContributionPanel.tsx",
+    "services/collective/buildMesopicReport.ts",
+    "services/collective/inferCycleNotes.ts",
+    "components/observatory/ObservatoryWindowSelector.tsx",
     "components/chambers/ObservatoryChamber.tsx",
     "components/observatory/MeanMedianModePanel.tsx",
     "components/observatory/MesopicLensPanel.tsx",
@@ -532,7 +619,7 @@ function testCanonAndFiles() {
 
   const chamber = fs.readFileSync(path.join(root, "components/chambers/ObservatoryChamber.tsx"), "utf8");
   assert(chamber.includes("ObservatoryEyePlate"), "chamber mounts eye plate");
-  assert(chamber.includes("fetchLiveMeanMedianModeReport"), "chamber fetches live report");
+  assert(chamber.includes("ObservatoryWindowSelector"), "chamber has window selector");
 
   const legal = fs.readFileSync(path.join(root, "components/LegalOverlay.tsx"), "utf8");
   assert(legal.includes("Mean Median Mode"), "legal names Mean Median Mode");

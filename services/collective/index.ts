@@ -5,6 +5,8 @@ export * from "./consent";
 export * from "./extractSignals";
 export * from "./contribute";
 export * from "./buildMeanMedianModeReport";
+export * from "./buildMesopicReport";
+export * from "./inferCycleNotes";
 export * from "./loadConsentedPublicCorpus";
 export * from "./loadMeanMedianModeReport";
 export * from "./fetchMeanMedianModeReport";
