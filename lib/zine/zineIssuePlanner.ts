@@ -83,6 +83,10 @@ export function inferPageSectionType(
     case "sonic":
     case "chromatic":
     case "owner-carousel":
+    case "used-context":
+    case "contact-sheet":
+    case "material-specimen":
+    case "forecast-drift":
       return "evidence";
     case "debris":
       return "debris";

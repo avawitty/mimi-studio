@@ -5887,7 +5887,7 @@ export const TailorView: React.FC<{
                                 <GlossaryTooltip
                                   term="Editorial Plates"
                                   poeticMeaning="The calibration spreads that frame each issue."
-                                  functionalMeaning="Enable or disable screenplay, chromatic, celestial, signal index, sonic, and owner carousel plates in generated zines."
+                                  functionalMeaning="Enable or disable screenplay, chromatic, celestial, signal index, sonic, contact sheet, used context, material specimen, forecast drift, and owner carousel plates in generated zines."
                                 >
                                   <span>Editorial Plates</span>
                                 </GlossaryTooltip>
@@ -5896,6 +5896,11 @@ export const TailorView: React.FC<{
                             >
                               <div className="space-y-4">
                                 {[
+                                  {
+                                    id: "contact-sheet",
+                                    name: "Contact Sheet",
+                                    desc: "Intake evidence grid — studio uploads before interpretation.",
+                                  },
                                   {
                                     id: "screenwrite",
                                     name: "Screenwrite",
@@ -5907,6 +5912,16 @@ export const TailorView: React.FC<{
                                     desc: "Tailor palette swatches for this issue's color world.",
                                   },
                                   {
+                                    id: "material-specimen",
+                                    name: "Material Specimen",
+                                    desc: "Tailor materiality and silhouette signals as handled evidence.",
+                                  },
+                                  {
+                                    id: "forecast-drift",
+                                    name: "Forecast Drift",
+                                    desc: "Strategic saturation and drift vectors from Tailor.",
+                                  },
+                                  {
                                     id: "celestial",
                                     name: "Celestial Calibration",
                                     desc: "Natal and issue-moment sky as an ephemeris-backed plate.",
@@ -5915,6 +5930,11 @@ export const TailorView: React.FC<{
                                     id: "signal-index",
                                     name: "Signal Index",
                                     desc: "Indexed semiotic motifs and visual directives.",
+                                  },
+                                  {
+                                    id: "used-context",
+                                    name: "Used Context",
+                                    desc: "Approved Taste Graph atoms as a provenance spread.",
                                   },
                                   {
                                     id: "sonic",

@@ -21,7 +21,11 @@ import { celestialTimingForGeneration } from "../lib/celestial/compileCelestialR
 import { applyCelestialToZine } from "../lib/celestial/applyCelestialToZine";
 import {
     applyChromaticPaletteToZine,
+    applyContactSheetToZine,
+    applyForecastDriftToZine,
+    applyMaterialSpecimenToZine,
     applyOwnerPlatesToZine,
+    applyUsedContextToZine,
 } from "../lib/zine/applyEditorialStamps";
 import {
     draftZineArtifactId,
@@ -104,6 +108,10 @@ async function realizeGeneratedZineContent(
 ): Promise<{ content: any }> {
     let stamped = applyChromaticPaletteToZine(content, profile);
     stamped = applyOwnerPlatesToZine(stamped, profile);
+    stamped = applyMaterialSpecimenToZine(stamped, profile);
+    stamped = applyForecastDriftToZine(stamped, profile);
+    stamped = applyUsedContextToZine(stamped, _opts?.usedContext);
+    stamped = applyContactSheetToZine(stamped, _media);
     const enhanced = enhanceZineGenerationLayout({
         content: stamped,
         artifactId: draftZineArtifactId(),

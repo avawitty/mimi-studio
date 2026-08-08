@@ -75,4 +75,30 @@ describe("insertEditorialPlates", () => {
     expect(merged.some((p) => p.grammar === "chromatic")).toBe(true);
     expect(merged.some((p) => p.grammar === "owner-carousel")).toBe(true);
   });
+
+  it("inserts provenance and intake plates when stamped data exists", () => {
+    const merged = insertEditorialPlates({
+      ...base,
+      contact_sheet_frames: [
+        { id: "f1", imageUrl: "https://example.com/1.jpg", label: "Ref" },
+      ],
+      used_context_atoms: [
+        { atomId: "a1", title: "Atom", content: "Approved memory" },
+      ],
+      material_specimen: {
+        materiality: ["Linen"],
+        silhouettes: ["Fluid"],
+        sourceLabel: "Tailor",
+      },
+      forecast_drift: {
+        oversaturatedClusters: ["Minimal luxury"],
+        fragileDifferentiators: ["Grain"],
+        isDemonstration: false,
+      },
+    });
+    expect(merged[0].grammar).toBe("contact-sheet");
+    expect(merged.some((p) => p.grammar === "used-context")).toBe(true);
+    expect(merged.some((p) => p.grammar === "material-specimen")).toBe(true);
+    expect(merged.some((p) => p.grammar === "forecast-drift")).toBe(true);
+  });
 });

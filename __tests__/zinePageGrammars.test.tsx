@@ -18,6 +18,10 @@ const GRAMMARS: ZinePageGrammar[] = [
   "signal-index",
   "chromatic",
   "owner-carousel",
+  "used-context",
+  "contact-sheet",
+  "material-specimen",
+  "forecast-drift",
 ];
 
 describe("exemplary zine page grammars", () => {

@@ -14,10 +14,14 @@ export type TailorAlgoId = (typeof TAILOR_ALGO_IDS)[number];
 
 /** Editorial calibration plates — all enabled unless listed in `disabledPlates`. */
 export const EDITORIAL_PLATE_IDS = [
+  "contact-sheet",
   "screenwrite",
   "chromatic",
+  "material-specimen",
+  "forecast-drift",
   "celestial",
   "signal-index",
+  "used-context",
   "sonic",
   "owner-carousel",
 ] as const;

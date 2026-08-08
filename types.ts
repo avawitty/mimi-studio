@@ -148,6 +148,38 @@ export interface ZineOwnerPlateSlide {
   altText?: string;
 }
 
+/** Intake evidence frame for the contact-sheet calibration plate. */
+export interface ZineContactSheetFrame {
+  id: string;
+  imageUrl?: string;
+  label?: string;
+  mimeType?: string;
+}
+
+/** Tailor materiality snapshot for the material-specimen plate. */
+export interface MaterialSpecimenPlateData {
+  materiality: string[];
+  silhouettes: string[];
+  eraBias?: string;
+  presentation?: string;
+  paperStock?: MaterialityConfig["paperStock"];
+  typographyLineage?: MaterialityConfig["typographyLineage"];
+  colorScheme?: MaterialityConfig["colorScheme"];
+  sourceLabel?: string;
+}
+
+/** Strategic drift snapshot for the forecast-drift plate. */
+export interface ForecastDriftPlateData {
+  oversaturatedClusters: string[];
+  fragileDifferentiators: string[];
+  dilutionRisks?: string[];
+  driftVulnerability?: number;
+  expansionTolerance?: number;
+  /** True when sourced from demonstration fixtures — honest labeling in UI. */
+  isDemonstration: boolean;
+  sourceLabel?: string;
+}
+
 /** Palette stamped for the Chromatic Calibration plate. */
 export interface ChromaticPlatePalette {
   colors: ColorShard[];
@@ -596,6 +628,14 @@ export interface ZineSpec {
   chromatic_palette?: ChromaticPlatePalette;
   /** Owner-authored carousel slides (Add your own plate). */
   owner_plates?: ZineOwnerPlateSlide[];
+  /** Approved atoms stamped at generation for the Used Context plate. */
+  used_context_atoms?: UsedContextSnapshot[];
+  /** Intake image frames for the contact-sheet plate. */
+  contact_sheet_frames?: ZineContactSheetFrame[];
+  /** Tailor materiality snapshot for the material-specimen plate. */
+  material_specimen?: MaterialSpecimenPlateData;
+  /** Strategic drift snapshot for the forecast-drift plate. */
+  forecast_drift?: ForecastDriftPlateData;
 
   // Legacy fields
   oracular_mirror?: string;
@@ -669,7 +709,11 @@ export type ZinePageGrammar =
   | "sonic"
   | "signal-index"
   | "chromatic"
-  | "owner-carousel";
+  | "owner-carousel"
+  | "used-context"
+  | "contact-sheet"
+  | "material-specimen"
+  | "forecast-drift";
 
 export type ZineSectionType =
   | "cover"
@@ -1073,6 +1117,10 @@ export interface ZinePageSpec {
     signals?: SemioticSignal[];
     palette?: ChromaticPlatePalette;
     ownerSlides?: ZineOwnerPlateSlide[];
+    usedContextAtoms?: UsedContextSnapshot[];
+    contactSheetFrames?: ZineContactSheetFrame[];
+    materialSpecimen?: MaterialSpecimenPlateData;
+    forecastDrift?: ForecastDriftPlateData;
   };
 }
 

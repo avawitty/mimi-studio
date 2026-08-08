@@ -66,6 +66,34 @@ function buildSmokeZine(): ZineMetadata {
         body: "My refraction on Mimi's reading for this smoke test.",
       },
     ],
+    used_context_atoms: [
+      {
+        atomId: "atom-1",
+        title: "Approved shard",
+        content: "Filed memory that shaped this issue.",
+        source: "Scribe",
+      },
+    ],
+    contact_sheet_frames: [
+      {
+        id: "frame-1",
+        imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400",
+        label: "Intake ref",
+      },
+    ],
+    material_specimen: {
+      materiality: ["Archival linen", "Soft grain"],
+      silhouettes: ["Structured"],
+      eraBias: "Post-Digital",
+      sourceLabel: "Tailor · Materiality",
+    },
+    forecast_drift: {
+      oversaturatedClusters: ["Quiet luxury"],
+      fragileDifferentiators: ["Grain texture"],
+      driftVulnerability: 4,
+      isDemonstration: false,
+      sourceLabel: "Tailor · Strategic vectors",
+    },
     pages: [
       {
         pageNumber: 99,
@@ -134,9 +162,13 @@ test.describe("Editorial plates + public refractions smoke", () => {
     });
 
     await expect(page.locator('[data-plate-grammar="screenwrite"]')).toBeVisible();
+    await expect(page.locator('[data-plate-grammar="contact-sheet"]')).toBeVisible();
     await expect(page.locator('[data-plate-grammar="chromatic"]')).toBeVisible();
+    await expect(page.locator('[data-plate-grammar="material-specimen"]')).toBeVisible();
+    await expect(page.locator('[data-plate-grammar="forecast-drift"]')).toBeVisible();
     await expect(page.locator('[data-plate-grammar="celestial"]')).toBeVisible();
     await expect(page.locator('[data-plate-grammar="signal-index"]')).toBeVisible();
+    await expect(page.locator('[data-plate-grammar="used-context"]')).toBeVisible();
     await expect(page.locator('[data-plate-grammar="sonic"]')).toBeVisible();
     await expect(page.locator('[data-plate-grammar="owner-carousel"]')).toBeVisible();
     await expect(

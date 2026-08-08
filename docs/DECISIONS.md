@@ -573,3 +573,13 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `components/TailorView.tsx`, `components/ZineOwnerPlatesEditor.tsx`, `contexts/UserContext.tsx`, `lib/zine/applyEditorialStamps.ts`
 
+---
+
+## 2026-08-08 — Provenance + intake editorial plates (batch)
+
+**Decision:** Add four calibration plates to the editorial stack: `contact-sheet` (intake image grid), `material-specimen` (Tailor materiality), `forecast-drift` (Tailor strategic vectors — not live Forecast chamber demo), and `used-context` (approved atoms as spread). Plate order: contact → screenwrite → chromatic → material → forecast → celestial → signal → used context → sonic → owner. Hide legacy Used Context colophon section when the plate is present.
+
+**Alternatives rejected:** (1) Keep Used Context as footer-only — loses composition grammar. (2) Wire forecast-drift to demonstration MMM fixtures — honest labeling requires Tailor-sourced vectors until Forecast ships live data.
+
+**Ref:** `lib/zine/buildPlateStampData.ts`, `lib/zine/insertEditorialPlates.ts`, `components/zine/grammars/*PlatePage.tsx`
+

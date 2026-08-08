@@ -254,6 +254,10 @@ export const AnalysisDisplay: React.FC<{
    () => metadata.content?.pages?.some((page) => page.grammar === 'celestial') ?? false,
    [metadata.content?.pages],
  );
+ const hasUsedContextPlate = useMemo(
+   () => metadata.content?.pages?.some((page) => page.grammar === 'used-context') ?? false,
+   [metadata.content?.pages],
+ );
 
  const handleOwnerPlatesChange = useCallback(
    (slides: ZineOwnerPlateSlide[]) => {
@@ -2577,7 +2581,7 @@ export const AnalysisDisplay: React.FC<{
  )}
 
  {/* 9b. USED CONTEXT — colophon: what approved knowledge shaped this issue */}
- {(scribeFragments.length > 0 || (metadata.fragmentsUsed?.length ?? 0) > 0) && (
+ {!hasUsedContextPlate && (scribeFragments.length > 0 || (metadata.fragmentsUsed?.length ?? 0) > 0) && (
  <motion.section initial={{ opacity: 0, y: 50, filter: 'blur(10px)' }} whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: 1, ease: 'easeOut' }} className="min-h-[100dvh] flex flex-col justify-center px-6 md:px-24 snap-start bg-nous-base text-nous-text print:min-h-0 print:py-12">
  <div className="max-w-3xl w-full space-y-12">
  <div className="space-y-4 border-b border-nous-border pb-8">

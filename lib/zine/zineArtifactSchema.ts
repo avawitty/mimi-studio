@@ -35,6 +35,10 @@ export const zinePageGrammarSchema = z.enum([
   "signal-index",
   "chromatic",
   "owner-carousel",
+  "used-context",
+  "contact-sheet",
+  "material-specimen",
+  "forecast-drift",
 ]);
 
 export const zineSectionTypeSchema = z.enum([
