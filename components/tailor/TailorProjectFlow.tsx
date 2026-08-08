@@ -52,6 +52,8 @@ import { ArtHistoryMirrorScreen } from './ArtHistoryMirrorScreen';
 import { GenerationBlockedPanel } from './GenerationBlockedPanel';
 import type { CuriosityPromptId } from '../../services/tailorEvidenceIntake';
 import { buildDirectStatementEvidence, CURIOSITY_PROMPTS } from '../../services/tailorEvidenceIntake';
+import { evidenceSavedLocallyOnly } from '../../services/tailorEvidenceLocalStore';
+import { toUserFacingError } from '../../lib/formatUserError';
 import { useTasteModel } from '../../hooks/useTasteModel';
 import {
   compileAndSaveTasteModel,
@@ -183,17 +185,22 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
       await refreshProjectData(project.id);
       const updated = await listEvidenceNodes(uid, project.id);
       setEvidence(updated);
+      const savedLocally = updated.some((e) => evidenceSavedLocallyOnly(e));
       window.dispatchEvent(
         new CustomEvent("mimi:registry_alert", {
           detail: {
-            message: `${files.length} evidence item${files.length === 1 ? "" : "s"} staged for reading.`,
-            type: "success",
+            message: savedLocally
+              ? `${files.length} reference${files.length === 1 ? "" : "s"} saved on this device. Cloud sync is paused — you can still read them.`
+              : `${files.length} evidence item${files.length === 1 ? "" : "s"} staged for reading.`,
+            type: savedLocally ? "announcement" : "success",
           },
         }),
       );
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Could not stage evidence. Try again or upload a screenshot.";
+      const message = toUserFacingError(
+        err,
+        "Could not save references. Try a smaller screenshot or paste a link instead.",
+      );
       console.error("MIMI // Tailor evidence upload failed", err);
       window.dispatchEvent(
         new CustomEvent("mimi:registry_alert", {
@@ -259,10 +266,10 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
       await refreshProjectData(project.id);
       setStep('patterns');
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Reading failed. Check your evidence sources and try again.";
+      const message = toUserFacingError(
+        err,
+        "Reading failed. Check your evidence sources and try again.",
+      );
       console.error("MIMI // Tailor analyze failed", err);
       window.dispatchEvent(
         new CustomEvent("mimi:registry_alert", {

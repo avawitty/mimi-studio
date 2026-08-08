@@ -41,6 +41,12 @@ import {
 } from './tailorProfileContract';
 import { stripUndefined } from '../lib/stripUndefined';
 import {
+  saveTailorEvidenceLocal,
+  listTailorEvidenceLocal,
+  mergeEvidenceWithLocal,
+  slimEvidenceForFirestore,
+} from './tailorEvidenceLocalStore';
+import {
   buildCurationEventPayload,
   buildPatternClusterCurationPatch,
 } from './tailorCuration';
@@ -209,17 +215,25 @@ export async function addEvidenceNode(
     updatedAt: now,
   };
 
+  await saveTailorEvidenceLocal(evidence);
+
+  const cloudPayload = slimEvidenceForFirestore(evidence);
+
   try {
-    await setDoc(doc(projectCol(userId, projectId, 'evidenceNodes'), id), evidence);
-    const nodes = await listEvidenceNodes(userId, projectId);
-    const readConfidence = getReadConfidenceLabel(nodes.length);
-    await updateTailorProject(userId, projectId, {
-      evidenceCount: nodes.length,
-      readConfidence,
-    });
-    const project = await getTailorProject(userId, projectId);
-    if (project?.tasteGraphId) {
-      await appendToTasteGraph(userId, project.tasteGraphId, { evidenceNodeIds: [id] });
+    await setDoc(doc(projectCol(userId, projectId, 'evidenceNodes'), id), stripUndefined(cloudPayload));
+    try {
+      const nodes = await listEvidenceNodesFromFirestore(userId, projectId);
+      const readConfidence = getReadConfidenceLabel(nodes.length);
+      await updateTailorProject(userId, projectId, {
+        evidenceCount: nodes.length,
+        readConfidence,
+      });
+      const project = await getTailorProject(userId, projectId);
+      if (project?.tasteGraphId) {
+        await appendToTasteGraph(userId, project.tasteGraphId, { evidenceNodeIds: [id] });
+      }
+    } catch (postErr) {
+      console.warn("MIMI // Tailor evidence post-write sync skipped:", postErr);
     }
 
     void createEvidenceAtom(userId, evidenceNodeToAtomInput(evidence, projectId)).catch((err) => {
@@ -229,35 +243,60 @@ export async function addEvidenceNode(
     await saveLocalEvidenceNode(evidence);
     return evidence;
   } catch (e) {
-    if (isFirestoreQuotaError(e)) {
-      await saveLocalEvidenceNode(evidence);
-      const nodes = await listLocalEvidenceNodes(userId, projectId);
-      const readConfidence = getReadConfidenceLabel(nodes.length);
+    const raw = e instanceof Error ? e.message : String(e);
+    if (isFirestoreQuotaError(e) || /offline/i.test(raw)) {
+      const localOnly: EvidenceNode = {
+        ...evidence,
+        extractedMetadata: {
+          ...(evidence.extractedMetadata || {}),
+          storageTier: 'local_only',
+          localMediaKey: id,
+        },
+      };
+      await saveTailorEvidenceLocal(localOnly);
+      await saveLocalEvidenceNode(localOnly);
+      const archiveLocal = await listLocalEvidenceNodes(userId, projectId);
+      const merged = mergeEvidenceWithLocal(archiveLocal, await listTailorEvidenceLocal(userId, projectId));
+      const readConfidence = getReadConfidenceLabel(merged.length);
       await updateTailorProject(userId, projectId, {
-        evidenceCount: nodes.length,
+        evidenceCount: merged.length,
         readConfidence,
       });
       const project = await getTailorProject(userId, projectId);
       if (project?.tasteGraphId) {
         await mergeLocalTasteGraphIds(userId, project.tasteGraphId, { evidenceNodeIds: [id] });
       }
-      return evidence;
+      console.warn("MIMI // Tailor evidence cloud sync deferred; kept on device.", raw);
+      return localOnly;
     }
     handleFirestoreError(e, OperationType.WRITE, `evidenceNodes/${id}`);
     throw e;
   }
 }
 
+async function listEvidenceNodesFromFirestore(
+  userId: string,
+  projectId: string,
+): Promise<EvidenceNode[]> {
+  const snap = await getDocs(projectCol(userId, projectId, 'evidenceNodes'));
+  return snap.docs.map((d) => d.data() as EvidenceNode);
+}
+
 export async function listEvidenceNodes(userId: string, projectId: string): Promise<EvidenceNode[]> {
   if (!userId || userId === 'ghost') return [];
+  const blobLocal = await listTailorEvidenceLocal(userId, projectId);
   try {
-    const snap = await getDocs(projectCol(userId, projectId, 'evidenceNodes'));
-    const nodes = snap.docs.map((d) => d.data() as EvidenceNode);
-    for (const node of nodes) await saveLocalEvidenceNode(node);
-    return nodes;
+    const cloud = await listEvidenceNodesFromFirestore(userId, projectId);
+    for (const node of cloud) await saveLocalEvidenceNode(node);
+    return mergeEvidenceWithLocal(cloud, blobLocal);
   } catch (e) {
     if (isFirestoreQuotaError(e)) {
-      return await listLocalEvidenceNodes(userId, projectId);
+      const archiveLocal = await listLocalEvidenceNodes(userId, projectId);
+      return mergeEvidenceWithLocal(archiveLocal, blobLocal);
+    }
+    if (blobLocal.length > 0) {
+      console.warn("MIMI // Firestore evidence list failed; using local blob cache.", e);
+      return blobLocal;
     }
     handleFirestoreError(e, OperationType.GET, 'evidenceNodes');
     return await listLocalEvidenceNodes(userId, projectId);

@@ -18,6 +18,7 @@ import {
   type TailorEvidenceItem,
   type TailorEvidenceScope,
 } from '../../services/tailorEvidenceIntake';
+import { evidenceSavedLocallyOnly } from '../../services/tailorEvidenceLocalStore';
 import { ReadProgressBanner } from './evidenceIntake/ReadProgressBanner';
 import { SourceModules } from './evidenceIntake/SourceModules';
 import { EvidenceReview } from './evidenceIntake/EvidenceReview';
@@ -428,6 +429,7 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
 
   // Committed evidence preview (compact)
   const committedPreview = evidence.slice(0, 12);
+  const hasLocalOnlyEvidence = evidence.some((e) => evidenceSavedLocallyOnly(e));
 
   return (
     <div className="mx-auto w-full max-w-3xl lg:max-w-4xl px-4 py-6 pb-[max(6rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-10">
@@ -468,6 +470,65 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
 
       <ReadProgressBanner progress={progress} />
 
+      {hasLocalOnlyEvidence && (
+        <div
+          className="mb-6 border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-nous-text"
+          role="status"
+        >
+          <p className="font-mono text-[9px] uppercase tracking-widest text-amber-700 dark:text-amber-400 mb-1">
+            Saved on this device
+          </p>
+          <p className="text-nous-subtle text-[13px]">
+            Cloud sync is paused (database limit). Your references are stored here and Mimi can still read them.
+          </p>
+        </div>
+      )}
+
+      {committedPreview.length > 0 && (
+        <section className="mb-8" aria-label="Accepted evidence">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-nous-subtle mb-3">
+            Ready to read · {evidence.length} reference{evidence.length === 1 ? '' : 's'}
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            {committedPreview.map((node) => (
+              <CommittedThumb key={node.id} node={node} />
+            ))}
+          </div>
+          {evidence.length > committedPreview.length && (
+            <p className="mt-2 text-[11px] text-nous-subtle">
+              +{evidence.length - committedPreview.length} more
+            </p>
+          )}
+        </section>
+      )}
+
+      <CuriositySelector
+        selected={curiosityIds}
+        customText={customCuriosity}
+        onToggle={toggleCuriosity}
+        onCustomChange={setCustomCuriosity}
+      />
+
+      <section className="mb-8 mt-8" aria-labelledby="context-heading">
+        <h3 id="context-heading" className="font-mono text-[10px] uppercase tracking-[0.22em] text-nous-subtle mb-2">
+          Anything else we should know?
+        </h3>
+        <label htmlFor={contextId} className="sr-only">
+          Share anything that feels like you
+        </label>
+        <textarea
+          id={contextId}
+          value={blurb}
+          onChange={(e) => onBlurbChange(e.target.value)}
+          rows={3}
+          className="w-full border border-nous-border/50 bg-transparent px-4 py-3 text-sm leading-relaxed resize-none focus:outline-none focus:border-nous-text/40 min-h-[96px]"
+          placeholder="Share anything that feels like you—or something Mimi might otherwise misunderstand."
+        />
+        <p className="mt-2 text-[11px] text-nous-subtle leading-relaxed">
+          Contradictions are welcome. Direct statements outrank inference.
+        </p>
+      </section>
+
       <SourceModules
         letterboxdValue={letterboxdValue}
         pinterestValue={pinterestValue}
@@ -497,6 +558,12 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
         }
         completedSources={completedSources}
       />
+
+      {!rows.length && staged.filter((s) => !s.isCollection).length === 0 && (
+        <p className="mb-6 text-sm text-nous-subtle leading-relaxed border border-dashed border-nous-border/40 px-4 py-4">
+          Add a link, screenshot, or file above. Selected references appear in the review tray before you read.
+        </p>
+      )}
 
       <EvidenceReview
         rows={rows}
@@ -554,75 +621,8 @@ export const EvidenceUploadScreen: React.FC<EvidenceUploadScreenProps> = ({
         }}
       />
 
-      {committedPreview.length > 0 && (
-        <section className="mb-10" aria-label="Accepted evidence">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-nous-subtle mb-3">
-            In evidence · {evidence.length}
-          </p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-            {committedPreview.map((node) => (
-              <CommittedThumb key={node.id} node={node} />
-            ))}
-          </div>
-          {evidence.length > committedPreview.length && (
-            <p className="mt-2 text-[11px] text-nous-subtle">
-              +{evidence.length - committedPreview.length} more
-            </p>
-          )}
-        </section>
-      )}
-
-      {/* Direct context */}
-      <section className="mb-8" aria-labelledby="context-heading">
-        <h3 id="context-heading" className="font-mono text-[10px] uppercase tracking-[0.22em] text-nous-subtle mb-2">
-          Anything else we should know?
-        </h3>
-        <label htmlFor={contextId} className="sr-only">
-          Share anything that feels like you
-        </label>
-        <textarea
-          id={contextId}
-          value={blurb}
-          onChange={(e) => onBlurbChange(e.target.value)}
-          rows={4}
-          className="w-full border border-nous-border/50 bg-transparent px-4 py-3 text-sm leading-relaxed resize-none focus:outline-none focus:border-nous-text/40 min-h-[120px]"
-          placeholder="Share anything that feels like you—or something Mimi might otherwise misunderstand."
-        />
-        <p className="mt-2 text-[11px] text-nous-subtle leading-relaxed">
-          Contradictions are welcome. Taste is rarely one clean category. Direct statements outrank inference.
-        </p>
-      </section>
-
-      {/* Living interpretation notice */}
-      <aside className="mb-10 border border-nous-border/40 bg-[#F3EDE6]/70 dark:bg-[#161616] px-4 py-4 sm:px-5 flex gap-3 items-start">
-        <Sparkles size={16} className="shrink-0 mt-0.5 text-nous-text/70" aria-hidden />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm leading-relaxed text-nous-text">
-            Mimi builds a living interpretation from everything you share. Add new evidence, remove old
-            references, explore different versions of yourself, and watch the synthesis evolve in real time.
-          </p>
-          <p className="mt-2 text-[12px] leading-relaxed text-nous-subtle">
-            There is no final version of your taste—only better evidence and sharper interpretations.
-          </p>
-        </div>
-        <div className="hidden sm:flex gap-1 shrink-0 pt-1" aria-hidden>
-          <Sparkles size={10} className="text-nous-subtle/60" />
-          <Sparkles size={8} className="text-nous-subtle/40 mt-1" />
-          <Sparkles size={6} className="text-nous-subtle/30 mt-2" />
-        </div>
-      </aside>
-
-      <CuriositySelector
-        selected={curiosityIds}
-        customText={customCuriosity}
-        onToggle={toggleCuriosity}
-        onCustomChange={setCustomCuriosity}
-      />
-
-      {/* Closing */}
-      <footer className="text-center mb-6">
-        <Sparkles size={12} className="mx-auto mb-3 text-nous-subtle" aria-hidden />
-        <p className="font-serif italic text-lg sm:text-xl text-nous-text mb-6">
+      <footer className="text-center mt-10 mb-4">
+        <p className="font-serif italic text-base sm:text-lg text-nous-text">
           Bring your evidence. Mimi writes a theory.
         </p>
       </footer>
