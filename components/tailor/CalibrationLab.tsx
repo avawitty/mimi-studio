@@ -13,6 +13,11 @@ import {
 } from "../../services/tasteIntelligenceClient";
 import { useUser } from "../../contexts/UserContext";
 import { compileAndSaveTasteModel } from "../../services/tasteModelService";
+import { useTasteModel } from "../../hooks/useTasteModel";
+import {
+  buildE2eTasteSnapshot,
+  isE2eTailorPatternsFixture,
+} from "../../lib/e2e/tailorPatternGraphFixture";
 
 const DECIDING_DIMENSIONS = [
   "composition",
@@ -33,13 +38,56 @@ interface CalibrationLabProps {
   navigate?: (path: string) => void;
 }
 
+export function deriveCalibrationCandidates(
+  tasteSnapshot: TasteModelSnapshot | null | undefined,
+  externalCandidates?: CalibrationCandidateInput[],
+): CalibrationCandidateInput[] {
+  if (externalCandidates && externalCandidates.length >= 2) {
+    return externalCandidates;
+  }
+  if (!tasteSnapshot) return [];
+  const features = tasteSnapshot.featureWeights.slice(0, 12);
+  const pairs: CalibrationCandidateInput[] = [];
+  for (let i = 0; i < features.length - 1; i += 2) {
+    const a = features[i]!;
+    const b = features[i + 1]!;
+    pairs.push({
+      id: `pair-${a.featureId}`,
+      label: a.label,
+      featureIds: [a.featureId],
+      sourceIds: a.sourceIds,
+    });
+    pairs.push({
+      id: `pair-${b.featureId}`,
+      label: b.label,
+      featureIds: [b.featureId],
+      sourceIds: b.sourceIds,
+    });
+  }
+  return pairs;
+}
+
 export const CalibrationLab: React.FC<CalibrationLabProps> = ({
-  projectId,
-  tasteSnapshot,
+  projectId: projectIdProp,
+  tasteSnapshot: tasteSnapshotProp,
   candidates: externalCandidates,
   navigate,
 }) => {
   const { user } = useUser();
+  const projectIdFromUrl = useMemo(() => {
+    if (typeof window === "undefined") return undefined;
+    return new URLSearchParams(window.location.search).get("project") ?? undefined;
+  }, []);
+  const projectId = projectIdProp ?? projectIdFromUrl;
+  const e2eFixture = isE2eTailorPatternsFixture();
+  const tasteModel = useTasteModel({
+    userId: user?.uid,
+    projectId,
+    autoLoad: Boolean(user?.uid) && !tasteSnapshotProp && !e2eFixture,
+  });
+  const tasteSnapshot =
+    tasteSnapshotProp ?? (e2eFixture ? buildE2eTasteSnapshot() : tasteModel.activeSnapshot);
+  const tasteLoading = !tasteSnapshotProp && !e2eFixture && tasteModel.loading;
   const [session, setSession] = useState<TasteCalibrationSession | null>(null);
   const [pair, setPair] = useState<TasteCalibrationPair | null>(null);
   const [left, setLeft] = useState<CalibrationCandidateInput | null>(null);
@@ -55,45 +103,34 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({
   const [selectedDimensions, setSelectedDimensions] = useState<string[]>([]);
   const [undoStack, setUndoStack] = useState<string[]>([]);
 
-  const derivedCandidates = useMemo((): CalibrationCandidateInput[] => {
-    if (externalCandidates && externalCandidates.length >= 2) {
-      return externalCandidates;
-    }
-    if (!tasteSnapshot) return [];
-    const features = tasteSnapshot.featureWeights.slice(0, 12);
-    const pairs: CalibrationCandidateInput[] = [];
-    for (let i = 0; i < features.length - 1; i += 2) {
-      const a = features[i]!;
-      const b = features[i + 1]!;
-      pairs.push({
-        id: `pair-${a.featureId}`,
-        label: a.label,
-        featureIds: [a.featureId],
-        sourceIds: a.sourceIds,
-      });
-      pairs.push({
-        id: `pair-${b.featureId}`,
-        label: b.label,
-        featureIds: [b.featureId],
-        sourceIds: b.sourceIds,
-      });
-    }
-    return pairs;
-  }, [externalCandidates, tasteSnapshot]);
+  const derivedCandidates = useMemo(
+    () => deriveCalibrationCandidates(tasteSnapshot, externalCandidates),
+    [externalCandidates, tasteSnapshot],
+  );
 
-  const loadSession = useCallback(async () => {
-    if (!user?.uid) return;
+  const resumeActiveSession = useCallback(async () => {
+    if (!user?.uid || derivedCandidates.length < 2) return;
     try {
       const { session: active } = await getActiveCalibrationSession(projectId);
+      if (!active) return;
       setSession(active);
+      if (active.status === "completed") return;
+      const result = await startCalibrationSession({
+        projectId,
+        candidates: derivedCandidates,
+      });
+      setSession(result.session);
+      setPair(result.pair);
+      setLeft(result.left ?? null);
+      setRight(result.right ?? null);
     } catch {
       // Neon may be unavailable locally — honest empty state
     }
-  }, [user?.uid, projectId]);
+  }, [user?.uid, projectId, derivedCandidates]);
 
   useEffect(() => {
-    void loadSession();
-  }, [loadSession]);
+    void resumeActiveSession();
+  }, [resumeActiveSession]);
 
   const beginSession = async () => {
     if (!user?.uid || derivedCandidates.length < 2) {
@@ -154,14 +191,23 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({
       if (user?.uid && choice !== "skip") {
         await compileAndSaveTasteModel({ userId: user.uid, projectId });
       }
-      const next = await startCalibrationSession({
-        projectId,
-        candidates: derivedCandidates,
-      });
-      setPair(next.pair);
-      setLeft(next.left ?? null);
-      setRight(next.right ?? null);
-      setSession(next.session);
+      if (
+        session.answeredQuestionCount + 1 < session.targetQuestionCount &&
+        choice !== "skip"
+      ) {
+        const next = await startCalibrationSession({
+          projectId,
+          candidates: derivedCandidates,
+        });
+        setPair(next.pair);
+        setLeft(next.left ?? null);
+        setRight(next.right ?? null);
+        setSession(next.session);
+      } else {
+        setPair(null);
+        setLeft(null);
+        setRight(null);
+      }
       setShowReasonSheet(false);
       setPendingChoice(null);
       setSelectedDimensions([]);
@@ -206,22 +252,33 @@ export const CalibrationLab: React.FC<CalibrationLabProps> = ({
       {!session && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <p className="text-sm text-mimi-stone">
-            {derivedCandidates.length < 2
-              ? "Compile a taste model with at least two features first."
-              : "Start a short calibration session. Questions are chosen by active learning, not random pairs."}
+            {tasteLoading
+              ? "Loading your taste model…"
+              : derivedCandidates.length < 2
+                ? "Compile a taste model with at least two features first — run Evidence Intake, then return here."
+                : "Start a short calibration session. Questions are chosen by active learning, not random pairs."}
           </p>
           <button
             type="button"
             onClick={() => void beginSession()}
-            disabled={loading || derivedCandidates.length < 2}
+            disabled={loading || tasteLoading || derivedCandidates.length < 2}
             className="min-h-[44px] rounded border border-mimi-ink bg-mimi-ink px-6 py-3 text-sm text-mimi-field disabled:opacity-40"
           >
             {loading ? "Starting…" : "Begin calibration"}
           </button>
+          {derivedCandidates.length < 2 && !tasteLoading && (
+            <button
+              type="button"
+              onClick={() => navigate?.("/tailor/evidence")}
+              className="min-h-[44px] border border-mimi-hairline px-4 py-2 text-sm text-mimi-stone"
+            >
+              Go to Evidence Intake
+            </button>
+          )}
         </div>
       )}
 
-      {session && pair && left && right && (
+      {session && session.status !== "completed" && pair && left && right && (
         <div className="flex flex-1 flex-col gap-4">
           <div
             className="flex items-center justify-between text-xs text-mimi-stone"
