@@ -330,3 +330,15 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 **Why:** Closes the loop from capture → interpretation → correction → generation without requiring a separate analyze step from the user.
 
 **Ref:** `lib/taste/evidenceAtomAnalysis.ts`, `lib/taste/serverTasteState.ts`, `lib/mimiGenerateTextRoute.ts`
+
+---
+
+## 2026-08-08 — Taste Intelligence Phase 2 (Pocket mirror, embeddings, generation)
+
+**Decision:** Mirror Pocket saves into `evidenceAtoms` via `pocketItemToAtomInput` (non-blocking, same pattern as Tailor bridge). After server interpretation, embed `semanticDescription` into `users/{uid}/evidenceAtomEmbeddings/{atomId}` and set `embeddingRef` on the atom. Inject `getServerTastePromptContext()` into `synthesize-dossier`; client zine bake path fetches taste state for `createZine` and `bakeZineVisualPlates`.
+
+**Alternatives rejected:** (1) Store embedding vectors inline on the atom document — bloats atom reads and mixes retrieval payload with evidence metadata. (2) Block Pocket save on atom mirror — keeps Pocket fast; mirror failures are logged only.
+
+**Why:** Closes Phase 2 ingest parity (Tailor + Pocket → canonical atoms), enables future semantic retrieval, and extends taste-aware generation to dossier synthesis and hi-fi zine plate bakes.
+
+**Ref:** `lib/taste/pocketItemBridge.ts`, `lib/taste/evidenceAtomEmbedding.ts`, `api/mimi/synthesize-dossier.ts`, `lib/bakeZinePlates.ts`, `services/zineGenerator.ts`

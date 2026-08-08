@@ -33,6 +33,7 @@ import type {
 } from "../../types";
 import type { CreateEvidenceAtomInput } from "../../lib/taste/evidenceAtomSchema";
 import { buildEvidenceAtomFromInput } from "../../lib/taste/buildEvidenceAtom";
+import { sanitizeFirestoreData } from "../firebaseUtils";
 import { scheduleEvidenceAtomAnalysis } from "./scheduleEvidenceAtomAnalysis";
 
 const uid = () =>
@@ -71,7 +72,7 @@ export async function createEvidenceAtom(
   const ref = evidenceAtomRef(userId, id);
   const atom = buildEvidenceAtomFromInput(userId, input, { id, now });
 
-  await setDoc(ref, atom);
+  await setDoc(ref, sanitizeFirestoreData(atom));
   scheduleEvidenceAtomAnalysis(id);
   return { id, atom };
 }

@@ -9,6 +9,8 @@ import {
   scoreAssertion,
 } from "../lib/taste/tasteStateLogic";
 import { evidenceNodeToAtomInput } from "../lib/taste/evidenceNodeBridge";
+import { pocketItemToAtomInput } from "../lib/taste/pocketItemBridge";
+import { evidenceAtomEmbeddingRef } from "../lib/taste/evidenceAtomEmbedding";
 import { buildEvidenceAtomFromInput } from "../lib/taste/buildEvidenceAtom";
 import { createEvidenceAtomSchema } from "../lib/taste/evidenceAtomSchema";
 import { atomReactionToCorrection } from "../lib/taste/correctionLogic";
@@ -118,5 +120,31 @@ assert(
 assert(atomReactionToCorrection("accepted") === "YES", "accepted maps to YES chip");
 assert(atomReactionToCorrection("rejected") === "NOT_ME", "rejected maps to NOT_ME chip");
 assert(atomReactionToCorrection("suggested") === undefined, "suggested has no chip selection");
+
+// ─── Pocket bridge ────────────────────────────────────────────────────────────
+
+const pocketBridged = pocketItemToAtomInput({
+  id: "item_x",
+  userId: "u1",
+  title: "",
+  source: "",
+  timestamp: Date.now(),
+  type: "text",
+  savedAt: Date.now(),
+  content: { text: "Sparse editorial note" },
+  tags: ["note"],
+});
+assert(pocketBridged.ingestSource === "pocket", "pocket items mirror with pocket ingestSource");
+assert(
+  (pocketBridged.sourceMetadata as { pocketItemId?: string }).pocketItemId === "item_x",
+  "bridge stores pocket item id in metadata",
+);
+
+// ─── Embedding ref ────────────────────────────────────────────────────────────
+
+assert(
+  evidenceAtomEmbeddingRef("u1", "atom-1") === "users/u1/evidenceAtomEmbeddings/atom-1",
+  "embedding ref is a stable users-scoped path",
+);
 
 console.log("verify:taste-intelligence — all checks passed");
