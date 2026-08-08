@@ -94,6 +94,8 @@ JSONB holds versioned payloads; relational columns support owner/project/status/
 | `/api/mimi/taste-intelligence/saved-reason/propose` | POST | Propose why-saved hypotheses for artifact |
 | `/api/mimi/taste-intelligence/saved-reason` | GET | List hypotheses (`?artifactId=`) |
 | `/api/mimi/taste-intelligence/saved-reason/review` | POST | Confirm / reject / edit hypothesis |
+| `/api/mimi/taste-intelligence/compiler/compile` | POST | Compile + reconcile generation contract |
+| `/api/mimi/taste-intelligence/critic/critique` | POST | Critique candidate against contract |
 
 Auth: `verifyMimiSession`. Writes: idempotent keys. AI-backed critic extraction: future route via `ai/operations` (credits).
 
@@ -103,7 +105,7 @@ Auth: `verifyMimiSession`. Writes: idempotent keys. AI-backed critic extraction:
 | --- | --- |
 | Calibration Lab | `/tailor/calibrate` → `CalibrationLab` |
 | Graph editing | `PatternGraphScreen` + `TasteModelInspector` |
-| Compiler / critic / modes | Studio generation surfaces (integrate via contracts) |
+| Compiler / critic / modes | `InputStudio` → `TasteGenerationContractCard`, `TasteGenerationModePicker`, `TasteCritiqueCard` |
 | Scry reranking | `ScryView` (consume `tasteSearch.ts`) |
 | Why saved | Pocket capture flow |
 | Passport | Profile / private universe |

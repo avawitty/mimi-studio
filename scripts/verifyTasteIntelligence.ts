@@ -13,6 +13,8 @@ import {
   compileTasteGenerationContract,
   critiqueAgainstContract,
   extractCandidateFeatures,
+  mergeGenerationContracts,
+  formatGenerationContractPrompt,
   computeSaturationState,
   buildTastePassport,
   detectContradictions,
@@ -161,6 +163,23 @@ const critique = critiqueAgainstContract({
   extracted,
 });
 assert(typeof critique.alignmentScore === "number", "critique score");
+
+const merged = mergeGenerationContracts(aligned, {
+  objective: "Editorial test objective",
+  preserve: ["Tailor preserve"],
+  emphasize: [],
+  transform: [],
+  avoid: ["Tailor avoid"],
+  globalRefusals: ["Global refusal"],
+  projectConstraints: ["Project constraint"],
+});
+assert(
+  merged.reconciliation.sources.includes("tailor_profile_v2"),
+  "tailor reconciliation",
+);
+assert(merged.contract.avoid.includes("Global refusal"), "global refusals merged");
+const prompt = formatGenerationContractPrompt(merged.contract, merged.reconciliation);
+assert(prompt.includes("TASTE GENERATION CONTRACT"), "prompt block");
 
 const sat = computeSaturationState("f1", [
   {
