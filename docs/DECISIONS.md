@@ -6,6 +6,42 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Taste Intelligence OS v2 (Neon operational layer + Calibration Lab)
+
+**Decision:** Extend the v1 computational taste model into a coherent intelligence layer without a second Taste Graph. New operational writes go to Neon (`mimi.taste_*` tables) via authenticated `/api/mimi/taste-intelligence/*` routes; `services/tasteModelService.ts` dual-writes/dual-reads during Firestore migration. Calibration Lab lives at `/tailor/calibrate` with deterministic active-learning pair selection and Bradley-Terry-style calibration deltas. Sentinel memory policy is a separate headless layer (`lib/tasteIntelligence/sentinelPolicy.ts` + `SentinelMemoryReview`) — `CaptiveSentinel` remains the in-app browser guard only.
+
+**Alternatives rejected:** (1) Second canonical taste graph. (2) Replacing Tailor Profile v2. (3) LLM as hidden scoring function. (4) React → Neon direct connections. (5) Repurposing CaptiveSentinel for agent memory.
+
+**Why:** ADR 001 alignment, explainable learning loop, and vertical-slice delivery (persistence + API + UI + tests) over mock-only screens.
+
+**Ref:** `docs/taste-intelligence-os-v2.md`, `lib/tasteIntelligence/`, `schemas/tasteIntelligenceContracts.ts`, migration `0001_taste_intelligence`
+
+---
+
+## 2026-08-08 — Scry taste rerank + visible why-matched
+
+**Decision:** After the four Scry evidence lanes settle, `runSpecimenScry` loads the latest taste snapshot + refusals (graceful no-op when unsigned out or API unavailable) and reranks hits **within each lane** via `lib/scry/tasteScryRerank.ts` → `rerankTasteSearchResults`. Each `ResearchResult` may carry `tasteScore` and `whyMatched` (semantic fit, linked features, trajectory, refusal contradiction). ScryView merges lanes sorted by taste score and exposes an expandable “Why matched” panel per card.
+
+**Alternatives rejected:** (1) New schema columns for search provenance. (2) Cross-lane overwrite into a single blended blob. (3) Client-only rerank in ScryView without service-layer attachment.
+
+**Why:** Completes the search vertical slice with explainable retrieval tied to the approved taste model; preserves lane honesty from ADR 2026-08-02.
+
+**Ref:** `lib/scry/tasteScryRerank.ts`, `services/scryService.ts`, `components/ScryView.tsx`, `schemas/scryContracts.ts`
+
+---
+
+## 2026-08-08 — Client taste model sync via API (not Neon imports)
+
+**Decision:** `services/tasteModelService.ts` must not import `infrastructure/database/neon/*` — even dynamic imports get bundled into the Vite client graph and break Vercel builds (`node:crypto` in `creditRepository`). Neon snapshot persist/read goes through `/api/mimi/taste-intelligence/snapshot/*` via `tasteIntelligenceClient`.
+
+**Alternatives rejected:** Vite `external` hacks for the whole neon tree; keeping dual-write in client service.
+
+**Why:** React must never connect to Neon; client bundles must stay server-free.
+
+**Ref:** `services/tasteModelService.ts`, `lib/tasteIntelligenceRoute.ts`, `services/tasteIntelligenceClient.ts`
+
+---
+
 ## 2026-08-08 — Taste model hotfix: idempotent events + scoped compilation
 
 **Decision:** (1) Use stable dedupe keys as Firestore document IDs for explicit curation events (`event.id === dedupeKey`). (2) Default `compileAndSaveTasteModel` scope to `project` when `projectId` is set — project recompilation must not overwrite `tasteModelSnapshots/global`.
@@ -38,6 +74,7 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 
 ---
 
+## 2026-08-08 — Computational Taste Model (derived snapshot, v1)
 
 **Decision:** Introduce `TasteModelSnapshot` as a **derived cache** compiled deterministically from canonical Tailor graph entities (`EvidenceNode`, `Observation`, `PatternCluster`, `CreativeLaw`) plus immutable `TasteEventV2` learning events. Pure compilation in `lib/tasteModel/`; persistence at `users/{uid}/tasteLearningEvents` and `users/{uid}/tasteModelSnapshots/{global|project-{id}}`. Legacy `TasteEvent` normalized additively via `normalizeTasteEvent()`. Candidate scoring returns fit score (0–100, not probability), confidence, and evidence-linked explanation — no LLM in the scoring path.
 

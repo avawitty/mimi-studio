@@ -12,6 +12,7 @@ import {
   Bookmark,
   Download,
   ChevronRight,
+  ChevronDown,
   Layers,
   Archive,
   AlertCircle,
@@ -40,6 +41,10 @@ import {
   type TrendCurationMap,
   type TrendCluster,
 } from "../schemas/scryContracts";
+import {
+  mergeTasteRankedHits,
+  scryRunHasTasteRanking,
+} from "../lib/scry/tasteScryRerank";
 
 type ScryTab = "specimen" | "trend";
 
@@ -150,8 +155,11 @@ const ResultCard: React.FC<{
   item: ResearchResult;
   index: number;
 }> = ({ item, index }) => {
+  const [whyOpen, setWhyOpen] = useState(false);
   const meta = LANE_META[item.sourceLane];
   const href = safeHref(item.url);
+  const why = item.whyMatched;
+  const hasWhy = Boolean(why);
   return (
     <motion.article
       initial={{ opacity: 0, y: 8 }}
@@ -170,7 +178,11 @@ const ResultCard: React.FC<{
               {safeHostname(href)}
             </p>
           ) : null}
-          {typeof item.similarity === "number" ? (
+          {typeof item.tasteScore === "number" ? (
+            <p className="font-mono text-[8px] archive-text-muted mt-1">
+              Taste fit {(item.tasteScore * 100).toFixed(0)}%
+            </p>
+          ) : typeof item.similarity === "number" ? (
             <p className="font-mono text-[8px] archive-text-muted mt-1">
               Resonance {(item.similarity * 100).toFixed(0)}%
             </p>
@@ -197,6 +209,52 @@ const ResultCard: React.FC<{
           {item.snippet || item.content_preview}
         </p>
       )}
+      {hasWhy ? (
+        <div className="mt-4 border-t archive-border pt-3">
+          <button
+            type="button"
+            onClick={() => setWhyOpen((open) => !open)}
+            className="flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-[0.16em] archive-text-muted hover:archive-text-ink"
+            aria-expanded={whyOpen}
+            data-testid="scry-why-matched-toggle"
+          >
+            <ChevronDown
+              size={12}
+              className={`transition-transform ${whyOpen ? "rotate-180" : ""}`}
+            />
+            Why matched
+          </button>
+          {whyOpen && why ? (
+            <div
+              className="mt-2 space-y-1.5 font-sans text-xs archive-text-muted leading-relaxed"
+              data-testid="scry-why-matched"
+            >
+              <p>
+                Semantic fit {(why.semanticSimilarity * 100).toFixed(0)}%
+                {typeof item.tasteScore === "number"
+                  ? ` · overall taste ${(item.tasteScore * 100).toFixed(0)}%`
+                  : ""}
+              </p>
+              {why.linkedFeatureLabels && why.linkedFeatureLabels.length > 0 ? (
+                <p>
+                  Linked taste: {why.linkedFeatureLabels.join(", ")}
+                </p>
+              ) : null}
+              {why.trajectoryFit > 0 ? (
+                <p>Emerging in your taste trajectory.</p>
+              ) : null}
+              {why.contradiction ? (
+                <p className="archive-text-ink italic">{why.contradiction}</p>
+              ) : null}
+              {why.provenanceIds.length > 0 ? (
+                <p className="font-mono text-[9px] opacity-70">
+                  Provenance: {why.provenanceIds.slice(0, 3).join(" · ")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </motion.article>
   );
 };
@@ -696,12 +754,13 @@ export const ScryView: React.FC = () => {
 
   const specimenHits = useMemo(() => {
     if (!run) return [] as ResearchResult[];
-    return [
-      ...run.sources.personalMemory,
-      ...run.sources.web,
-      ...run.sources.shadowMemory,
-    ];
+    return mergeTasteRankedHits(run);
   }, [run]);
+
+  const tasteRanked = useMemo(
+    () => (run ? scryRunHasTasteRanking(run) : false),
+    [run],
+  );
 
   return (
     <>
@@ -849,6 +908,14 @@ export const ScryView: React.FC = () => {
                   </p>
 
                   <LaneStrip run={run} busy={isScrying} inverted />
+                  {tasteRanked ? (
+                    <p
+                      className="mt-3 font-mono text-[8px] uppercase tracking-[0.16em] text-[#9BB8CE]"
+                      data-testid="scry-taste-ranked"
+                    >
+                      Taste-ranked · why matched on each hit
+                    </p>
+                  ) : null}
 
                   {run?.shadowIndexHint?.needsReindex ? (
                     <div
@@ -910,9 +977,11 @@ export const ScryView: React.FC = () => {
                           >
                             <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-white/35 mb-1">
                               {LANE_META[item.sourceLane].label}
-                              {typeof item.similarity === "number"
-                                ? ` · ${(item.similarity * 100).toFixed(0)}%`
-                                : ""}
+                              {typeof item.tasteScore === "number"
+                                ? ` · taste ${(item.tasteScore * 100).toFixed(0)}%`
+                                : typeof item.similarity === "number"
+                                  ? ` · ${(item.similarity * 100).toFixed(0)}%`
+                                  : ""}
                             </p>
                             <h3 className="font-serif italic text-lg text-[#f3f1ea] leading-snug">
                               {href ? (

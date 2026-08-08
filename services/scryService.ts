@@ -22,6 +22,11 @@ import {
   type ScryRun,
   type TrendCurationMap,
 } from "../schemas/scryContracts";
+import { applyTasteRerankToScryRun } from "../lib/scry/tasteScryRerank";
+import {
+  getLatestTasteSnapshot,
+  listTasteRefusals,
+} from "./tasteIntelligenceClient";
 
 async function authHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -314,7 +319,24 @@ export async function runSpecimenScry(options: {
   run.completedAt = Date.now();
   run.latencyMs = Math.floor(performance.now() - started);
   run.confidence = assessScryCoverage(run);
-  return run;
+
+  try {
+    const [snapshotSettled, refusalsSettled] = await Promise.allSettled([
+      getLatestTasteSnapshot(),
+      listTasteRefusals(),
+    ]);
+    const snapshot =
+      snapshotSettled.status === "fulfilled"
+        ? snapshotSettled.value.snapshot
+        : null;
+    const refusals =
+      refusalsSettled.status === "fulfilled"
+        ? refusalsSettled.value.refusals
+        : [];
+    return applyTasteRerankToScryRun(run, { snapshot, refusals });
+  } catch {
+    return run;
+  }
 }
 
 export async function runTrendScry(options: {
