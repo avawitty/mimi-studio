@@ -28,6 +28,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Floor publish, evidence embeddings, Used Context conflicts
+
+**Decision:** Mirror public Stand Floor zines to `EvidenceAtom` (`floor_{zineId}`) when `mirrorZineToSovereign` succeeds with `isPublic`. After evidence analyze, embed `semanticDescription` via Gateway into `evidenceAtomEmbeddings/{atomId}` and set `embeddingRef`. On taste model compile, attach `diagnostics.embeddingCentroid` from recent atom embeddings; `scoreTasteCandidate` blends label affinity with cosine similarity when `candidate.embedding` is provided. Used Context tray detects server/local conflicts and offers keep-local vs keep-server resolution.
+
+**Alternatives rejected:** (1) Floor-only sovereign rows without taste mirror. (2) Embedding similarity without storing vectors on atoms. (3) Silent overwrite on hydrate without user-visible conflict state.
+
+**Why:** Completes ingest from published work, makes scoring semantically aware when vectors exist, and handles cross-device Used Context honestly.
+
+**Ref:** `lib/taste/floorAtomBridge.ts`, `lib/taste/evidenceAtomAnalysis.ts`, `lib/tasteModel/scoreTasteCandidate.ts`, `services/taste/evidenceAtomEmbeddings.ts`, `components/UsedContextTray.tsx`
+
+---
+
 ## 2026-08-08 — Unified Taste Graph summary read path
 
 **Decision:** Add `GET /api/mimi/taste-graph/summary` as the canonical server read for Taste Graph chambers: `TasteState` + latest `TasteModelSnapshot` + projected graph (`projectTasteModelToGraph` preferred over legacy `tasteGraphNodes` when signal is richer) + readiness gaps + server Used Context. Remove demonstration nodes from `/taste-graph` when empty. Mirror Pocket saves into deterministic `EvidenceAtom` ids (`pocket_{itemId}`) via `mirrorPocketItemToEvidenceAtom`. Persist Used Context tray to Firestore (`users/{uid}/studioMeta/usedContext`) with `GET/PUT /api/mimi/used-context` and client hydrate on empty local store.
