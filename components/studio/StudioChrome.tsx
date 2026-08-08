@@ -1,5 +1,6 @@
 import React from "react";
-import { GripVertical, Menu, Moon, Sparkles, Sun, User, Layers } from "lucide-react";
+import { GripVertical, Menu, Moon, Sparkles, Sun, User, Layers, Compass } from "lucide-react";
+import { WORKFLOW_MAP_CHROME_MODES } from "../../lib/navigationMenu";
 import { useUser } from "../../contexts/UserContext";
 import type { StudioTheme } from "../../hooks/useStudioTheme";
 import { POCKET_STASH_TOGGLE_EVENT } from "../pocket/MessyPocketStash";
@@ -270,6 +271,22 @@ export const StudioChrome: React.FC<{
 
       {/* Controls — public faces keep Menu + identity only so the plate can breathe */}
       <div className="flex items-center gap-2 md:gap-3">
+        {WORKFLOW_MAP_CHROME_MODES.has(viewMode) && viewMode !== "chamber-map" ? (
+          <button
+            type="button"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("mimi:change_view", { detail: "chamber-map" }),
+              )
+            }
+            aria-label="Open studio map"
+            title="Studio Map — see your phase and next step"
+            className={`min-w-12 min-h-12 w-12 h-12 md:w-9 md:h-9 md:min-w-9 md:min-h-9 border flex items-center justify-center touch-manipulation active:scale-90 transition-all duration-300 ${chromeBtn}`}
+          >
+            <Compass size={14} strokeWidth={1.5} />
+          </button>
+        ) : null}
+
         {onOpenMenu ? (
           <button
             type="button"

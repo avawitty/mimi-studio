@@ -8,6 +8,7 @@ import type {
 import { useOptionalUser } from "../../contexts/UserContext";
 import { fetchUserZines } from "../../services/firebaseUtils";
 import { MimiWordmark } from "../public-face/MimiWordmark";
+import { StartHereStrip } from "../studio-os/StartHereStrip";
 import { StudioPlateMediaToolbar } from "./StudioPlateMediaToolbar";
 import { StudioInspoCarousel } from "./StudioInspoCarousel";
 import type { StudioInspoSlide } from "../../lib/studioInspoTypes";
@@ -64,6 +65,7 @@ export type StudioOrientationEntryProps = {
   onNavigate?: (mode: string) => void;
   /** Navigate to an absolute in-app path (legacy / nested routes). */
   onNavigatePath?: (path: string) => void;
+  onOpenGuide?: () => void;
 };
 
 /**
@@ -80,6 +82,7 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
   initialHighFidelity = false,
   onNavigate,
   onNavigatePath,
+  onOpenGuide,
 }) => {
   const userCtx = useOptionalUser();
   const profile = userCtx?.profile ?? null;
@@ -288,6 +291,14 @@ export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
             Mimi shapes work from what you bring — and from approved context
             only.
           </p>
+
+          {!recentLoading && recentZines.length === 0 && onNavigate ? (
+            <StartHereStrip
+              className="mt-6"
+              onNavigate={onNavigate}
+              onOpenGuide={onOpenGuide}
+            />
+          ) : null}
 
           <section
             aria-label="Compose"

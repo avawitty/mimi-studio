@@ -63,6 +63,8 @@ function markOnboarded(): void {
 interface CoreLoopOnboardingProps {
   /** When true, wait before showing (e.g. elevator / auth still loading). */
   ready?: boolean;
+  /** Extra delay after ready — lets users orient before the modal. */
+  delayMs?: number;
 }
 
 /**
@@ -71,15 +73,16 @@ interface CoreLoopOnboardingProps {
  */
 export const CoreLoopOnboarding: React.FC<CoreLoopOnboardingProps> = ({
   ready = true,
+  delayMs = 1500,
 }) => {
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
     if (!ready || isOnboarded()) return;
-    const timer = window.setTimeout(() => setOpen(true), 600);
+    const timer = window.setTimeout(() => setOpen(true), delayMs);
     return () => window.clearTimeout(timer);
-  }, [ready]);
+  }, [ready, delayMs]);
 
   const dismiss = () => {
     markOnboarded();

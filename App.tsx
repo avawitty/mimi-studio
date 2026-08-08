@@ -82,8 +82,13 @@ import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { AgentProvider, useAgents } from "./contexts/AgentContext";
 import { MENU_STRUCTURE } from "./components/navigationConfig";
 import { canonicalizeMimiRoute } from "./lib/productCanon";
+import { isExtendedMenuMode } from "./lib/navigationMenu";
 import { LegalDocumentPage } from "./components/LegalDocumentPage";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import {
+  COOKIE_CONSENT_CHANGED,
+  hasCookieConsentChoice,
+} from "./lib/cookieConsent";
 import { ResearchNoteWidget } from "./components/ResearchNoteWidget";
 import { legalTypeFromPath } from "./lib/legalContent";
 import { useTactileAudio } from "./hooks/useTactileAudio";
@@ -466,6 +471,7 @@ const NavigationDrawer: React.FC<{
   };
   const [searchQuery, setSearchQuery] = React.useState("");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const [showExtendedChambers, setShowExtendedChambers] = React.useState(false);
 
   React.useEffect(() => {
     if (!isOpen || !focusSearch) return;
@@ -489,6 +495,14 @@ const NavigationDrawer: React.FC<{
       items: section.items.filter((item) => {
         // Exclude hidden menu items
         if (hidden.includes(item.mode)) return false;
+        if (
+          section.section === "All Chambers" &&
+          !showExtendedChambers &&
+          !searchQuery &&
+          isExtendedMenuMode(item.mode)
+        ) {
+          return false;
+        }
 
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
@@ -513,6 +527,20 @@ const NavigationDrawer: React.FC<{
       return acc + section.items.length;
     }, 0);
   }, [filteredMenuItems]);
+
+  const hiddenExtendedCount = React.useMemo(() => {
+    if (showExtendedChambers || searchQuery) return 0;
+    return MENU_STRUCTURE.reduce((acc, section) => {
+      if (section.section !== "All Chambers") return acc;
+      return (
+        acc +
+        section.items.filter(
+          (item) =>
+            !hidden.includes(item.mode) && isExtendedMenuMode(item.mode),
+        ).length
+      );
+    }, 0);
+  }, [hidden, searchQuery, showExtendedChambers]);
 
   const { user } = useUser();
   const { currentPalette, toggleMode } = useTheme();
@@ -695,6 +723,16 @@ const NavigationDrawer: React.FC<{
                   </motion.div>
                 )}
               </AnimatePresence>
+              {hiddenExtendedCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowExtendedChambers(true)}
+                  className="mt-4 w-full min-h-11 border studio-border px-3 py-2 font-mono text-[8px] uppercase tracking-[0.2em] font-bold studio-text-muted hover:studio-text-ink hover:bg-stone-100 dark:hover:bg-stone-900 transition-colors"
+                >
+                  Show {hiddenExtendedCount} more chamber
+                  {hiddenExtendedCount === 1 ? "" : "s"}
+                </button>
+              ) : null}
             </div>
 
             {/* Polished System Alignment Footer */}
@@ -1621,6 +1659,13 @@ export const App: React.FC = () => {
     setHasSeenGateway(true);
     persistGatewayDismissed();
   }, []);
+  const [cookieConsentResolved, setCookieConsentResolved] = useState(
+    () => typeof window !== "undefined" && hasCookieConsentChoice(),
+  );
+  const blockFirstRunOverlays =
+    showGateway || authLoading || isElevatorLoading;
+  const onboardingReady =
+    !authLoading && !isElevatorLoading && !showGateway && cookieConsentResolved;
   const [showProfileHover, setShowProfileHover] = useState(false);
 
   useEffect(() => {
@@ -1695,6 +1740,15 @@ export const App: React.FC = () => {
       })
       .catch((err) => console.error("MIMI // FirebaseInit Import Error:", err));
   }, [user]);
+
+  useEffect(() => {
+    const syncCookieConsent = () =>
+      setCookieConsentResolved(hasCookieConsentChoice());
+    syncCookieConsent();
+    window.addEventListener(COOKIE_CONSENT_CHANGED, syncCookieConsent);
+    return () =>
+      window.removeEventListener(COOKIE_CONSENT_CHANGED, syncCookieConsent);
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -2397,7 +2451,7 @@ export const App: React.FC = () => {
       return (
         <>
           <LegalDocumentPage type={legalType} />
-          <CookieConsentBanner />
+          <CookieConsentBanner suppressed={blockFirstRunOverlays} />
         </>
       );
     }
@@ -2523,7 +2577,7 @@ export const App: React.FC = () => {
       </AnimatePresence>
 
       <MimiGateway isOpen={showGateway} onClose={dismissGateway} />
-      <CoreLoopOnboarding ready={!authLoading && !isElevatorLoading && !showGateway} />
+      <CoreLoopOnboarding ready={onboardingReady} />
       <ApiKeyShield isOpen={!memoizedHasApiKey} onClose={() => {}} />
 
       <RegistryAlert />
@@ -2774,6 +2828,7 @@ export const App: React.FC = () => {
                           setZineOptions={setZineOptions}
                           onNavigate={setViewMode}
                           onNavigatePath={navigate}
+                          onOpenGuide={() => setIsGuideOpen(true)}
                         />
                       ))}
                     {viewMode !== "studio" && (
@@ -2928,6 +2983,7 @@ export const App: React.FC = () => {
                             onNavigate={setViewMode}
                             onOpenFind={openMenuSearch}
                             onOpenMenu={() => setIsNavOpen(true)}
+                            onOpenGuide={() => setIsGuideOpen(true)}
                           />
                         )}
                         {viewMode === "atelier" && <AtelierChamber />}
@@ -2967,7 +3023,7 @@ export const App: React.FC = () => {
             </motion.div>
           </AnimatePresence>
           <SelectionMemoryCapture />
-          <CookieConsentBanner />
+          <CookieConsentBanner suppressed={blockFirstRunOverlays} />
       </AppShell>
 
       {/* GLOBAL RESPONSIVE RIGHT-SIDE SLIDING DRAWER MENU */}
