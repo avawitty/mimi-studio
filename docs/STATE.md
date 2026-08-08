@@ -19,7 +19,7 @@
 | --- | --- | --- | --- | --- |
 | **Scribe** | `/scribe` | shipped | ResearchMemory nested in Atomize tab | Mobile density pass on long capture sessions |
 | **Tailor** | `/tailor` | shipped | Style Lab / Diagnostics aliased routes; **Owner Slide Templates** UI; 10 editorial calibration plates (incl. Used Context, contact sheet, material specimen, forecast drift) | Wire Doll ↔ Rip handoff CTAs (`prd/chamber-loop-…`) |
-| **Studio (orientation intake)** | `/studio` | shipped | Imagen-first toolbar (Stock / References toggles); inspo carousel + “Publish my rendition”; Unsplash via `/api/inspo/search`; Pinterest board import | Promote compose shell (instrument rail + footnote dock) from legacy console after intake |
+| **Studio (orientation intake)** | `/studio` | shipped | **Primary `/studio` = InputStudio**; calm orientation at `/studio/orientation`; archival desk at `/studio/worktable-legacy` only. Imagen-first toolbar; inspo carousel | Compose shell polish from legacy console |
 | **Studio (compose console)** | `/studio/worktable-legacy` | partial | Extracted `StudioInstrumentRail`, footnote dock (Continuum · Pocket · Telemetry), polaroid media bar, auto cover index; spectrogram reverse-transcribe not wired | Mount post-intake on `/studio`; live telemetry beyond decorative dash |
 | **The Edit** | `/the-edit` | partial | **stub:** `MOCK_PRODUCTS` in commerce/Forecast panel via `commerceService` | Replace mock catalog with live product docs or Shopify search |
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab; Export Chamber wired from Publisher Console destinations |

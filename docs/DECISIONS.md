@@ -6,6 +6,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Stabilization: plan-first zine generation + taste truth boundaries
+
+**Decision:** Run `realizeZineContentFromPlan()` in `App.handleRefine` immediately after `createZine` and before hi-fi plate bake — editorial compression/sequencing stays behind the scenes without Proof UI. Remove `scryShadowMemory` from `createZine` (approved Used Context + Tailor only). Stop calling `updateTasteGraph()` on zine save. Upload `data:` cover URLs to object storage before Firestore write.
+
+**Alternatives rejected:** (1) Mount Proof UI again as a gate. (2) Keep post-save-only `buildZineIssuePlan` (generation unaware of compression). (3) Continue shadow-memory injection in Studio generation.
+
+**Why:** Proof is a UI state; editorial intelligence is an architectural layer. Generated artifacts must not silently become durable taste truth.
+
+**Ref:** `App.tsx`, `services/zineGenerator.ts`, `services/firebaseUtils.ts`, `__tests__/stabilizationInvariants.test.ts`, `scripts/verifyZineGenerateToPlan.ts`
+
+---
+
 ## 2026-08-08 — Observatory follow-up: Mesopic live, cycles, withdraw, windows
 
 **Decision:** Extend `/api/collective/mmm-report` to return **Mesopic** findings from below-threshold consented signals; infer **cycle notes** from window-half velocity on promoted profiles; add **7/14/30/90d** window selector in UI; enable **in-chamber withdraw** (`withdrawMmmContributionFields`) and unpublish without Pocket.
