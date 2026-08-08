@@ -32,6 +32,9 @@ import {
   runTrendScry,
 } from "../services/scryService";
 import { reindexShadowMemoryEmbeddings } from "../services/vectorSearch";
+import type { CuriosityPromptId } from "../services/tailorEvidenceIntake";
+import { CuriosityChips } from "./curiosity/CuriosityChips";
+import { CuriosityPatternPanel } from "./curiosity/CuriosityPatternPanel";
 import {
   describeScryOutcome,
   type ResearchResult,
@@ -351,12 +354,15 @@ const LaneStrip: React.FC<{
 };
 
 export const ScryView: React.FC = () => {
-  const { profile, apiKeys, pocket, setPocket } = useUser();
+  const { profile, apiKeys, pocket, setPocket, user } = useUser();
   const [tab, setTab] = useState<ScryTab>("specimen");
   const [contextOpen, setContextOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
+  const [curiosityIds, setCuriosityIds] = useState<CuriosityPromptId[]>([]);
+  const [customCuriosity, setCustomCuriosity] = useState("");
+  const [showCuriosityPatterns, setShowCuriosityPatterns] = useState(false);
   const [run, setRun] = useState<ScryRun | null>(null);
   const [isScrying, setIsScrying] = useState(false);
   const [isReindexingShadow, setIsReindexingShadow] = useState(false);
@@ -387,6 +393,12 @@ export const ScryView: React.FC = () => {
     window.setTimeout(() => setNotification(null), 2800);
   }, []);
 
+  const toggleCuriosity = useCallback((id: CuriosityPromptId) => {
+    setCuriosityIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
+
   const handleScry = useCallback(
     async (q?: string) => {
       const queryToUse = (q ?? query).trim();
@@ -407,6 +419,9 @@ export const ScryView: React.FC = () => {
           profile,
           geminiKey: apiKeys?.gemini,
           signal: controller.signal,
+          curiosityIds,
+          customCuriosity,
+          userId: user?.uid,
         });
         if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
           setRun(next);
@@ -421,7 +436,17 @@ export const ScryView: React.FC = () => {
         }
       }
     },
-    [apiKeys?.gemini, isReindexingShadow, isScrying, profile, query, showNotification],
+    [
+      apiKeys?.gemini,
+      curiosityIds,
+      customCuriosity,
+      isReindexingShadow,
+      isScrying,
+      profile,
+      query,
+      showNotification,
+      user?.uid,
+    ],
   );
 
   const handleReindexShadow = useCallback(async () => {
@@ -507,6 +532,9 @@ export const ScryView: React.FC = () => {
             profile,
             geminiKey: apiKeys?.gemini,
             signal: controller.signal,
+            curiosityIds,
+            customCuriosity,
+            userId: user?.uid,
           });
           if (!controller.signal.aborted && requestId === scryRequestIdRef.current) {
             setRun(next);
@@ -737,6 +765,19 @@ export const ScryView: React.FC = () => {
             </button>
           </div>
         ) : null}
+        <div className="space-y-2 pt-2 border-t archive-border">
+          <button
+            type="button"
+            onClick={() => setShowCuriosityPatterns((o) => !o)}
+            className="font-mono text-[9px] uppercase tracking-[0.14em] underline underline-offset-4 archive-text-ink"
+            aria-expanded={showCuriosityPatterns}
+          >
+            {showCuriosityPatterns ? "Hide curiosity patterns" : "Curiosity patterns"}
+          </button>
+          {showCuriosityPatterns ? (
+            <CuriosityPatternPanel userId={user?.uid} />
+          ) : null}
+        </div>
       </ArchiveContextPanel>
     ),
     [
@@ -748,7 +789,9 @@ export const ScryView: React.FC = () => {
       isReindexingShadow,
       isScrying,
       run,
+      showCuriosityPatterns,
       tab,
+      user?.uid,
     ],
   );
 
@@ -906,6 +949,16 @@ export const ScryView: React.FC = () => {
                   <p className="font-sans text-[13px] text-white/45 leading-relaxed mb-5 max-w-[18rem]">
                     Ask a mood or a ghost. Four lanes answer — nothing fabricated.
                   </p>
+
+                  <div className="mb-5">
+                    <CuriosityChips
+                      variant="scry"
+                      selected={curiosityIds}
+                      customText={customCuriosity}
+                      onToggle={toggleCuriosity}
+                      onCustomChange={setCustomCuriosity}
+                    />
+                  </div>
 
                   <LaneStrip run={run} busy={isScrying} inverted />
                   {tasteRanked ? (
@@ -1066,6 +1119,15 @@ export const ScryView: React.FC = () => {
                         <ArrowRight size={16} />
                       )}
                     </button>
+                  </div>
+
+                  <div className="mb-6">
+                    <CuriosityChips
+                      selected={curiosityIds}
+                      customText={customCuriosity}
+                      onToggle={toggleCuriosity}
+                      onCustomChange={setCustomCuriosity}
+                    />
                   </div>
 
                   <LaneStrip run={run} busy={isScrying} />

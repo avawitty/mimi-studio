@@ -64,6 +64,12 @@ export interface ResultEnvelope<T> {
 export interface ScryRun {
   id: string;
   query: string;
+  /** Original user query before curiosity enrichment. */
+  rawQuery?: string;
+  curiosityIds?: string[];
+  customCuriosity?: string;
+  curiosityRecordId?: string;
+  celestialEnabled?: boolean;
   startedAt: number;
   completedAt?: number;
   sources: {

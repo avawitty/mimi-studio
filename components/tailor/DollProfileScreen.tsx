@@ -5,7 +5,12 @@ import {
   Star, Crosshair, ArrowLeft, Layers, Cpu, Eye, Palette, 
   HelpCircle, Volume2, Info, BookOpen, AlertTriangle
 } from "lucide-react";
-import type { Doll, DollMask } from '../../types';
+import {
+  DollDeclaredAttributesForm,
+  emptyDeclaredAttributes,
+} from './DollDeclaredAttributesForm';
+import { mergeLikenessTraits } from '../../services/dollLikeness';
+import type { Doll, DollMask, DollDeclaredAttributes } from '../../types';
 import { DollPortraitStage } from "./DollPortraitStage";
 import { getAIProvider } from '../../services/aiProvider';
 import { DollHouseDressingRoom } from "./DollHouseDressingRoom";
@@ -17,6 +22,7 @@ import {
 } from '../../services/tailorService';
 import {
   buildIdentityViewPrompt,
+  buildLikenessAsDollImagePrompt,
   identityPackCompleteness,
   mergeIdentityReference,
   type DollIdentityView,
@@ -134,6 +140,14 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   }, [user?.uid, doll.id]);
 
   const [activeTab, setActiveTab] = useState<'conditioning' | 'wardrobe' | 'blueprint'>('conditioning');
+  const [declaredAttributes, setDeclaredAttributes] = useState<DollDeclaredAttributes>(() =>
+    currentDoll.onboardingRefs?.declaredAttributes ?? emptyDeclaredAttributes(),
+  );
+  const [savingAttributes, setSavingAttributes] = useState(false);
+
+  useEffect(() => {
+    setDeclaredAttributes(currentDoll.onboardingRefs?.declaredAttributes ?? emptyDeclaredAttributes());
+  }, [currentDoll.id, currentDoll.onboardingRefs?.declaredAttributes]);
   const [isDollState, setIsDollState] = useState<boolean>(() => {
     const saved = localStorage.getItem(`mimi_doll_state_${doll.id}`);
     return saved ? saved === 'true' : true;
@@ -150,7 +164,7 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
     const shellOnline = dollHasShellPortrait(doll);
     const awakening = shellOnline
       ? `Shell online. Creator, I am ${doll.name}. Ego partitioned, cognitive lace taut — ready for conditioning.`
-      : `Shell dormant. Creator, I am ${doll.name}. Projecting the Mimi Shell onto your graph — porcelain species lock, then conditioning.`;
+      : `Shell dormant. Creator, I am ${doll.name}. Projecting the Mimi Shell onto your graph — ball-jointed resin BJD species lock, then conditioning.`;
     return [
       {
         role: 'assistant',
@@ -171,6 +185,30 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
   
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
+  const handleSaveDeclaredAttributes = async () => {
+    if (!user?.uid) return;
+    setSavingAttributes(true);
+    try {
+      const onboardingRefs = {
+        ...(currentDoll.onboardingRefs ?? {}),
+        declaredAttributes,
+        likenessTraits: mergeLikenessTraits(
+          declaredAttributes,
+          currentDoll.onboardingRefs?.likenessTraits,
+        ),
+      };
+      await updateDoll(user.uid, currentDoll.id, { onboardingRefs });
+      setCurrentDoll((prev) => ({ ...prev, onboardingRefs }));
+      window.dispatchEvent(
+        new CustomEvent('mimi:registry_alert', {
+          detail: { message: 'Likeness attributes saved. Regenerate portrait to apply.', type: 'success' },
+        }),
+      );
+    } finally {
+      setSavingAttributes(false);
+    }
+  };
+
   const handleRegeneratePortrait = async (
     view: DollIdentityView = identityView,
   ): Promise<boolean> => {
@@ -178,7 +216,11 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
     setIsGeneratingPortrait(true);
     triggerSound('transition');
 
-    const imagePrompt = buildIdentityViewPrompt(currentDoll, view);
+    const creatorPhoto = currentDoll.onboardingRefs?.userPhotoDataUrl;
+    const imagePrompt =
+      view === 'portrait' && creatorPhoto
+        ? buildLikenessAsDollImagePrompt(currentDoll, { view: 'portrait' })
+        : buildIdentityViewPrompt(currentDoll, view);
     const aspectRatio = view === 'full_body' ? '2:3' : '3:4';
 
     // Pass existing portrait as stable-face ref when generating other views
@@ -186,6 +228,24 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
       view !== 'portrait'
         ? currentDoll.identityReferences?.portraitUrl || currentDoll.generatedImageUrl
         : undefined;
+
+    const references: Array<{ name: string; description: string; url: string; tags: string[] }> = [];
+    if (portraitLock) {
+      references.push({
+        name: 'Doll Portrait',
+        description: `Calibrated identity lock for ${currentDoll.name}`,
+        url: portraitLock,
+        tags: ['doll', 'portrait', 'identity-lock'],
+      });
+    } else if (view === 'portrait' && creatorPhoto) {
+      references.push({
+        name: 'Creator photo',
+        description:
+          'Translate this person into a ball-jointed resin BJD recognizable as them — not photoreal',
+        url: creatorPhoto,
+        tags: ['likeness', 'creator-photo', 'doll-translation'],
+      });
+    }
 
     try {
       const response = await fetch('/api/mimi-image', {
@@ -197,16 +257,7 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
           prompt: imagePrompt,
           aspectRatio,
           allowFaces: true,
-          references: portraitLock
-            ? [
-                {
-                  name: 'Doll Portrait',
-                  description: `Calibrated identity lock for ${currentDoll.name}`,
-                  url: portraitLock,
-                  tags: ['doll', 'portrait', 'identity-lock'],
-                },
-              ]
-            : undefined,
+          references: references.length ? references : undefined,
         }),
       });
       
@@ -1179,6 +1230,25 @@ GUIDELINES FOR THE RESPONSE:
                   className="space-y-4"
                 >
                   <div className="bg-stone-50 dark:bg-stone-900/20 border border-stone-200 dark:border-stone-850 p-4 rounded-sm space-y-6">
+                    <div className="border-b border-stone-200 dark:border-stone-850 pb-6 space-y-4">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400 font-bold">
+                        Declared likeness attributes
+                      </span>
+                      <DollDeclaredAttributesForm
+                        value={declaredAttributes}
+                        onChange={setDeclaredAttributes}
+                        compact
+                      />
+                      <button
+                        type="button"
+                        disabled={savingAttributes}
+                        onClick={() => void handleSaveDeclaredAttributes()}
+                        className="font-mono text-[8px] uppercase tracking-widest px-4 py-2 border border-stone-300 dark:border-stone-700 disabled:opacity-50"
+                      >
+                        {savingAttributes ? 'Saving…' : 'Save attributes'}
+                      </button>
+                    </div>
+
                     <div>
                       <p className="font-serif italic text-sm text-stone-800 dark:text-stone-200 mb-1">
                         Identity Blueprint Description

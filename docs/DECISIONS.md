@@ -16,6 +16,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
 ## 2026-08-08 — Observatory follow-up: Mesopic live, cycles, withdraw, windows
 
 **Decision:** Extend `/api/collective/mmm-report` to return **Mesopic** findings from below-threshold consented signals; infer **cycle notes** from window-half velocity on promoted profiles; add **7/14/30/90d** window selector in UI; enable **in-chamber withdraw** (`withdrawMmmContributionFields`) and unpublish without Pocket.
@@ -35,6 +37,54 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Perception loop needs one instrument surface, visible opt-in, and traceable actions while preserving Residue per-run MMM as a separate engine.
 
 **Ref:** `components/chambers/ObservatoryChamber.tsx`, `lib/collectiveMmmReportRoute.ts`, `services/collective/buildMeanMedianModeReport.ts`
+
+---
+
+## 2026-08-08 — Public profile OG + bio editing
+
+**Decision:** Add server-visible SEO for `/u/:handle` via `lib/publicProfileSeo.ts`, Express `app.get("/u/:handle")` metadata injection, and Vercel bot rewrite to `api/og/profile.ts`. Add bio textarea to `UserProfileView` (280 chars) saved to `profiles_public`. Client SPA navigation updates meta via `setPublicProfileMetaTags` on `PublicShowcasePage`.
+
+**Alternatives rejected:** (1) Client-only SEO for share previews (crawlers need server HTML). (2) Separate bio field on `publicShowcase` snapshot (bio is identity, not doll token).
+
+**Why:** Completes the public card loop — creators can write bio in settings; link previews show doll portrait, bio, and handle.
+
+**Ref:** `lib/publicProfileSeo.ts`, `api/og/profile.ts`, `server.ts`, `components/UserProfileView.tsx`, `vercel.json`
+
+---
+
+## 2026-08-08 — Unified `PublicProfileCard` for `/u/:handle`
+
+**Decision:** Extract a shared `PublicProfileCard` (`components/public-face/PublicProfileCard.tsx`) backed by `lib/publicProfileCard.ts` helpers. Canonical mimi.you showcase composes identity (photo, display name, bio, handle), taste signature excerpt (`aestheticSignature` → `semantic_signature` → doll philosophy), opt-in inverse reading teaser when `publicRip` is published, doll specimen, public zine grid, Keep Tabs, and cross-links to mimi.fish / mimi.rip.
+
+**Alternatives rejected:** (1) Continue duplicating layout across `PublicShowcasePage`, `PublicSharePage`, and directory tiles. (2) Expose full private taste graph on the public card. (3) Inline rip reading on mimi.you instead of linking to mimi.rip.
+
+**Why:** Product asked for a single public profile card surface; prior `/u/:handle` showed doll + zines only and ignored bio, avatar, signature report, and rip opt-in. Public-face kit + token colors align with PRD-07.
+
+**Ref:** `components/public-face/PublicProfileCard.tsx`, `lib/publicProfileCard.ts`, `services/publicShowcaseService.ts`, `components/PublicShowcasePage.tsx`
+
+---
+
+## 2026-08-08 — Omni Loop Cult dolls: onboarding + art-history time travel
+
+**Decision:** Ship Omni Loop Cult as `omni-loop-resin-v1` staple (ball-jointed resin BJD species). Doll onboarding: user photo + 2+ aesthetic refs + user-declared likeness attributes → Gemini analysis → `saveDoll` + shell portrait via `/api/mimi-image`. Time travel: era picker + Met public-domain refs → `generateRedepictionPrompt` (when Tailor project exists) or fallback shell prompt → scene image with doll + artwork + friend portrait refs. Persist scenes in `users/{uid}/dollScenes`; public gallery tab for shared scenes.
+
+**Alternatives rejected:** (1) Require full Tailor evidence loop before any doll. (2) Copy artwork compositions without transformative prompt layer. (3) Separate API routes for doll scenes (reuse Firestore + mimi-image).
+
+**Why:** Product vision needs a direct dolls chamber entry (photo + motif refs) and generative art-history reinterpretation for memes/marketing; existing `generateRedepictionPrompt` was unused.
+
+**Ref:** `services/dollOnboardingService.ts`, `services/dollSceneService.ts`, `services/dollLikeness.ts`, `components/tailor/DollOnboardingFlow.tsx`, `components/tailor/TimeTravelStudio.tsx`, `services/dollEngine/staplePrompt.ts`
+
+---
+
+## 2026-08-08 — Taste Signature as evidence-backed editorial reading
+
+**Decision:** Expand `/signature` from DNA-card + charts into a layered artifact: exportable **plate** (unchanged public face) → **editorial reading** (thesis, confidence, Used Context refs) → semiotic touchpoints, creative directions, recommendations, anti-signature, drift notes → collapsed analytics. Generation pulls zines, Tailor draft, approved Used Context, and taste model snapshot via AI Gateway (`textDeep`) with Gemini JSON fallback. Explicit **Approve signature** persists `status: approved` and records `mark_signature` through `recordAndRecompile`; **Repair** routes to Tailor.
+
+**Alternatives rejected:** (1) Dashboard-first layout with charts above the fold. (2) Personality-diagnosis copy without provenance. (3) Signature as pure LLM summary of zines only (ignores approved context and taste model).
+
+**Why:** Product canon places Signature in the **Approve** phase; creators need a sufficient, citable reading they can approve or repair before it becomes durable taste memory. Plate stays shareable; reading stays honest about confidence and evidence.
+
+**Ref:** `services/signatureService.ts`, `lib/signature/signatureSchema.ts`, `components/SignatureView.tsx`, `components/signature/SignatureReading.tsx`, `types.ts` (`AestheticSignature`)
 
 ---
 
@@ -61,6 +111,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Ref:** `lib/ai/generate.ts`, `lib/aiGatewayCompat.ts`, `api/live/token.ts`, `hooks/gatewayLiveConnection.ts`, `hooks/useLiveSession.ts`, `services/liveAuth.ts`
 
 ---
+
+## 2026-08-08 — Pocket why-saved prompt queue (a11y)
 
 **Decision:** Serialize multi-image why-saved prompts through `useWhySavedPrompt` artifact queue (one sheet at a time; Done exits queue; dismiss advances). Per-hypothesis review pending/error state; `epistemicLabelForHypothesis` centralizes Inferred/Observed/Creator labels; `useModalFocus` traps focus in `WhySavedSheet`.
 
@@ -536,6 +588,18 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Post-generation critique must evaluate what was produced, with honest partial states when imagery cannot be analyzed.
 
 **Ref:** `hooks/useStudioTasteCompiler.ts`, `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`
+
+---
+
+## 2026-08-08 — Mesopic Lens chamber + curiosity tracking (Scry + personal twilight readings)
+
+**Decision:** Ship **Mesopic Lens** (`/mesopic-lens`) as a personal twilight Q&A chamber — profile × celestial calibration × Gemini web grounding, synthesis via AI Gateway. Log questions as **curiosity records** (localStorage + Firestore `users/{uid}/curiosities`) for deterministic pattern reports. Extend **Scry** with the same curiosity chips, web-grounded + celestial-informed reading lane, and pattern panel.
+
+**Alternatives rejected:** Repurposing legacy `/obsidian-mirror` Lyria route (would break existing music chamber); Neon table for curiosity (Firestore matches taste-event patterns and works unsigned with local fallback); collective Observatory Mesopic as the personal oracle (wrong consent/scope).
+
+**Rationale:** Mesopic vision metaphor matches low-light reading honesty; curiosity as a distinct data form enables pattern reports without approving Taste Graph memory. Observatory Mesopic remains collective faint signals only.
+
+**Ref:** `components/chambers/MesopicLensChamber.tsx`, `services/mesopicLensService.ts`, `services/curiosityStore.ts`, `schemas/curiosityContracts.ts`, `lib/curiosity/curiosityAnalytics.ts`, `services/scryService.ts`, `npm run verify:curiosity-tracking`
 
 ---
 

@@ -41,6 +41,7 @@ import type {
   CreativeDossier,
   ArtworkMatch,
   MarketingAsset,
+  DollScene,
   GenerationJob,
   TailorLogicDraft,
   UserCurationStatus,
@@ -684,6 +685,77 @@ export async function saveMarketingAsset(
   const full: MarketingAsset = { ...asset, id, userId, createdAt: Date.now() };
   await setDoc(doc(userCol(userId, 'marketingAssets'), id), stripUndefined(full));
   return full;
+}
+
+// ─── Doll Scenes (Omni Loop time travel) ─────────────────────────────────────
+
+export async function saveDollScene(
+  userId: string,
+  scene: Omit<DollScene, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
+): Promise<DollScene> {
+  const id = uid();
+  const now = Date.now();
+  const full: DollScene = {
+    ...scene,
+    id,
+    userId,
+    friendUserIds: scene.friendUserIds ?? [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  await setDoc(doc(userCol(userId, 'dollScenes'), id), stripUndefined(full));
+  return full;
+}
+
+export async function updateDollScene(
+  userId: string,
+  sceneId: string,
+  patch: Partial<DollScene>,
+): Promise<void> {
+  if (!userId || userId === 'ghost') return;
+  try {
+    await setDoc(
+      doc(userCol(userId, 'dollScenes'), sceneId),
+      stripUndefined({ ...patch, updatedAt: Date.now() }),
+      { merge: true },
+    );
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, 'dollScenes');
+  }
+}
+
+export async function listDollScenes(
+  userId: string,
+  opts?: { dollId?: string; visibility?: 'public' },
+): Promise<DollScene[]> {
+  if (!userId || userId === 'ghost') return [];
+  try {
+    const col = userCol(userId, 'dollScenes');
+    let q;
+    if (opts?.dollId) {
+      q = query(col, where('dollId', '==', opts.dollId), orderBy('createdAt', 'desc'), limit(50));
+    } else if (opts?.visibility === 'public') {
+      q = query(col, where('visibility', '==', 'public'), orderBy('createdAt', 'desc'), limit(50));
+    } else {
+      q = query(col, orderBy('createdAt', 'desc'), limit(50));
+    }
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as DollScene);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.GET, 'dollScenes');
+    return [];
+  }
+}
+
+export async function getDollScene(userId: string, sceneId: string): Promise<DollScene | null> {
+  if (!userId || userId === 'ghost' || !sceneId) return null;
+  try {
+    const snap = await getDoc(doc(userCol(userId, 'dollScenes'), sceneId));
+    return snap.exists() ? (snap.data() as DollScene) : null;
+  } catch (e) {
+    handleFirestoreError(e, OperationType.GET, 'dollScenes');
+    return null;
+  }
 }
 
 // ─── Generation Jobs ────────────────────────────────────────────────────────

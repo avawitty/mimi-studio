@@ -71,6 +71,29 @@ export const setZineMetaTags = (data: SEOData) => {
   document.head.appendChild(script);
 };
 
+export const setPublicProfileMetaTags = (data: {
+  title: string;
+  description: string;
+  imageUrl: string;
+  url?: string;
+}) => {
+  if (typeof document === "undefined") return;
+
+  document.title = `${data.title} | Mimi`;
+  upsertMeta('meta[name="description"]', { name: "description", content: data.description });
+
+  const pageUrl = data.url || window.location.href;
+  upsertMeta('meta[property="og:title"]', { property: "og:title", content: data.title });
+  upsertMeta('meta[property="og:description"]', { property: "og:description", content: data.description });
+  upsertMeta('meta[property="og:image"]', { property: "og:image", content: data.imageUrl });
+  upsertMeta('meta[property="og:url"]', { property: "og:url", content: pageUrl });
+  upsertMeta('meta[property="og:type"]', { property: "og:type", content: "profile" });
+  upsertMeta('meta[name="twitter:card"]', { name: "twitter:card", content: "summary_large_image" });
+  upsertMeta('meta[name="twitter:title"]', { name: "twitter:title", content: data.title });
+  upsertMeta('meta[name="twitter:description"]', { name: "twitter:description", content: data.description });
+  upsertMeta('meta[name="twitter:image"]', { name: "twitter:image", content: data.imageUrl });
+};
+
 /** @deprecated Use useZineSEO instead */
 export const injectZineSEO = (data: SEOData) => {
   useEffect(() => {

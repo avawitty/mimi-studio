@@ -25,7 +25,7 @@
 | **The Press** | `/the-press` | shipped | Release history is artifact-derived until server audit log | Wire analytics provider for Performance tab |
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
-| **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
+| **Taste Signature** | `/signature` | shipped | Expanded reading (thesis, touchpoints, directions, recommendations); approve → `mark_signature` taste event | Public-face mobile review after chrome changes |
 | **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; embedding space migrations on model change | Complete atom migration; run shadow audit after Gateway model bumps |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
@@ -37,7 +37,8 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Scry** | `/scry` | shipped | Unified retrieval service deferred; taste rerank uses snapshot + refusals when signed in | Keep lane honesty + taste rerank tests in `verify:*` / unit suite |
+| **Scry** | `/scry` | shipped | Curiosity records (local + Firestore); readings ground on profile + celestial + web; unified retrieval service still deferred | Keep lane honesty + curiosity `verify:curiosity-tracking` |
+| **Mesopic Lens** | `/mesopic-lens` | **shipped** | Personal twilight Q&A (distinct from Observatory collective Mesopic); curiosity pattern reports | Celestial handoff when calibration inactive |
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
@@ -72,7 +73,7 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Mimi Dolls** | `/mimi-dolls` | partial | Shell-first shipped; **scenario projection deferred**; Rip uses `dolls[0]` only | Add Rip CTA; doll picker for Rip input |
+| **Mimi Dolls** | `/mimi-dolls` | partial | Omni Loop onboarding + time-travel scenes shipped; Rip uses `dolls[0]` only | Rip CTA; cross-user public scene feed |
 | **mimi.rip** | `/rip` | shipped | Deterministic inverse read (v0, no AI enrichment) | Public OG via server HTML on publish routes |
 | **Aesthetic Intelligence** | `/aesthetic-intelligence` | shipped | Aliased → `/tailor/diagnostics` | — |
 | **Art Style Scryer** | `/art-style` | shipped | Aliased → `/tailor/style-lab` | — |
@@ -103,7 +104,7 @@
 | `mimi.you` (skin `you`) | shipped | Full app; canonical identity |
 | `mimi.fish` (skin `fish`) | partial | Share plates + creator shelf; domains attached — run `setup:mimi-fish-domains` for Firebase Auth |
 | `mimi.rip` (skin `rip`) | partial | Inverse public plates + `/rip` chamber; domains attached — run `setup:mimi-rip-domains` |
-| `/u/:handle` | shipped | Public doll/profile cards (skin selects rip/fish/you variant on host) |
+| `/u/:handle` | shipped | `PublicProfileCard` + compact directory tiles + OG + external links |
 | `/s/:zineId` | shipped | **Server-side OG injection** (`server.ts`); canonical share origin `mimi.fish` |
 | `/u/:handle/feed.xml` | shipped | Keep Tabs RSS |
 | `/api/feed` | shipped | Creator feed API |
@@ -122,7 +123,7 @@
 | `services/collective/loadMesopicReport.ts` | Default `"demonstration"` source | Observatory Mesopic lens |
 | `fixtures/collective/demo*.ts` | Labeled demo reports | Collective intelligence offline review |
 | `components/ProsceniumView.tsx` | `mock_1`…`mock_3` transmissions | Local Echoes demo specimens |
-| `components/chambers/ObservatoryChamber.tsx` | Loads demonstration reports on mount | Collective UI default |
+| `components/chambers/ObservatoryChamber.tsx` | Live API fetch + opt-in demo | Collective UI default |
 | `services/geminiClient.ts` | `mockAi` object when keys absent | Test/dev fallback only — must not surface as live output |
 
 ---
@@ -162,8 +163,8 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | --- | --- | --- |
 | P0 | Unified menu, Studio toolbar instruments, `/tailor` + contract wiring, `/scry` + `/mesopic` stubs | **queued** (Lovable build queue) |
 | P1 | Profile identity + `/u/$handle`, Pocket polish, The Edit chamber, fish/rip hosts | **queued** |
-| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **queued** |
-| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **queued** |
+| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **partial** — Omni Loop onboarding + time-travel in production Express; Mesopic Lens chamber shipped (#251) |
+| P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **partial** — curiosity records + pattern reports in Mesopic Lens + Scry (`verify:curiosity-tracking`) |
 | P4a | Workflow bar wired to issue pipeline (COLLECT→SAVE) | **queued** |
 | P4b | Registry completion + handoff chips + chamber map | **queued** |
 | P4c | Identity strip (Dolls↔Rip↔Tailor), Rip doll picker | **queued** |
@@ -171,7 +172,7 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | P5 | Darkroom: Pinterest board + multi-image extract + `imageEditingRules` / `applicationLogic` | **queued** |
 | P5b | Thimble / Brief / Darkroom Studio handoffs | **queued** |
 | P5c | Aesthetic entry plates + mobile Studio layout | **queued** |
-| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **queued** |
+| P6 | Unified `instrument-query-panel` (Intel/Scry/Mesopic/Oracle) | **partial** — Mesopic Lens chamber shipped; panel unification still queued |
 | **Platform** | Lovable Cloud + Lovable AI as default stack; migrate AI to edge fns | **queued** |
 | **Refactor** | Align P0–P6 AI paths with Lovable AI + Cloud (no BYOK /api) | **queued** |
 | P7 | Scribe, Stand, Signature, Residue/Proscenium stubs, Find anchor, OG/RSS, notifications | **queued** |
