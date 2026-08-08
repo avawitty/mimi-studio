@@ -28,7 +28,7 @@
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
 | **Taste Graph** | `/taste-graph` | shipped | Embedding space migrations on model change | Run shadow audit after Gateway model bumps |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
-| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs shipped; Scry/Pocket/Studio integration partial | Wire Scry rerank UI + Studio compiler cards; expand graph editor ops UI |
+| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs shipped; Scry taste rerank + why-matched shipped; Pocket/Studio integration partial | Studio compiler cards + Pocket why-saved; expand graph editor ops UI |
 
 ---
 
@@ -36,7 +36,7 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Scry** | `/scry` | shipped | Unified retrieval service deferred | Keep lane honesty tests in `verify:*` scripts |
+| **Scry** | `/scry` | shipped | Unified retrieval service deferred; taste rerank uses snapshot + refusals when signed in | Keep lane honesty + taste rerank tests in `verify:*` / unit suite |
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
