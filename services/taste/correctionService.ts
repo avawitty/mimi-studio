@@ -23,9 +23,11 @@ export function effectForCorrection(correction: CorrectionState): CorrectionEffe
       return { userReaction: "accepted", confidenceMultiplier: 0.6, claimType: "user_confirmed" };
     case "NOT_ANYMORE":
       return {
-        userReaction: "rejected",
+        // The old interpretation may have been true. Mark it as historically
+        // confirmed but weak/currently inactive instead of turning it into a dislike.
+        userReaction: "accepted",
         confidenceMultiplier: 0.35,
-        claimType: "user_rejected",
+        claimType: "user_confirmed",
         stabilityClass: "temporary",
       };
     case "ONLY_HERE":
@@ -63,11 +65,17 @@ export async function applyInlineCorrection(
     : null;
 
   await runTransaction(db, async (transaction) => {
+    // Firestore transactions require all reads to happen before any writes.
     const atomSnapshot = await transaction.get(atomRef);
     if (!atomSnapshot.exists()) throw new Error("Evidence atom not found.");
+    const assertionSnapshot = assertionRef ? await transaction.get(assertionRef) : null;
 
     const atom = atomSnapshot.data() as EvidenceAtom;
+    const assertion = assertionSnapshot?.exists()
+      ? (assertionSnapshot.data() as TasteAssertion)
+      : null;
     const now = Date.now();
+
     transaction.update(atomRef, {
       correction,
       userReaction: effect.userReaction,
@@ -76,15 +84,18 @@ export async function applyInlineCorrection(
       updatedAt: now,
     });
 
-    if (!assertionRef) return;
-    const assertionSnapshot = await transaction.get(assertionRef);
-    if (!assertionSnapshot.exists()) return;
+    if (!assertionRef || !assertion) return;
 
-    const assertion = assertionSnapshot.data() as TasteAssertion;
+    const contextualPatch =
+      correction === "ONLY_HERE" && !assertion.context
+        ? { context: atom.projectId ? `project:${atom.projectId}` : "project" }
+        : {};
+
     transaction.update(assertionRef, {
       correction,
       claimType: effect.claimType,
       confidence: clampConfidence(assertion.confidence * effect.confidenceMultiplier),
+      ...contextualPatch,
       updatedAt: now,
     });
   });
