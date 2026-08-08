@@ -496,3 +496,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Post-generation critique must evaluate what was produced, with honest partial states when imagery cannot be analyzed.
 
 **Ref:** `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`, `hooks/useStudioTasteCompiler.ts`
+
+---
+
+## 2026-08-08 — Mesopic Lens chamber + curiosity tracking (Scry + personal twilight readings)
+
+**Decision:** Ship **Mesopic Lens** (`/mesopic-lens`) as a personal twilight Q&A chamber — profile × celestial calibration × Gemini web grounding, synthesis via AI Gateway. Log questions as **curiosity records** (localStorage + Firestore `users/{uid}/curiosities`) for deterministic pattern reports. Extend **Scry** with the same curiosity chips, web-grounded + celestial-informed reading lane, and pattern panel.
+
+**Alternatives rejected:** Repurposing legacy `/obsidian-mirror` Lyria route (would break existing music chamber); Neon table for curiosity (Firestore matches taste-event patterns and works unsigned with local fallback); collective Observatory Mesopic as the personal oracle (wrong consent/scope).
+
+**Rationale:** Mesopic vision metaphor matches low-light reading honesty; curiosity as a distinct data form enables pattern reports without approving Taste Graph memory. Observatory Mesopic remains collective faint signals only.
+
+**Ref:** `components/chambers/MesopicLensChamber.tsx`, `services/mesopicLensService.ts`, `services/curiosityStore.ts`, `schemas/curiosityContracts.ts`, `lib/curiosity/curiosityAnalytics.ts`, `services/scryService.ts`, `npm run verify:curiosity-tracking`
