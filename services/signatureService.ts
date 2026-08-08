@@ -166,6 +166,10 @@ function normalizeSignature(
     generatedAt: Date.now(),
     status: opts?.resetApproval === false && prior?.status === "approved" ? "approved" : "draft",
     approvedAt: opts?.resetApproval === false ? prior?.approvedAt : undefined,
+    publishedAt:
+      opts?.resetApproval === false && prior?.status === "approved"
+        ? prior?.publishedAt
+        : undefined,
     version: opts?.preserveVersion ? priorVersion : priorVersion + 1,
     contextFingerprint: fingerprint,
     evidenceRefs:

@@ -33,6 +33,7 @@ import {
   fingerprintKey,
   shouldPatchSignatureOnly,
 } from "../lib/signature/signatureFingerprint";
+import { isSignaturePublished } from "../lib/signature/signatureConsent";
 
 const SignatureSkeleton = () => (
   <PublicField bleed className="w-full min-h-full font-serif pb-20 md:pb-28">
@@ -304,6 +305,17 @@ export const SignatureView: React.FC = () => {
 
   const handleCopyShareLink = async () => {
     const handle = profile?.handle;
+    if (!isSignaturePublished(signature)) {
+      window.dispatchEvent(
+        new CustomEvent("mimi:toast", {
+          detail: {
+            message: "Publish your signature before sharing the public plate link.",
+            type: "info",
+          },
+        }),
+      );
+      return;
+    }
     const url = handle
       ? `${window.location.origin}/u/${handle}/signature`
       : `${window.location.origin}/signature`;
@@ -352,7 +364,49 @@ export const SignatureView: React.FC = () => {
       feedback.trigger("proposal.approved");
       window.dispatchEvent(
         new CustomEvent("mimi:toast", {
-          detail: { message: "Signature approved", type: "success" },
+          detail: { message: "Reading approved as durable memory", type: "success" },
+        }),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!user || !signature || !profile || signature.status !== "approved") return;
+    setBusy(true);
+    try {
+      const published: AestheticSignature = {
+        ...signature,
+        publishedAt: Date.now(),
+      };
+      await persistSignature(published);
+      feedback.trigger("proposal.approved");
+      window.dispatchEvent(
+        new CustomEvent("mimi:toast", {
+          detail: {
+            message: "Signature published to your public profile",
+            type: "success",
+          },
+        }),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    if (!user || !signature || !profile) return;
+    setBusy(true);
+    try {
+      const unpublished: AestheticSignature = {
+        ...signature,
+        publishedAt: undefined,
+      };
+      await persistSignature(unpublished);
+      window.dispatchEvent(
+        new CustomEvent("mimi:toast", {
+          detail: { message: "Signature removed from public profile", type: "success" },
         }),
       );
     } finally {
@@ -442,7 +496,10 @@ export const SignatureView: React.FC = () => {
 
         <SignatureApproveBar
           status={signature.status}
+          publishedAt={signature.publishedAt}
           onApprove={() => void handleApprove()}
+          onPublish={() => void handlePublish()}
+          onUnpublish={() => void handleUnpublish()}
           onRepair={handleRepair}
           busy={busy}
         />

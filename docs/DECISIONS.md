@@ -6,6 +6,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Signature memory vs publication consent
+
+**Decision:** Split Taste Signature into **memory approval** (`status: "approved"`, `mark_signature`) and **publication consent** (`publishedAt` required for `/u/:handle/signature`, public card excerpt, and OG). Approve reading ≠ publish plate. Legacy `/@:handle` redirects to `/u/:handle` without rendering private `tasteProfile` fields.
+
+**Alternatives rejected:** (1) Single approve button for memory + public. (2) Treat `status: approved` as implicit publish. (3) Keep legacy `PublicSharePage` taste graph UI.
+
+**Why:** Inference/memory/publication are three distinct consents; public routes must fail closed without explicit publication.
+
+**Ref:** `lib/signature/signatureConsent.ts`, `SignatureApproveBar`, `lib/publicProfileCard.ts`, `components/PublicSharePage.tsx`
+
+---
+
 ## 2026-08-08 — Observatory follow-up: Mesopic live, cycles, withdraw, windows
 
 **Decision:** Extend `/api/collective/mmm-report` to return **Mesopic** findings from below-threshold consented signals; infer **cycle notes** from window-half velocity on promoted profiles; add **7/14/30/90d** window selector in UI; enable **in-chamber withdraw** (`withdrawMmmContributionFields`) and unpublish without Pocket.

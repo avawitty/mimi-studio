@@ -180,9 +180,13 @@ export const SignatureReading: React.FC<SignatureReadingProps> = ({
             >
               {CONFIDENCE_LABEL[reading.confidence]}
             </span>
-            {signature.status === "approved" && signature.approvedAt ? (
+            {signature.publishedAt ? (
               <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-stone)]">
-                Approved · {new Date(signature.approvedAt).toLocaleDateString()}
+                Published · {new Date(signature.publishedAt).toLocaleDateString()}
+              </span>
+            ) : signature.status === "approved" && signature.approvedAt ? (
+              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-stone)]">
+                Approved memory · {new Date(signature.approvedAt).toLocaleDateString()}
               </span>
             ) : (
               <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--mimi-stone)]">
@@ -409,21 +413,44 @@ export const SignatureReading: React.FC<SignatureReadingProps> = ({
 
 export const SignatureApproveBar: React.FC<{
   status?: "draft" | "approved";
+  publishedAt?: number;
   onApprove: () => void;
+  onPublish: () => void;
+  onUnpublish: () => void;
   onRepair: () => void;
   busy?: boolean;
-}> = ({ status, onApprove, onRepair, busy }) => (
-  <div className="flex flex-wrap items-center gap-3 border border-[var(--mimi-hairline)] p-4 bg-[var(--mimi-field)]">
-    <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] flex-1 min-w-[12rem]">
-      {status === "approved"
-        ? "This signature is approved memory."
-        : "Approve this reading to mark it as durable taste memory."}
-    </p>
-    <PublicCTA variant="ghost" onClick={onRepair} disabled={busy}>
-      Repair in Tailor
-    </PublicCTA>
-    <PublicCTA onClick={onApprove} disabled={busy || status === "approved"}>
-      {status === "approved" ? "Approved" : "Approve signature"}
-    </PublicCTA>
+}> = ({ status, publishedAt, onApprove, onPublish, onUnpublish, onRepair, busy }) => (
+  <div className="flex flex-col gap-4 border border-[var(--mimi-hairline)] p-4 bg-[var(--mimi-field)]">
+    <div className="flex flex-wrap items-center gap-3">
+      <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] flex-1 min-w-[12rem]">
+        {status === "approved"
+          ? "Approved memory — Mimi may use this reading as durable taste context."
+          : "Approve this reading when Mimi understood you correctly. This does not publish anything."}
+      </p>
+      <PublicCTA variant="ghost" onClick={onRepair} disabled={busy}>
+        Repair in Tailor
+      </PublicCTA>
+      <PublicCTA onClick={onApprove} disabled={busy || status === "approved"}>
+        {status === "approved" ? "Approved" : "Approve reading"}
+      </PublicCTA>
+    </div>
+    <div className="flex flex-wrap items-center gap-3 border-t border-[var(--mimi-hairline)] pt-4">
+      <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-[var(--mimi-stone)] flex-1 min-w-[12rem]">
+        {publishedAt
+          ? `Published · ${new Date(publishedAt).toLocaleDateString()} · visible at /u/:handle/signature`
+          : status === "approved"
+            ? "Publish separately when you want this plate visible to others."
+            : "Approve the reading before publishing to your public profile."}
+      </p>
+      {publishedAt ? (
+        <PublicCTA variant="ghost" onClick={onUnpublish} disabled={busy}>
+          Unpublish
+        </PublicCTA>
+      ) : (
+        <PublicCTA onClick={onPublish} disabled={busy || status !== "approved"}>
+          Publish signature
+        </PublicCTA>
+      )}
+    </div>
   </div>
 );

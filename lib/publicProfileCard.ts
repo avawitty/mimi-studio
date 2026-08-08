@@ -4,6 +4,7 @@ import type {
   PublicShowcaseSnapshot,
   UserProfile,
 } from "../types";
+import { isSignaturePublished } from "./signature/signatureConsent";
 
 /** Public-safe signature excerpt for creator cards — no private graph leakage. */
 export type PublicSignatureExcerpt = {
@@ -33,7 +34,7 @@ export const getPublicSignaturePagePath = (handle: string): string => {
 };
 
 export const hasApprovedPublicSignature = (profile: UserProfile): boolean =>
-  profile.tasteProfile?.aestheticSignature?.status === "approved";
+  isSignaturePublished(profile.tasteProfile?.aestheticSignature);
 
 export const resolvePublicProfileIdentity = (
   profile: UserProfile,
@@ -62,28 +63,21 @@ export const buildPublicSignatureExcerpt = (
 ): PublicSignatureExcerpt | null => {
   const signature: AestheticSignature | undefined =
     profile.tasteProfile?.aestheticSignature;
-  const semantic = profile.tasteProfile?.semantic_signature?.trim();
 
-  if (signature) {
+  if (signature && isSignaturePublished(signature)) {
     const title = signature.primaryAxis || signature.motifs?.[0] || "Taste signature";
     const handle = profile.handle || showcase?.handle || "creator";
+    const semantic =
+      signature.reading?.thesis?.trim() ||
+      signature.moodCluster?.trim() ||
+      undefined;
     return {
       title,
       subtitle: signature.secondaryAxis || undefined,
       motifs: (signature.motifs || signature.core_keywords || []).slice(0, 6),
-      semanticLine: semantic || signature.moodCluster || undefined,
-      moodCluster: signature.moodCluster || undefined,
-      fullPagePath: hasApprovedPublicSignature(profile)
-        ? getPublicSignaturePagePath(handle)
-        : undefined,
-    };
-  }
-
-  if (semantic) {
-    return {
-      title: "Taste signature",
-      motifs: (showcase?.motifCandidates || []).slice(0, 6),
       semanticLine: semantic,
+      moodCluster: signature.moodCluster || undefined,
+      fullPagePath: getPublicSignaturePagePath(handle),
     };
   }
 

@@ -125,6 +125,8 @@ export interface AestheticSignature {
   evidenceRefs?: SignatureEvidenceRef[];
   status?: "draft" | "approved";
   approvedAt?: number;
+  /** Explicit publication consent for /u/:handle/signature and public card excerpt. */
+  publishedAt?: number;
   version?: number;
   /** Fingerprint of inputs used for the last compile/patch. */
   contextFingerprint?: string;

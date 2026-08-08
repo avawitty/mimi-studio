@@ -57,7 +57,7 @@ describe("publicProfileCard helpers", () => {
     expect(identity.avatarIsDoll).toBe(false);
   });
 
-  it("prefers aesthetic signature for public excerpt", () => {
+  it("prefers published aesthetic signature for public excerpt", () => {
     const excerpt = buildPublicSignatureExcerpt(
       baseProfile({
         tasteProfile: {
@@ -73,6 +73,9 @@ describe("publicProfileCard helpers", () => {
             influenceLineage: [],
             creativeCycles: [],
             motifEvolution: [],
+            status: "approved",
+            approvedAt: Date.now(),
+            publishedAt: Date.now(),
           },
         },
       }),
@@ -82,9 +85,39 @@ describe("publicProfileCard helpers", () => {
     expect(excerpt?.title).toBe("Archival restraint");
     expect(excerpt?.subtitle).toBe("Warm geometry");
     expect(excerpt?.motifs).toEqual(["parchment", "olive"]);
+    expect(excerpt?.fullPagePath).toBe("/u/atelier/signature");
   });
 
-  it("links to full signature page only when approved", () => {
+  it("does not expose unpublished approved signature on public card", () => {
+    const excerpt = buildPublicSignatureExcerpt(
+      baseProfile({
+        tasteProfile: {
+          semantic_signature: "Should not leak",
+          archetype_weights: {},
+          color_frequency: {},
+          aestheticSignature: {
+            primaryAxis: "Private axis",
+            secondaryAxis: "",
+            motifs: ["secret"],
+            moodCluster: "Quiet",
+            generatedAt: Date.now(),
+            influenceLineage: [],
+            creativeCycles: [],
+            motifEvolution: [],
+            status: "approved",
+            approvedAt: Date.now(),
+          },
+        },
+      }),
+      showcase,
+    );
+
+    expect(excerpt?.title).toBe("Studio Doll");
+    expect(excerpt?.semanticLine).toBe("Quiet evidence over noise.");
+    expect(excerpt?.fullPagePath).toBeUndefined();
+  });
+
+  it("links to full signature page only when published", () => {
     const draft = buildPublicSignatureExcerpt(
       baseProfile({
         handle: "atelier",
@@ -109,7 +142,7 @@ describe("publicProfileCard helpers", () => {
     );
     expect(draft?.fullPagePath).toBeUndefined();
 
-    const approved = buildPublicSignatureExcerpt(
+    const published = buildPublicSignatureExcerpt(
       baseProfile({
         handle: "atelier",
         tasteProfile: {
@@ -127,12 +160,13 @@ describe("publicProfileCard helpers", () => {
             motifEvolution: [],
             status: "approved",
             approvedAt: Date.now(),
+            publishedAt: Date.now(),
           },
         },
       }),
       showcase,
     );
-    expect(approved?.fullPagePath).toBe("/u/atelier/signature");
+    expect(published?.fullPagePath).toBe("/u/atelier/signature");
   });
 
   it("detects published rip snapshots", () => {

@@ -106,6 +106,7 @@ export const aestheticSignatureSchema = z.object({
   evidenceRefs: z.array(signatureEvidenceRefSchema).optional(),
   status: z.enum(["draft", "approved"]).optional(),
   approvedAt: z.number().optional(),
+  publishedAt: z.number().optional(),
   version: z.number().optional(),
   generatedAt: z.number().optional(),
 });

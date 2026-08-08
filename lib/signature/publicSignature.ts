@@ -1,4 +1,5 @@
 import type { AestheticSignature, UserProfile } from "../../types";
+import { isSignaturePublished } from "./signatureConsent";
 
 const DEFAULT_OG_IMAGE =
   "https://raw.githubusercontent.com/Aris-A-C/mimi-assets/main/mimi_logo_new.png";
@@ -11,15 +12,15 @@ export type PublicSignatureSeo = {
   pageUrl: string;
 };
 
-/** Approved signatures only — draft readings stay private. */
+/** Published signatures only — approved-but-private readings stay off public routes. */
 export function extractApprovedPublicSignature(
   profile: Pick<UserProfile, "tasteProfile"> | Record<string, unknown> | null | undefined,
 ): AestheticSignature | null {
   if (!profile) return null;
   const tasteProfile = (profile as UserProfile).tasteProfile;
   const sig = tasteProfile?.aestheticSignature;
-  if (!sig || sig.status !== "approved") return null;
-  return sig;
+  if (!isSignaturePublished(sig)) return null;
+  return sig ?? null;
 }
 
 export function publicSignaturePlateTitle(sig: AestheticSignature): string {

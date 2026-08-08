@@ -86,8 +86,8 @@ export const PublicSignaturePage: React.FC<PublicSignaturePageProps> = ({
         </h1>
         <p className="text-[var(--mimi-stone)] max-w-md mb-8">
           {isOwner
-            ? "Your signature is not public yet. Approve it in the Signature chamber to publish this plate."
-            : "This creator has not published an approved taste signature yet."}
+            ? "Approve your reading for memory, then publish when you want this plate visible at /u/:handle/signature."
+            : "This creator has not published a taste signature plate yet."}
         </p>
         {isOwner ? (
           <PublicCTA onClick={() => navigate("/signature")}>Open Signature</PublicCTA>
