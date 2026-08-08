@@ -7,11 +7,17 @@ import {
 } from "../lib/publisher/releaseReadiness";
 import type { ApprovalItem } from "../lib/publisher/types";
 import {
+  destinationRequiresPublish,
+  destinationToExportMode,
+  type ExportChamberMode,
+} from "../lib/publisher/artifactExportActions";
+import {
   fetchShopifyConnectionStatus,
   type ShopifyConnectionStatus,
   type ShopifyPackInspection,
 } from "../services/shopifyExportService";
 import { readIntelHubPressHandoff } from "../lib/intelHubWorkflow";
+import { ExportChamber } from "./ExportChamber";
 import { ReleaseDesk, ArtifactSelector } from "./publisher/ReleaseDesk";
 import { ApprovalQueue } from "./publisher/ApprovalQueue";
 import { DestinationCards } from "./publisher/DestinationCards";
@@ -51,6 +57,9 @@ export const PublisherDashboard: React.FC<{
   const [shopifyInspection, setShopifyInspection] = useState<ShopifyPackInspection | null>(
     null,
   );
+  const [exportChamberOpen, setExportChamberOpen] = useState(false);
+  const [exportInitialMode, setExportInitialMode] = useState<ExportChamberMode>("pdf");
+  const [exportPublishIntent, setExportPublishIntent] = useState(false);
 
   useEffect(() => {
     if (forcedMode) setMode(forcedMode);
@@ -94,17 +103,29 @@ export const PublisherDashboard: React.FC<{
     if (item.actionPath) routeTo(item.actionPath);
   }, []);
 
-  const handleExport = useCallback(
-    (destinationId: string) => {
+  const openExportChamber = useCallback(
+    (destinationId?: string) => {
       if (!selected) return;
-      if (destinationId === "web-issue") {
-        routeTo("/studio");
-        return;
-      }
-      routeTo("/studio");
+      const mode = destinationId ? destinationToExportMode(destinationId) : "pdf";
+      setExportInitialMode(mode || "pdf");
+      setExportPublishIntent(
+        destinationId ? destinationRequiresPublish(destinationId) : false,
+      );
+      setExportChamberOpen(true);
     },
     [selected],
   );
+
+  const handleExport = useCallback(
+    (destinationId: string) => {
+      openExportChamber(destinationId);
+    },
+    [openExportChamber],
+  );
+
+  const handleMetadataUpdate = useCallback((updated: ZineMetadata) => {
+    setArtifacts((prev) => prev.map((z) => (z.id === updated.id ? updated : z)));
+  }, []);
 
   if (!ownerUid) {
     return (
@@ -179,12 +200,17 @@ export const PublisherDashboard: React.FC<{
             <ReleaseDesk
               readiness={readiness}
               onPrimaryAction={() => {
-                const path = readiness.recommendation.primaryActionPath;
-                if (path) routeTo(path);
-                else routeTo("/studio");
+                if (readiness.unresolvedCount > 0) {
+                  const path = readiness.recommendation.primaryActionPath;
+                  if (path) routeTo(path);
+                  else routeTo("/studio");
+                  return;
+                }
+                openExportChamber();
               }}
               onReviewChecks={() => routeTo("/studio")}
               onPreview={() => routeTo(`https://mimi.fish/s/${readiness.artifactId}`)}
+              onOpenExport={() => openExportChamber()}
             />
 
             <ReleaseStageChecklist stages={readiness.stages} onNavigate={routeTo} />
@@ -207,6 +233,16 @@ export const PublisherDashboard: React.FC<{
               artifactId={readiness.artifactId}
               onInspectionChange={setShopifyInspection}
             />
+
+            {exportChamberOpen && selected && (
+              <ExportChamber
+                metadata={selected}
+                initialMode={exportInitialMode}
+                publishIntent={exportPublishIntent}
+                onMetadataUpdate={handleMetadataUpdate}
+                onClose={() => setExportChamberOpen(false)}
+              />
+            )}
           </div>
         )}
       </div>

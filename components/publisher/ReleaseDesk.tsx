@@ -8,6 +8,7 @@ interface ReleaseDeskProps {
   onPrimaryAction: () => void;
   onReviewChecks: () => void;
   onPreview: () => void;
+  onOpenExport?: () => void;
 }
 
 export const ReleaseDesk: React.FC<ReleaseDeskProps> = ({
@@ -15,6 +16,7 @@ export const ReleaseDesk: React.FC<ReleaseDeskProps> = ({
   onPrimaryAction,
   onReviewChecks,
   onPreview,
+  onOpenExport,
 }) => {
   const topApproval = readiness.approvals.find((a) => a.status === "pending");
 
@@ -84,6 +86,15 @@ export const ReleaseDesk: React.FC<ReleaseDeskProps> = ({
         >
           Preview issue
         </button>
+        {onOpenExport ? (
+          <button
+            type="button"
+            onClick={onOpenExport}
+            className="min-h-11 px-4 py-2 border border-stone-500 bg-stone-100 text-stone-950 font-mono text-xs uppercase tracking-widest font-bold hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-all"
+          >
+            Open Export Chamber
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onPrimaryAction}
