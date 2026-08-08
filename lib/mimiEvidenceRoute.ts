@@ -25,8 +25,11 @@ import {
 } from "./apiUtils.js";
 import { verifyMimiSession, getServerFirebaseAdmin } from "./serverFirebaseAdmin.js";
 import { createEvidenceAtomSchema } from "./taste/evidenceAtomSchema.js";
-import type { CreateEvidenceAtomInput } from "./taste/evidenceAtomSchema.js";
-import type { EvidenceAtom, StabilityClass, TasteScope } from "../types.js";
+import {
+  buildEvidenceAtomFromInput,
+  stripUndefinedForFirestore,
+} from "./taste/buildEvidenceAtom.js";
+import type { EvidenceAtom } from "../types.js";
 
 const uid = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -79,34 +82,8 @@ export async function handleMimiEvidenceRoute(req: any, res: any) {
 
     const now = Date.now();
     const id = uid();
-
-    const atom: EvidenceAtom = {
-      id,
-      userId,
-      projectId: input.projectId,
-      contextScope: input.contextScope as TasteScope | undefined,
-      kind: input.kind,
-      sourceType: input.sourceType,
-      originalSource: input.originalSource, // NEVER overwrite
-      assetUrl: input.assetUrl,
-      thumbnailUrl: input.thumbnailUrl,
-      sourceMetadata: input.sourceMetadata ?? {},
-      extractedText: undefined,
-      semanticDescription: undefined,
-      observationIds: [],
-      embeddingRef: undefined,
-      ingestSource: input.ingestSource,
-      tasteImpact: input.tasteImpact,
-      userReaction: "suggested",
-      confidence: 0,
-      stabilityClass: input.stabilityClass as StabilityClass,
-      processingState: "pending",
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // Remove undefined fields — Firestore Admin SDK does not strip them
-    const cleanAtom = JSON.parse(JSON.stringify(atom)) as EvidenceAtom;
+    const atom = buildEvidenceAtomFromInput(userId, input, { id, now });
+    const cleanAtom = stripUndefinedForFirestore(atom);
 
     await db
       .collection("users")

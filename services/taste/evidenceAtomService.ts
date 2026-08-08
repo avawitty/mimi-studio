@@ -32,6 +32,7 @@ import type {
   UserCurationStatus,
 } from "../../types";
 import type { CreateEvidenceAtomInput } from "../../lib/taste/evidenceAtomSchema";
+import { buildEvidenceAtomFromInput } from "../../lib/taste/buildEvidenceAtom";
 
 const uid = () =>
   crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -67,31 +68,7 @@ export async function createEvidenceAtom(
   const now = Date.now();
   const id = uid();
   const ref = evidenceAtomRef(userId, id);
-
-  const atom: EvidenceAtom = {
-    id,
-    userId,
-    projectId: input.projectId,
-    contextScope: input.contextScope as TasteScope | undefined,
-    kind: input.kind,
-    sourceType: input.sourceType,
-    originalSource: input.originalSource, // NEVER overwrite after this
-    assetUrl: input.assetUrl,
-    thumbnailUrl: input.thumbnailUrl,
-    sourceMetadata: input.sourceMetadata ?? {},
-    extractedText: undefined,
-    semanticDescription: undefined,
-    observationIds: [],
-    embeddingRef: undefined,
-    ingestSource: input.ingestSource,
-    tasteImpact: input.tasteImpact,
-    userReaction: "suggested",
-    confidence: 0,
-    stabilityClass: input.stabilityClass as StabilityClass,
-    processingState: "pending",
-    createdAt: now,
-    updatedAt: now,
-  };
+  const atom = buildEvidenceAtomFromInput(userId, input, { id, now });
 
   await setDoc(ref, atom);
   return { id, atom };
@@ -205,14 +182,18 @@ export async function updateEvidenceAtomReaction(
   userId: string,
   atomId: string,
   reaction: UserCurationStatus,
-  stabilityClass?: StabilityClass,
+  options?: {
+    stabilityClass?: StabilityClass;
+    contextScope?: TasteScope;
+  },
 ): Promise<void> {
   if (!userId || userId === "ghost") {
     throw new Error("Authentication required to update evidence atom reactions.");
   }
   await updateDoc(evidenceAtomRef(userId, atomId), {
     userReaction: reaction,
-    ...(stabilityClass ? { stabilityClass } : {}),
+    ...(options?.stabilityClass ? { stabilityClass: options.stabilityClass } : {}),
+    ...(options?.contextScope ? { contextScope: options.contextScope } : {}),
     updatedAt: Date.now(),
   });
 }

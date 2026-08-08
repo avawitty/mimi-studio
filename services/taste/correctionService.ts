@@ -11,53 +11,48 @@
  * DESIGN PRINCIPLE: Explicit user correction outweighs weak inferred behavior.
  * A single "NOT ME" response has more authority than 5 AI inferences.
  */
-import type { CorrectionState, UserCurationStatus } from "../../types";
+import type { CorrectionState, TasteScope } from "../../types";
+import { correctionToAtomReaction } from "../../lib/taste/correctionLogic";
 import { applyAssertionCorrection } from "./tasteAssertionService";
 import { updateEvidenceAtomReaction } from "./evidenceAtomService";
+import { recordTasteInteractionEvent } from "./interactionEventService";
 
 export type CorrectionTargetType = "assertion" | "atom";
 
-/**
- * Map CorrectionState to the appropriate UserCurationStatus for atom-level feedback.
- */
-function correctionToAtomReaction(correction: CorrectionState): UserCurationStatus {
-  switch (correction) {
-    case "YES":
-    case "MORE_LIKE_THIS":
-      return "accepted";
-    case "NOT_ME":
-    case "NOT_ANYMORE":
-      return "rejected";
-    case "SORT_OF":
-    case "ONLY_HERE":
-      return "suggested"; // stays in suggested state — not fully accepted or rejected
-  }
-}
+export type ApplyInlineCorrectionOptions = {
+  contextScope?: TasteScope;
+};
 
 /**
  * Apply an inline correction from the user.
- *
- * @param userId — the authenticated user
- * @param targetType — whether correcting an assertion or an evidence atom
- * @param targetId — the document ID of the target
- * @param correction — the CorrectionState chosen by the user
  */
 export async function applyInlineCorrection(
   userId: string,
   targetType: CorrectionTargetType,
   targetId: string,
   correction: CorrectionState,
+  options: ApplyInlineCorrectionOptions = {},
 ): Promise<void> {
   if (!userId || userId === "ghost") {
     throw new Error("Authentication required to apply corrections.");
   }
 
   if (targetType === "assertion") {
-    await applyAssertionCorrection(userId, targetId, correction);
-  } else if (targetType === "atom") {
+    await applyAssertionCorrection(userId, targetId, correction, options);
+  } else {
     const reaction = correctionToAtomReaction(correction);
-    await updateEvidenceAtomReaction(userId, targetId, reaction);
+    await updateEvidenceAtomReaction(userId, targetId, reaction, {
+      contextScope: correction === "ONLY_HERE" ? options.contextScope : undefined,
+      stabilityClass: correction === "ONLY_HERE" ? "project" : undefined,
+    });
   }
+
+  await recordTasteInteractionEvent(userId, {
+    targetType,
+    targetId,
+    correction,
+    contextScope: options.contextScope,
+  });
 }
 
 /**
@@ -110,7 +105,6 @@ export function describeCorrectionState(correction: CorrectionState): {
 
 /**
  * The ordered set of correction states shown in the CorrectionChip UI.
- * Ordered from most positive to most negative, with MORE_LIKE_THIS at end.
  */
 export const CORRECTION_CHIP_OPTIONS: CorrectionState[] = [
   "YES",
@@ -120,3 +114,5 @@ export const CORRECTION_CHIP_OPTIONS: CorrectionState[] = [
   "NOT_ME",
   "MORE_LIKE_THIS",
 ];
+
+export { atomReactionToCorrection } from "../../lib/taste/correctionLogic";

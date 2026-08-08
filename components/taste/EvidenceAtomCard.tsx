@@ -15,15 +15,20 @@
  * Does not expose raw confidence numbers — uses editorial signal labels.
  */
 import React, { useState } from "react";
-import type { CorrectionState, EvidenceAtom } from "../../types";
+import type { CorrectionState, EvidenceAtom, TasteScope } from "../../types";
 import { CorrectionChip } from "./CorrectionChip";
-import { applyInlineCorrection } from "../../services/taste/correctionService";
+import {
+  applyInlineCorrection,
+  atomReactionToCorrection,
+} from "../../services/taste/correctionService";
 import { tasteConfidenceLabel } from "../../services/taste/tasteStateService";
 import { cn } from "../../lib/utils";
 
 export interface EvidenceAtomCardProps {
   atom: EvidenceAtom;
   userId: string;
+  /** Scope applied when the user selects ONLY HERE */
+  contextScope?: TasteScope;
   /** Called after a correction is successfully applied */
   onCorrected?: (atomId: string, correction: CorrectionState) => void;
   /** Optional linked assertion ID to correct alongside the atom reaction */
@@ -56,12 +61,15 @@ const STATE_LABELS: Record<EvidenceAtom["processingState"], string> = {
 export function EvidenceAtomCard({
   atom,
   userId,
+  contextScope = "global",
   onCorrected,
   linkedAssertionId,
   expanded = false,
   className,
 }: EvidenceAtomCardProps) {
-  const [correction, setCorrection] = useState<CorrectionState | undefined>(undefined);
+  const [correction, setCorrection] = useState<CorrectionState | undefined>(() =>
+    atomReactionToCorrection(atom.userReaction),
+  );
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,10 +82,12 @@ export function EvidenceAtomCard({
     setError(null);
 
     try {
-      await applyInlineCorrection(userId, "atom", atom.id, state);
+      await applyInlineCorrection(userId, "atom", atom.id, state, { contextScope });
 
       if (linkedAssertionId) {
-        await applyInlineCorrection(userId, "assertion", linkedAssertionId, state);
+        await applyInlineCorrection(userId, "assertion", linkedAssertionId, state, {
+          contextScope,
+        });
       }
 
       setCorrection(state);
@@ -169,20 +179,18 @@ export function EvidenceAtomCard({
         </div>
       )}
 
-      {/* Correction affordance */}
-      {isAnalyzed && (
-        <div className="space-y-1.5 border-t border-border/40 pt-2">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
-            Is this accurate?
-          </p>
-          <CorrectionChip
-            selected={correction}
-            onCorrect={handleCorrect}
-            isApplying={isApplying}
-            compact
-          />
-        </div>
-      )}
+      {/* Correction affordance — available even while interpretation is pending */}
+      <div className="space-y-1.5 border-t border-border/40 pt-2">
+        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
+          {isAnalyzed ? "Is this accurate?" : "React while Mimi reads this"}
+        </p>
+        <CorrectionChip
+          selected={correction}
+          onCorrect={handleCorrect}
+          isApplying={isApplying}
+          compact
+        />
+      </div>
 
       {/* Error state */}
       {error && (

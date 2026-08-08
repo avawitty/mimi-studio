@@ -21,10 +21,17 @@ import {
   correctionStateSchema,
 } from "../lib/taste/evidenceAtomSchema";
 import {
-  applyInlineCorrection,
   describeCorrectionState,
   CORRECTION_CHIP_OPTIONS,
+  atomReactionToCorrection,
 } from "../services/taste/correctionService";
+import {
+  capAssertionConfidence,
+  INFERRED_ASSERTION_CONFIDENCE_CEILING,
+  partitionAssertions,
+} from "../lib/taste/tasteStateLogic";
+import { buildEvidenceAtomFromInput } from "../lib/taste/buildEvidenceAtom";
+import { evidenceNodeToAtomInput } from "../lib/taste/evidenceNodeBridge";
 import {
   tasteStateToPromptContext,
   tasteConfidenceLabel,
@@ -35,6 +42,7 @@ import type {
   TasteConcept,
   TasteState,
   EvidenceAtom,
+  EvidenceNode,
 } from "../types";
 
 // ─── Schema validation ────────────────────────────────────────────────────────
@@ -295,6 +303,93 @@ describe("tasteStateToPromptContext", () => {
     const prompt = tasteStateToPromptContext(state);
     expect(prompt).toContain("CURRENT EXPLORATIONS");
     expect(prompt).toContain("archival melancholy");
+  });
+});
+
+describe("capAssertionConfidence", () => {
+  it("caps inferred assertions at 0.7", () => {
+    expect(capAssertionConfidence("inferred", 0.95)).toBe(
+      INFERRED_ASSERTION_CONFIDENCE_CEILING,
+    );
+    expect(capAssertionConfidence("speculative", 1)).toBe(0.7);
+  });
+
+  it("allows user_confirmed assertions up to 1.0", () => {
+    expect(capAssertionConfidence("user_confirmed", 0.95)).toBe(0.95);
+  });
+});
+
+describe("partitionAssertions", () => {
+  const base = (partial: Partial<TasteAssertion>): TasteAssertion => ({
+    id: "a1",
+    userId: "u1",
+    conceptA: "alpha",
+    relation: "LIKES",
+    claimType: "user_confirmed",
+    confidence: 0.9,
+    evidenceAtomIds: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    ...partial,
+  });
+
+  it("partitions stable, emerging, and negative assertions", () => {
+    const result = partitionAssertions([
+      base({ conceptA: "stable-like", confidence: 0.9, relation: "LIKES" }),
+      base({ conceptA: "avoid", confidence: 0.8, relation: "DISLIKES" }),
+      base({
+        conceptA: "emerging-like",
+        confidence: 0.45,
+        claimType: "inferred",
+        relation: "LIKES",
+      }),
+    ]);
+
+    expect(result.stablePreferences.map((a) => a.conceptA)).toContain("stable-like");
+    expect(result.negativePreferences.map((a) => a.conceptA)).toContain("avoid");
+    expect(result.emergingPreferences.map((a) => a.conceptA)).toContain("emerging-like");
+  });
+});
+
+describe("atomReactionToCorrection", () => {
+  it("maps persisted atom reactions to chip states", () => {
+    expect(atomReactionToCorrection("accepted")).toBe("YES");
+    expect(atomReactionToCorrection("rejected")).toBe("NOT_ME");
+    expect(atomReactionToCorrection("suggested")).toBeUndefined();
+  });
+});
+
+describe("buildEvidenceAtomFromInput", () => {
+  it("starts atoms in pending state with zero confidence", () => {
+    const input = createEvidenceAtomSchema.parse({
+      kind: "note",
+      sourceType: "note",
+      originalSource: "handwritten margin",
+    });
+    const atom = buildEvidenceAtomFromInput("u1", input);
+    expect(atom.processingState).toBe("pending");
+    expect(atom.confidence).toBe(0);
+    expect(atom.userReaction).toBe("suggested");
+  });
+});
+
+describe("evidenceNodeToAtomInput", () => {
+  it("mirrors tailor evidence nodes into atom ingest shape", () => {
+    const node: EvidenceNode = {
+      id: "ev-1",
+      userId: "u1",
+      projectId: "p1",
+      sourceType: "image",
+      title: "Plate",
+      sourceUrl: "https://example.com/ref.jpg",
+      analysisStatus: "pending",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const input = evidenceNodeToAtomInput(node, "p1");
+    expect(input.ingestSource).toBe("tailor");
+    expect(input.kind).toBe("image");
+    expect(input.sourceMetadata?.tailorEvidenceNodeId).toBe("ev-1");
   });
 });
 
