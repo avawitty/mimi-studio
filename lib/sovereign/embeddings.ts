@@ -5,6 +5,7 @@
 import { cosineSimilarity } from "../embeddingMath.js";
 import { modelFor } from "../../services/modelConfig.js";
 import type { ZineMetadata } from "../../types.js";
+import { getServerAiGatewayKey } from "../aiGatewayCompat.js";
 import { getSovereignDb } from "./db.js";
 
 const SEMANTIC_CANDIDATE_CAP = 200;
@@ -18,11 +19,11 @@ export const isSovereignGatewayEmbedEnabled = (): boolean => {
   if (process.env.MIMI_SOVEREIGN_EMBED === "1" || process.env.MIMI_SOVEREIGN_EMBED === "true") {
     return true;
   }
-  return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
+  return Boolean(getServerAiGatewayKey());
 };
 
 export const resolveSovereignEmbedApiKey = (): string | undefined => {
-  const key = process.env.AI_GATEWAY_API_KEY?.trim();
+  const key = getServerAiGatewayKey().trim();
   return key || undefined;
 };
 

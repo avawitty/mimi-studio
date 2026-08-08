@@ -1,4 +1,5 @@
 import { createRequire } from "module";
+import { getServerAiGatewayKey } from "./aiGatewayCompat.js";
 import { extractMimiSessionToken } from "./mimiSessionToken.js";
 import {
   buildCreditGrant,
@@ -464,7 +465,7 @@ export const resolveFundedGatewayApiKey = async (
   let access: FundedGatewayAccess | null = null;
 
   if (!apiKey) {
-    const fundedKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+    const fundedKey = getServerAiGatewayKey();
     if (!fundedKey) {
       return { apiKey: "", access: null, denialReason: "server_gateway_unconfigured" };
     }

@@ -140,8 +140,19 @@ const gatewayMessageText = (message: any): string => {
   return "";
 };
 
-export const getServerAiGatewayKey = () =>
-  process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+/**
+ * Server-side AI Gateway credential resolver.
+ *
+ * On Vercel deployments, prefer the platform-provided OIDC token over a
+ * long-lived API key. This avoids stale or revoked AI_GATEWAY_API_KEY values
+ * shadowing the deployment identity that AI Gateway automatically supports.
+ * Local/dev and non-Vercel runtimes still use AI_GATEWAY_API_KEY first.
+ */
+export const getServerAiGatewayKey = () => {
+  const oidcToken = process.env.VERCEL_OIDC_TOKEN || "";
+  const apiKey = process.env.AI_GATEWAY_API_KEY || "";
+  return process.env.VERCEL ? oidcToken || apiKey : apiKey || oidcToken;
+};
 
 export const gatewayChatCompletion = async (
   apiKey: string,
