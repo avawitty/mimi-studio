@@ -12,9 +12,9 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 **Alternatives rejected:** (1) Keeping three parallel toolbars (rail + footer + pill). (2) Minting paid credits from client-writable plan fields alone. (3) Daily 4/12 reload overwriting assessment trial pools.
 
-**Why:** Mobile UX was cluttered; signed-in patrons and assessment trials were falsely hitting `credits_exhausted`.
+**Why:** Mobile UX was cluttered; signed-in patrons and assessment trials were falsely hitting `credits_exhausted`. Promo patrons with `isPatron`/`patronKey` or `billing.source=promo` now route through membership credits even when plan fields still read free/trial.
 
-**Ref:** `components/InputStudio.tsx`, `lib/mimiFundedGateway.ts`, `components/provenance/UsedContextColophon.tsx`, `metadata.json`
+**Ref:** `components/InputStudio.tsx`, `lib/mimiFundedGateway.ts`, `functions/src/index.ts`, `components/provenance/UsedContextColophon.tsx`, `metadata.json`
 
 ---
 
