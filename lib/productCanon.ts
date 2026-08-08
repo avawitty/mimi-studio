@@ -549,7 +549,7 @@ export const CANON_MODULES: CanonModule[] = [
       "Keep Tabs RSS (/u/:handle/feed.xml)",
     ],
     userFlow: "Package approved work into a shareable or portfolio-ready artifact. Making a zine public files it in the creator Keep Tabs feed for subscribe-once readers. Share actions emit mimi.fish/s/:id attention plates.",
-    notes: "Artifact-specific export exists inside AnalysisDisplay via ExportChamber; the canonical top-level route currently opens PublisherDashboard. Public issues also project to RSS via /api/feed?handle=. Attention/share loop surface is mimi.fish (host skin over PublicZineSharePage).",
+    notes: "Artifact-specific export via ExportChamber; the canonical `/the-press` route opens PublisherDashboard with in-place Export Chamber for PDF/ZIP/Shopify export and web publish consent. Public issues also project to RSS via /api/feed?handle=. Attention/share loop surface is mimi.fish (host skin over PublicZineSharePage).",
     family: "publishing",
     phase: "publish",
     visibility: "primary",
