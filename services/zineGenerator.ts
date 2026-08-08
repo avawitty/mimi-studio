@@ -5,7 +5,6 @@ import { modulateSemioticContext } from "./semioticModulator";
 import { triggerAlert } from "./errorHandling";
 import { fetchUserZines, fetchLatestLineageEntry } from "./firebaseUtils";
 import { fetchFragmentsByStackId } from "./firebase";
-import { scryShadowMemory } from "./vectorSearch";
 import { devLog } from "../lib/devLog";
 import {
   readIntelHubPressHandoff,
@@ -184,10 +183,9 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             const modulationContext = modulateSemioticContext(text, profile, tone);
             
             // Fetch context in parallel
-            const [recentZines, latestLineage, similarMemories] = await Promise.all([
+            const [recentZines, latestLineage] = await Promise.all([
                 profile?.uid ? fetchUserZines(profile.uid) : Promise.resolve([]),
                 profile?.uid ? fetchLatestLineageEntry(profile.uid) : Promise.resolve(null),
-                scryShadowMemory(text, { filterType: 'all' })
             ]);
             
             const recentZinesContext = recentZines.length > 0 
@@ -205,10 +203,6 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
                 ? `\nUSER SELECTED TAGS (Incorporate these themes): ${opts.tags.join(', ')}`
                 : '';
             
-            const memoryContext = similarMemories.length > 0
-                ? `\nUSER'S PAST THOUGHTS & TASTE (Embedded Context):\n${similarMemories.slice(0, 5).map(m => `- ${m.content_preview}`).join('\n')}`
-                : '';
-
             const scribeUsedContext = opts.usedContext && opts.usedContext.length > 0
                 ? `\nSCRIBE ATOMS (Explicit User-Approved Context — MUST influence synthesis, narrative, and visual logic):\n${opts.usedContext.map((a: { title: string; source?: string; content: string; tags?: string[] }) => `- [${a.title}] (${a.source || 'Scribe'}${a.tags?.length ? ` · ${a.tags.join(', ')}` : ''}): ${a.content}`).join('\n')}`
                 : '';
@@ -285,7 +279,6 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             ${stackContent}
             ${componentContext}
             ${artifactInstruction}
-            ${memoryContext}
             ${scribeUsedContext}
             ${atelierTasteContext}
             ${dollContext}
@@ -296,11 +289,11 @@ ${validComponents.map(c => `- ${c.title || 'Component'}: ${c.url || c.content?.u
             - PRIORITIZE GROUNDING: If 'useSearch' is enabled, you MUST utilize Google Search to anchor your insights in real-world cultural history, emerging movements, and verified facts. Move beyond the user's immediate profile to provide external perspective.
             - EDUCATIONAL DEPTH: Your responses must be insightful and informative. Do not just repeat the user's preferences; explain the *why* behind the aesthetic connections.
             - TAILOR LOGIC AS FILTER: Apply only confirmed, non-empty Tailor rules to refine the **Visual Logic** and **Materiality** of image prompts. Tailor is subordinate to direct instructions in the current zine brief and must not fill unspecified dimensions with house defaults.
-            - AESTHETIC EVOLUTION: Analyze the RECENT ZINES and PAST THOUGHTS provided. Compare them to the user's Tailor Logic and stated Goals. Act as a guide, building off their thoughts and getting to know their taste. If the user's creative output is drifting, gently but firmly steer them back or refine their Tailor Logic to incorporate the new direction. The zine should be a step forward in their aesthetic evolution, not just a repetition of the past.
+            - AESTHETIC EVOLUTION: Analyze the RECENT ZINES provided. Compare them to the user's Tailor Logic and stated Goals. Act as a guide, building off their thoughts and getting to know their taste. If the user's creative output is drifting, gently but firmly steer them back or refine their Tailor Logic to incorporate the new direction. The zine should be a step forward in their aesthetic evolution, not just a repetition of the past.
             - ARTIFACT SYNTHESIS: If visual artifacts are provided, your 'header_image_prompt' and 'visual_plates' MUST be cohesive with them. Do not generate random imagery. Refract the user's uploaded images through the 'Tailor Logic'.
             
             ALGORITHMIC DIALS & INTENSITY CONTROL:
-            - MEMORY SYNTHESIS (${profileToUse?.tailorDraft?.algoDials?.memorySynthesis ?? 50}%): At higher percentages, heavily contextualize the output using the RECENT ZINES and PAST THOUGHTS. At lower percentages, treat this artifact as an isolated, standalone creation.
+            - MEMORY SYNTHESIS (${profileToUse?.tailorDraft?.algoDials?.memorySynthesis ?? 50}%): At higher percentages, heavily contextualize the output using the RECENT ZINES and approved Used Context. At lower percentages, treat this artifact as an isolated, standalone creation.
             - DISSONANCE ENGINE (${profileToUse?.tailorDraft?.algoDials?.dissonance ?? 10}%): At higher percentages, actively inject opposing, subversive, or contrasting aesthetic concepts into the visual plates and narrative to force creative breakthroughs. Mutate their safe aesthetic choices.
             - BINARY-TO-SPECTRUM DIAL (${profileToUse?.tailorDraft?.algoDials?.binaryToSpectrum ?? 50}%): At 0%, strictly adhere to binary categories (e.g., hyper-masculine/feminine). At 100%, aggressively synthesize and blur these boundaries into a fluid, post-binary aesthetic.
             - AESTHETIC DRIFT VULNERABILITY (${profileToUse?.tailorDraft?.diagnostics?.driftVulnerability ?? 5}/10): At lower values, strictly enforce the user's established Tailor Logic. At higher values, allow external inputs (artifacts, web scry) to heavily influence and shift the aesthetic output.

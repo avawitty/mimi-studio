@@ -70,7 +70,7 @@ export type StudioOrientationEntryProps = {
 
 /**
  * Alternate /studio/orientation entry — calm orientation + multimodal intake.
- * Primary /studio mounts the archival StudioWorktable desk.
+ * Primary /studio mounts InputStudio; archival desk is /studio/worktable-legacy only.
  */
 export const StudioOrientationEntry: React.FC<StudioOrientationEntryProps> = ({
   onRefine,

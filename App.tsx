@@ -2212,6 +2212,22 @@ export const App: React.FC = () => {
           opts.zineOptions,
         );
 
+        // Editorial intelligence: compress + sequence pages before plate bake (Proof UI optional).
+        const {
+          draftZineArtifactId,
+          realizeZineContentFromPlan,
+        } = await import("./lib/zine/realizeZineContentFromPlan");
+        const planned = realizeZineContentFromPlan({
+          content: result.content,
+          artifactId: draftZineArtifactId(),
+          originalInput: text,
+          fragmentIds,
+          usedContextSnapshots,
+        });
+        result.content = planned.content;
+        (result as { issuePlan?: typeof planned.issuePlan }).issuePlan =
+          planned.issuePlan;
+
         // Inject theme from options
         if (opts.zineOptions?.theme) {
           result.content.meta = result.content.meta || {};

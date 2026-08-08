@@ -53,23 +53,39 @@ assert.match(
 assert.doesNotMatch(
   generator,
   /realizeZineContentFromPlan/,
-  "createZine must not run the editorial issue-plan pipeline",
+  "createZine must not run issue-plan realization (orchestrated in App.handleRefine)",
+);
+assert.doesNotMatch(
+  generator,
+  /scryShadowMemory/,
+  "createZine must not pull unapproved shadow memory into generation",
 );
 
 const app = read("App.tsx");
-assert.doesNotMatch(
+assert.match(
   app,
-  /issuePlan: result\.issuePlan/,
-  "Hi-fi bake must not depend on issue plan slots",
+  /realizeZineContentFromPlan/,
+  "App.handleRefine must run editorial issue-plan realization after createZine",
+);
+
+const firebaseUtils = read("services/firebaseUtils.ts");
+const saveStart = firebaseUtils.indexOf("export const saveZineToProfile");
+const saveEnd = firebaseUtils.indexOf("export const updateTasteGraph");
+const saveBlock = firebaseUtils.slice(saveStart, saveEnd);
+assert.doesNotMatch(
+  saveBlock,
+  /updateTasteGraph\(/,
+  "saveZineToProfile must not auto-mutate taste graph from generated zines",
 );
 
 const bake = read("lib/bakeZinePlates.ts");
 assert.doesNotMatch(
   bake,
   /planAuthoredPageIdsRequiringMedia/,
-  "Bake must develop prompt-backed pages directly",
+  "Bake develops prompt-backed pages directly on aligned content",
 );
 
 console.log("✓ Mimi zine generation layout verified");
-console.log("  - createZine seeds spread layouts without issue-plan compression");
-console.log("  - hi-fi bake develops pages with image prompts directly");
+console.log("  - createZine seeds spread layouts; App orchestrates issue-plan realization");
+console.log("  - hi-fi bake develops pages with image prompts on plan-aligned content");
+console.log("  - generated zines do not silently write taste graph vectors");

@@ -113,6 +113,10 @@ test.describe('Mimi E2E Experience', () => {
       page.getByRole('heading', { name: /Turn source material into an editorial issue/i }),
     ).toBeVisible({ timeout: 15000 });
 
+    // Regression: primary /studio must not mount archival worktable desk chrome.
+    await expect(page.getByText(/FIG\. 01/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Spark · Generate/i })).toHaveCount(0);
+
     await expect(page).toHaveScreenshot('studio-input-console.png', {
       fullPage: true,
       animations: 'disabled',
