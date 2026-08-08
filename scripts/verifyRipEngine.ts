@@ -9,6 +9,8 @@ import {
   buildRipReadingDraft,
   oppositeColorToken,
   oppositePaletteFrom,
+  applySemioticInversion,
+  buildInverseSemioticTouchpoints,
 } from "../services/ripEngine";
 import { getSiteSkin, isRipHost, parseRipPublicHandle } from "../lib/siteHost";
 
@@ -114,6 +116,23 @@ check("oppositePaletteFrom mixes tokens", () => {
   assert(pal.length >= 2, "expected pair");
 });
 
+check("applySemioticInversion maps neon cyberpunk", () => {
+  const inv = applySemioticInversion("neon cyberpunk");
+  assert(inv.node.includes("analog") || inv.node.includes("mesopic"), inv.node);
+});
+
+check("buildInverseSemioticTouchpoints from refusals", () => {
+  const tps = buildInverseSemioticTouchpoints({
+    antiMotifs: likeness.antiMotifs,
+    blindSpots: doll.blindSpots,
+    doll,
+    dossier,
+    likeness,
+  });
+  assert(tps.length >= 3, "touchpoints");
+  assert(tps.some((t) => t.inverseFunction === "semiotic_inversion"), "semiotic");
+});
+
 check("buildRipReadingDraft consumes refusals + doll", () => {
   const draft = buildRipReadingDraft({
     userId: "u1",
@@ -125,8 +144,14 @@ check("buildRipReadingDraft consumes refusals + doll", () => {
   assert(draft.antiMotifs.includes("neon cyberpunk"), "anti motif");
   assert(draft.blindSpots.includes("over-ornament risk"), "blind spot");
   assert(draft.inversions.length >= 1, "inversions");
+  assert(draft.inversions[0].rationale, "inversion rationale");
+  assert(draft.inversions[0].inverseFunction, "inverse function");
   assert(/Inverse thesis/i.test(draft.shadowThesis), "thesis");
   assert(draft.provenanceNotes.some((n) => /Not identity/i.test(n)), "disclaimer");
+  assert(draft.inputCoverage?.coverageScore > 0.5, "coverage");
+  assert(draft.fieldAttributions?.length >= 3, "attributions");
+  assert(draft.semioticTouchpoints?.length >= 2, "touchpoints");
+  assert(draft.inverseRecommendations?.length >= 2, "recommendations");
 });
 
 check("buildPublicRipSnapshot opt-in shape", () => {
@@ -141,6 +166,8 @@ check("buildPublicRipSnapshot opt-in shape", () => {
   assert(snap.handle === "atelier-test", "handle");
   assert(snap.sourceRipId === "rip_1", "source");
   assert(snap.antiMotifs.length > 0, "public anti");
+  assert(snap.shadowExperiments?.length > 0, "public experiments parity");
+  assert(snap.semioticTouchpoints?.length > 0, "public touchpoints");
 });
 
 check("siteHost rip detection + parse", () => {

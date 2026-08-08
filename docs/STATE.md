@@ -45,6 +45,7 @@
 | **Mean Median Mode** | `/mean-median-mode` | **stub** | Same demonstration fixture as Observatory | Collapse or differentiate from Observatory overview |
 | **Forecast** | `/forecast` | partial | Observed panel uses **demonstration** MMM; content vectors key-gated | Remove any residual costume metrics; add Forecast to menu (`prd/chamber-loop-…`) |
 | **Celestial Calibration** | `/celestial-calibration` | shipped | Rising/houses need time + geocoded place | — |
+| **Oracle** | `/oracle` | **partial** | Cyberdeck voice overlay shipped; chamber reports + theme analysis now local-first (`oracleChamberService`); not in `CANON_MODULES` yet; celestial readings ephemeral | Register in canon; optional Neon sync for cross-device reports |
 
 ---
 

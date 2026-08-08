@@ -10,17 +10,33 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
 ## 2026-08-08 — Omni Loop Cult dolls: onboarding + art-history time travel
 
-**Decision:** Ship Omni Loop Cult as `omni-loop-v1` staple (supermodel AI BJD species). Doll onboarding: user photo + 2+ aesthetic refs → Gemini analysis → `saveDoll` + shell portrait via `/api/mimi-image`. Time travel: era picker + Met public-domain refs → `generateRedepictionPrompt` (when Tailor project exists) or fallback shell prompt → scene image with doll + artwork + friend portrait refs. Persist scenes in `users/{uid}/dollScenes`; public gallery tab for shared scenes.
+**Decision:** Ship Omni Loop Cult as `omni-loop-resin-v1` staple (ball-jointed resin BJD species). Doll onboarding: user photo + 2+ aesthetic refs + user-declared likeness attributes → Gemini analysis → `saveDoll` + shell portrait via `/api/mimi-image`. Time travel: era picker + Met public-domain refs → `generateRedepictionPrompt` (when Tailor project exists) or fallback shell prompt → scene image with doll + artwork + friend portrait refs. Persist scenes in `users/{uid}/dollScenes`; public gallery tab for shared scenes.
 
 **Alternatives rejected:** (1) Require full Tailor evidence loop before any doll. (2) Copy artwork compositions without transformative prompt layer. (3) Separate API routes for doll scenes (reuse Firestore + mimi-image).
 
 **Why:** Product vision needs a direct dolls chamber entry (photo + motif refs) and generative art-history reinterpretation for memes/marketing; existing `generateRedepictionPrompt` was unused.
 
-**Ref:** `services/dollOnboardingService.ts`, `services/dollSceneService.ts`, `components/tailor/DollOnboardingFlow.tsx`, `components/tailor/TimeTravelStudio.tsx`, `services/dollEngine/staplePrompt.ts`
+**Ref:** `services/dollOnboardingService.ts`, `services/dollSceneService.ts`, `services/dollLikeness.ts`, `components/tailor/DollOnboardingFlow.tsx`, `components/tailor/TimeTravelStudio.tsx`, `services/dollEngine/staplePrompt.ts`
 
 ---
+
+## 2026-08-08 — Oracle chamber reports (local-first cyberdeck UX)
+
+**Decision:** Redesign `/oracle` with cyberdeck instrument plates (matching `TheScribe` atmosphere). Persist Cyberdeck sessions locally via `services/oracleChamberService.ts` on chamber close/export; surface **Chamber Reports** (past transmissions) and **Recurring Themes** (client-side frequency extraction) on the Oracle page. Pocket export remains the durable archive path.
+
+**Alternatives rejected:** (1) Firestore collection for every voice snippet (quota + latency). (2) AI-generated theme summaries on each page load (cost + latency). (3) Flattening Oracle to quiet public kit (product exempts Oracle cyberdeck density).
+
+**Why:** Users need continuity across communes without manual Pocket export; local storage is honest for unsigned/offline use and matches other chamber-local patterns (`mimi_audits_*`, quiet studio ops).
+
+**Ref:** `components/TheOracle.tsx`, `components/oracle/*`, `components/TheScribe.tsx`, `services/oracleChamberService.ts`
+
+---
+
+## 2026-08-08 — AI Gateway funding for TTS + Oracle Cyberdeck live voice
 
 **Decision:** Route Gemini-compat TTS (`responseModalities: AUDIO`, `*-tts-*` models) through `generateGatewaySpeech` in `/api/proxy/gemini` with funded-gateway metering. Mint Oracle Cyberdeck live sessions via `gateway.experimental_realtime.getToken` in `/api/live/token` when `AI_GATEWAY_API_KEY` is configured; client connects with `GatewayLiveConnection` (WebSocket codec). Keep Gemini ephemeral tokens as fallback when gateway is absent or for BYOK `x-api-key`.
 
@@ -31,6 +47,8 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Ref:** `lib/ai/generate.ts`, `lib/aiGatewayCompat.ts`, `api/live/token.ts`, `hooks/gatewayLiveConnection.ts`, `hooks/useLiveSession.ts`, `services/liveAuth.ts`
 
 ---
+
+## 2026-08-08 — Pocket why-saved prompt queue (a11y)
 
 **Decision:** Serialize multi-image why-saved prompts through `useWhySavedPrompt` artifact queue (one sheet at a time; Done exits queue; dismiss advances). Per-hypothesis review pending/error state; `epistemicLabelForHypothesis` centralizes Inferred/Observed/Creator labels; `useModalFocus` traps focus in `WhySavedSheet`.
 
