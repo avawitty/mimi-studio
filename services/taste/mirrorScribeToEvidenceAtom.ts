@@ -4,6 +4,7 @@
 import { doc, setDoc } from "firebase/firestore";
 import type { MemoryAtom } from "../../types";
 import { db } from "../firebaseInit";
+import { sanitizeFirestoreData } from "../firebaseUtils";
 import {
   memoryAtomToAtomInput,
   scribeEvidenceAtomId,
@@ -28,11 +29,11 @@ export async function mirrorScribeMemoryToEvidenceAtom(
     // Refresh interpretation fields when Scribe content changes.
     await setDoc(
       evidenceAtomDoc(userId, evidenceId),
-      {
+      sanitizeFirestoreData({
         originalSource: memoryAtomToAtomInput(atom).originalSource,
         sourceMetadata: memoryAtomToAtomInput(atom).sourceMetadata,
         updatedAt: Date.now(),
-      },
+      }),
       { merge: true },
     );
     return;
@@ -40,6 +41,6 @@ export async function mirrorScribeMemoryToEvidenceAtom(
 
   const input = memoryAtomToAtomInput(atom);
   const built = buildEvidenceAtomFromInput(userId, input, { id: evidenceId });
-  await setDoc(evidenceAtomDoc(userId, evidenceId), built);
+  await setDoc(evidenceAtomDoc(userId, evidenceId), sanitizeFirestoreData(built));
   scheduleEvidenceAtomAnalysis(evidenceId);
 }

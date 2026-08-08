@@ -1,6 +1,7 @@
 import { doc, setDoc } from "firebase/firestore";
 import type { ZineMetadata } from "../../types";
 import { db } from "../firebaseInit";
+import { sanitizeFirestoreData } from "../firebaseUtils";
 import {
   floorZineEvidenceAtomId,
   floorZineToAtomInput,
@@ -31,19 +32,19 @@ export async function mirrorFloorZineToEvidenceAtom(
   if (existing) {
     await setDoc(
       evidenceAtomDoc(userId, atomId),
-      {
+      sanitizeFirestoreData({
         originalSource: input.originalSource,
         assetUrl: input.assetUrl,
         thumbnailUrl: input.thumbnailUrl,
         sourceMetadata: input.sourceMetadata,
         updatedAt: Date.now(),
-      },
+      }),
       { merge: true },
     );
     return;
   }
 
   const atom = buildEvidenceAtomFromInput(userId, input, { id: atomId });
-  await setDoc(evidenceAtomDoc(userId, atomId), atom);
+  await setDoc(evidenceAtomDoc(userId, atomId), sanitizeFirestoreData(atom));
   scheduleEvidenceAtomAnalysis(atomId);
 }
