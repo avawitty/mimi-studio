@@ -6,6 +6,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Taste Calibration MVP: Neon operational judgments + derived session model
+
+**Decision:** Store taste calibration sessions, pairs, and pairwise judgments in Neon (`taste_calibration_*` tables) per ADR-001. Pair selection uses deterministic seeded active learning (`taste-calibration-v1`). Judgments apply Bradley-Terry-style updates to a session-scoped derived model snapshot stored in Neon; legacy Firestore taste snapshots are read-only for base model compatibility.
+
+**Alternatives rejected:** (1) Writing calibration judgments to Firestore. (2) Random pair selection. (3) LLM-generated “why these two” explanations. (4) Universal “Mimi knows you X%” confidence score in UI.
+
+**Why:** Explicit pairwise judgments are operational state requiring transactional integrity and owner scoping; deterministic selection enables testable active learning; provenance must remain explainable without inventing rationales.
+
+**Ref:** `docs/taste-calibration-lab.md`, `lib/tasteCalibration/*`, `infrastructure/database/neon/migrations/0001_taste_calibration.sql`
+
+---
+
 ## 2026-08-08 — Taste model hotfix: idempotent events + scoped compilation
 
 **Decision:** (1) Use stable dedupe keys as Firestore document IDs for explicit curation events (`event.id === dedupeKey`). (2) Default `compileAndSaveTasteModel` scope to `project` when `projectId` is set — project recompilation must not overwrite `tasteModelSnapshots/global`.

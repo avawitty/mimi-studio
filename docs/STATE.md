@@ -28,6 +28,7 @@
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
 | **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; computational model (#224) inspector wired | Wire embedding similarity into candidate score; complete atom migration |
 | **Computational Taste Model** | — (derived) | **shipped** | MVP compiler + scoring; no embedding similarity in candidate score yet | Server-side recompile trigger; atom bridge completion |
+| **Taste Calibration** | `/tailor/calibrate` | **shipped** | Pairwise active-learning MVP; Neon sessions/judgments; Bradley-Terry updates; Tailor panel | Undo replay from baseline; workspace editor auth; Firestore snapshot write-back |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
 
 ---

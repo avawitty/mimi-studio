@@ -18,6 +18,7 @@
     "verify:tailor-intake": "tsx scripts/verifyTailorEvidenceIntake.ts",
     "verify:tailor-foundation": "tsx scripts/verifyTailorFoundation.ts",
     "verify:taste-model": "tsx scripts/verifyTasteModel.ts",
+    "verify:taste-calibration": "tsx scripts/verifyTasteCalibration.ts",
     "verify:taste-intelligence": "tsx scripts/verifyTasteIntelligence.ts",
     "verify:shopify-pack": "tsx scripts/verifyShopifyProductPack.ts",
     "verify:shopify-integration": "tsx scripts/verifyShopifyIntegration.ts",

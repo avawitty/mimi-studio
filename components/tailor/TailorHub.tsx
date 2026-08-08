@@ -4,6 +4,7 @@ import { ArtStyleChamber } from '../ArtStyleChamber';
 import { AestheticIntelligenceChamber } from '../chambers/AestheticIntelligenceChamber';
 import { TailorProjectFlow } from './TailorProjectFlow';
 import { EvidenceDossierFlow } from './EvidenceDossierFlow';
+import { TasteCalibrationScreen } from './TasteCalibrationScreen';
 import { useUser } from '../../contexts/UserContext';
 import { getTailorProject, listEvidenceNodes } from '../../services/tailorService';
 import type { TailorProject, EvidenceNode } from '../../types';
@@ -14,7 +15,8 @@ export type TailorPanel =
   | 'dossier'
   | 'intake'
   | 'style-lab'
-  | 'diagnostics';
+  | 'diagnostics'
+  | 'calibrate';
 
 interface TailorHubProps {
   initialOverrides?: unknown;
@@ -41,6 +43,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
     intake: '/tailor/evidence',
     'style-lab': '/tailor/style-lab',
     diagnostics: '/tailor/diagnostics',
+    calibrate: '/tailor/calibrate',
   };
 
   const selectPanel = (panel: TailorPanel) => {
@@ -75,6 +78,7 @@ export const TailorHub: React.FC<TailorHubProps> = ({
   const tabs: Array<{ id: TailorPanel; label: string; note: string }> = [
     { id: 'intake', label: 'Evidence Intake', note: 'collect' },
     { id: 'blueprint', label: 'Profile Blueprint', note: 'compile' },
+    { id: 'calibrate', label: 'Taste Calibration', note: 'refine' },
     { id: 'style-lab', label: 'Style Lab', note: 'interpret' },
     { id: 'diagnostics', label: 'Diagnostics', note: 'review' },
     { id: 'dossier', label: 'Compiled Dossier', note: 'apply' },
@@ -189,6 +193,36 @@ export const TailorHub: React.FC<TailorHubProps> = ({
         )}
         {mode === 'style-lab' && <ArtStyleChamber />}
         {mode === 'diagnostics' && <AestheticIntelligenceChamber />}
+        {mode === 'calibrate' && (
+          isSignedIn ? (
+            <TasteCalibrationScreen
+              projectId={resumeProject?.id ?? new URLSearchParams(window.location.search).get('project') ?? undefined}
+              navigate={navigate}
+              onExit={() => selectPanel('blueprint')}
+            />
+          ) : (
+            <div className="flex h-full min-h-0 items-center justify-center px-6 py-12">
+              <div className="w-full max-w-sm text-center">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#d4af37]">
+                  Taste Calibration
+                </p>
+                <h2 className="mt-3 font-serif text-2xl text-stone-900 dark:text-stone-100">
+                  Sign on to calibrate taste
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
+                  Pairwise comparisons sharpen Mimi&apos;s model of your taste boundary.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void login()}
+                  className="mt-6 inline-flex min-h-11 w-full items-center justify-center bg-stone-900 px-6 font-mono text-[11px] uppercase tracking-[0.2em] font-bold text-white transition-colors hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white"
+                >
+                  Sign on
+                </button>
+              </div>
+            </div>
+          )
+        )}
         {isSimulatedMode && mode !== 'blueprint' && (
           <div className="flex h-full min-h-0 items-center justify-center px-6 py-12">
             <div className="w-full max-w-xl text-center">

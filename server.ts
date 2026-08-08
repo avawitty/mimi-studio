@@ -42,6 +42,14 @@ import synthesizeDossierHandler from "./api/mimi/synthesize-dossier";
 import { handleMimiEvidenceRoute } from "./lib/mimiEvidenceRoute";
 import { handleMimiEvidenceAnalyzeRoute } from "./lib/mimiEvidenceAnalyzeRoute";
 import { handleMimiTasteStateRoute } from "./lib/mimiTasteStateRoute";
+import {
+  handleCompleteCalibrationSessionRoute,
+  handleCreateCalibrationSessionRoute,
+  handleGetCalibrationSessionRoute,
+  handleGetNextCalibrationPairRoute,
+  handlePauseCalibrationSessionRoute,
+  handleSubmitCalibrationJudgmentRoute,
+} from "./lib/tasteCalibrationRoute";
 import { fetchPinterestBoardPreview } from "./lib/pinterestBoardPreview";
 import { fetchLetterboxdFeed } from "./lib/letterboxdFeed";
 import { getShopifyConnectionStatus, publishShopifyDraft } from "./lib/shopifyAdmin";
@@ -1828,6 +1836,72 @@ async function startServer() {
       await handleMimiTasteStateRoute(req, res);
     } catch (error: any) {
       console.error("MIMI // Route error in /api/mimi/taste-state:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/taste-calibration/session", async (req, res) => {
+    try {
+      await handleCreateCalibrationSessionRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/taste-calibration/session:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.get("/api/mimi/taste-calibration/session", async (req, res) => {
+    try {
+      await handleGetCalibrationSessionRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/taste-calibration/session GET:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.get("/api/mimi/taste-calibration/next-pair", async (req, res) => {
+    try {
+      await handleGetNextCalibrationPairRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/taste-calibration/next-pair:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/taste-calibration/judgment", async (req, res) => {
+    try {
+      await handleSubmitCalibrationJudgmentRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/taste-calibration/judgment:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/taste-calibration/complete", async (req, res) => {
+    try {
+      await handleCompleteCalibrationSessionRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/taste-calibration/complete:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.post("/api/mimi/taste-calibration/pause", async (req, res) => {
+    try {
+      await handlePauseCalibrationSessionRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/taste-calibration/pause:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }

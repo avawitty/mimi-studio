@@ -632,6 +632,133 @@ export const auditEvents = mimi.table(
   ],
 );
 
+export const tasteCalibrationSessions = mimi.table(
+  "taste_calibration_sessions",
+  {
+    id: uuid("id").primaryKey(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+      onDelete: "set null",
+    }),
+    projectId: text("project_id"),
+    status: text("status")
+      .$type<"active" | "paused" | "completed" | "abandoned">()
+      .notNull()
+      .default("active"),
+    targetQuestionCount: integer("target_question_count").notNull().default(10),
+    answeredCount: integer("answered_count").notNull().default(0),
+    seed: text("seed").notNull(),
+    algorithmVersion: text("algorithm_version").notNull(),
+    baselineSnapshotId: text("baseline_snapshot_id"),
+    currentSnapshotId: text("current_snapshot_id"),
+    currentModelState: jsonb("current_model_state").$type<Record<string, unknown>>(),
+    scope: text("scope")
+      .$type<"persistent" | "project" | "session">()
+      .notNull()
+      .default("project"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("taste_calibration_sessions_owner_created_idx").on(
+      table.ownerId,
+      table.createdAt,
+    ),
+    index("taste_calibration_sessions_project_idx").on(table.projectId),
+    index("taste_calibration_sessions_active_idx").on(
+      table.ownerId,
+      table.status,
+      table.projectId,
+    ),
+    check(
+      "taste_calibration_sessions_status_check",
+      sql`${table.status} in ('active', 'paused', 'completed', 'abandoned')`,
+    ),
+    check(
+      "taste_calibration_sessions_scope_check",
+      sql`${table.scope} in ('persistent', 'project', 'session')`,
+    ),
+  ],
+);
+
+export const tasteCalibrationPairs = mimi.table(
+  "taste_calibration_pairs",
+  {
+    id: uuid("id").primaryKey(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => tasteCalibrationSessions.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    pairIndex: integer("pair_index").notNull(),
+    leftCandidateId: text("left_candidate_id").notNull(),
+    rightCandidateId: text("right_candidate_id").notNull(),
+    isolatedFeatureIds: jsonb("isolated_feature_ids").$type<string[]>().notNull(),
+    selectionReason: jsonb("selection_reason").$type<Record<string, unknown>>().notNull(),
+    predictedLeftPreference: numeric("predicted_left_preference", {
+      precision: 8,
+      scale: 6,
+    }).notNull(),
+    expectedInformationGain: numeric("expected_information_gain", {
+      precision: 8,
+      scale: 6,
+    }).notNull(),
+    askedAt: timestamp("asked_at", { withTimezone: true }).notNull(),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("taste_calibration_pairs_session_idx").on(table.sessionId, table.pairIndex),
+    uniqueIndex("taste_calibration_pairs_session_pair_unique").on(
+      table.sessionId,
+      table.pairIndex,
+    ),
+  ],
+);
+
+export const tastePairwiseJudgments = mimi.table(
+  "taste_pairwise_judgments",
+  {
+    id: uuid("id").primaryKey(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => tasteCalibrationSessions.id, { onDelete: "cascade" }),
+    pairId: uuid("pair_id")
+      .notNull()
+      .references(() => tasteCalibrationPairs.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    choice: text("choice")
+      .$type<"left" | "right" | "both" | "neither" | "skip">()
+      .notNull(),
+    decidingFeatureIds: jsonb("deciding_feature_ids").$type<string[]>().notNull(),
+    correctionNote: text("correction_note"),
+    scope: text("scope")
+      .$type<"persistent" | "project" | "session">()
+      .notNull(),
+    projectId: text("project_id"),
+    answeredAt: timestamp("answered_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("taste_pairwise_judgments_session_idx").on(table.sessionId, table.answeredAt),
+    uniqueIndex("taste_pairwise_judgments_pair_unique").on(table.pairId),
+    check(
+      "taste_pairwise_judgments_choice_check",
+      sql`${table.choice} in ('left', 'right', 'both', 'neither', 'skip')`,
+    ),
+    check(
+      "taste_pairwise_judgments_scope_check",
+      sql`${table.scope} in ('persistent', 'project', 'session')`,
+    ),
+  ],
+);
+
 export const neonSchema = {
   profiles,
   workspaces,
@@ -659,4 +786,7 @@ export const neonSchema = {
   memoryApprovalCommands,
   legacyRecordMap,
   auditEvents,
+  tasteCalibrationSessions,
+  tasteCalibrationPairs,
+  tastePairwiseJudgments,
 };
