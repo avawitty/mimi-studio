@@ -3,7 +3,7 @@
  * URL is source of truth for tab selection, refresh, Back, and deep links.
  */
 
-export const MIMI_YOU_TABS = ['overview', 'dolls', 'field-notes', 'art-history'] as const;
+export const MIMI_YOU_TABS = ['overview', 'dolls', 'time-travel', 'scenes', 'field-notes', 'art-history'] as const;
 
 export type MimiYouTab = (typeof MIMI_YOU_TABS)[number];
 
@@ -13,6 +13,11 @@ const TAB_ALIASES: Record<string, MimiYouTab> = {
   overview: 'overview',
   universe: 'overview',
   dolls: 'dolls',
+  'time-travel': 'time-travel',
+  timetravel: 'time-travel',
+  travel: 'time-travel',
+  scenes: 'scenes',
+  gallery: 'scenes',
   'field-notes': 'field-notes',
   fieldnotes: 'field-notes',
   notes: 'field-notes',

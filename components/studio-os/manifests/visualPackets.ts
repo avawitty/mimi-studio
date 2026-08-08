@@ -49,6 +49,7 @@ export const VISUAL_PACKETS: Record<VisualPacketId, VisualPacket> = {
   "diagnostics-sheet": packet("diagnostics-sheet", "identity", "diagnostic sheet", "one reading is crossed out", "evidence chart", "contradiction mark", "reveal"),
   "style-specimen": packet("style-specimen", "identity", "style specimen", "one clipped handwriting sample", "reference plate", "approval tick", "clip"),
   "celestial-chart": packet("celestial-chart", "identity", "calibration chart", "one coordinate is pencilled in", "timing plate", "calibration mark", "settle"),
+  "twilight-mirror": packet("twilight-mirror", "intelligence", "obsidian mirror", "one reflection stays deliberately faint", "twilight reading", "mesopic mark", "reveal"),
   "identity-portrait": packet("identity-portrait", "identity", "portrait folio", "one silhouette extends beyond its mount", "identity portrait", "plate number", "reveal"),
   "mortuary-file": packet("mortuary-file", "identity", "mortuary file", "one discarded label is still legible", "inverse portrait", "refusal line", "reveal"),
   "editorial-signal": packet("editorial-signal", "production", "editorial galley", "one sentence is hand-corrected", "direction statement", "approval tick", "settle"),

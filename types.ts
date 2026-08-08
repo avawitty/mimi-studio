@@ -50,6 +50,55 @@ export interface TransformationPath {
   stages: TransformationStage[];
 }
 
+export type SignatureConfidenceBand =
+  | "well_supported"
+  | "emerging"
+  | "speculative";
+
+export interface SignatureEvidenceRef {
+  id: string;
+  title: string;
+  source?: string;
+}
+
+export interface SignatureSemioticTouchpoint {
+  motif: string;
+  context: string;
+  visualDirective: string;
+  rationale: string;
+  confidence: SignatureConfidenceBand;
+  evidenceRefIds?: string[];
+}
+
+export interface SignatureCreativeDirection {
+  title: string;
+  thesis: string;
+  constraints?: string[];
+  handoff?: "studio" | "tailor" | "the-edit" | "darkroom" | "scribe";
+}
+
+export interface SignatureRecommendation {
+  title: string;
+  hypothesis: string;
+  action: string;
+  handoff?: string;
+  evidenceRefIds?: string[];
+}
+
+export interface SignatureDriftNote {
+  aspect: string;
+  statedIntent?: string;
+  manifestedOutput?: string;
+  read: string;
+}
+
+export interface SignatureReading {
+  thesis: string;
+  supportingParagraphs?: string[];
+  confidence: SignatureConfidenceBand;
+  coverageNote?: string;
+}
+
 export interface AestheticSignature {
   primaryAxis: string;
   secondaryAxis: string;
@@ -65,6 +114,18 @@ export interface AestheticSignature {
   tactileBias?: { dominant: string; secondary: string };
   typographicPairing?: { serif: string; sans: string };
   promptMatrix?: string[];
+  /** Editorial reading with provenance — in-app back matter, not on export plate. */
+  reading?: SignatureReading;
+  /** Hard refusals and off-limits combinations. */
+  antiSignature?: string[];
+  semioticTouchpoints?: SignatureSemioticTouchpoint[];
+  creativeDirections?: SignatureCreativeDirection[];
+  recommendations?: SignatureRecommendation[];
+  driftNotes?: SignatureDriftNote[];
+  evidenceRefs?: SignatureEvidenceRef[];
+  status?: "draft" | "approved";
+  approvedAt?: number;
+  version?: number;
 }
 
 export interface InfluenceLineageItem {
@@ -2382,6 +2443,64 @@ export interface DollIdentityReferences {
   calibratedAt?: number;
 }
 
+/** Omni Loop onboarding intake — user likeness + aesthetic reference plates. */
+export interface DollLikenessTraits {
+  hairDescription?: string;
+  eyeColor?: string;
+  faceShape?: string;
+  distinguishingMarks?: string[];
+  resinSkinTone?: string;
+  expressionBaseline?: string;
+  styleNotes?: string;
+  userNotes?: string;
+}
+
+/** User-written likeness carriers — authoritative over photo inference when set. */
+export interface DollDeclaredAttributes {
+  hair?: string;
+  eyes?: string;
+  faceFeatures?: string;
+  distinguishingMarks?: string;
+  skinTone?: string;
+  expression?: string;
+  styleNotes?: string;
+  otherNotes?: string;
+}
+
+export interface DollOnboardingRefs {
+  userPhotoDataUrl?: string;
+  aestheticRefDataUrls?: string[];
+  rawThought?: string;
+  /** Creator-authored likeness attributes for doll generation. */
+  declaredAttributes?: DollDeclaredAttributes;
+  /** Features extracted from creator photo for doll-as-you translation. */
+  likenessTraits?: DollLikenessTraits;
+  completedAt?: number;
+}
+
+/** Time-travel scene: doll(s) reinterpreted through public-domain art + raw thought. */
+export interface DollScene {
+  id: string;
+  userId: string;
+  dollId: string;
+  projectId?: string;
+  rawThought: string;
+  artworkTitle: string;
+  artist: string;
+  artworkImageUrl?: string;
+  artworkSourceUrl: string;
+  publicDomainStatus?: string;
+  eraLabel?: string;
+  sceneImageUrl?: string;
+  generationPrompt?: string;
+  citation?: string;
+  transformationNotes?: string;
+  friendUserIds: string[];
+  visibility: 'private' | 'public';
+  createdAt: number;
+  updatedAt: number;
+}
+
 /** Procedural dresser params derived from (or locked over) Doll projection fields. */
 export interface ProceduralDollAesthetic {
   pattern: "ripples" | "grid" | "marble" | "halftone";
@@ -2424,6 +2543,8 @@ export interface Doll {
   generatedImageUrl?: string;
   /** Multi-view identity pack (portrait / full body / profile). */
   identityReferences?: DollIdentityReferences;
+  /** Omni Loop onboarding intake refs (user photo + aesthetic plates). */
+  onboardingRefs?: DollOnboardingRefs;
   /** Shader dresser aesthetic bound to this Doll record. */
   proceduralAesthetic?: ProceduralDollAesthetic;
   /** Currently preferred mask role for companion injection. */
@@ -2656,10 +2777,107 @@ export interface PublicShowcaseSnapshot {
  * Inverse taste projection ("mimi.rip") — diagnostic dark mirror of the Taste Graph.
  * Not identity. Private by default; publish via PublicRipSnapshot.
  */
+
+/** Deterministic inverse-reading operators — how a field was elected. */
+export type RipInverseFunction =
+  | "complement"
+  | "contrast"
+  | "admission"
+  | "shadow_projection"
+  | "semiotic_inversion"
+  | "material_flip"
+  | "register_shift"
+  | "proportion_disruption"
+  | "typographic_mirror"
+  | "temporal_reversal";
+
+/** Taste Graph source that fed a rip field or inversion. */
+export type RipSourceKind =
+  | "likeness_manifest"
+  | "evidence_dossier"
+  | "doll_projection"
+  | "tailor_draft"
+  | "synthesized";
+
+export interface RipInputCoverage {
+  hasLikeness: boolean;
+  hasDossier: boolean;
+  hasDoll: boolean;
+  hasTailorDraft: boolean;
+  /** 0–1: how much approved graph material was available */
+  coverageScore: number;
+  activeSources: RipSourceKind[];
+  dollName?: string;
+  dollId?: string;
+  containerName?: string;
+  inversionCount: number;
+  evidenceRefCount: number;
+}
+
+export interface RipFieldAttribution {
+  field: string;
+  sources: RipSourceKind[];
+  rationale: string;
+  confidence: number;
+  inverseFunction?: RipInverseFunction;
+  contributingValues?: string[];
+}
+
 export interface RipInversionCard {
   becauseYouTendTo: string;
   tryInstead: string;
   evidenceRefIds: string[];
+  sources?: RipSourceKind[];
+  confidence?: number;
+  rationale?: string;
+  inverseFunction?: RipInverseFunction;
+  semioticNode?: string;
+}
+
+/** Inverse semiotic touchpoint — cultural node adjacent to refusals, not literal subject mapping. */
+export interface RipSemioticTouchpoint {
+  motif: string;
+  context: string;
+  culturalNode: string;
+  inverseRationale: string;
+  resonance: number;
+  visualDirective: string;
+  savableKind: RipSavableInsightKind;
+  linkedAntiMotif?: string;
+  inverseFunction?: RipInverseFunction;
+}
+
+export interface RipInverseRecommendation {
+  title: string;
+  action: string;
+  rationale: string;
+  inverseFunction: RipInverseFunction;
+  priority: number;
+  savableKind: RipSavableInsightKind;
+}
+
+export type RipSavableInsightKind =
+  | "anti_motif"
+  | "blind_spot"
+  | "inversion"
+  | "touchpoint"
+  | "experiment"
+  | "palette_token"
+  | "register_shift"
+  | "silhouette_cue";
+
+/** User-pinned inverse insight from a rip reading (Firestore `ripInsights`). */
+export interface RipSavableInsight {
+  id: string;
+  ownerUid: string;
+  kind: RipSavableInsightKind;
+  label: string;
+  value: string;
+  ripReadingId: string;
+  inverseFunction?: RipInverseFunction;
+  savedAt: number;
+  intent?: "shadow_reference" | "experiment_prompt" | "creative_constraint";
+  tags?: string[];
 }
 
 export interface RipReading {
@@ -2690,6 +2908,11 @@ export interface RipReading {
   shadowExperiments: string[];
   /** Provenance notes for transparency */
   provenanceNotes: string[];
+  /** Input coverage + election transparency */
+  inputCoverage?: RipInputCoverage;
+  fieldAttributions?: RipFieldAttribution[];
+  semioticTouchpoints?: RipSemioticTouchpoint[];
+  inverseRecommendations?: RipInverseRecommendation[];
   visibility: "private" | "public";
   createdAt: number;
   updatedAt: number;
@@ -2707,6 +2930,10 @@ export interface PublicRipSnapshot {
   oppositeSilhouette: string;
   oppositeRegister: string;
   inversions: RipInversionCard[];
+  shadowExperiments?: string[];
+  semioticTouchpoints?: RipSemioticTouchpoint[];
+  inverseRecommendations?: RipInverseRecommendation[];
+  inputCoverage?: RipInputCoverage;
   sourceRipId: string;
   accentHex: string;
   updatedAt: number;
