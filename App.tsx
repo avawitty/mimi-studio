@@ -59,6 +59,9 @@ import { ZineConfiguration } from "./components/ZineConfiguration";
 import { ApiKeyShield } from "./components/ApiKeyShield";
 import { ZineGenerationOptions } from "./types";
 import { InputStudio } from "./components/InputStudio";
+import { critiqueTasteCandidate } from "./services/tasteIntelligenceClient";
+import { zineMetadataToGeneratedArtifact } from "./lib/tasteIntelligence/generatedArtifact";
+import type { TasteCritique } from "./schemas/tasteIntelligenceContracts";
 import { StudioOrientationEntry } from "./components/studio/StudioOrientationEntry";
 import { StudioWorktable } from "./components/worktable/StudioWorktable";
 import { StudioChrome } from "./components/studio/StudioChrome";
@@ -1507,6 +1510,9 @@ export const App: React.FC = () => {
 
   const [showQuotaShield, setShowQuotaShield] = useState(false);
   const [zineMetadata, setZineMetadata] = useState<ZineMetadata | null>(null);
+  const [tasteCritique, setTasteCritique] = useState<TasteCritique | null>(null);
+  const [tasteCritiqueLoading, setTasteCritiqueLoading] = useState(false);
+  const [tasteCritiqueUnavailable, setTasteCritiqueUnavailable] = useState(false);
   const [zineOptions, setZineOptions] = useState<ZineGenerationOptions>({
     style: "balanced",
     theme: "organic",
@@ -2145,8 +2151,7 @@ export const App: React.FC = () => {
         if (fragmentIds.length > 0) {
           clearApprovedUsedContext("studio", targetUid);
         }
-        navigate("/zine/" + id);
-        setZineMetadata({
+        const zineRecord: ZineMetadata = {
           id,
           userId: targetUid,
           userHandle: profile?.handle || "Ghost",
@@ -2174,7 +2179,35 @@ export const App: React.FC = () => {
           createdAt: Date.now(),
           theme: opts.zineOptions?.theme || "Editorial Stillness",
           aestheticVector: {},
-        });
+        };
+        navigate("/zine/" + id);
+        setZineMetadata(zineRecord);
+        setTasteCritique(null);
+        setTasteCritiqueUnavailable(false);
+
+        if (opts.tasteContractId) {
+          setTasteCritiqueLoading(true);
+          const artifact = zineMetadataToGeneratedArtifact(
+            zineRecord,
+            opts.sourcePromptTags,
+          );
+          void critiqueTasteCandidate({
+            contractId: opts.tasteContractId,
+            artifact,
+            projectId: opts.projectId,
+            persist: true,
+          })
+            .then((result) => {
+              setTasteCritique(result.critique);
+            })
+            .catch(() => {
+              setTasteCritiqueUnavailable(true);
+            })
+            .finally(() => {
+              setTasteCritiqueLoading(false);
+            });
+        }
+
         window.dispatchEvent(
           new CustomEvent("mimi:sound", { detail: { type: "success" } }),
         );
@@ -2602,9 +2635,14 @@ export const App: React.FC = () => {
                 {appState === AppState.REVEALED && zineMetadata ? (
                   <AnalysisDisplay
                     metadata={zineMetadata}
+                    tasteCritique={tasteCritique}
+                    tasteCritiqueLoading={tasteCritiqueLoading}
+                    tasteCritiqueUnavailable={tasteCritiqueUnavailable}
                     onReset={() => {
                       navigate("/studio");
                       setZineMetadata(null);
+                      setTasteCritique(null);
+                      setTasteCritiqueUnavailable(false);
                       setAppState(AppState.IDLE);
                     }}
                     onUpdateMetadata={(updated) => {

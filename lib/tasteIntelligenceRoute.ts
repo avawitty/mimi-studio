@@ -165,13 +165,43 @@ const compilerCompileSchema = z.object({
 const criticCritiqueSchema = z.object({
   contractId: z.string().optional(),
   contract: z.custom<TasteGenerationContract>().optional(),
-  candidate: z.object({
-    id: z.string(),
-    featureIds: z.array(z.string()).optional(),
-    tags: z.array(z.string()).optional(),
-  }),
+  candidate: z
+    .object({
+      id: z.string(),
+      featureIds: z.array(z.string()).optional(),
+      tags: z.array(z.string()).optional(),
+    })
+    .optional(),
+  artifact: z
+    .object({
+      id: z.string(),
+      medium: z.enum([
+        "editorial",
+        "image",
+        "writing",
+        "ui",
+        "brand",
+        "fashion",
+        "product",
+      ]),
+      text: z.string().optional(),
+      imageRefs: z.array(z.string()).optional(),
+      pages: z
+        .array(
+          z.object({
+            text: z.string().optional(),
+            imageRef: z.string().optional(),
+            layoutMetadata: z.record(z.string(), z.unknown()).optional(),
+          }),
+        )
+        .optional(),
+      generationMetadata: z.record(z.string(), z.unknown()).optional(),
+      sourcePromptTags: z.array(z.string()).optional(),
+    })
+    .optional(),
   persist: z.boolean().optional(),
   projectId: z.string().optional(),
+  allowAiExtraction: z.boolean().optional(),
 });
 
 const savedReasonProposeSchema = z.object({
@@ -970,20 +1000,70 @@ async function handleCriticCritique(req: any, res: any) {
       return;
     }
 
+    const refusals = await repo.listActiveRefusals(
+      decoded.uid,
+      body.data.projectId,
+    );
+
     const {
       critiqueAgainstContract,
-      extractCandidateFeatures,
+      extractionToCritiqueFeatures,
     } = await import("./tasteIntelligence/critiqueCandidate.js");
-
-    const extracted = extractCandidateFeatures(
-      body.data.candidate,
-      snapshotRow.snapshot,
+    const { extractArtifactFeatures, artifactExtractionToCandidate } =
+      await import("./tasteIntelligence/extractArtifactFeatures.js");
+    const { isCritiquableArtifact } = await import(
+      "./tasteIntelligence/generatedArtifact.js"
     );
+
+    const artifact = body.data.artifact;
+    if (!artifact) {
+      sendOperationalError(
+        res,
+        400,
+        "ARTIFACT_REQUIRED",
+        "Post-generation critique requires a generated artifact.",
+      );
+      return;
+    }
+
+    if (!isCritiquableArtifact(artifact)) {
+      sendOperationalError(
+        res,
+        422,
+        "ARTIFACT_EMPTY",
+        "Generated artifact has no critiquable content.",
+      );
+      return;
+    }
+
+    const extraction = await extractArtifactFeatures({
+      artifact,
+      snapshot: snapshotRow.snapshot,
+      allowAiExtraction: body.data.allowAiExtraction !== false,
+    });
+
+    if (extraction.completeness === "failed") {
+      sendOperationalError(
+        res,
+        422,
+        "EXTRACTION_FAILED",
+        extraction.partialReason ?? "Feature extraction could not run.",
+      );
+      return;
+    }
+
+    const candidate =
+      body.data.candidate ??
+      artifactExtractionToCandidate(artifact, extraction);
+
+    const extracted = extractionToCritiqueFeatures(extraction);
     const critique = critiqueAgainstContract({
       contract,
       snapshot: snapshotRow.snapshot,
-      candidate: body.data.candidate,
+      candidate: { ...candidate, id: artifact.id },
       extracted,
+      refusals,
+      sourceSnapshotId: snapshotRow.id,
     });
 
     const persist = body.data.persist !== false;
@@ -993,7 +1073,7 @@ async function handleCriticCritique(req: any, res: any) {
       });
     }
 
-    sendJson(res, 200, { critique, extracted });
+    sendJson(res, 200, { critique, extracted: extraction });
   } catch (error) {
     sendOperationalError(
       res,

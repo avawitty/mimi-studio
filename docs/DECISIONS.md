@@ -465,3 +465,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Closes the loop from capture → interpretation → correction → generation without requiring a separate analyze step from the user.
 
 **Ref:** `lib/taste/evidenceAtomAnalysis.ts`, `lib/taste/serverTasteState.ts`, `lib/mimiGenerateTextRoute.ts`
+
+---
+
+## 2026-08-08 — Post-generation Taste Critic evaluates artifact output
+
+**Decision:** Taste Critic runs only after successful Studio zine generation. `GeneratedArtifactForTasteCritique` normalizes zine pages/text/images; deterministic (+ optional Gateway) feature extraction feeds `critiqueAgainstContract`. Source prompt tags are provenance only. Critique persists against real artifact ID, contract ID, snapshot ID, and critic version. Alignment score displays as `N / 100` (model score, not probability).
+
+**Alternatives rejected:** (1) Critique on `isThinking` flip — critiques pre-generation tags, not output. (2) LLM-assigned final score — deterministic critic consumes extracted features; AI only proposes feature claims.
+
+**Why:** Post-generation critique must evaluate what was produced, with honest partial states when imagery cannot be analyzed.
+
+**Ref:** `lib/tasteIntelligence/generatedArtifact.ts`, `lib/tasteIntelligence/extractArtifactFeatures.ts`, `lib/tasteIntelligence/critiqueCandidate.ts`, `hooks/useStudioTasteCompiler.ts`

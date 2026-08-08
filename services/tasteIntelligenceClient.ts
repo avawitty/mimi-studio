@@ -236,13 +236,34 @@ export async function compileTasteGenerationContract(input: {
 export async function critiqueTasteCandidate(input: {
   contractId?: string;
   contract?: TasteGenerationContract;
-  candidate: {
+  artifact: {
+    id: string;
+    medium:
+      | "editorial"
+      | "image"
+      | "writing"
+      | "ui"
+      | "brand"
+      | "fashion"
+      | "product";
+    text?: string;
+    imageRefs?: string[];
+    pages?: Array<{
+      text?: string;
+      imageRef?: string;
+      layoutMetadata?: Record<string, unknown>;
+    }>;
+    generationMetadata?: Record<string, unknown>;
+    sourcePromptTags?: string[];
+  };
+  candidate?: {
     id: string;
     featureIds?: string[];
     tags?: string[];
   };
   persist?: boolean;
   projectId?: string;
+  allowAiExtraction?: boolean;
 }): Promise<{
   critique: TasteCritique;
   extracted: {
@@ -250,6 +271,14 @@ export async function critiqueTasteCandidate(input: {
     labels: string[];
     tags: string[];
     evidenceIds: string[];
+    completeness: "full" | "partial" | "failed";
+    partialReason?: string;
+    provenance: Array<{
+      source: "deterministic" | "ai";
+      provider?: string;
+      model?: string;
+      featureCount: number;
+    }>;
   };
 }> {
   return apiFetch("/critic/critique", {

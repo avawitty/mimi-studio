@@ -499,14 +499,6 @@ export const InputStudio: React.FC<{
     tailorDraft: profile?.tailorDraft,
     signedIn: Boolean(currentUser?.uid),
   });
-  const wasThinkingRef = useRef(false);
-
-  useEffect(() => {
-    if (wasThinkingRef.current && !isThinking && tasteCompilerEnabled) {
-      void tasteCompiler.runPendingCritique();
-    }
-    wasThinkingRef.current = isThinking;
-  }, [isThinking, tasteCompilerEnabled, tasteCompiler.runPendingCritique]);
 
   const [isHighFidelity, setIsHighFidelity] = useState(
     initialHighFidelity || false,
@@ -1258,14 +1250,13 @@ ${finalInput}`;
       finalInput = `${studioDoll.dollPromptContext}\n\n${finalInput}`;
     }
 
+    let tasteContractId: string | undefined;
     if (tasteCompilerEnabled && currentUser?.uid) {
-      const prepared = await tasteCompiler.prepareForGeneration(
-        `studio-${Date.now()}`,
-        activeTags,
-      );
+      const prepared = await tasteCompiler.prepareForGeneration(activeTags);
       if (prepared?.promptBlock) {
         finalInput = `${prepared.promptBlock}\n\n${finalInput}`;
       }
+      tasteContractId = prepared?.contract.id;
     }
 
     const coverExport = buildStudioCoverExportMeta(
@@ -1299,6 +1290,8 @@ ${finalInput}`;
           activeTreatmentId || zineOptions.selectedTreatmentId,
         temperature: activeCognitivePersona?.temperature,
       },
+      tasteContractId,
+      sourcePromptTags: activeTags,
     });
 
     localStorage.removeItem("mimi_draft_input");
@@ -2704,6 +2697,8 @@ ${finalInput}`;
                 <TasteCritiqueCard
                   critique={tasteCompiler.critique}
                   loading={tasteCompiler.critiqueLoading}
+                  unavailable={tasteCompiler.critiqueUnavailable}
+                  error={tasteCompiler.error}
                 />
               </div>
 

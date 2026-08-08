@@ -6,6 +6,8 @@ export * from "./modelEdits.js";
 export * from "./counterfactuals.js";
 export * from "./compileGenerationContract.js";
 export * from "./critiqueCandidate.js";
+export * from "./generatedArtifact.js";
+export * from "./extractArtifactFeatures.js";
 export * from "./mergeGenerationContracts.js";
 export * from "./formatContractPrompt.js";
 export * from "./saturation.js";
