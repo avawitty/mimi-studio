@@ -315,6 +315,19 @@ test.describe("Service worker", () => {
 // 6. ROUTE RESTORATION
 // ---------------------------------------------------------------------------
 test.describe("Route restoration", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        // Prevent stale-chunk hard reload (recovered=1) from interrupting deep links in CI.
+        sessionStorage.setItem("mimi_stale_chunk_recover_at", String(Date.now()));
+        localStorage.setItem("mimi_core_loop_onboarded", "1");
+        localStorage.setItem("mimi_cookie_consent", "essential");
+      } catch {
+        /* ignore */
+      }
+    });
+  });
+
   test("navigating to a private route persists it in localStorage", async ({
     page,
   }) => {
@@ -376,8 +389,11 @@ test.describe("Route restoration", () => {
       localStorage.setItem("mimi_last_route", "/studio");
     });
 
-    // Visit a public share URL.
+    // Visit a public share URL — wait until navigation settles (no stale-chunk redirect).
     await page.goto("/s/some-share-id", { waitUntil: "domcontentloaded" });
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 15000 })
+      .toBe("/s/some-share-id");
     // Drain animation frames so the persistence effect has had a chance to run.
     // If the route were incorrectly saved the value would change here.
     await waitForAnimationFrames(page);
