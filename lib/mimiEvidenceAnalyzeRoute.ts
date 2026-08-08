@@ -51,17 +51,35 @@ export async function handleMimiEvidenceAnalyzeRoute(req: any, res: any) {
       return;
     }
 
-    await runEvidenceAtomAnalysis(db, decoded.uid, input.atomId, apiKey);
+    const outcome = await runEvidenceAtomAnalysis(db, decoded.uid, input.atomId, apiKey);
 
-    await chargeIfBillable(access, {
-      feature: "evidence_atom_analysis",
-      model: "gateway",
-    });
+    if (outcome === "not_found") {
+      sendError(res, 404, "Evidence atom not found.");
+      return;
+    }
+
+    if (outcome === "failed") {
+      sendError(res, 500, "Evidence analysis failed.");
+      return;
+    }
+
+    if (outcome === "skipped") {
+      sendError(res, 503, "Evidence analysis is temporarily unavailable.");
+      return;
+    }
+
+    const billable = outcome === "analyzed" && access?.billable;
+    if (billable) {
+      await chargeIfBillable(access, {
+        feature: "evidence_atom_analysis",
+        model: "gateway",
+      });
+    }
 
     sendJson(res, 200, {
       atomId: input.atomId,
-      status: "analyzed",
-      creditsCharged: access?.billable ? cost : 0,
+      status: outcome,
+      creditsCharged: billable ? cost : 0,
     });
   } catch (error) {
     const code = String((error as { code?: unknown })?.code || "");

@@ -164,28 +164,35 @@ function atomRef(db: NonNullable<AdminDb>, userId: string, atomId: string) {
   return db.collection("users").doc(userId).collection("evidenceAtoms").doc(atomId);
 }
 
+export type EvidenceAtomAnalysisOutcome =
+  | "analyzed"
+  | "already_analyzed"
+  | "not_found"
+  | "failed"
+  | "skipped";
+
 /**
  * Analyze one evidence atom and persist interpretation fields.
- * No-op when gateway or Firestore admin is unavailable.
+ * Returns an outcome so funded routes can charge only for real work.
  */
 export async function runEvidenceAtomAnalysis(
   db: AdminDb,
   userId: string,
   atomId: string,
   apiKey: string,
-): Promise<void> {
-  if (!db || !userId || userId === "ghost") return;
+): Promise<EvidenceAtomAnalysisOutcome> {
+  if (!db || !userId || userId === "ghost") return "skipped";
   if (!apiKey) {
     console.info("MIMI // Evidence atom analysis skipped — no funded gateway key.");
-    return;
+    return "skipped";
   }
 
   const ref = atomRef(db, userId, atomId);
   const snap = await ref.get();
-  if (!snap.exists) return;
+  if (!snap.exists) return "not_found";
 
   const atom = snap.data() as EvidenceAtom;
-  if (atom.processingState === "analyzed") return;
+  if (atom.processingState === "analyzed") return "already_analyzed";
 
   await ref.update({ processingState: "processing", updatedAt: Date.now() });
 
@@ -208,6 +215,7 @@ export async function runEvidenceAtomAnalysis(
       processingState: "analyzed",
       updatedAt: Date.now(),
     });
+    return "analyzed";
   } catch (error) {
     console.warn("MIMI // Evidence atom analysis failed:", {
       atomId,
@@ -217,6 +225,7 @@ export async function runEvidenceAtomAnalysis(
       processingState: "failed",
       updatedAt: Date.now(),
     });
+    return "failed";
   }
 }
 
