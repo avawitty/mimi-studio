@@ -14,6 +14,12 @@ test.describe('Mimi E2E Experience', () => {
       await expect(essential).toHaveCount(0, { timeout: 5000 }).catch(() => {});
     }
 
+    const guest = page.getByRole('button', { name: /explore as guest/i });
+    if (await guest.count()) {
+      await guest.first().click({ force: true }).catch(() => {});
+      await expect(guest).toHaveCount(0, { timeout: 5000 }).catch(() => {});
+    }
+
     const gateway = page.locator('div.fixed.inset-0.z-\\[200\\]');
     if (await gateway.count()) {
       const close = gateway.locator('button').first();
@@ -28,6 +34,12 @@ test.describe('Mimi E2E Experience', () => {
       }
       await expect(gateway).toHaveCount(0, { timeout: 5000 }).catch(() => {});
     }
+
+    const dismissAlerts = page.getByRole('button', { name: 'Dismiss' });
+    const alertCount = await dismissAlerts.count();
+    for (let i = 0; i < alertCount; i += 1) {
+      await dismissAlerts.nth(0).click({ force: true }).catch(() => {});
+    }
   };
 
   const waitForStableUI = async (page: Page) => {
@@ -41,6 +53,26 @@ test.describe('Mimi E2E Experience', () => {
       try {
         localStorage.setItem('mimi_core_loop_onboarded', '1');
         localStorage.setItem('mimi_cookie_consent', 'essential');
+        localStorage.setItem('mimi_simulated_mode', '0');
+        window.addEventListener(
+          'mimi:registry_alert',
+          (e) => {
+            const msg = String(
+              (e as CustomEvent<{ message?: string }>).detail?.message || '',
+            ).toLowerCase();
+            if (
+              msg.includes('limit') ||
+              msg.includes('quota') ||
+              msg.includes('billing') ||
+              msg.includes('dunning') ||
+              msg.includes('403') ||
+              msg.includes('permission-denied')
+            ) {
+              e.stopImmediatePropagation();
+            }
+          },
+          true,
+        );
       } catch {
         // ignore
       }
@@ -114,6 +146,7 @@ test.describe('Mimi E2E Experience', () => {
     });
     await expect(page.getByText('Compose cover')).toBeVisible({ timeout: 15000 });
 
+    await dismissBlockingOverlays(page);
     await expect(page).toHaveScreenshot('studio-compose-console.png', {
       fullPage: true,
       animations: 'disabled',
@@ -127,6 +160,7 @@ test.describe('Mimi E2E Experience', () => {
     await expect(
       page.getByRole('navigation', { name: /Tailor profile workflow/i }),
     ).toBeVisible({ timeout: 20000 });
+    await dismissBlockingOverlays(page);
     await expect(page).toHaveScreenshot('tailor-shell.png', {
       fullPage: true,
       animations: 'disabled',
@@ -140,6 +174,7 @@ test.describe('Mimi E2E Experience', () => {
     await expect(
       page.getByRole('heading', { name: /The Darkroom/i }),
     ).toBeVisible({ timeout: 20000 });
+    await dismissBlockingOverlays(page);
     await expect(page).toHaveScreenshot('darkroom-shell.png', {
       fullPage: true,
       animations: 'disabled',

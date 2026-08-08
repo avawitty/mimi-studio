@@ -171,9 +171,30 @@ if ((await floor.count()) > 0) {
 // Studio compose console — cover composer + floating pill toolbar
 await page.goto(`${base}/studio`, { waitUntil: "domcontentloaded" });
 await dismiss(page);
+await page.waitForTimeout(800);
+const studioPagesNav = page.getByRole("navigation", { name: "Studio pages" });
+const coverPageTab = page.getByRole("tab", { name: "Cover page" });
+if (await studioPagesNav.isVisible().catch(() => false)) {
+  if (await coverPageTab.isVisible().catch(() => false)) {
+    await coverPageTab.click({ force: true });
+    await page.waitForTimeout(500);
+  }
+} else {
+  const coverToolbar = page.getByRole("button", { name: /^COVER$/i }).first();
+  if (await coverToolbar.isVisible().catch(() => false)) {
+    await coverToolbar.click({ force: true });
+    await page.waitForTimeout(500);
+  }
+}
 const studioBody = await page.locator("body").innerText().catch(() => "");
+const hasCoverComposer = await page
+  .getByRole("region", { name: "Cover image composer" })
+  .isVisible()
+  .catch(() => false);
 const hasComposeConsole =
-  /Compose cover/i.test(studioBody) || /Studio pages/i.test(studioBody);
+  hasCoverComposer ||
+  /Compose cover/i.test(studioBody) ||
+  (await studioPagesNav.isVisible().catch(() => false));
 const hasOrientationIntake = /Start with a thought/i.test(studioBody);
 const hasArchivalChrome =
   /FIG\.\s*01/i.test(studioBody) ||
