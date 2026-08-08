@@ -12,6 +12,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Unified `PublicProfileCard` for `/u/:handle`
+
+**Decision:** Extract a shared `PublicProfileCard` (`components/public-face/PublicProfileCard.tsx`) backed by `lib/publicProfileCard.ts` helpers. Canonical mimi.you showcase composes identity (photo, display name, bio, handle), taste signature excerpt (`aestheticSignature` → `semantic_signature` → doll philosophy), opt-in inverse reading teaser when `publicRip` is published, doll specimen, public zine grid, Keep Tabs, and cross-links to mimi.fish / mimi.rip.
+
+**Alternatives rejected:** (1) Continue duplicating layout across `PublicShowcasePage`, `PublicSharePage`, and directory tiles. (2) Expose full private taste graph on the public card. (3) Inline rip reading on mimi.you instead of linking to mimi.rip.
+
+**Why:** Product asked for a single public profile card surface; prior `/u/:handle` showed doll + zines only and ignored bio, avatar, signature report, and rip opt-in. Public-face kit + token colors align with PRD-07.
+
+**Ref:** `components/public-face/PublicProfileCard.tsx`, `lib/publicProfileCard.ts`, `services/publicShowcaseService.ts`, `components/PublicShowcasePage.tsx`
+
+---
+
 ## 2026-08-08 — Oracle chamber reports (local-first cyberdeck UX)
 
 **Decision:** Redesign `/oracle` with cyberdeck instrument plates (matching `TheScribe` atmosphere). Persist Cyberdeck sessions locally via `services/oracleChamberService.ts` on chamber close/export; surface **Chamber Reports** (past transmissions) and **Recurring Themes** (client-side frequency extraction) on the Oracle page. Pocket export remains the durable archive path.
