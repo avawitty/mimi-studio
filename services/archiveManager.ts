@@ -7,6 +7,7 @@ import {
   carryProvenanceOnTransfer,
   recordProvenanceOrigin,
 } from '../lib/provenance';
+import { mirrorPocketItemToEvidenceAtom } from './taste/mirrorPocketToEvidenceAtom';
 
 export const archiveManager = {
   async uploadMedia(
@@ -63,6 +64,16 @@ export const archiveManager = {
       const itemId = await addToPocket(userId, type, processedContent, embedding, deltaVerdict, content);
 
       if (itemId) {
+        void mirrorPocketItemToEvidenceAtom(
+          userId,
+          itemId,
+          type,
+          processedContent as Record<string, unknown>,
+          processedContent.title as string | undefined,
+        ).catch((err) => {
+          console.warn("MIMI // Pocket → EvidenceAtom mirror failed:", err);
+        });
+
         await recordProvenanceOrigin(userId, {
           artifactId: itemId,
           originChamber: 'pocket',

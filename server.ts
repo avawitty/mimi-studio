@@ -42,6 +42,11 @@ import synthesizeDossierHandler from "./api/mimi/synthesize-dossier";
 import { handleMimiEvidenceRoute } from "./lib/mimiEvidenceRoute";
 import { handleMimiEvidenceAnalyzeRoute } from "./lib/mimiEvidenceAnalyzeRoute";
 import { handleMimiTasteStateRoute } from "./lib/mimiTasteStateRoute";
+import { handleMimiTasteGraphSummaryRoute } from "./lib/mimiTasteGraphSummaryRoute";
+import {
+  handleMimiUsedContextGetRoute,
+  handleMimiUsedContextPutRoute,
+} from "./lib/mimiUsedContextRoute";
 import { fetchPinterestBoardPreview } from "./lib/pinterestBoardPreview";
 import { fetchLetterboxdFeed } from "./lib/letterboxdFeed";
 import { getShopifyConnectionStatus, publishShopifyDraft } from "./lib/shopifyAdmin";
@@ -1828,6 +1833,39 @@ async function startServer() {
       await handleMimiTasteStateRoute(req, res);
     } catch (error: any) {
       console.error("MIMI // Route error in /api/mimi/taste-state:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.get("/api/mimi/taste-graph/summary", async (req, res) => {
+    try {
+      await handleMimiTasteGraphSummaryRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/taste-graph/summary:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.get("/api/mimi/used-context", async (req, res) => {
+    try {
+      await handleMimiUsedContextGetRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in /api/mimi/used-context:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: { message: error.message || "Internal server error" } });
+      }
+    }
+  });
+
+  app.put("/api/mimi/used-context", async (req, res) => {
+    try {
+      await handleMimiUsedContextPutRoute(req, res);
+    } catch (error: any) {
+      console.error("MIMI // Route error in PUT /api/mimi/used-context:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: { message: error.message || "Internal server error" } });
       }
