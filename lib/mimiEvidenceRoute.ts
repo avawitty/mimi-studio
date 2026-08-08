@@ -29,6 +29,7 @@ import {
   buildEvidenceAtomFromInput,
   stripUndefinedForFirestore,
 } from "./taste/buildEvidenceAtom.js";
+import { queueEvidenceAtomAnalysis } from "./taste/evidenceAtomAnalysis.js";
 import type { EvidenceAtom } from "../types.js";
 
 const uid = () =>
@@ -91,6 +92,8 @@ export async function handleMimiEvidenceRoute(req: any, res: any) {
       .collection("evidenceAtoms")
       .doc(id)
       .set(cleanAtom);
+
+    queueEvidenceAtomAnalysis(db, userId, id);
 
     sendJson(res, 201, {
       id,

@@ -8,11 +8,24 @@ import {
   validateBody,
 } from "./apiUtils.js";
 import { runFundedGatewayObject } from "./mimiFundedText.js";
+import { verifyMimiSession, getServerFirebaseAdmin } from "./serverFirebaseAdmin.js";
+import { getServerTastePromptContext } from "./taste/serverTasteState.js";
 
 const createZineSchema = z.object({
   text: z.string().trim().min(1, "Source text is required.").max(12000),
   tone: z.string().trim().max(80).optional(),
   titleHint: z.string().trim().max(160).optional(),
+  tasteContext: z
+    .enum([
+      "global",
+      "project",
+      "brand",
+      "fashion",
+      "interface",
+      "editorial",
+      "experimental",
+    ])
+    .optional(),
 });
 
 const zineDraftSchema = z.object({
@@ -44,6 +57,20 @@ export const handleMimiCreateZineRoute = async (req: any, res: any) => {
     const input = validateBody(res, createZineSchema, body);
     if (!input) return;
 
+    let system =
+      "You are Mimi's zine architect. Return only structured editorial drafts. Evidence-first, no fake citations.";
+
+    try {
+      const decoded = await verifyMimiSession(req.headers || {});
+      const { db } = getServerFirebaseAdmin();
+      if (db) {
+        const tasteBlock = await getServerTastePromptContext(db, decoded.uid, input.tasteContext);
+        if (tasteBlock) system = `${system}\n\n${tasteBlock}`;
+      }
+    } catch {
+      /* unsigned — no taste injection */
+    }
+
     const result = await runFundedGatewayObject({
       req,
       res,
@@ -51,8 +78,7 @@ export const handleMimiCreateZineRoute = async (req: any, res: any) => {
       feature: "mimi:create-zine",
       role: "textDeep",
       temperature: 0.55,
-      system:
-        "You are Mimi's zine architect. Return only structured editorial drafts. Evidence-first, no fake citations.",
+      system,
       schema: zineDraftSchema,
       prompt: `Draft a short zine from this source material.
 

@@ -34,6 +34,7 @@ import type {
 } from "../../types";
 import type { CreateEvidenceAtomInput } from "../../lib/taste/evidenceAtomSchema";
 import { buildEvidenceAtomFromInput } from "../../lib/taste/buildEvidenceAtom";
+import { scheduleEvidenceAtomAnalysis } from "./scheduleEvidenceAtomAnalysis";
 
 const uid = () =>
   crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -71,7 +72,12 @@ export async function createEvidenceAtom(
   const ref = evidenceAtomRef(userId, id);
   const atom = buildEvidenceAtomFromInput(userId, input, { id, now });
 
+<<<<<<< HEAD
   await setDoc(ref, sanitizeFirestoreData(atom));
+=======
+  await setDoc(ref, atom);
+  scheduleEvidenceAtomAnalysis(id);
+>>>>>>> 2919be3 (feat(taste): analysis pipeline + taste context in generation routes)
   return { id, atom };
 }
 
