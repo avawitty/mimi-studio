@@ -19,3 +19,6 @@ export * from "./savedReason.js";
 export * from "./experiments.js";
 export * from "./featureFlags.js";
 export * from "./entitlements.js";
+export * from "./computeModelDelta.js";
+export * from "./signalRefine.js";
+export * from "./applySnapshotEdits.js";

@@ -34,6 +34,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Negative taste + graph model editing (Tailor Pattern Graph slice)
+
+**Decision:** Ship creator-facing negative taste and direct model editing inside Tailor `PatternGraphScreen` + `TasteModelInspector`, backed by existing Taste Intelligence OS v2 contracts (`taste_refusals`, `taste_model_edits`, `computeModelDelta`, `applyEditsToSnapshot`). New API routes: `POST /api/mimi/taste-intelligence/refusals`, `POST /model-edits`, `POST /model-edits/undo`. Merge/split remain behind `TASTE_GRAPH_MERGE_SPLIT=1`.
+
+**Alternatives rejected:** (1) New top-level chamber. (2) Client-only React state without Neon persistence. (3) Reviving parallel `lib/tasteCalibration/*` stack.
+
+**Why:** Makes v2 refusal/model-edit logic usable in the primary Tailor curation flow with mobile-first inspector + bottom-sheet refine controls.
+
+**Ref:** `components/tailor/PatternGraphScreen.tsx`, `hooks/useTasteSignalEditor.ts`, `lib/tasteIntelligence/signalRefine.ts`, `docs/taste-calibration-lab.md`
+
+---
+
 ## 2026-08-08 — Taste Intelligence OS v2 (Neon operational layer + Calibration Lab)
 
 **Decision:** Extend the v1 computational taste model into a coherent intelligence layer without a second Taste Graph. New operational writes go to Neon (`mimi.taste_*` tables) via authenticated `/api/mimi/taste-intelligence/*` routes; `services/tasteModelService.ts` dual-writes/dual-reads during Firestore migration. Calibration Lab lives at `/tailor/calibrate` with deterministic active-learning pair selection and Bradley-Terry-style calibration deltas. Sentinel memory policy is a separate headless layer (`lib/tasteIntelligence/sentinelPolicy.ts` + `SentinelMemoryReview`) — `CaptiveSentinel` remains the in-app browser guard only.
@@ -125,6 +137,8 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 **Ref:** `lib/tasteModel/`, `services/tasteModelService.ts`, `docs/computational-taste-model.md`, `components/taste/TasteModelInspector.tsx`
 
 ---
+
+## 2026-08-05 — Proof-mode stock plate mode + Unsplash attribution
 
 **Decision:** Add `plateMediaMode` on Studio orientation intake (`photography-first` | `generated` | `references-only`). Hi-fi `bakeZineVisualPlates` resolves Unsplash stock via server `/api/inspo/search` when mode is photography-first; skips AI generation for `references-only`. Stock attribution lands on `ZinePageSpec` and `SpecimenPage` footer.
 
@@ -326,6 +340,26 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 
 ---
 
+## 2026-08-07 — mimi.fish / mimi.rip host skins (product intent)
+
+**Decision:** One SPA, three public skins keyed by hostname (`lib/siteHost.ts`):
+
+| Skin | Host | Job |
+| --- | --- | --- |
+| `you` | `mimi.you`, localhost, `*.vercel.app` | Full studio — capture, approve, remember |
+| `fish` | `mimi.fish` | **Share / attention plane** — anything shareable (“fishing for compliments”): public zine plates, token shares, creator shelves; canonical outbound URL `https://mimi.fish/s/:zineId` |
+| `rip` | `mimi.rip` | **Inversion plane** — mirrors `mimi.you` structure but surfaces **opt-in inverted** user data (inverse readings, dark diagnostic plates); not canonical identity |
+
+Fish and Rip are public faces, not separate products. Identity and studio chrome stay on `mimi.you`. Local QA: `?skin=fish|rip` or `localStorage.mimi_site_skin`.
+
+**Alternatives rejected:** Separate deploys per domain; routing all shares through `mimi.you/s/:id`; treating Rip as anonymous-only with no studio chamber.
+
+**Why:** Distinct crawl/share URLs and inverted aesthetic without forking the codebase; fish OG must not leak studio chrome in previews.
+
+**Ref:** `lib/siteHost.ts`, `App.tsx` host branches, `scripts/setupMimiFishDomains.mjs`, `scripts/setupMimiRipDomains.mjs`, Lovable parallel project (host routing queued 2026-08-07).
+
+---
+
 ## 2026-08-04 — Cursor Cloud secrets → `.env.local` bridge
 
 **Decision:** Cloud Agent installs run `npm run sync:cloud-env`, which copies dashboard-injected secrets (notably `AI_GATEWAY_API_KEY`, alias `AI_GATEWAY_KEY`) into git-ignored `.env.local` so `npm run dev` and verify scripts share the same credentials as the agent shell.
@@ -383,6 +417,18 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 **Why:** Matches the elevated-notes mockup: one **floating cylindrical toolbar** scrolls all compose/zine tools inside a single pill — not a modular footnote dock + edge rail.
 
 **Ref:** `components/ui/FloatingCylinderToolbar.tsx`, `components/studio/StudioInstrumentRail.tsx`, `AnalysisDisplay.tsx`
+
+---
+
+## 2026-08-07 — Lovable parallel track phased advisory (menu, toolbar, Tailor, Scry, Press)
+
+**Decision:** Execute product expansion on Lovable project `82416757-f4d9-45c3-9665-4f043ec226e8` in phases: P0 menu + functional Studio toolbar + `/tailor` chamber with generation-contract wiring; P1 Profile/public card + Edit/Pocket/fish-rip; P2 Dolls onboarding + Omni Loop + Mesopic; P3 Scry curiosity profile + Used Context colophon + `/the-press` export chamber. Persist build canon via Lovable `set_project_knowledge`. Track queue status in `docs/STATE.md`.
+
+**Alternatives rejected:** (1) Blocking all Lovable work until queue drains to one message. (2) Requiring Perplexity for Scry v1. (3) Folding Tailor only into `/mimi-you` without dedicated chamber and contract injection.
+
+**Why:** Lovable queue is long but parallel messages preserve phased delivery; production canon (Tailor contract, colophon, Press, Scry lanes) maps cleanly onto TanStack stack; Scry can use existing research.server + credits.
+
+**Ref:** Lovable messages `umsg_01kzetkx9…` (P0), `umsg_01kzetm5…` (P2), `umsg_01kzetrb0…` (P3 Scry/colophon), `umsg_01kzetra4…` (P3 Press); `prd/aesthetic-05-provenance-colophon.md`, `prd/doll-staple-shell.md`
 
 ---
 

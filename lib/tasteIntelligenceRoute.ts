@@ -12,12 +12,19 @@ import {
   DEFAULT_CALIBRATION_QUESTION_COUNT,
   applyPairwiseJudgment,
   selectNextCalibrationPair,
+  createModelEdit,
+  createUndoEdit,
+  computeModelDelta,
+  applyEditsToSnapshot,
+  buildRefusalFromExplicit,
   proposeSavedReasonHypotheses,
   applySavedReasonReview,
   type CalibrationCandidate,
 } from "./tasteIntelligence/index.js";
 import type {
   TasteCalibrationPair,
+  TasteModelEditOperation,
+  TasteRefusalType,
   SavedReasonHypothesis,
 } from "../schemas/tasteIntelligenceContracts.js";
 import type { TasteModelSnapshot } from "./tasteModel/contracts.js";
@@ -58,6 +65,58 @@ const judgmentSchema = z.object({
   idempotencyKey: z.string().optional(),
   leftFeatureIds: z.array(z.string()).optional(),
   rightFeatureIds: z.array(z.string()).optional(),
+});
+
+const refusalCreateSchema = z.object({
+  featureIds: z.array(z.string()).min(1),
+  refusalType: z.enum([
+    "always",
+    "only_when_combined",
+    "wrong_context",
+    "too_literal",
+    "overexposed",
+    "formerly_liked",
+    "not_why_i_saved_it",
+  ] as [TasteRefusalType, ...TasteRefusalType[]]),
+  projectId: z.string().optional(),
+  scope: z.enum(["persistent", "project", "session"]).optional(),
+  signedWeight: z.number().optional(),
+  confidence: z.number().min(0).max(1).optional(),
+  sourceIds: z.array(z.string()).optional(),
+  idempotencyKey: z.string().optional(),
+  snapshot: z.custom<TasteModelSnapshot>().optional(),
+});
+
+const modelEditSchema = z.object({
+  operation: z.enum([
+    "rename",
+    "set_alias",
+    "merge",
+    "split",
+    "connect",
+    "disconnect",
+    "set_polarity",
+    "set_weight",
+    "set_scope",
+    "set_signature",
+    "set_contextual",
+    "set_saturated",
+    "set_dormant",
+    "correct_provenance",
+  ] as [TasteModelEditOperation, ...TasteModelEditOperation[]]),
+  targetIds: z.array(z.string()).min(1),
+  before: z.record(z.string(), z.unknown()),
+  after: z.record(z.string(), z.unknown()),
+  projectId: z.string().optional(),
+  rationale: z.string().optional(),
+  idempotencyKey: z.string().optional(),
+  snapshot: z.custom<TasteModelSnapshot>(),
+});
+
+const modelEditUndoSchema = z.object({
+  editId: z.string(),
+  projectId: z.string().optional(),
+  snapshot: z.custom<TasteModelSnapshot>(),
 });
 
 const savedReasonProposeSchema = z.object({
@@ -118,8 +177,20 @@ export async function handleTasteIntelligenceRoute(req: any, res: any) {
     return handlePersistSnapshot(req, res);
   }
   if (action === "refusals") {
+    if (req.method === "POST") {
+      if (!requireOperationalMethod(req, res, "POST")) return;
+      return handleCreateRefusal(req, res);
+    }
     if (!requireOperationalMethod(req, res, "GET")) return;
     return handleListRefusals(req, res);
+  }
+  if (action === "model-edits" && segments[1] === "undo") {
+    if (!requireOperationalMethod(req, res, "POST")) return;
+    return handleUndoModelEdit(req, res);
+  }
+  if (action === "model-edits") {
+    if (!requireOperationalMethod(req, res, "POST")) return;
+    return handleCreateModelEdit(req, res);
   }
   if (action === "saved-reason" && segments[1] === "propose") {
     if (!requireOperationalMethod(req, res, "POST")) return;
@@ -472,6 +543,182 @@ async function handleListRefusals(req: any, res: any) {
       500,
       "REFUSALS_READ_FAILED",
       publicOperationalMessage(500, "Refusals unavailable.", String(error)),
+    );
+  }
+}
+
+async function handleCreateRefusal(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const body = refusalCreateSchema.safeParse(req.body || {});
+    if (!body.success) {
+      sendOperationalError(res, 400, "INVALID_REQUEST", body.error.message);
+      return;
+    }
+
+    const refusal = buildRefusalFromExplicit({
+      ownerId: decoded.uid,
+      projectId: body.data.projectId,
+      featureIds: body.data.featureIds,
+      refusalType: body.data.refusalType,
+      signedWeight: body.data.signedWeight,
+      confidence: body.data.confidence,
+      explicit: true,
+      scope: body.data.scope ?? (body.data.projectId ? "project" : "persistent"),
+      sourceIds: body.data.sourceIds ?? [],
+    });
+
+    const { getNeonUnitOfWork } = await import(
+      "../infrastructure/database/neon/unitOfWork.js"
+    );
+    const uow = getNeonUnitOfWork();
+
+    const beforeSnapshot = body.data.snapshot;
+    let afterSnapshot = beforeSnapshot;
+
+    await uow.transaction(async (repositories) => {
+      await repositories.tasteIntelligence.upsertRefusal(refusal);
+    });
+
+    if (beforeSnapshot) {
+      const { applyRefusalToFeatureWeights } = await import(
+        "./tasteIntelligence/applySnapshotEdits.js"
+      );
+      afterSnapshot = applyRefusalToFeatureWeights(beforeSnapshot, refusal);
+      await uow.transaction(async (repositories) => {
+        await repositories.tasteIntelligence.saveSnapshot(
+          decoded.uid,
+          afterSnapshot!,
+          { projectId: body.data.projectId },
+        );
+      });
+    }
+
+    const modelDelta =
+      beforeSnapshot && afterSnapshot
+        ? computeModelDelta(beforeSnapshot, afterSnapshot)
+        : null;
+
+    sendJson(res, 200, { refusal, snapshot: afterSnapshot ?? null, modelDelta });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "REFUSAL_CREATE_FAILED",
+      publicOperationalMessage(500, "Refusal could not be saved.", String(error)),
+    );
+  }
+}
+
+async function handleCreateModelEdit(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const body = modelEditSchema.safeParse(req.body || {});
+    if (!body.success) {
+      sendOperationalError(res, 400, "INVALID_REQUEST", body.error.message);
+      return;
+    }
+
+    if (
+      (body.data.operation === "merge" || body.data.operation === "split") &&
+      process.env.TASTE_GRAPH_MERGE_SPLIT !== "1"
+    ) {
+      sendOperationalError(
+        res,
+        403,
+        "FEATURE_DISABLED",
+        "Merge and split are behind the tasteGraphMergeSplit feature flag.",
+      );
+      return;
+    }
+
+    const edit = createModelEdit({
+      ownerId: decoded.uid,
+      projectId: body.data.projectId,
+      operation: body.data.operation,
+      targetIds: body.data.targetIds,
+      before: body.data.before,
+      after: body.data.after,
+      rationale: body.data.rationale,
+    });
+
+    const { getNeonUnitOfWork } = await import(
+      "../infrastructure/database/neon/unitOfWork.js"
+    );
+    const uow = getNeonUnitOfWork();
+    const beforeSnapshot = body.data.snapshot;
+
+    await uow.transaction(async (repositories) => {
+      await repositories.tasteIntelligence.appendModelEdit(edit);
+    });
+
+    const afterSnapshot = applyEditsToSnapshot(beforeSnapshot, [edit]);
+    await uow.transaction(async (repositories) => {
+      await repositories.tasteIntelligence.saveSnapshot(
+        decoded.uid,
+        afterSnapshot,
+        { projectId: body.data.projectId },
+      );
+    });
+
+    const modelDelta = computeModelDelta(beforeSnapshot, afterSnapshot);
+    sendJson(res, 200, { edit, snapshot: afterSnapshot, modelDelta });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "MODEL_EDIT_FAILED",
+      publicOperationalMessage(500, "Model edit could not be saved.", String(error)),
+    );
+  }
+}
+
+async function handleUndoModelEdit(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const body = modelEditUndoSchema.safeParse(req.body || {});
+    if (!body.success) {
+      sendOperationalError(res, 400, "INVALID_REQUEST", body.error.message);
+      return;
+    }
+
+    const { getNeonUnitOfWork } = await import(
+      "../infrastructure/database/neon/unitOfWork.js"
+    );
+    const uow = getNeonUnitOfWork();
+    const repo = uow.repositories.tasteIntelligence;
+
+    const edits = await repo.listModelEdits(decoded.uid, {
+      projectId: body.data.projectId,
+      limit: 50,
+    });
+    const original = edits.find((e) => e.id === body.data.editId);
+    if (!original) {
+      sendOperationalError(res, 404, "EDIT_NOT_FOUND", "Model edit not found.");
+      return;
+    }
+
+    const undoEdit = createUndoEdit(original);
+    const beforeSnapshot = body.data.snapshot;
+    const afterSnapshot = applyEditsToSnapshot(beforeSnapshot, [undoEdit]);
+
+    await uow.transaction(async (repositories) => {
+      await repositories.tasteIntelligence.appendModelEdit(undoEdit);
+      await repositories.tasteIntelligence.saveSnapshot(
+        decoded.uid,
+        afterSnapshot,
+        { projectId: body.data.projectId },
+      );
+    });
+
+    const modelDelta = computeModelDelta(beforeSnapshot, afterSnapshot);
+    sendJson(res, 200, { edit: undoEdit, snapshot: afterSnapshot, modelDelta });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "MODEL_EDIT_UNDO_FAILED",
+      publicOperationalMessage(500, "Undo could not be applied.", String(error)),
     );
   }
 }

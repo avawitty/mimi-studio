@@ -78,9 +78,8 @@ export const TailorHub: React.FC<TailorHubProps> = ({
   const tabs: Array<{ id: TailorPanel; label: string; note: string }> = [
     { id: 'intake', label: 'Evidence Intake', note: 'collect' },
     { id: 'blueprint', label: 'Profile Blueprint', note: 'compile' },
-    { id: 'calibrate', label: 'Taste Calibration', note: 'refine' },
+    { id: 'calibrate', label: 'Calibration Lab', note: 'refine' },
     { id: 'style-lab', label: 'Style Lab', note: 'interpret' },
-    { id: 'calibrate', label: 'Calibration Lab', note: 'learn' },
     { id: 'diagnostics', label: 'Diagnostics', note: 'review' },
     { id: 'dossier', label: 'Compiled Dossier', note: 'apply' },
   ];

@@ -6,10 +6,14 @@ import type {
   CalibrationChoice,
   TasteCalibrationPair,
   TasteCalibrationSession,
+  TasteModelEdit,
+  TasteModelEditOperation,
   TasteRefusal,
+  TasteRefusalType,
   SavedReasonHypothesis,
 } from "../schemas/tasteIntelligenceContracts.js";
 import type { TasteModelSnapshot } from "../lib/tasteModel/contracts.js";
+import type { TasteModelDelta } from "../lib/tasteIntelligence/computeModelDelta.js";
 
 async function authHeaders(): Promise<HeadersInit> {
   const { auth } = await import("./firebaseInit");
@@ -100,6 +104,62 @@ export async function listTasteRefusals(projectId?: string): Promise<{
 }> {
   const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
   return apiFetch(`/refusals${qs}`);
+}
+
+export async function createTasteRefusal(input: {
+  featureIds: string[];
+  refusalType: TasteRefusalType;
+  projectId?: string;
+  scope?: "persistent" | "project" | "session";
+  signedWeight?: number;
+  confidence?: number;
+  sourceIds?: string[];
+  snapshot?: TasteModelSnapshot;
+  idempotencyKey?: string;
+}): Promise<{
+  refusal: TasteRefusal;
+  snapshot: TasteModelSnapshot | null;
+  modelDelta: TasteModelDelta | null;
+}> {
+  return apiFetch("/refusals", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function submitTasteModelEdit(input: {
+  operation: TasteModelEditOperation;
+  targetIds: string[];
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+  projectId?: string;
+  rationale?: string;
+  snapshot: TasteModelSnapshot;
+  idempotencyKey?: string;
+}): Promise<{
+  edit: TasteModelEdit;
+  snapshot: TasteModelSnapshot;
+  modelDelta: TasteModelDelta;
+}> {
+  return apiFetch("/model-edits", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function undoTasteModelEdit(input: {
+  editId: string;
+  projectId?: string;
+  snapshot: TasteModelSnapshot;
+}): Promise<{
+  edit: TasteModelEdit;
+  snapshot: TasteModelSnapshot;
+  modelDelta: TasteModelDelta;
+}> {
+  return apiFetch("/model-edits/undo", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function proposeSavedReasonHypotheses(input: {
