@@ -1,6 +1,6 @@
 # Mimi Studio — Module State
 
-**Last updated:** 2026-08-05  
+**Last updated:** 2026-08-08  
 **Source of truth for routes:** `lib/productCanon.ts` · **Validation:** `npm run validate:canon`
 
 ## Status legend
@@ -26,7 +26,9 @@
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
-| **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI in Intel Memo; legacy `tasteGraphNodes` remain | Wire `getTasteState()` into generation; analysis pipeline after ingest |
+| **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; computational model (#224) inspector wired | Wire embedding similarity into candidate score; complete atom migration |
+| **Computational Taste Model** | — (derived) | **shipped** | MVP compiler + scoring; no embedding similarity in candidate score yet | Server-side recompile trigger; atom bridge completion |
+| **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
 
 ---
 
@@ -85,7 +87,7 @@
 | **Shadow memory migration** | shipped | UID-gated reindex | — |
 | **Gateway entitlements** | shipped | Stripe + promo paths | — |
 | **Serverless lazy graphs** | shipped | CI: `verify:api-lazy-graphs` | — |
-| **Taste Intelligence (Phase 1–2)** | infrastructure | Pocket mirror; embed pipeline; taste in dossier + zine bake | Semantic retrieval from `embeddingRef`; deprecate duplicate EvidenceNode reads |
+| **Taste Intelligence (Phase 1)** | infrastructure | Analysis queue on ingest; `GET /api/mimi/taste-state`; taste context in generate-text + create-zine | Pocket mirror; embed pipeline |
 | **Taste Corpus explorer** | `/taste-corpus` | shipped | Demonstration seed manifest (20 specimens) | Wire `--from-sovereign` export; expand corpus from Floor covers |
 | **Public face kit** | — | shipped | `PublicField` + `isPublicEditorialFlowMode` single-scroll contract | Audit remaining dark-plate chambers for nested scroll only if reported |
 

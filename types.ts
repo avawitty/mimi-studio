@@ -1358,6 +1358,19 @@ export interface TasteEvent {
   sessionId?: string;
 }
 
+/** @see lib/tasteModel/contracts.ts — additive v2 taste learning event */
+export type {
+  TasteEventV2,
+  TasteLearningAction,
+  TasteTargetType,
+  TasteModelSnapshot,
+  TasteFeatureWeight,
+  TasteInteractionRule,
+  TasteCandidateScore,
+  TasteCandidateInput,
+  NormalizedTasteEvent,
+} from './lib/tasteModel/contracts';
+
 export interface ProductTasteEvent {
   userId: string;
   itemId: string;

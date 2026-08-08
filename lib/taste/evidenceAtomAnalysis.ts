@@ -3,8 +3,11 @@
  * Runs after ingest (API create or client mirror) when AI Gateway is available.
  */
 import { generateGatewayText } from "../ai/generate.js";
-import { getServerAiGatewayKey } from "../aiGatewayCompat.js";
 import { modelFor } from "../../services/modelConfig.js";
+import {
+  fetchTrustedStorageAsset,
+  TrustedStorageFetchError,
+} from "../trustedStorageFetch.js";
 import type { EvidenceAtom } from "../../types.js";
 
 type AdminDb = any;
@@ -42,14 +45,14 @@ async function loadImageBase64(
       const match = url.match(/^data:([^;]+);base64,(.+)$/);
       if (match) return { mimeType: match[1]!, base64: match[2]! };
     }
-    if (url.startsWith("http://") || url.startsWith("https://")) {
+    if (url.startsWith("https://")) {
       try {
-        const response = await fetch(url);
-        if (!response.ok) continue;
-        const mimeType = response.headers.get("content-type") || "image/jpeg";
-        const buffer = Buffer.from(await response.arrayBuffer());
+        const { buffer, mimeType } = await fetchTrustedStorageAsset(url);
         return { base64: buffer.toString("base64"), mimeType };
-      } catch {
+      } catch (err) {
+        if (err instanceof TrustedStorageFetchError) {
+          console.warn("MIMI // Blocked untrusted asset fetch:", err.code, url.slice(0, 120));
+        }
         continue;
       }
     }
@@ -169,13 +172,11 @@ export async function runEvidenceAtomAnalysis(
   db: AdminDb,
   userId: string,
   atomId: string,
-  apiKey?: string,
+  apiKey: string,
 ): Promise<void> {
   if (!db || !userId || userId === "ghost") return;
-
-  const key = apiKey || getServerAiGatewayKey();
-  if (!key) {
-    console.info("MIMI // Evidence atom analysis skipped — no AI Gateway key.");
+  if (!apiKey) {
+    console.info("MIMI // Evidence atom analysis skipped — no funded gateway key.");
     return;
   }
 
@@ -189,21 +190,10 @@ export async function runEvidenceAtomAnalysis(
   await ref.update({ processingState: "processing", updatedAt: Date.now() });
 
   try {
-    const { semanticDescription, confidence } = await interpretEvidenceAtom(atom, key);
-    let embeddingRef: string | undefined;
-    const embedText = semanticDescription.trim() || atom.originalSource.trim();
-    if (embedText) {
-      try {
-        const { embedAndStoreEvidenceAtom } = await import("./evidenceAtomEmbedding.js");
-        embeddingRef = await embedAndStoreEvidenceAtom(db, userId, atomId, embedText, key);
-      } catch (embedErr) {
-        console.warn("MIMI // Evidence atom embedding failed (non-blocking):", embedErr);
-      }
-    }
+    const { semanticDescription, confidence } = await interpretEvidenceAtom(atom, apiKey);
     await ref.update({
       semanticDescription,
       confidence,
-      ...(embeddingRef ? { embeddingRef } : {}),
       processingState: "analyzed",
       updatedAt: Date.now(),
     });
@@ -219,13 +209,13 @@ export async function runEvidenceAtomAnalysis(
   }
 }
 
-/** Fire-and-forget wrapper for post-ingest hooks. */
+/** @deprecated Server-side fire-and-forget bypasses credit accounting — use client scheduleEvidenceAtomAnalysis. */
 export function queueEvidenceAtomAnalysis(
-  db: AdminDb,
-  userId: string,
-  atomId: string,
+  _db: AdminDb,
+  _userId: string,
+  _atomId: string,
 ): void {
-  void runEvidenceAtomAnalysis(db, userId, atomId).catch((err) => {
-    console.warn("MIMI // Queued evidence atom analysis error:", err);
-  });
+  console.warn(
+    "MIMI // queueEvidenceAtomAnalysis is disabled — call POST /api/mimi/evidence/analyze via funded route.",
+  );
 }

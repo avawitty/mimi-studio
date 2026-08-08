@@ -15,7 +15,6 @@ import type {
   TasteState,
 } from "../../types";
 import { partitionAssertions, scoreAssertion } from "../../lib/taste/tasteStateLogic";
-import { tasteStateToPromptContext } from "../../lib/taste/tastePromptContext";
 import { getAssertionsForUser } from "./tasteAssertionService";
 import { getConceptsForUser } from "./tasteConceptService";
 import { queryEvidenceAtoms } from "./evidenceAtomService";

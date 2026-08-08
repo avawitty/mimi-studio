@@ -6,7 +6,48 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-05 — Studio plate media mode + Unsplash stock resolver (v1)
+## 2026-08-08 — Taste model hotfix: idempotent events + scoped compilation
+
+**Decision:** (1) Use stable dedupe keys as Firestore document IDs for explicit curation events (`event.id === dedupeKey`). (2) Default `compileAndSaveTasteModel` scope to `project` when `projectId` is set — project recompilation must not overwrite `tasteModelSnapshots/global`.
+
+**Alternatives rejected:** (1) Append-only events with post-hoc dedupe at compile time only. (2) Always recompiling both global and project on every curation. (3) Time-bucketed dedupe for explicit corrections (allows double-weight on replay).
+
+**Why:** Replay-safe curation and isolated project models are correctness requirements for trustworthy taste learning; global snapshot is a cross-project aggregate and must only be rebuilt from all events.
+
+**Ref:** `services/tasteModelService.ts`, `__tests__/tasteModelService.test.ts`, `docs/computational-taste-model.md`
+
+---
+
+## 2026-08-08 — EvidenceAtom/TasteState vs TasteModelSnapshot (single truth boundary)
+
+**Decision:** Maintain **one canonical evidence/assertion plane** and **one derived computational cache**:
+
+| Layer | Role | Canonical? |
+| --- | --- | --- |
+| `EvidenceAtom` + `TasteState` / taste assertions | Canonical evidence intake, analysis, corrections, semantic retrieval | **Yes** |
+| Tailor graph (`EvidenceNode`, `Observation`, `PatternCluster`, `CreativeLaw`) | Project-scoped interpretive graph (migrating toward atom linkage) | Canonical per project |
+| `TasteModelSnapshot` | Deterministic compiled taste weights, trajectories, interaction rules | **Derived cache only** |
+
+No duplicate preference truth stores. Migration/adapter boundary lives at `lib/taste/evidenceNodeBridge.ts` + `lib/tasteModel/normalizeTasteEvents.ts` — atoms and graph entities feed compilation; snapshots never write back to canonical stores.
+
+**Alternatives rejected:** (1) Parallel taste preference collections in Firestore. (2) Making `TasteModelSnapshot` authoritative for generation. (3) Merging EvidenceAtom and TasteEventV2 into one schema prematurely.
+
+**Why:** Preserves traceable evidence → assertion → derived model flow; enables Phase 1–3 Taste Intelligence without forking the computational model from #224.
+
+**Ref:** `docs/taste-intelligence-phase1.md`, `docs/computational-taste-model.md`, `lib/taste/`, `lib/tasteModel/`
+
+---
+
+
+**Decision:** Introduce `TasteModelSnapshot` as a **derived cache** compiled deterministically from canonical Tailor graph entities (`EvidenceNode`, `Observation`, `PatternCluster`, `CreativeLaw`) plus immutable `TasteEventV2` learning events. Pure compilation in `lib/tasteModel/`; persistence at `users/{uid}/tasteLearningEvents` and `users/{uid}/tasteModelSnapshots/{global|project-{id}}`. Legacy `TasteEvent` normalized additively via `normalizeTasteEvent()`. Candidate scoring returns fit score (0–100, not probability), confidence, and evidence-linked explanation — no LLM in the scoring path.
+
+**Alternatives rejected:** (1) A third canonical taste source separate from the WO-7 graph. (2) Replacing Tailor Profile v2. (3) LLM-generated scores without provenance. (4) Silent migration of existing Firestore documents. (5) Making TasteGraphNode/Edge canonical.
+
+**Why:** Closes the product loop: evidence → curation → explainable taste model → candidate scoring → user correction. Deterministic, versioned, and correctable beats a black-box classifier. Presentation projection via `projectTasteModelToGraph()` keeps existing Taste Graph UI compatible.
+
+**Ref:** `lib/tasteModel/`, `services/tasteModelService.ts`, `docs/computational-taste-model.md`, `components/taste/TasteModelInspector.tsx`
+
+---
 
 **Decision:** Add `plateMediaMode` on Studio orientation intake (`photography-first` | `generated` | `references-only`). Hi-fi `bakeZineVisualPlates` resolves Unsplash stock via server `/api/inspo/search` when mode is photography-first; skips AI generation for `references-only`. Stock attribution lands on `ZinePageSpec` and `SpecimenPage` footer.
 
@@ -289,15 +330,3 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 **Why:** Closes the loop from capture → interpretation → correction → generation without requiring a separate analyze step from the user.
 
 **Ref:** `lib/taste/evidenceAtomAnalysis.ts`, `lib/taste/serverTasteState.ts`, `lib/mimiGenerateTextRoute.ts`
-
----
-
-## 2026-08-08 — Taste Intelligence Phase 2 (Pocket mirror, embeddings, generation)
-
-**Decision:** Mirror Pocket saves into `evidenceAtoms` via `pocketItemToAtomInput` (non-blocking, same pattern as Tailor bridge). After server interpretation, embed `semanticDescription` into `users/{uid}/evidenceAtomEmbeddings/{atomId}` and set `embeddingRef` on the atom. Inject `getServerTastePromptContext()` into `synthesize-dossier`; client zine bake path fetches taste state for `createZine` and `bakeZineVisualPlates`.
-
-**Alternatives rejected:** (1) Store embedding vectors inline on the atom document — bloats atom reads and mixes retrieval payload with evidence metadata. (2) Block Pocket save on atom mirror — keeps Pocket fast; mirror failures are logged only.
-
-**Why:** Closes Phase 2 ingest parity (Tailor + Pocket → canonical atoms), enables future semantic retrieval, and extends taste-aware generation to dossier synthesis and hi-fi zine plate bakes.
-
-**Ref:** `lib/taste/pocketItemBridge.ts`, `lib/taste/evidenceAtomEmbedding.ts`, `api/mimi/synthesize-dossier.ts`, `lib/bakeZinePlates.ts`, `services/zineGenerator.ts`
