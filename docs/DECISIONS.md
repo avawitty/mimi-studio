@@ -907,3 +907,15 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 **Ref:** `services/firebaseUtils.ts`, `services/tailorLocalArchive.ts`, `services/tailorService.ts`, `__tests__/tailorLocalArchive.test.ts`
 
+---
+
+## 2026-08-08 — Scry specimen web lane via server deep research
+
+**Decision:** Specimen web evidence now routes through `POST /api/you-search` (`fetchWebLaneEvidence` in `services/scryService.ts`) before falling back to client Gemini Google Search. You.com and Apify return live citation cards; AI Gateway synthesis returns labeled partial leads with mini write-ups; local demo remains last-resort and marked simulated.
+
+**Alternatives rejected:** (1) Keep Gemini-only web lane — fails without client API key and bypasses existing You.com/Apify/Gateway provider chain. (2) Merge web hits into archive lane — violates four-lane honesty contract.
+
+**Why:** Unblocks specimen feed + reading synthesis in Cloud Agent and signed-out sessions where server Gateway keys exist; reuses Forecast/Taste Graph web intelligence stack with honest lane statuses.
+
+**Ref:** `services/scryService.ts`, `lib/youSearch.ts`, `api/you-search.ts`, `components/ScryView.tsx`, `schemas/scryContracts.ts`
+
