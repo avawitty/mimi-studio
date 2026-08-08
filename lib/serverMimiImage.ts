@@ -111,6 +111,14 @@ const buildReferenceParts = (references: MimiImageReference[] = []) => {
         "DOLL IDENTITY & STABLE FACE RULE: The references contain a calibrated doll proxy ('Doll Portrait', 'Doll Full Body', or 'Doll Profile'). You MUST carefully lock in, align, and preserve the face structure, features, hairstyle, and likeness of the doll from the 'Doll Portrait' reference. Allow the doll's clothing to vary based on the prompt while maintaining cohesive material signatures and fit shapes from 'Doll Full Body'. Depict the same stable character proxy travelling through different times, settings, or editorial backdrops."
       );
     }
+    const hasCreatorPhoto = references.some((ref) =>
+      (ref.tags || []).some((t) => /creator-photo|doll-translation/i.test(t)),
+    );
+    if (hasCreatorPhoto) {
+      refInstructions.push(
+        "DOLL TRANSLATION RULE: The creator photo is the likeness source. Re-sculpt the person as a ball-jointed resin BJD recognizable as them — carry hairstyle, eye color, beauty marks, and bone-structure echoes into resin doll features. You-as-a-doll, not a photoreal human photograph or face-swap.",
+      );
+    }
     parts.push({
       text: refInstructions.join("\n"),
     });

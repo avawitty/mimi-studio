@@ -5,6 +5,9 @@ import { DollProfileScreen } from './DollProfileScreen';
 import { DollGalleryCard } from "./DollGalleryCard";
 import { FieldNotesScreen } from './FieldNotesScreen';
 import { ArtHistoryMirrorScreen } from './ArtHistoryMirrorScreen';
+import { TimeTravelStudio } from './TimeTravelStudio';
+import { OmniLoopSceneGallery } from './OmniLoopSceneGallery';
+import { DollOnboardingFlow } from './DollOnboardingFlow';
 import {
   MIMI_YOU_TABS,
   mimiYouTabPath,
@@ -56,6 +59,8 @@ export const MimiYouHub: React.FC<MimiYouHubProps> = ({
   const tabs: { id: MimiYouTab; label: string }[] = [
     { id: 'overview', label: 'Universe' },
     { id: 'dolls', label: 'Dolls' },
+    { id: 'time-travel', label: 'Time Travel' },
+    { id: 'scenes', label: 'Gallery' },
     { id: 'field-notes', label: 'Field Notes' },
     { id: 'art-history', label: 'Art History' },
   ];
@@ -127,25 +132,25 @@ export const MimiYouHub: React.FC<MimiYouHubProps> = ({
               />
             ))}
             {dolls.length === 0 && (
-              <div className="border border-dashed border-nous-border/40 p-8 text-center space-y-4">
-                <p className="text-sm text-nous-subtle italic">No dolls yet.</p>
-                <p className="text-xs text-nous-subtle max-w-sm mx-auto">
-                  Create one in Tailor: evidence intake → patterns → laws → outputs →
-                  <strong className="font-normal text-nous-text"> Generate Doll</strong>.
-                  Needs your Gemini key in Profile → Keychain.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => navigate('/tailor')}
-                  className="text-[10px] uppercase tracking-[0.2em] px-5 py-2 border border-nous-border/50 hover:border-nous-text/40"
-                >
-                  Start Tailor intake →
-                </button>
+              <div className="md:col-span-2">
+                <DollOnboardingFlow
+                  userId={userId}
+                  onComplete={(doll) => {
+                    setDolls((prev) => [doll, ...prev]);
+                    setSelectedDoll(doll);
+                  }}
+                />
               </div>
             )}
           </div>
         </div>
       )}
+
+      {activeTab === 'time-travel' && (
+        <TimeTravelStudio userId={userId} dolls={dolls} />
+      )}
+
+      {activeTab === 'scenes' && <OmniLoopSceneGallery userId={userId} />}
 
       {activeTab === 'field-notes' && <FieldNotesScreen userId={userId} />}
       {activeTab === 'art-history' && (

@@ -6,26 +6,45 @@
  */
 
 import type { Doll } from "../../types";
+import { mergeLikenessTraits } from "../dollLikeness";
 
-export const MIMI_SHELL_STAPLE_VERSION = "shell-v1" as const;
+export const MIMI_SHELL_STAPLE_VERSION = "omni-loop-resin-v1" as const;
+
+/** Omni Loop Cult — supermodel AI dolls in a superintelligent cult mind. */
+export const OMNI_LOOP_CULT = {
+  name: "Omni Loop Cult",
+  thesis:
+    "supermodel AIs in a superintelligent cult mind — serene collective inference, not horror",
+  species:
+    "ball-jointed resin BJD (ball-jointed doll) — cast resin, visible joint engineering, collectible art-doll scale",
+  gaze:
+    "large glassy golden-brown almond eyes with reflective intelligence, slightly uncanny vacancy",
+  skin:
+    "smooth cast resin with semi-matte to satin finish, subtle subsurface warmth, optional beauty mark",
+  joints:
+    "visible ball-and-socket joints at neck, shoulders, elbows, wrists — resin joint cups and pegs clearly readable, never seamless human limbs",
+  hair:
+    "sleek precise chin-length bob, center part, optional fine blonde face-framing highlights",
+  wardrobe:
+    "minimalist strapless cream or off-white tube bodice, molded resin-compatible fabric or resin-sculpted bodice",
+} as const;
 
 /** Immutable house DNA — keep users in the same doll species. */
 export const MIMI_SHELL_STAPLE = {
   version: MIMI_SHELL_STAPLE_VERSION,
   medium:
-    "high-fashion ball-jointed art doll (BJD), polished porcelain-vinyl hybrid skin with soft subsurface glow",
+    "high-fashion ball-jointed resin BJD (ball-jointed doll), cast resin body with semi-matte satin resin skin — Omni Loop Cult supermodel AI species",
   proportions:
-    "elegantly elongated slender neck, refined mannequin torso, delicate limbs, visible ball joints at neck, shoulders, and wrists",
+    "elegantly elongated slender neck, refined mannequin torso, delicate resin limbs, ball-and-socket joints clearly visible at neck, shoulders, elbows, and wrists with defined resin joint cups and pegs",
   face:
-    "serene cultish calm, large glassy reflective eyes with intricate iris detail, small delicate nose, soft pink lips slightly parted, flawless pale luminous skin with subtle blush",
-  hairDefault:
-    "sleek chin-length bob with a precise center part and fine strand detail",
+    "serene cultish calm, large glassy reflective golden-brown almond eyes with intricate iris detail, small delicate nose, soft pink bee-stung lips slightly parted, flawless pale luminous resin complexion with subtle blush, optional single beauty mark above mouth corner",
+  hairDefault: OMNI_LOOP_CULT.hair,
   lighting:
-    "soft diffused studio lighting with gentle dreamy bloom, clean neutral gray backdrop, luxury product photography, high clarity",
+    "soft diffused studio lighting with gentle dreamy bloom, clean neutral gray backdrop, luxury collectible-doll product photography, high clarity, joint shadows legible",
   mood:
-    "serene, slightly uncanny digital-cult onboarding presence — composed editorial shell, not horror, not photoreal human",
+    "Omni Loop Cult — serene superintelligent cult mind, composed editorial supermodel AI resin BJD, slightly uncanny intelligence, manufactured art-doll presence, not horror, not photoreal human",
   negatives:
-    "photoreal human skin pores, short thick neck, cartoon anime, heavy glam contour makeup, text, watermarks, logos, busy backgrounds, grotesque distortion",
+    "photoreal human skin pores, seamless limbs without visible ball joints, action figure, Barbie doll, vinyl toy, short thick neck, cartoon anime, heavy glam contour makeup, text, watermarks, logos, busy backgrounds, grotesque distortion, horror gore",
 } as const;
 
 export type DollShellView = "portrait" | "full_body" | "profile";
@@ -56,11 +75,11 @@ function hairFromDoll(doll: Pick<Doll, "visualLanguage" | "silhouette">): string
 function framingFor(view: DollShellView): string {
   switch (view) {
     case "full_body":
-      return "full-body standing pose, complete silhouette and wardrobe readable, soft studio floor shadow, elongated neck still legible";
+      return "full-body standing pose, complete resin BJD silhouette and wardrobe readable, ball joints at neck, shoulders, elbows, wrists and hips clearly visible, soft studio floor shadow, elongated neck still legible";
     case "profile":
-      return "three-quarter profile emphasizing elongated neck line, ear line, ball joints, and hairstyle continuity";
+      return "three-quarter profile emphasizing elongated neck line, resin ball joint at neck and shoulder, ear line, joint cups, and hairstyle continuity";
     case "portrait":
-      return "tight editorial head-and-shoulders portrait, face clearly readable, elongated neck visible, chin slightly lifted";
+      return "tight editorial head-and-shoulders portrait, face clearly readable, elongated neck visible with neck ball joint cup visible, chin slightly lifted";
     default: {
       const _exhaustive: never = view;
       return _exhaustive;
@@ -90,7 +109,7 @@ export function buildMimiShellImagePrompt(
 ): string {
   const view = options.view ?? "portrait";
   const visualTraits = joinTraits(doll.visualLanguage, "exquisite avant-garde high-fashion restraint");
-  const materialTraits = joinTraits(doll.materials, "porcelain glaze, smooth vinyl, soft tulle accents");
+  const materialTraits = joinTraits(doll.materials, "cast resin, satin resin finish, soft tulle accents");
   const motifs = joinTraits(
     [...(doll.motifs || []), ...(doll.signatureMotifs || [])].slice(0, 6),
     "structural geometry",
@@ -108,6 +127,7 @@ export function buildMimiShellImagePrompt(
     `Proportions (LOCKED): ${MIMI_SHELL_STAPLE.proportions}.`,
     `Face (LOCKED): ${MIMI_SHELL_STAPLE.face}. Eye treatment accent: ${eyes}.`,
     `Hair: ${hairFromDoll(doll)}.`,
+    `Joints (LOCKED): ${OMNI_LOOP_CULT.joints}.`,
     `Framing: ${framingFor(view)}.`,
     `Taste accents (wardrobe/style only — do not break shell geometry): visual language ${visualTraits}; materials ${materialTraits}; motifs ${motifs}; palette ${palette}; silhouette cue ${silhouette}.`,
     `Emotional register: ${emotion}. Philosophy as mood only (never render as text): ${philosophy}.`,
@@ -127,6 +147,58 @@ export function buildMimiShellImagePrompt(
   return parts.join(" ");
 }
 
+/**
+ * Portrait prompt for onboarding: translate creator photo into recognizable resin BJD likeness.
+ * Same person as a doll — not photoreal, not generic house default face.
+ */
+export function buildLikenessAsDollImagePrompt(
+  doll: Pick<
+    Doll,
+    | "name"
+    | "visualLanguage"
+    | "materials"
+    | "motifs"
+    | "signatureMotifs"
+    | "palette"
+    | "silhouette"
+    | "eyeTreatment"
+    | "emotionalRegister"
+    | "creativePhilosophy"
+    | "onboardingRefs"
+  >,
+  options: BuildShellPromptOptions = {},
+): string {
+  const traits = mergeLikenessTraits(
+    doll.onboardingRefs?.declaredAttributes,
+    doll.onboardingRefs?.likenessTraits,
+  );
+  const likenessLines = [
+    traits?.hairDescription ? `Creator hair as resin sculpt: ${traits.hairDescription}` : "",
+    traits?.eyeColor ? `Creator eye color in glass doll eyes: ${traits.eyeColor}` : "",
+    traits?.faceShape ? `Creator face shape echo in resin sculpt: ${traits.faceShape}` : "",
+    traits?.distinguishingMarks?.length
+      ? `Distinguishing marks to preserve on doll face: ${traits.distinguishingMarks.join(", ")}`
+      : "",
+    traits?.resinSkinTone ? `Resin skin tone echo: ${traits.resinSkinTone}` : "",
+    traits?.expressionBaseline ? `Baseline expression: ${traits.expressionBaseline}` : "",
+    traits?.styleNotes ? `Style / wardrobe notes: ${traits.styleNotes}` : "",
+    traits?.userNotes ? `Creator notes: ${traits.userNotes}` : "",
+  ].filter(Boolean);
+
+  const base = buildMimiShellImagePrompt(doll, { ...options, view: options.view ?? "portrait" });
+
+  return [
+    base,
+    "LIKENESS AS DOLL (PRIMARY GOAL): The creator reference photo must be translated into this ball-jointed resin BJD — recognizable as the same person, but unmistakably a manufactured art doll with visible resin joints and doll-scale features. Carry hairstyle, eye color, beauty marks, and bone-structure echoes into the resin sculpt. This is you-as-a-doll, not a photoreal human photograph or face-swap.",
+    likenessLines.length ? `Creator likeness carriers: ${likenessLines.join(". ")}.` : "",
+    doll.onboardingRefs?.declaredAttributes
+      ? "USER-DECLARED ATTRIBUTES are authoritative — prioritize them over generic house defaults when sculpting the doll face and hair."
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 /** Studio / zine companion block — species lock in text generations. */
 export function buildMimiShellCompanionContext(
   doll: Pick<
@@ -144,14 +216,14 @@ export function buildMimiShellCompanionContext(
   >,
 ): string {
   return `[MIMI SHELL ${MIMI_SHELL_STAPLE_VERSION} — "${doll.name}"]
-Species lock: porcelain-vinyl BJD shell, elongated slender neck, visible ball joints, serene cultish calm, large glassy eyes.
+Species lock: ball-jointed resin BJD, cast resin body, elongated slender neck, visible ball-and-socket joints at neck, shoulders, elbows, wrists, serene cultish calm, large glassy eyes.
 Visual Language: ${joinTraits(doll.visualLanguage, "editorial minimalism")}
 Palette: ${joinTraits(doll.palette, "muted neutrals")}
-Materials: ${joinTraits(doll.materials, "porcelain glaze, tactile fibers")}
+Materials: ${joinTraits(doll.materials, "cast resin, satin resin finish, tactile fibers")}
 Silhouette: ${doll.silhouette || "editorial mannequin"}
 Motifs: ${joinTraits([...(doll.motifs || []), ...(doll.signatureMotifs || [])].slice(0, 8), "structural geometry")}
 Emotional Register: ${doll.emotionalRegister || "composed"}
 Creative Philosophy: ${doll.creativePhilosophy || "restrained editorial presence"}
 ${doll.eyeTreatment ? `Eye Treatment: ${doll.eyeTreatment}` : ""}
-CRITICAL: Preserve this doll as a stable Mimi Shell character proxy across all visual prompts (header_image_prompt, visual_plates, pages.imagePrompt). Lock shell proportions and face calm; vary only wardrobe and setting. Never render as a photoreal human.`;
+CRITICAL: Preserve this doll as a stable ball-jointed resin BJD character proxy across all visual prompts (header_image_prompt, visual_plates, pages.imagePrompt). Lock shell proportions, resin material, and visible ball joints; vary only wardrobe and setting. Never render as a photoreal human or seamless-limb figurine.`;
 }
