@@ -41,9 +41,9 @@
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
-| **Observatory** | `/observatory` | **stub** | **Default `loadMeanMedianModeReport("demonstration")`** + demo Mesopic | Live aggregates gated on Proscenium consent pipeline |
-| **Mean Median Mode** | `/mean-median-mode` | **stub** | Same demonstration fixture as Observatory | Collapse or differentiate from Observatory overview |
-| **Forecast** | `/forecast` | partial | Observed panel uses **demonstration** MMM; content vectors key-gated | Remove any residual costume metrics; add Forecast to menu (`prd/chamber-loop-…`) |
+| **Observatory** | `/observatory` | **partial** | Unified chamber: eye plate, segments, live `/api/collective/mmm-report`, contribution panel; demo opt-in only | Mesopic live aggregation; cycle-position inference from live corpus |
+| **Mean Median Mode** | `/mean-median-mode` | **partial** | In-chamber segment (same shell as Observatory) | Route alias only — no separate UI fork |
+| **Forecast** | `/forecast` | partial | Cultural vector uses live MMM API (empty when no corpus) | Remove any residual costume metrics; approved RSS ingest |
 | **Celestial Calibration** | `/celestial-calibration` | shipped | Rising/houses need time + geocoded place | — |
 | **Oracle** | `/oracle` | **partial** | Cyberdeck voice overlay shipped; chamber reports + theme analysis now local-first (`oracleChamberService`); not in `CANON_MODULES` yet; celestial readings ephemeral | Register in canon; optional Neon sync for cross-device reports |
 
@@ -118,7 +118,7 @@
 | `functions/src/commerceService.ts` | Duplicate `MOCK_PRODUCTS` | Firebase functions path |
 | `components/TheEdit.tsx` | Resolves product cards from `MOCK_PRODUCTS` | Forecast/commerce UI |
 | `services/tailorMockAnalyzer.ts` | `runMockTailorAnalysis` / `createMockTailorAnalysisOutput` | **Unused in app** — dead stub path; remove or gate behind explicit dev flag |
-| `services/collective/loadMeanMedianModeReport.ts` | Default `"demonstration"` source | Observatory, Forecast observed panel |
+| `services/collective/loadMeanMedianModeReport.ts` | Sync `demonstration` / `empty` for tests & opt-in preview | verify scripts, Observatory demo toggle |
 | `services/collective/loadMesopicReport.ts` | Default `"demonstration"` source | Observatory Mesopic lens |
 | `fixtures/collective/demo*.ts` | Labeled demo reports | Collective intelligence offline review |
 | `components/ProsceniumView.tsx` | `mock_1`…`mock_3` transmissions | Local Echoes demo specimens |

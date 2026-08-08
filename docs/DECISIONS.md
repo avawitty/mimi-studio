@@ -12,6 +12,20 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+---
+
+## 2026-08-08 — Observatory unified chamber + live collective MMM API
+
+**Decision:** Collapse Observatory UX into one void-plate chamber with segments (Overview · Mean Median Mode · Mesopic). Default readout loads **`GET /api/collective/mmm-report`** — aggregates consented public zines from sovereign archive or Firestore, never silent demonstration fixtures. Demonstration specimens are explicit opt-in. Contribution panel surfaces corpus stats + Proscenium/Pocket CTAs. MMM strips hand off to Residue via `?q=` prefill. Forecast cultural vector consumes the same live API (honest empty when corpus insufficient).
+
+**Alternatives rejected:** (1) Merging Residue into Observatory (namespace + consent confusion). (2) Default demonstration dashboard (violates honest collective states). (3) Client-only Firestore aggregation (misses sovereign Floor corpus).
+
+**Why:** Perception loop needs one instrument surface, visible opt-in, and traceable actions while preserving Residue per-run MMM as a separate engine.
+
+**Ref:** `components/chambers/ObservatoryChamber.tsx`, `lib/collectiveMmmReportRoute.ts`, `services/collective/buildMeanMedianModeReport.ts`
+
+---
+
 ## 2026-08-08 — Oracle chamber reports (local-first cyberdeck UX)
 
 **Decision:** Redesign `/oracle` with cyberdeck instrument plates (matching `TheScribe` atmosphere). Persist Cyberdeck sessions locally via `services/oracleChamberService.ts` on chamber close/export; surface **Chamber Reports** (past transmissions) and **Recurring Themes** (client-side frequency extraction) on the Oracle page. Pocket export remains the durable archive path.

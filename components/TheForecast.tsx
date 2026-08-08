@@ -37,6 +37,7 @@ import {
   loadMeanMedianModeReport,
 } from "../services/collective";
 import type { ForecastReport } from "../schemas/collectiveIntelligenceContracts";
+import type { MeanMedianModeReport } from "../schemas/collectiveIntelligenceContracts";
 import { ForecastObservedPanel } from "./forecast/ForecastObservedPanel";
 
 type ForecastScope = "personal" | "company";
@@ -100,41 +101,37 @@ export const TheForecast: React.FC<{
   useEffect(() => {
     if (selectedVector !== "culture") return;
     let cancelled = false;
-    const observed = loadMeanMedianModeReport("demonstration");
-    const feedEntryCount = loadApprovedFeedEntries().length;
-    // Always compose from MMM first so Cultural never hangs on research fetch.
-    setCultureReport(
-      buildForecastReport({
-        observed,
-        external: contentForecast,
-        feedEntryCount,
-        runId: `forecast-culture-${observed.runId}`,
-      }),
-    );
 
-    // Anonymous culture views keep the offline MMM report only — no gateway synthesis.
-    if (contentForecast || !user) {
-      return () => {
-        cancelled = true;
-      };
-    }
+    const composeCulture = (
+      observed: MeanMedianModeReport,
+      external: ResearchSynthesisResponse | null | undefined,
+    ) => {
+      const feedEntryCount = loadApprovedFeedEntries().length;
+      setCultureReport(
+        buildForecastReport({
+          observed,
+          external,
+          feedEntryCount,
+          runId: `forecast-culture-${observed.runId}`,
+        }),
+      );
+    };
 
-    void fetchContentForecast(apiKeys)
-      .then((external) => {
-        if (cancelled) return;
-        setCultureReport(
-          buildForecastReport({
-            observed,
-            external,
-            feedEntryCount,
-            runId: `forecast-culture-${observed.runId}`,
-          }),
-        );
-        setContentForecast(external);
-      })
-      .catch(() => {
-        /* keep MMM-only report already set */
-      });
+    void (async () => {
+      const { fetchLiveMeanMedianModeReport } = await import("../services/collective");
+      const live = await fetchLiveMeanMedianModeReport({ days: 7 });
+      const observed = live?.report ?? loadMeanMedianModeReport("empty");
+      composeCulture(observed, contentForecast);
+
+      if (contentForecast || !user) return;
+
+      const external = await fetchContentForecast(apiKeys);
+      if (cancelled) return;
+      composeCulture(observed, external);
+      setContentForecast(external);
+    })().catch(() => {
+      /* keep empty MMM report */
+    });
 
     return () => {
       cancelled = true;

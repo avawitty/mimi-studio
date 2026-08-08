@@ -51,6 +51,7 @@ import { handleCreatorFeedRequest } from "./api/feed";
 import youSearchHandler from "./api/you-search";
 import celestialGeocodeHandler from "./api/celestial/geocode";
 import residueAcquireHandler from "./api/residue-acquire";
+import collectiveMmmReportHandler from "./api/collective/mmm-report";
 import liveTokenHandler from "./api/live/token";
 import sovereignCommunityHandler from "./api/sovereign/community";
 import sovereignZineHandler from "./api/sovereign/zine";
@@ -1507,6 +1508,10 @@ async function startServer() {
 
   app.post("/api/residue-acquire", async (req, res) => {
     await residueAcquireHandler(req, res);
+  });
+
+  app.get("/api/collective/mmm-report", async (req, res) => {
+    await collectiveMmmReportHandler(req, res);
   });
 
   app.post("/api/live/token", async (req, res) => {

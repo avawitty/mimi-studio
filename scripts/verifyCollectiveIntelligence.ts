@@ -27,9 +27,12 @@ import {
   opaqueContributorKeyFromUserId,
   extractSignalsFromPublicZine,
 } from "../services/collective";
-import { collectiveSignalSchema } from "../schemas/collectiveIntelligenceContracts";
+import {
+  buildMeanMedianModeReportFromSignals,
+} from "../services/collective/buildMeanMedianModeReport";
 import {
   centralTendencyProfileSchema,
+  collectiveSignalSchema,
   meanMedianModeReportSchema,
   mesopicReportSchema,
   forecastReportSchema,
@@ -363,6 +366,37 @@ function testContributePipeline() {
   assert(ok.receipt?.contributedSignalIds.length === ok.signals.length, "receipt ids");
 }
 
+function testBuildLiveReport() {
+  const now = Date.UTC(2026, 7, 2, 12, 0, 0);
+  const signals = Array.from({ length: 12 }, (_, i) =>
+    collectiveSignalSchema.parse({
+      id: `live-s${i}`,
+      canonicalLabel: i < 9 ? "twilight archive" : "counter-read",
+      aliases: [],
+      category: "motif",
+      sourceArtifactId: `z-${i}`,
+      sourceType: "public_zine",
+      observedAt: now - i * 3600_000,
+      extractedAt: now,
+      extractionMethod: "user_tagged",
+      opaqueContributorKey: `c_${i % 4}`,
+      publicContributionAllowed: true,
+      anonymizationStatus: "eligible",
+      sensitivityFlags: [],
+      provenance: {
+        sourceId: `z-${i}`,
+        sourceKind: "public_zine",
+        extractorVersion: "mmm-extract-v1",
+      },
+    }),
+  );
+  const report = buildMeanMedianModeReportFromSignals(signals, { now });
+  meanMedianModeReportSchema.parse(report);
+  assert(report.demonstration !== true, "live report not demonstration");
+  assert(report.profiles.length >= 1, "live report has profiles");
+  assert(report.status === "success" || report.status === "partial", "live status");
+}
+
 function testMesopicAndForecast() {
   const mesopic = loadMesopicReport("demonstration");
   mesopicReportSchema.parse(mesopic);
@@ -476,6 +510,13 @@ function testCanonAndFiles() {
     "services/collective/buildForecastReport.ts",
     "services/collective/loadMesopicReport.ts",
     "services/collective/approvedFeeds.ts",
+    "services/collective/buildMeanMedianModeReport.ts",
+    "services/collective/loadConsentedPublicCorpus.ts",
+    "services/collective/fetchMeanMedianModeReport.ts",
+    "lib/collectiveMmmReportRoute.ts",
+    "api/collective/mmm-report.ts",
+    "components/observatory/ObservatoryEyePlate.tsx",
+    "components/observatory/ObservatoryContributionPanel.tsx",
     "components/chambers/ObservatoryChamber.tsx",
     "components/observatory/MeanMedianModePanel.tsx",
     "components/observatory/MesopicLensPanel.tsx",
@@ -488,6 +529,10 @@ function testCanonAndFiles() {
   for (const rel of requiredFiles) {
     assert(fs.existsSync(path.join(root, rel)), `missing ${rel}`);
   }
+
+  const chamber = fs.readFileSync(path.join(root, "components/chambers/ObservatoryChamber.tsx"), "utf8");
+  assert(chamber.includes("ObservatoryEyePlate"), "chamber mounts eye plate");
+  assert(chamber.includes("fetchLiveMeanMedianModeReport"), "chamber fetches live report");
 
   const legal = fs.readFileSync(path.join(root, "components/LegalOverlay.tsx"), "utf8");
   assert(legal.includes("Mean Median Mode"), "legal names Mean Median Mode");
@@ -511,6 +556,7 @@ function main() {
   testConsent();
   testContributePipeline();
   testReportFixture();
+  testBuildLiveReport();
   testMesopicAndForecast();
   testNamespaceSeparation();
   testCanonAndFiles();
