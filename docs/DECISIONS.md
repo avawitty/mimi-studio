@@ -626,6 +626,32 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 
 ---
 
+---
+
+## 2026-08-08 — Forecast intake + Apify-backed evidence
+
+**Decision:** Forecast chamber requires lightweight **profile intake** (personal) or **brand intake** (Brand OS scope) before Overview/Content vectors run. Intake persists on `UserProfile.forecastIntake` and drives personalized search queries through existing `/api/you-search` (You.com → Apify `rag-web-browser` → Gateway fallback).
+
+**Alternatives rejected:** (1) Force Tailor/GEO completion first — too heavy for a first forecast read. (2) Duplicate full `BrandIntakeView` inside Forecast — link to full report instead.
+
+**Why:** Makes Forecast operable without full DNA/GEO calibration; brand scope gets real positioning inputs; reuses billable Apify path already wired for search.
+
+**Ref:** `lib/forecastIntake.ts`, `components/forecast/ForecastIntakePanel.tsx`, `components/TheForecast.tsx`, `services/researchService.ts`
+
+---
+
+## 2026-08-08 — Forecast server compose + Residue handoff
+
+**Decision:** Add `POST /api/forecast` to server-compose `ForecastReport` (You.com/Apify evidence + demonstration MMM), persist on `userPreferences.forecastSnapshot`, and surface latest `ResidueForecastArtifact` in `/forecast` Overview and Cultural vectors.
+
+**Alternatives rejected:** (1) Client-only persistence — no cross-device sync. (2) Merging Residue scenarios into collective cultural trajectories — keep namespaces distinct with explicit provenance.
+
+**Why:** Completes the Residue → Forecast handoff; gives signed-in users a durable snapshot without re-fetching on every device.
+
+**Ref:** `lib/forecast/serverComposeForecast.ts`, `lib/forecastRoute.ts`, `api/forecast.ts`, `components/forecast/ForecastResiduePanel.tsx`
+
+---
+
 ## 2026-08-08 — Proscenium showcases collective consent on Stage
 
 **Decision:** Stage wing surfaces Mean Median Mode consent states on each transmission (`ProsceniumContributionBadge`) and a collective brief panel with Observatory / MMM handoffs (`ProsceniumCollectiveBrief`). Local Echoes demo specimens illustrate contributing, staged-only, and withdrawn states — never mixed into live counts.

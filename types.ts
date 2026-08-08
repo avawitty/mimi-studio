@@ -1752,6 +1752,8 @@ export interface UserPreferences {
   /** Opt-out list — algos not listed here are enabled by default. */
   disabledAlgos?: string[];
   zineOptions?: ZineGenerationOptions;
+  /** Server-composed forecast snapshot for cross-device sync. */
+  forecastSnapshot?: import("./lib/forecast/serverComposeForecast").ForecastSnapshot;
   agentConfig?: {
     curatorEnabled: boolean;
     sentinelEnabled: boolean;
@@ -1855,6 +1857,8 @@ export interface UserProfile extends UserPreferences {
   displayName?: string;
   externalLinks?: { title: string; url: string }[];
   pocket?: PocketItem[];
+  /** Lightweight personal/brand calibration for Forecast chamber vectors. */
+  forecastIntake?: import("./lib/forecastIntake").ForecastIntakeSnapshot;
 }
 
 export interface Notification {
