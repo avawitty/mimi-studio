@@ -8,6 +8,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Studio compiler/critic cards + Tailor v2 contract reconciliation
+
+**Decision:** Ship Studio-facing compiler and critic UI wired through `/api/mimi/taste-intelligence/compiler/compile` and `/critic/critique`, with `mergeGenerationContracts` reconciling Taste Intelligence compiler output against Tailor Profile v2 `generationContract` before prompt injection.
+
+**Alternatives rejected:**
+- Client-only compile without persistence (loses audit trail for critiques).
+- Replacing Tailor v2 `generationContract` with TI compiler output (breaks existing zine/Tailor prompt paths).
+
+**Rationale:** Studio needs visible, pre-generation contracts and post-generation critique without forking Tailor’s canonical profile contract. Merge keeps both sources authoritative: Tailor strategic rules + TI evidence-linked compiler modes.
+
+---
+
 ## 2026-08-08 — Negative taste + graph model editing (Tailor Pattern Graph slice)
 
 **Decision:** Ship creator-facing negative taste and direct model editing inside Tailor `PatternGraphScreen` + `TasteModelInspector`, backed by existing Taste Intelligence OS v2 contracts (`taste_refusals`, `taste_model_edits`, `computeModelDelta`, `applyEditsToSnapshot`). New API routes: `POST /api/mimi/taste-intelligence/refusals`, `POST /model-edits`, `POST /model-edits/undo`. Merge/split remain behind `TASTE_GRAPH_MERGE_SPLIT=1`.

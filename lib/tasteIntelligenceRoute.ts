@@ -23,8 +23,13 @@ import type {
   TasteCalibrationPair,
   TasteModelEditOperation,
   TasteRefusalType,
+  GenerationMedium,
+  GenerationMode,
+  TasteGenerationContract,
+  TasteCritique,
 } from "../schemas/tasteIntelligenceContracts.js";
 import type { TasteModelSnapshot } from "./tasteModel/contracts.js";
+import type { TailorGenerationContractInput } from "./tasteIntelligence/mergeGenerationContracts.js";
 
 const persistSnapshotSchema = z.object({
   snapshot: z.custom<TasteModelSnapshot>(),
@@ -116,6 +121,56 @@ const modelEditUndoSchema = z.object({
   snapshot: z.custom<TasteModelSnapshot>(),
 });
 
+const tailorGenerationContractSchema = z.object({
+  objective: z.string(),
+  preserve: z.array(z.string()),
+  emphasize: z.array(z.string()),
+  transform: z.array(
+    z.object({
+      input: z.string(),
+      method: z.string(),
+      strength: z.number(),
+    }),
+  ),
+  avoid: z.array(z.string()),
+  globalRefusals: z.array(z.string()),
+  projectConstraints: z.array(z.string()),
+});
+
+const compilerCompileSchema = z.object({
+  medium: z.enum([
+    "image",
+    "writing",
+    "ui",
+    "fashion",
+    "editorial",
+    "brand",
+    "photography",
+    "product",
+  ] as [GenerationMedium, ...GenerationMedium[]]),
+  mode: z.enum(["aligned", "adjacent", "divergent"] as [
+    GenerationMode,
+    ...GenerationMode[],
+  ]),
+  projectId: z.string().optional(),
+  workspaceId: z.string().uuid().optional(),
+  modelSnapshotId: z.string().optional(),
+  persist: z.boolean().optional(),
+  tailorGenerationContract: tailorGenerationContractSchema.optional(),
+});
+
+const criticCritiqueSchema = z.object({
+  contractId: z.string().optional(),
+  contract: z.custom<TasteGenerationContract>().optional(),
+  candidate: z.object({
+    id: z.string(),
+    featureIds: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional(),
+  }),
+  persist: z.boolean().optional(),
+  projectId: z.string().optional(),
+});
+
 async function resolveMembershipPlan(actorId: string): Promise<string> {
   try {
     const { getNeonUnitOfWork } = await import(
@@ -175,6 +230,14 @@ export async function handleTasteIntelligenceRoute(req: any, res: any) {
   if (action === "model-edits") {
     if (!requireOperationalMethod(req, res, "POST")) return;
     return handleCreateModelEdit(req, res);
+  }
+  if (action === "compiler" && segments[1] === "compile") {
+    if (!requireOperationalMethod(req, res, "POST")) return;
+    return handleCompilerCompile(req, res);
+  }
+  if (action === "critic" && segments[1] === "critique") {
+    if (!requireOperationalMethod(req, res, "POST")) return;
+    return handleCriticCritique(req, res);
   }
 
   sendOperationalError(res, 404, "NOT_FOUND", "Unknown taste intelligence route.");
@@ -691,6 +754,224 @@ async function handleUndoModelEdit(req: any, res: any) {
       500,
       "MODEL_EDIT_UNDO_FAILED",
       publicOperationalMessage(500, "Undo could not be applied.", String(error)),
+    );
+  }
+}
+
+async function handleCompilerCompile(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const body = compilerCompileSchema.safeParse(req.body || {});
+    if (!body.success) {
+      sendOperationalError(res, 400, "INVALID_REQUEST", body.error.message);
+      return;
+    }
+
+    const { hasTasteEntitlement } = await import(
+      "./tasteIntelligence/entitlements.js"
+    );
+    const plan = (await resolveMembershipPlan(decoded.uid)) as
+      | "free"
+      | "trial"
+      | "creator"
+      | "studio"
+      | "team";
+
+    if (!hasTasteEntitlement(plan, "taste.compiler")) {
+      sendOperationalError(
+        res,
+        403,
+        "ENTITLEMENT_REQUIRED",
+        "Taste compiler requires Studio plan or trial.",
+      );
+      return;
+    }
+
+    if (
+      body.data.mode !== "aligned" &&
+      !hasTasteEntitlement(plan, "taste.generation_modes")
+    ) {
+      sendOperationalError(
+        res,
+        403,
+        "ENTITLEMENT_REQUIRED",
+        "Adjacent and divergent modes require generation_modes entitlement.",
+      );
+      return;
+    }
+
+    const { getNeonUnitOfWork } = await import(
+      "../infrastructure/database/neon/unitOfWork.js"
+    );
+    const uow = getNeonUnitOfWork();
+    const repo = uow.repositories.tasteIntelligence;
+
+    const scope = body.data.projectId ?? "global";
+    const snapshotRow = body.data.modelSnapshotId
+      ? await repo.findSnapshotById(decoded.uid, body.data.modelSnapshotId)
+      : await repo.getLatestSnapshot(decoded.uid, scope);
+
+    if (!snapshotRow) {
+      sendOperationalError(
+        res,
+        409,
+        "SNAPSHOT_REQUIRED",
+        "Compile a taste model before generating a contract.",
+      );
+      return;
+    }
+
+    const refusals = await repo.listActiveRefusals(
+      decoded.uid,
+      body.data.projectId,
+    );
+
+    const { compileTasteGenerationContract } = await import(
+      "./tasteIntelligence/compileGenerationContract.js"
+    );
+    const { mergeGenerationContracts } = await import(
+      "./tasteIntelligence/mergeGenerationContracts.js"
+    );
+
+    const compiled = compileTasteGenerationContract(
+      snapshotRow.snapshot,
+      {
+        ownerId: decoded.uid,
+        workspaceId: body.data.workspaceId,
+        projectId: body.data.projectId,
+        refusals,
+      },
+      body.data.medium,
+      body.data.mode,
+    );
+
+    const tailorContract = body.data
+      .tailorGenerationContract as TailorGenerationContractInput | undefined;
+    const { contract, reconciliation } = mergeGenerationContracts(
+      compiled,
+      tailorContract,
+    );
+
+    const persist = body.data.persist !== false;
+    if (persist) {
+      await uow.transaction(async (repositories) => {
+        await repositories.tasteIntelligence.saveGenerationContract(contract);
+      });
+    }
+
+    sendJson(res, 200, {
+      contract,
+      reconciliation,
+      snapshotId: snapshotRow.id,
+      promptBlock: (
+        await import("./tasteIntelligence/formatContractPrompt.js")
+      ).formatGenerationContractPrompt(contract, reconciliation),
+    });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "COMPILER_FAILED",
+      publicOperationalMessage(500, "Contract could not be compiled.", String(error)),
+    );
+  }
+}
+
+async function handleCriticCritique(req: any, res: any) {
+  try {
+    const decoded = await verifyMimiSession(req.headers || {});
+    const body = criticCritiqueSchema.safeParse(req.body || {});
+    if (!body.success) {
+      sendOperationalError(res, 400, "INVALID_REQUEST", body.error.message);
+      return;
+    }
+
+    const { hasTasteEntitlement } = await import(
+      "./tasteIntelligence/entitlements.js"
+    );
+    const plan = (await resolveMembershipPlan(decoded.uid)) as
+      | "free"
+      | "trial"
+      | "creator"
+      | "studio"
+      | "team";
+
+    if (!hasTasteEntitlement(plan, "taste.critic")) {
+      sendOperationalError(
+        res,
+        403,
+        "ENTITLEMENT_REQUIRED",
+        "Taste critic requires Studio plan or trial.",
+      );
+      return;
+    }
+
+    const { getNeonUnitOfWork } = await import(
+      "../infrastructure/database/neon/unitOfWork.js"
+    );
+    const uow = getNeonUnitOfWork();
+    const repo = uow.repositories.tasteIntelligence;
+
+    let contract = body.data.contract ?? null;
+    if (!contract && body.data.contractId) {
+      contract = await repo.getGenerationContract(
+        decoded.uid,
+        body.data.contractId,
+      );
+    }
+
+    if (!contract) {
+      sendOperationalError(
+        res,
+        400,
+        "CONTRACT_REQUIRED",
+        "Provide contractId or inline contract for critique.",
+      );
+      return;
+    }
+
+    const scope = body.data.projectId ?? "global";
+    const snapshotRow = await repo.getLatestSnapshot(decoded.uid, scope);
+    if (!snapshotRow) {
+      sendOperationalError(
+        res,
+        409,
+        "SNAPSHOT_REQUIRED",
+        "Taste model snapshot required for critique.",
+      );
+      return;
+    }
+
+    const {
+      critiqueAgainstContract,
+      extractCandidateFeatures,
+    } = await import("./tasteIntelligence/critiqueCandidate.js");
+
+    const extracted = extractCandidateFeatures(
+      body.data.candidate,
+      snapshotRow.snapshot,
+    );
+    const critique = critiqueAgainstContract({
+      contract,
+      snapshot: snapshotRow.snapshot,
+      candidate: body.data.candidate,
+      extracted,
+    });
+
+    const persist = body.data.persist !== false;
+    if (persist) {
+      await uow.transaction(async (repositories) => {
+        await repositories.tasteIntelligence.saveCritique(decoded.uid, critique);
+      });
+    }
+
+    sendJson(res, 200, { critique, extracted });
+  } catch (error) {
+    sendOperationalError(
+      res,
+      500,
+      "CRITIC_FAILED",
+      publicOperationalMessage(500, "Critique could not be completed.", String(error)),
     );
   }
 }
