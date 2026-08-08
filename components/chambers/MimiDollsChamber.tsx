@@ -6,10 +6,12 @@ import { DollProfileScreen } from "../tailor/DollProfileScreen";
 import { DollPortraitStage } from "../tailor/DollPortraitStage";
 import { useUser } from "../../contexts/UserContext";
 import { ProceduralDollStudio } from "./ProceduralDollStudio";
+import { DollOnboardingFlow } from "../tailor/DollOnboardingFlow";
 import type { Doll } from "../../types";
 import { listDolls, updateDoll } from "../../services/tailorService";
 import {
   MIMI_SHELL_STAPLE_VERSION,
+  OMNI_LOOP_CULT,
   type ProceduralDollAesthetic,
   readStoredActiveDollId,
   resolveIdentityViewUrl,
@@ -211,11 +213,11 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
           <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-6">
             <header className="space-y-2">
               <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle">
-                Mimi Shell · {MIMI_SHELL_STAPLE_VERSION}
+                {OMNI_LOOP_CULT.name} · {MIMI_SHELL_STAPLE_VERSION}
               </p>
-              <h2 className="font-serif text-3xl md:text-4xl text-nous-text">House porcelain projection</h2>
+              <h2 className="font-serif text-3xl md:text-4xl text-nous-text">Ball-jointed resin cult shell</h2>
               <p className="font-serif italic text-nous-subtle max-w-xl">
-                Same species for every creator — elongated neck, serene BJD calm. Taste only dresses the shell.
+                {OMNI_LOOP_CULT.thesis}. Same ball-jointed resin BJD species — taste dresses the shell.
               </p>
             </header>
 
@@ -233,29 +235,14 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
             ) : loadingDolls ? (
               <p className="font-mono text-[10px] uppercase tracking-widest text-nous-subtle">Loading shells…</p>
             ) : dolls.length === 0 ? (
-              <div
-                className="border border-nous-border/25 p-8 md:p-12 text-center space-y-5"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at 30% 0%, rgba(200,220,220,0.35) 0%, transparent 55%)",
+              <DollOnboardingFlow
+                userId={user.uid}
+                onComplete={(doll) => {
+                  setDolls([doll]);
+                  setBoundDollId(doll.id);
+                  writeStoredActiveDollId(doll.id);
                 }}
-              >
-                <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-nous-subtle">
-                  Shell dormant
-                </p>
-                <p className="font-serif text-2xl text-nous-text">No doll projected yet</p>
-                <p className="text-sm text-nous-subtle max-w-md mx-auto leading-relaxed">
-                  The dark shader lab is optional. Your Imagen shell appears after Tailor builds a Doll
-                  from your Taste Graph — then this chamber shows the porcelain plate.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => navigate("/tailor")}
-                  className="inline-flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest px-6 py-3 bg-nous-text text-nous-base"
-                >
-                  Open Tailor → Generate Doll <ArrowRight size={12} />
-                </button>
-              </div>
+              />
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-3">
@@ -314,6 +301,13 @@ export const MimiDollsChamber: React.FC<MimiDollsChamberProps> = ({
                           className="px-5 py-3 bg-nous-text text-nous-base font-mono text-[9px] uppercase tracking-widest"
                         >
                           {shellUrl ? "Open conditioning" : "Run shell projection"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate(mimiYouTabPath("time-travel"))}
+                          className="px-5 py-3 border border-nous-border font-mono text-[9px] uppercase tracking-widest"
+                        >
+                          Time travel
                         </button>
                         <button
                           type="button"

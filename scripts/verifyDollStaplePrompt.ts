@@ -8,6 +8,7 @@ import {
   MIMI_SHELL_STAPLE_VERSION,
   buildMimiShellCompanionContext,
   buildMimiShellImagePrompt,
+  buildLikenessAsDollImagePrompt,
 } from "../services/dollEngine";
 import type { Doll } from "../types";
 
@@ -50,17 +51,18 @@ function check(name: string, fn: () => void) {
 }
 
 check("staple version + locked anatomy", () => {
-  assert.equal(MIMI_SHELL_STAPLE.version, "shell-v1");
+  assert.equal(MIMI_SHELL_STAPLE.version, "omni-loop-resin-v1");
   assert.match(MIMI_SHELL_STAPLE.proportions, /elongated slender neck/i);
-  assert.match(MIMI_SHELL_STAPLE.medium, /BJD|ball-jointed/i);
+  assert.match(MIMI_SHELL_STAPLE.medium, /BJD|ball-jointed|resin/i);
   assert.match(MIMI_SHELL_STAPLE.face, /serene/i);
+  assert.match(MIMI_SHELL_STAPLE.proportions, /ball-and-socket|ball joint/i);
 });
 
 check("portrait prompt keeps house lock + taste accents", () => {
   const prompt = buildMimiShellImagePrompt(sample, { view: "portrait" });
   assert.match(prompt, new RegExp(MIMI_SHELL_STAPLE_VERSION));
   assert.match(prompt, /elongated slender neck/i);
-  assert.match(prompt, /porcelain/i);
+  assert.match(prompt, /resin|ball-joint/i);
   assert.match(prompt, /structured blazer/i);
   assert.match(prompt, /Atelier Proxy/);
   assert.match(prompt, /Avoid:/i);
@@ -83,6 +85,13 @@ check("companion context species lock", () => {
   assert.match(ctx, /MIMI SHELL/);
   assert.match(ctx, /Never render as a photoreal human/i);
   assert.match(ctx, /elongated slender neck/i);
+});
+
+check("likeness-as-doll portrait translation", () => {
+  const prompt = buildLikenessAsDollImagePrompt(sample, { view: "portrait" });
+  assert.match(prompt, /LIKENESS AS DOLL/i);
+  assert.match(prompt, /you-as-a-doll|recognizable as the same person/i);
+  assert.match(prompt, /ball-jointed resin/i);
 });
 
 console.log(`\ndoll staple verify: ${passed} checks passed.`);

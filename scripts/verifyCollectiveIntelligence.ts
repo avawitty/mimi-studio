@@ -501,6 +501,11 @@ function testCanonAndFiles() {
   assert(analysis.includes("ProsceniumPublishConsentModal"), "AnalysisDisplay stages via consent modal");
   assert(analysis.includes("buildConsentAwareTransmission"), "AnalysisDisplay consent-aware transmissions");
 
+  const prosceniumView = fs.readFileSync(path.join(root, "components/ProsceniumView.tsx"), "utf8");
+  assert(prosceniumView.includes("ProsceniumContributionBadge"), "ProsceniumView shows contribution badges");
+  assert(prosceniumView.includes("ProsceniumCollectiveBrief"), "ProsceniumView links collective brief");
+  assert(prosceniumView.includes("mayContributeToMeanMedianMode"), "ProsceniumView reads consent eligibility");
+
   const savePath = fs.readFileSync(path.join(root, "services/firebaseUtils.ts"), "utf8");
   assert(savePath.includes("mmmPublishConsent"), "saveZineToProfile accepts MMM consent");
   assert(savePath.includes("refused silent public stage"), "saveZineToProfile refuses silent public");
