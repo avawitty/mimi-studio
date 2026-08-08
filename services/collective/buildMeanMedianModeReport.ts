@@ -83,7 +83,7 @@ export function buildMeanMedianModeReportFromSignals(
   const uniqueArtifacts = new Set(observations.map((o) => o.artifactId));
 
   if (observations.length === 0) {
-    return emptyMeanMedianModeReport(now);
+    return emptyMeanMedianModeReport(now, windowMs);
   }
 
   const grouped = groupObservationsByLabel(observations);
@@ -101,16 +101,18 @@ export function buildMeanMedianModeReportFromSignals(
     }
   }
 
-  const profiles = ranked.map(([label, obs], index) =>
-    buildCentralTendencyProfile({
+  const profiles = ranked.map(([label, obs], index) => {
+    const artifactIds = new Set(obs.map((o) => o.artifactId));
+    const competingObs = observations.filter((o) => artifactIds.has(o.artifactId));
+    return buildCentralTendencyProfile({
       signalId: `live:motif:${index}:${slugLabel(label)}`,
       windowStart,
       windowEnd,
       unit: "normalized_intensity",
-      sourceTypeDiversity: countSourceTypes(inWindow, obs.map((o) => o.artifactId)),
-      observations: obs,
-    }),
-  );
+      sourceTypeDiversity: countSourceTypes(inWindow, [...artifactIds]),
+      observations: competingObs,
+    });
+  });
 
   const promoted = profiles.filter(
     (p) => p.summation.interpretation !== "insufficient_evidence",
@@ -136,7 +138,7 @@ export function buildMeanMedianModeReportFromSignals(
 
   if (promoted.length === 0) {
     const partial = meanMedianModeReportSchema.parse({
-      ...emptyMeanMedianModeReport(now),
+      ...emptyMeanMedianModeReport(now, windowMs),
       status: "partial",
       profiles,
       presentAtmosphere:

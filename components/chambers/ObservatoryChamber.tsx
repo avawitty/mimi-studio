@@ -49,6 +49,7 @@ export const ObservatoryChamber: React.FC<{
   });
   const [loading, setLoading] = useState(true);
   const [showDemo, setShowDemo] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   const moduleId =
     segment === "mmm" || focus === "mmm"
@@ -58,16 +59,23 @@ export const ObservatoryChamber: React.FC<{
   const loadReport = useCallback(async () => {
     setLoading(true);
     const live = await fetchLiveMeanMedianModeReport({ days: windowDays });
-    if (live) {
-      setReport(live.report);
-      setMesopicReport(live.mesopic ?? loadMesopicReport("empty"));
+    if (live.kind === "success") {
+      setFetchError(false);
+      setReport(live.data.report);
+      setMesopicReport(live.data.mesopic ?? loadMesopicReport("empty"));
       setCorpusMeta({
-        zinesScanned: live.corpus.zinesScanned,
-        contributingZines: live.corpus.contributingZines,
-        signalCount: live.corpus.signalCount,
+        zinesScanned: live.data.corpus.zinesScanned,
+        contributingZines: live.data.corpus.contributingZines,
+        signalCount: live.data.corpus.signalCount,
       });
       setShowDemo(false);
+    } else if (live.kind === "error") {
+      setFetchError(true);
+      setReport(null);
+      setMesopicReport(null);
+      setCorpusMeta({ zinesScanned: 0, contributingZines: 0, signalCount: 0 });
     } else {
+      setFetchError(false);
       setReport(loadMeanMedianModeReport("empty"));
       setMesopicReport(loadMesopicReport("empty"));
       setCorpusMeta({ zinesScanned: 0, contributingZines: 0, signalCount: 0 });
@@ -215,7 +223,22 @@ export const ObservatoryChamber: React.FC<{
                 </button>
               </div>
 
-              {!loading && !isLive && !showDemo ? (
+              {!loading && fetchError ? (
+                <div className="space-y-2">
+                  <p role="alert" className="font-sans text-[12px] text-red-300 leading-relaxed">
+                    {OBSERVATORY_COPY.fetchErrorBanner}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void loadReport()}
+                    className="font-mono text-[8px] uppercase tracking-widest text-stone-400 hover:text-stone-200 underline underline-offset-4"
+                  >
+                    Retry collective readout
+                  </button>
+                </div>
+              ) : null}
+
+              {!loading && !fetchError && !isLive && !showDemo ? (
                 <div className="space-y-2">
                   <p role="status" className="font-sans text-[12px] text-stone-400 leading-relaxed">
                     {OBSERVATORY_COPY.emptyBanner}

@@ -29,6 +29,8 @@ export const OBSERVATORY_COPY = {
     "Demonstration specimens — not live collective data. Publishing to The Proscenium with disclosure is the consent moment for live contribution.",
   emptyBanner:
     "Not enough consented public signals in this window. Stage work on The Proscenium to contribute anonymized structure to Mean Median Mode.",
+  fetchErrorBanner:
+    "Collective readout is temporarily unavailable — the live report could not be loaded. This is not the same as an empty corpus.",
   mesopicComingSoon:
     "Mesopic Lens (Starry-Eyed · Shadow Fields) holds faint signals below Mean Median Mode thresholds — never as certainty.",
   mesopicThesis:
