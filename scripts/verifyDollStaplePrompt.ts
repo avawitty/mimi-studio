@@ -50,7 +50,7 @@ function check(name: string, fn: () => void) {
 }
 
 check("staple version + locked anatomy", () => {
-  assert.equal(MIMI_SHELL_STAPLE.version, "shell-v1");
+  assert.equal(MIMI_SHELL_STAPLE.version, "omni-loop-v1");
   assert.match(MIMI_SHELL_STAPLE.proportions, /elongated slender neck/i);
   assert.match(MIMI_SHELL_STAPLE.medium, /BJD|ball-jointed/i);
   assert.match(MIMI_SHELL_STAPLE.face, /serene/i);

@@ -24,6 +24,26 @@ export interface WikimediaResult {
 const MET_API = 'https://collectionapi.metmuseum.org/public/collection/v1';
 const WIKIMEDIA_API = 'https://commons.wikimedia.org/w/api.php';
 
+/** Art history eras for Omni Loop time travel — public-domain search seeds. */
+export const ART_HISTORY_ERAS = [
+  { id: 'ancient', label: 'Ancient', query: 'ancient greek vase painting', century: 'BCE' },
+  { id: 'medieval', label: 'Medieval', query: 'medieval illuminated manuscript', century: '12th century' },
+  { id: 'renaissance', label: 'Renaissance', query: 'renaissance portrait painting', century: '15th century' },
+  { id: 'baroque', label: 'Baroque', query: 'baroque oil painting', century: '17th century' },
+  { id: 'romantic', label: 'Romantic', query: 'romantic landscape painting', century: '19th century' },
+  { id: 'impressionist', label: 'Impressionist', query: 'impressionist painting', century: '1870s' },
+  { id: 'modern', label: 'Modern', query: 'modern art painting', century: '20th century' },
+  { id: 'surreal', label: 'Surreal', query: 'surrealist painting', century: '1930s' },
+] as const;
+
+export type ArtHistoryEraId = (typeof ART_HISTORY_ERAS)[number]['id'];
+
+export async function searchArtByEra(eraId: ArtHistoryEraId, limit = 4): Promise<MetObject[]> {
+  const era = ART_HISTORY_ERAS.find((e) => e.id === eraId);
+  if (!era) return [];
+  return searchMetMuseum(era.query, limit);
+}
+
 export async function searchMetMuseum(query: string, limit = 5): Promise<MetObject[]> {
   try {
     const searchRes = await fetch(

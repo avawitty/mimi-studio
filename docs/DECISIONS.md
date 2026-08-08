@@ -10,7 +10,17 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-08 — AI Gateway funding for TTS + Oracle Cyberdeck live voice
+## 2026-08-08 — Omni Loop Cult dolls: onboarding + art-history time travel
+
+**Decision:** Ship Omni Loop Cult as `omni-loop-v1` staple (supermodel AI BJD species). Doll onboarding: user photo + 2+ aesthetic refs → Gemini analysis → `saveDoll` + shell portrait via `/api/mimi-image`. Time travel: era picker + Met public-domain refs → `generateRedepictionPrompt` (when Tailor project exists) or fallback shell prompt → scene image with doll + artwork + friend portrait refs. Persist scenes in `users/{uid}/dollScenes`; public gallery tab for shared scenes.
+
+**Alternatives rejected:** (1) Require full Tailor evidence loop before any doll. (2) Copy artwork compositions without transformative prompt layer. (3) Separate API routes for doll scenes (reuse Firestore + mimi-image).
+
+**Why:** Product vision needs a direct dolls chamber entry (photo + motif refs) and generative art-history reinterpretation for memes/marketing; existing `generateRedepictionPrompt` was unused.
+
+**Ref:** `services/dollOnboardingService.ts`, `services/dollSceneService.ts`, `components/tailor/DollOnboardingFlow.tsx`, `components/tailor/TimeTravelStudio.tsx`, `services/dollEngine/staplePrompt.ts`
+
+---
 
 **Decision:** Route Gemini-compat TTS (`responseModalities: AUDIO`, `*-tts-*` models) through `generateGatewaySpeech` in `/api/proxy/gemini` with funded-gateway metering. Mint Oracle Cyberdeck live sessions via `gateway.experimental_realtime.getToken` in `/api/live/token` when `AI_GATEWAY_API_KEY` is configured; client connects with `GatewayLiveConnection` (WebSocket codec). Keep Gemini ephemeral tokens as fallback when gateway is absent or for BYOK `x-api-key`.
 

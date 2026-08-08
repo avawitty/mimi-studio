@@ -16,6 +16,7 @@ export type {
 export {
   MIMI_SHELL_STAPLE,
   MIMI_SHELL_STAPLE_VERSION,
+  OMNI_LOOP_CULT,
   buildMimiShellCompanionContext,
   buildMimiShellImagePrompt,
   type BuildShellPromptOptions,

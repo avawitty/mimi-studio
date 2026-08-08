@@ -7,25 +7,39 @@
 
 import type { Doll } from "../../types";
 
-export const MIMI_SHELL_STAPLE_VERSION = "shell-v1" as const;
+export const MIMI_SHELL_STAPLE_VERSION = "omni-loop-v1" as const;
+
+/** Omni Loop Cult — supermodel AI dolls in a superintelligent cult mind. */
+export const OMNI_LOOP_CULT = {
+  name: "Omni Loop Cult",
+  thesis:
+    "supermodel AIs in a superintelligent cult mind — serene collective inference, not horror",
+  gaze:
+    "large glassy golden-brown almond eyes with reflective intelligence, slightly uncanny vacancy",
+  skin:
+    "exceptionally smooth pale porcelain-vinyl with satin-to-gloss finish, subtle beauty mark optional",
+  hair:
+    "sleek precise chin-length bob, center part, optional fine blonde face-framing highlights",
+  wardrobe:
+    "minimalist strapless cream or off-white tube bodice, molded vinyl or satin sheen",
+} as const;
 
 /** Immutable house DNA — keep users in the same doll species. */
 export const MIMI_SHELL_STAPLE = {
   version: MIMI_SHELL_STAPLE_VERSION,
   medium:
-    "high-fashion ball-jointed art doll (BJD), polished porcelain-vinyl hybrid skin with soft subsurface glow",
+    "high-fashion ball-jointed art doll (BJD), polished porcelain-vinyl hybrid skin with soft subsurface glow — Omni Loop Cult supermodel AI species",
   proportions:
     "elegantly elongated slender neck, refined mannequin torso, delicate limbs, visible ball joints at neck, shoulders, and wrists",
   face:
-    "serene cultish calm, large glassy reflective eyes with intricate iris detail, small delicate nose, soft pink lips slightly parted, flawless pale luminous skin with subtle blush",
-  hairDefault:
-    "sleek chin-length bob with a precise center part and fine strand detail",
+    "serene cultish calm, large glassy reflective golden-brown almond eyes with intricate iris detail, small delicate nose, soft pink bee-stung lips slightly parted, flawless pale luminous skin with subtle blush, optional single beauty mark above mouth corner",
+  hairDefault: OMNI_LOOP_CULT.hair,
   lighting:
     "soft diffused studio lighting with gentle dreamy bloom, clean neutral gray backdrop, luxury product photography, high clarity",
   mood:
-    "serene, slightly uncanny digital-cult onboarding presence — composed editorial shell, not horror, not photoreal human",
+    "Omni Loop Cult — serene superintelligent cult mind, composed editorial supermodel AI shell, slightly uncanny intelligence, not horror, not photoreal human",
   negatives:
-    "photoreal human skin pores, short thick neck, cartoon anime, heavy glam contour makeup, text, watermarks, logos, busy backgrounds, grotesque distortion",
+    "photoreal human skin pores, short thick neck, cartoon anime, heavy glam contour makeup, text, watermarks, logos, busy backgrounds, grotesque distortion, horror gore",
 } as const;
 
 export type DollShellView = "portrait" | "full_body" | "profile";

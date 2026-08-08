@@ -71,7 +71,7 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Mimi Dolls** | `/mimi-dolls` | partial | Shell-first shipped; **scenario projection deferred**; Rip uses `dolls[0]` only | Add Rip CTA; doll picker for Rip input |
+| **Mimi Dolls** | `/mimi-dolls` | partial | Omni Loop onboarding + time-travel scenes shipped; Rip uses `dolls[0]` only | Rip CTA; cross-user public scene feed |
 | **mimi.rip** | `/rip` | shipped | Deterministic inverse read (v0, no AI enrichment) | Public OG via server HTML on publish routes |
 | **Aesthetic Intelligence** | `/aesthetic-intelligence` | shipped | Aliased → `/tailor/diagnostics` | — |
 | **Art Style Scryer** | `/art-style` | shipped | Aliased → `/tailor/style-lab` | — |
@@ -161,7 +161,7 @@ When status changes, update this file and append rationale to [`DECISIONS.md`](.
 | --- | --- | --- |
 | P0 | Unified menu, Studio toolbar instruments, `/tailor` + contract wiring, `/scry` + `/mesopic` stubs | **queued** (Lovable build queue) |
 | P1 | Profile identity + `/u/$handle`, Pocket polish, The Edit chamber, fish/rip hosts | **queued** |
-| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **queued** |
+| P2 | Dolls onboarding (avatar + refs), Omni Loop layout, Mesopic full reading | **partial** — Omni Loop onboarding + time-travel in production Express |
 | P3 | Scry curiosity loop + `curiosity_events`, Used Context colophon (PRD-05), `/the-press` export chamber | **queued** |
 | P4a | Workflow bar wired to issue pipeline (COLLECT→SAVE) | **queued** |
 | P4b | Registry completion + handoff chips + chamber map | **queued** |
