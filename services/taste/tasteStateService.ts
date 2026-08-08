@@ -58,16 +58,28 @@ export async function getTasteState(
     .map((item) => ({ item, weight: assertionWeight(item, context) }))
     .sort((a, b) => b.weight - a.weight);
 
+  const isRetired = (item: TasteAssertion) => item.correction === "NOT_ANYMORE";
+
   const stablePreferences = assertions
-    .filter(({ item, weight }) => item.relation !== "DISLIKES" && item.claimType !== "user_rejected" && weight >= 0.72)
+    .filter(({ item, weight }) =>
+      !isRetired(item) &&
+      item.relation !== "DISLIKES" &&
+      item.claimType !== "user_rejected" &&
+      weight >= 0.72,
+    )
     .map(({ item }) => item);
 
   const negativePreferences = assertions
-    .filter(({ item }) => item.relation === "DISLIKES" || item.claimType === "user_rejected")
+    .filter(({ item }) => !isRetired(item) && (item.relation === "DISLIKES" || item.claimType === "user_rejected"))
     .map(({ item }) => item);
 
   const emergingPreferences = assertions
-    .filter(({ item, weight }) => item.relation !== "DISLIKES" && item.claimType !== "user_rejected" && weight < 0.72)
+    .filter(({ item, weight }) =>
+      !isRetired(item) &&
+      item.relation !== "DISLIKES" &&
+      item.claimType !== "user_rejected" &&
+      weight < 0.72,
+    )
     .map(({ item }) => item);
 
   const concepts = conceptSnap.docs.map((item) => item.data() as TasteConcept);
@@ -84,7 +96,7 @@ export async function getTasteState(
     .filter((axis) => !axis.isConfirmed || axis.confidence >= 0.5);
 
   const relevantEvidence = evidenceSnap.docs.map((item) => item.data() as EvidenceAtom);
-  const scored = assertions.filter(({ item }) => item.claimType !== "user_rejected");
+  const scored = assertions.filter(({ item }) => item.claimType !== "user_rejected" && !isRetired(item));
   const confidence = scored.length
     ? Math.min(1, scored.reduce((sum, entry) => sum + entry.weight, 0) / scored.length)
     : 0;
@@ -105,7 +117,12 @@ export async function getTasteState(
       .slice(0, 12)
       .map(({ item }) => ({
         label: item.conceptA,
-        direction: item.claimType === "user_rejected" ? "rejected" : item.relation.toLowerCase(),
+        direction:
+          item.correction === "NOT_ANYMORE"
+            ? "not_anymore"
+            : item.claimType === "user_rejected"
+              ? "rejected"
+              : item.relation.toLowerCase(),
         at: item.updatedAt,
       })),
     generatedAt: Date.now(),
