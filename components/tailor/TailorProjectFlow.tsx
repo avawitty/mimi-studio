@@ -52,6 +52,11 @@ import { ArtHistoryMirrorScreen } from './ArtHistoryMirrorScreen';
 import { GenerationBlockedPanel } from './GenerationBlockedPanel';
 import type { CuriosityPromptId } from '../../services/tailorEvidenceIntake';
 import { buildDirectStatementEvidence, CURIOSITY_PROMPTS } from '../../services/tailorEvidenceIntake';
+import { useTasteModel } from '../../hooks/useTasteModel';
+import {
+  compileAndSaveTasteModel,
+  recordCurationAsTasteEvent,
+} from '../../services/tasteModelService';
 
 type FlowStep =
   | 'start'
@@ -100,6 +105,12 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
   const [intakeHandoff, setIntakeHandoff] = useState<EvidenceIntakeHandoffPayload | null>(null);
   const [generationBlock, setGenerationBlock] = useState<GenerationBlocked | null>(null);
   const bootstrappedRef = useRef(Boolean(initialProject));
+
+  const tasteModel = useTasteModel({
+    userId: uid,
+    projectId: project?.id,
+    autoLoad: Boolean(uid && project?.id),
+  });
 
   const refreshProjectData = useCallback(async (projectId: string) => {
     if (!uid) return;
@@ -250,28 +261,79 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
     name?: string,
   ) => {
     if (!uid || !project) return;
-    if (action === 'renamed') {
-      await updatePatternCluster(uid, project.id, clusterId, {
-        ...(name ? { name } : {}),
-        ...(annotation ? { userAnnotation: annotation } : {}),
-        ...(weight ? { userWeight: weight } : {}),
-        userStatus: 'renamed',
-      });
-    } else {
-      await curatePatternCluster(uid, project.id, clusterId, action, annotation, weight);
+    const cluster = clusters.find((c) => c.id === clusterId);
+    try {
+      if (action === 'renamed') {
+        await updatePatternCluster(uid, project.id, clusterId, {
+          ...(name ? { name } : {}),
+          ...(annotation ? { userAnnotation: annotation } : {}),
+          ...(weight ? { userWeight: weight } : {}),
+          userStatus: 'renamed',
+        });
+      } else {
+        await curatePatternCluster(uid, project.id, clusterId, action, annotation, weight);
+      }
+
+      if (isSignedIn) {
+        await recordCurationAsTasteEvent(uid, project.id, 'pattern_cluster', clusterId, action, {
+          annotation,
+          weight,
+          provenance: {
+            patternClusterIds: [clusterId],
+            observationIds: cluster?.observationIds ?? [],
+            evidenceNodeIds: cluster?.supportingEvidenceNodeIds ?? [],
+          },
+        });
+        await compileAndSaveTasteModel({ userId: uid, projectId: project.id });
+        await tasteModel.refresh();
+      }
+    } catch (err) {
+      console.error('MIMI // Taste curation failed', err);
+      window.dispatchEvent(
+        new CustomEvent('mimi:registry_alert', {
+          detail: {
+            message: 'Curation saved but taste model update failed. Your correction is recorded.',
+            type: 'warning',
+          },
+        }),
+      );
     }
     await refreshProjectData(project.id);
   };
 
   const handleLawAccept = async (lawId: string) => {
     if (!uid || !project) return;
+    const law = laws.find((l) => l.id === lawId);
     await updateCreativeLaw(uid, project.id, lawId, { userStatus: 'accepted', claimType: 'user_confirmed' });
+    if (isSignedIn) {
+      await recordCurationAsTasteEvent(uid, project.id, 'creative_law', lawId, 'accepted', {
+        provenance: {
+          creativeLawIds: [lawId],
+          patternClusterIds: law?.supportingPatternClusterIds ?? [],
+          evidenceNodeIds: law?.supportingEvidenceNodeIds ?? [],
+        },
+      });
+      await compileAndSaveTasteModel({ userId: uid, projectId: project.id });
+      await tasteModel.refresh();
+    }
     await refreshProjectData(project.id);
   };
 
   const handleLawReject = async (lawId: string) => {
     if (!uid || !project) return;
+    const law = laws.find((l) => l.id === lawId);
     await updateCreativeLaw(uid, project.id, lawId, { userStatus: 'rejected', claimType: 'user_rejected' });
+    if (isSignedIn) {
+      await recordCurationAsTasteEvent(uid, project.id, 'creative_law', lawId, 'rejected', {
+        provenance: {
+          creativeLawIds: [lawId],
+          patternClusterIds: law?.supportingPatternClusterIds ?? [],
+          evidenceNodeIds: law?.supportingEvidenceNodeIds ?? [],
+        },
+      });
+      await compileAndSaveTasteModel({ userId: uid, projectId: project.id });
+      await tasteModel.refresh();
+    }
     await refreshProjectData(project.id);
   };
 
@@ -510,6 +572,10 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
           observations={observations}
           onCurate={handleCurate}
           onContinue={() => setStep('laws')}
+          tasteSnapshot={tasteModel.activeSnapshot}
+          tasteLoading={tasteModel.loading}
+          tasteStale={tasteModel.stale}
+          onRecompileTasteModel={tasteModel.recompile}
         />
       )}
       {step === 'laws' && (
