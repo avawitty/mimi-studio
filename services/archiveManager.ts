@@ -8,6 +8,7 @@ import {
   recordProvenanceOrigin,
 } from '../lib/provenance';
 import { mirrorPocketItemToEvidenceAtom } from './taste/mirrorPocketToEvidenceAtom';
+import { mirrorDarkroomFragmentToEvidenceAtom } from './taste/mirrorDarkroomToEvidenceAtom';
 
 export const archiveManager = {
   async uploadMedia(
@@ -236,6 +237,14 @@ export const archiveManager = {
         id: darkroomId,
         createdAt: Date.now()
       }, provenanceRecord));
+
+      void mirrorDarkroomFragmentToEvidenceAtom(
+        userId,
+        darkroomId,
+        { ...item, id: darkroomId } as Record<string, unknown>,
+      ).catch((err) => {
+        console.warn("MIMI // Darkroom → EvidenceAtom mirror failed:", err);
+      });
 
       window.dispatchEvent(new CustomEvent('mimi:registry_alert', { 
         detail: { message: "Artifact saved to Darkroom.", type: 'success' } 
