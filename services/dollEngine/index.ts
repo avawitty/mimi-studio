@@ -19,6 +19,7 @@ export {
   OMNI_LOOP_CULT,
   buildMimiShellCompanionContext,
   buildMimiShellImagePrompt,
+  buildLikenessAsDollImagePrompt,
   type BuildShellPromptOptions,
   type DollShellView,
 } from "./staplePrompt";

@@ -5,7 +5,7 @@ import { Type } from '@google/genai';
 import { withResilience } from './geminiClient';
 import { ORACLE_PERSONA } from './geminiService';
 import { sanitizeTailorText, TAILOR_PRODUCT_CONSTITUTION } from '../constants/tailorSafetyRules';
-import type { Doll, DollOnboardingRefs } from '../types';
+import type { Doll, DollOnboardingRefs, DollLikenessTraits } from '../types';
 import {
   addEvidenceNode,
   createTailorProject,
@@ -13,7 +13,7 @@ import {
   saveDoll,
   updateDoll,
 } from './tailorService';
-import { deriveProceduralAesthetic, buildMimiShellImagePrompt } from './dollEngine';
+import { deriveProceduralAesthetic, buildLikenessAsDollImagePrompt } from './dollEngine';
 
 const ONBOARDING_CONSTITUTION = `${ORACLE_PERSONA}
 
@@ -21,8 +21,9 @@ ${TAILOR_PRODUCT_CONSTITUTION}
 
 You are the Omni Loop Cult intake engine. Analyze reference images to seed a Mimi Shell doll projection.
 The doll is a supermodel AI in a superintelligent cult mind — ball-jointed resin BJD species, not photoreal human.
-Extract aesthetic, symbolic, and motif signals from references. Do NOT diagnose identity or medical traits.
-User photo informs likeness accents only — preserve house shell geometry (elongated neck, glassy eyes, cult calm).`;
+The creator photo is the likeness source: everyone’s doll should look like them AS a doll (recognizable hair, eyes, marks, face shape in resin sculpt form).
+Extract aesthetic, symbolic, and motif signals from aesthetic refs. Do NOT diagnose identity or medical traits.
+Preserve house shell geometry (elongated neck, glassy eyes, visible ball joints, cult calm) while echoing creator likeness.`;
 
 export interface DollOnboardingInput {
   userId: string;
@@ -44,7 +45,7 @@ async function analyzeOnboardingRefs(input: DollOnboardingInput): Promise<Record
   const userInline = dataUrlToInline(input.userPhotoDataUrl);
   if (userInline) parts.push(userInline);
   parts.push({
-    text: 'Reference 1 — creator likeness plate (accent only, not photoreal face lock).',
+    text: 'Reference 1 — CREATOR PHOTO. Extract likeness traits for doll-as-you translation (hair, eyes, face shape, beauty marks, resin skin tone echo).',
   });
 
   input.aestheticRefDataUrls.forEach((url, i) => {
@@ -57,7 +58,7 @@ async function analyzeOnboardingRefs(input: DollOnboardingInput): Promise<Record
     text: `Raw thought from creator: ${input.rawThought?.trim() || 'none provided'}
 Doll name hint: ${input.dollName?.trim() || 'Omni Loop Proxy'}
 
-Return JSON with: name, description, visualLanguage[], palette[], materials[], silhouette, motifs[], eyeTreatment, emotionalRegister, creativePhilosophy, strengths[], blindSpots[], signatureMotifs[], suggestedExperiments[]`,
+Return JSON with: name, description, visualLanguage[], palette[], materials[], silhouette, motifs[], eyeTreatment, emotionalRegister, creativePhilosophy, strengths[], blindSpots[], signatureMotifs[], suggestedExperiments[], likenessTraits { hairDescription, eyeColor, faceShape, distinguishingMarks[], resinSkinTone, expressionBaseline }`,
   });
 
   const result = await withResilience(async (ai) => {
@@ -83,6 +84,17 @@ Return JSON with: name, description, visualLanguage[], palette[], materials[], s
             blindSpots: { type: Type.ARRAY, items: { type: Type.STRING } },
             signatureMotifs: { type: Type.ARRAY, items: { type: Type.STRING } },
             suggestedExperiments: { type: Type.ARRAY, items: { type: Type.STRING } },
+            likenessTraits: {
+              type: Type.OBJECT,
+              properties: {
+                hairDescription: { type: Type.STRING },
+                eyeColor: { type: Type.STRING },
+                faceShape: { type: Type.STRING },
+                distinguishingMarks: { type: Type.ARRAY, items: { type: Type.STRING } },
+                resinSkinTone: { type: Type.STRING },
+                expressionBaseline: { type: Type.STRING },
+              },
+            },
           },
           required: ['name', 'description', 'creativePhilosophy'],
         },
@@ -96,15 +108,16 @@ Return JSON with: name, description, visualLanguage[], palette[], materials[], s
 }
 
 async function generateShellPortrait(doll: Doll, userPhotoDataUrl?: string): Promise<string | null> {
-  const prompt = buildMimiShellImagePrompt(doll, { view: 'portrait' });
+  const prompt = buildLikenessAsDollImagePrompt(doll, { view: 'portrait' });
   const references: Array<{ name: string; description: string; url: string; tags: string[] }> = [];
 
   if (userPhotoDataUrl) {
     references.push({
-      name: 'Creator likeness accent',
-      description: 'Likeness accent only — preserve Omni Loop resin BJD shell geometry and visible ball joints',
+      name: 'Creator photo',
+      description:
+        'Translate this person into a ball-jointed resin BJD recognizable as them — hair, eyes, beauty marks, face shape as doll sculpt. Not photoreal.',
       url: userPhotoDataUrl,
-      tags: ['likeness', 'accent'],
+      tags: ['likeness', 'creator-photo', 'doll-translation'],
     });
   }
 
@@ -140,13 +153,6 @@ export async function createDollFromOnboarding(input: DollOnboardingInput): Prom
 
   const project = await createTailorProject(input.userId, 'creative_practice', 'Omni Loop Initiation');
 
-  const onboardingRefs: DollOnboardingRefs = {
-    userPhotoDataUrl: input.userPhotoDataUrl,
-    aestheticRefDataUrls: input.aestheticRefDataUrls,
-    rawThought: input.rawThought?.trim() || undefined,
-    completedAt: Date.now(),
-  };
-
   await addEvidenceNode(input.userId, project.id, {
     sourceType: 'image',
     title: 'Omni Loop — creator likeness',
@@ -165,6 +171,14 @@ export async function createDollFromOnboarding(input: DollOnboardingInput): Prom
   }
 
   const analyzed = await analyzeOnboardingRefs(input);
+
+  const onboardingRefs: DollOnboardingRefs = {
+    userPhotoDataUrl: input.userPhotoDataUrl,
+    aestheticRefDataUrls: input.aestheticRefDataUrls,
+    rawThought: input.rawThought?.trim() || undefined,
+    likenessTraits: analyzed.likenessTraits as DollLikenessTraits | undefined,
+    completedAt: Date.now(),
+  };
 
   const draftFields = {
     projectId: project.id,

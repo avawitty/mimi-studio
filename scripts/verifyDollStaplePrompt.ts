@@ -8,6 +8,7 @@ import {
   MIMI_SHELL_STAPLE_VERSION,
   buildMimiShellCompanionContext,
   buildMimiShellImagePrompt,
+  buildLikenessAsDollImagePrompt,
 } from "../services/dollEngine";
 import type { Doll } from "../types";
 
@@ -84,6 +85,13 @@ check("companion context species lock", () => {
   assert.match(ctx, /MIMI SHELL/);
   assert.match(ctx, /Never render as a photoreal human/i);
   assert.match(ctx, /elongated slender neck/i);
+});
+
+check("likeness-as-doll portrait translation", () => {
+  const prompt = buildLikenessAsDollImagePrompt(sample, { view: "portrait" });
+  assert.match(prompt, /LIKENESS AS DOLL/i);
+  assert.match(prompt, /you-as-a-doll|recognizable as the same person/i);
+  assert.match(prompt, /ball-jointed resin/i);
 });
 
 console.log(`\ndoll staple verify: ${passed} checks passed.`);

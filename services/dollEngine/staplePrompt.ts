@@ -6,6 +6,7 @@
  */
 
 import type { Doll } from "../../types";
+import type { DollLikenessTraits } from "../../types";
 
 export const MIMI_SHELL_STAPLE_VERSION = "omni-loop-resin-v1" as const;
 
@@ -144,6 +145,50 @@ export function buildMimiShellImagePrompt(
   }
 
   return parts.join(" ");
+}
+
+/**
+ * Portrait prompt for onboarding: translate creator photo into recognizable resin BJD likeness.
+ * Same person as a doll — not photoreal, not generic house default face.
+ */
+export function buildLikenessAsDollImagePrompt(
+  doll: Pick<
+    Doll,
+    | "name"
+    | "visualLanguage"
+    | "materials"
+    | "motifs"
+    | "signatureMotifs"
+    | "palette"
+    | "silhouette"
+    | "eyeTreatment"
+    | "emotionalRegister"
+    | "creativePhilosophy"
+    | "onboardingRefs"
+  >,
+  options: BuildShellPromptOptions = {},
+): string {
+  const traits = doll.onboardingRefs?.likenessTraits;
+  const likenessLines = [
+    traits?.hairDescription ? `Creator hair as resin sculpt: ${traits.hairDescription}` : "",
+    traits?.eyeColor ? `Creator eye color in glass doll eyes: ${traits.eyeColor}` : "",
+    traits?.faceShape ? `Creator face shape echo in resin sculpt: ${traits.faceShape}` : "",
+    traits?.distinguishingMarks?.length
+      ? `Distinguishing marks to preserve on doll face: ${traits.distinguishingMarks.join(", ")}`
+      : "",
+    traits?.resinSkinTone ? `Resin skin tone echo: ${traits.resinSkinTone}` : "",
+    traits?.expressionBaseline ? `Baseline expression: ${traits.expressionBaseline}` : "",
+  ].filter(Boolean);
+
+  const base = buildMimiShellImagePrompt(doll, { ...options, view: options.view ?? "portrait" });
+
+  return [
+    base,
+    "LIKENESS AS DOLL (PRIMARY GOAL): The creator reference photo must be translated into this ball-jointed resin BJD — recognizable as the same person, but unmistakably a manufactured art doll with visible resin joints and doll-scale features. Carry hairstyle, eye color, beauty marks, and bone-structure echoes into the resin sculpt. This is you-as-a-doll, not a photoreal human photograph or face-swap.",
+    likenessLines.length ? `Creator likeness carriers: ${likenessLines.join(". ")}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** Studio / zine companion block — species lock in text generations. */

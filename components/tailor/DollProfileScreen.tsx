@@ -17,6 +17,7 @@ import {
 } from '../../services/tailorService';
 import {
   buildIdentityViewPrompt,
+  buildLikenessAsDollImagePrompt,
   identityPackCompleteness,
   mergeIdentityReference,
   type DollIdentityView,
@@ -178,7 +179,11 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
     setIsGeneratingPortrait(true);
     triggerSound('transition');
 
-    const imagePrompt = buildIdentityViewPrompt(currentDoll, view);
+    const creatorPhoto = currentDoll.onboardingRefs?.userPhotoDataUrl;
+    const imagePrompt =
+      view === 'portrait' && creatorPhoto
+        ? buildLikenessAsDollImagePrompt(currentDoll, { view: 'portrait' })
+        : buildIdentityViewPrompt(currentDoll, view);
     const aspectRatio = view === 'full_body' ? '2:3' : '3:4';
 
     // Pass existing portrait as stable-face ref when generating other views
@@ -186,6 +191,24 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
       view !== 'portrait'
         ? currentDoll.identityReferences?.portraitUrl || currentDoll.generatedImageUrl
         : undefined;
+
+    const references: Array<{ name: string; description: string; url: string; tags: string[] }> = [];
+    if (portraitLock) {
+      references.push({
+        name: 'Doll Portrait',
+        description: `Calibrated identity lock for ${currentDoll.name}`,
+        url: portraitLock,
+        tags: ['doll', 'portrait', 'identity-lock'],
+      });
+    } else if (view === 'portrait' && creatorPhoto) {
+      references.push({
+        name: 'Creator photo',
+        description:
+          'Translate this person into a ball-jointed resin BJD recognizable as them — not photoreal',
+        url: creatorPhoto,
+        tags: ['likeness', 'creator-photo', 'doll-translation'],
+      });
+    }
 
     try {
       const response = await fetch('/api/mimi-image', {
@@ -197,16 +220,7 @@ export const DollProfileScreen: React.FC<DollProfileScreenProps> = ({ doll, onBa
           prompt: imagePrompt,
           aspectRatio,
           allowFaces: true,
-          references: portraitLock
-            ? [
-                {
-                  name: 'Doll Portrait',
-                  description: `Calibrated identity lock for ${currentDoll.name}`,
-                  url: portraitLock,
-                  tags: ['doll', 'portrait', 'identity-lock'],
-                },
-              ]
-            : undefined,
+          references: references.length ? references : undefined,
         }),
       });
       

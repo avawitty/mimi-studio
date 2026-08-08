@@ -2383,10 +2383,21 @@ export interface DollIdentityReferences {
 }
 
 /** Omni Loop onboarding intake — user likeness + aesthetic reference plates. */
+export interface DollLikenessTraits {
+  hairDescription?: string;
+  eyeColor?: string;
+  faceShape?: string;
+  distinguishingMarks?: string[];
+  resinSkinTone?: string;
+  expressionBaseline?: string;
+}
+
 export interface DollOnboardingRefs {
   userPhotoDataUrl?: string;
   aestheticRefDataUrls?: string[];
   rawThought?: string;
+  /** Features extracted from creator photo for doll-as-you translation. */
+  likenessTraits?: DollLikenessTraits;
   completedAt?: number;
 }
 

@@ -91,8 +91,8 @@ export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
         </p>
         <h2 className="font-serif text-3xl text-nous-text">Initiation</h2>
         <p className="text-sm text-nous-subtle max-w-md mx-auto leading-relaxed">
-          {OMNI_LOOP_CULT.thesis}. Upload your likeness and aesthetic plates — we project a
-          house ball-jointed resin BJD shell, not a photoreal clone.
+          Upload your photo — we translate you into a ball-jointed resin BJD you can still recognize.
+          Same species for everyone; your hair, eyes, and marks echo in the sculpt. Aesthetic refs dress the shell.
         </p>
       </header>
 
@@ -105,8 +105,8 @@ export const DollOnboardingFlow: React.FC<DollOnboardingFlowProps> = ({
       {step === 'intro' && (
         <div className="space-y-6 text-center">
           <ol className="text-left space-y-3 text-sm text-nous-subtle max-w-sm mx-auto">
-            <li>1. Your photo — likeness accent for the shell</li>
-            <li>2. Two or more images that represent you (aesthetic, symbolic, motif)</li>
+            <li>1. Your photo — translated into you-as-a-doll (recognizable resin BJD)</li>
+            <li>2. Two or more images that represent your aesthetic, symbols, or motifs</li>
             <li>3. A raw thought — seeds your time-travel scenes</li>
           </ol>
           <button
