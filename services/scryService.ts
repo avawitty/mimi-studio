@@ -23,6 +23,7 @@ import {
   type TrendCurationMap,
 } from "../schemas/scryContracts";
 import { applyTasteRerankToScryRun } from "../lib/scry/tasteScryRerank";
+import { embedTextForScoring } from "./embedClient";
 import {
   getLatestTasteSnapshot,
   listTasteRefusals,
@@ -333,7 +334,18 @@ export async function runSpecimenScry(options: {
       refusalsSettled.status === "fulfilled"
         ? refusalsSettled.value.refusals
         : [];
-    return applyTasteRerankToScryRun(run, { snapshot, refusals });
+
+    let queryEmbedding: number[] | undefined;
+    if (snapshot?.diagnostics?.embeddingCentroid?.length && run.query.trim()) {
+      const embedded = await embedTextForScoring(run.query);
+      if (embedded) queryEmbedding = embedded;
+    }
+
+    return applyTasteRerankToScryRun(run, {
+      snapshot,
+      refusals,
+      queryEmbedding,
+    });
   } catch {
     return run;
   }

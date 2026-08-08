@@ -26,7 +26,7 @@
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | Expanded reading (thesis, touchpoints, directions, recommendations); approve → `mark_signature` taste event | Public-face mobile review after chrome changes |
-| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; embedding centroid on compile | Stand Floor backfill for historical publishes |
+| **Taste Graph** | `/taste-graph` | partial | Summary API + trajectory/tensions; embedding centroid on compile; Studio/Scry auto-embed candidates | Run `npm run taste:backfill-floor-atoms` for historical Floor publishes |
 | **Computational Taste Model** | — (derived) | **shipped** | Snapshot embedding centroid + blended candidate scoring | Wire candidate embeddings from Scry/Studio paths |
 | **Taste Intelligence (EvidenceAtom)** | — | partial | Pocket + Scribe + Floor publish mirrors; embed on analyze; Used Context conflict UI | Semantic retrieval (#223); historical floor backfill job |
 | **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs; Pocket why-saved sheet shipped (queued multi-upload, per-hypothesis review, a11y); negative taste + graph editing with deterministic single-edit undo + replay; Scry rerank; Studio compiler + **post-generation critic** (artifact feature extraction → contract critique on reveal); Tailor v2 contract reconciliation | merge/split graph ops; embedding similarity in critic score |
