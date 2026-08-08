@@ -570,6 +570,8 @@ export const TailorProjectFlow: React.FC<TailorProjectFlowProps> = ({
           clusters={clusters}
           evidence={evidence}
           observations={observations}
+          laws={laws}
+          projectId={project?.id}
           onCurate={handleCurate}
           onContinue={() => setStep('laws')}
           tasteSnapshot={tasteModel.activeSnapshot}

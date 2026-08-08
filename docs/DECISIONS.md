@@ -8,6 +8,18 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
+## 2026-08-08 — Negative taste + graph model editing (Tailor Pattern Graph slice)
+
+**Decision:** Ship creator-facing negative taste and direct model editing inside Tailor `PatternGraphScreen` + `TasteModelInspector`, backed by existing Taste Intelligence OS v2 contracts (`taste_refusals`, `taste_model_edits`, `computeModelDelta`, `applyEditsToSnapshot`). New API routes: `POST /api/mimi/taste-intelligence/refusals`, `POST /model-edits`, `POST /model-edits/undo`. Merge/split remain behind `TASTE_GRAPH_MERGE_SPLIT=1`.
+
+**Alternatives rejected:** (1) New top-level chamber. (2) Client-only React state without Neon persistence. (3) Reviving parallel `lib/tasteCalibration/*` stack.
+
+**Why:** Makes v2 refusal/model-edit logic usable in the primary Tailor curation flow with mobile-first inspector + bottom-sheet refine controls.
+
+**Ref:** `components/tailor/PatternGraphScreen.tsx`, `hooks/useTasteSignalEditor.ts`, `lib/tasteIntelligence/signalRefine.ts`, `docs/taste-calibration-lab.md`
+
+---
+
 ## 2026-08-08 — Taste Intelligence OS v2 (Neon operational layer + Calibration Lab)
 
 **Decision:** Extend the v1 computational taste model into a coherent intelligence layer without a second Taste Graph. New operational writes go to Neon (`mimi.taste_*` tables) via authenticated `/api/mimi/taste-intelligence/*` routes; `services/tasteModelService.ts` dual-writes/dual-reads during Firestore migration. Calibration Lab lives at `/tailor/calibrate` with deterministic active-learning pair selection and Bradley-Terry-style calibration deltas. Sentinel memory policy is a separate headless layer (`lib/tasteIntelligence/sentinelPolicy.ts` + `SentinelMemoryReview`) — `CaptiveSentinel` remains the in-app browser guard only.
@@ -99,6 +111,8 @@ No duplicate preference truth stores. Migration/adapter boundary lives at `lib/t
 **Ref:** `lib/tasteModel/`, `services/tasteModelService.ts`, `docs/computational-taste-model.md`, `components/taste/TasteModelInspector.tsx`
 
 ---
+
+## 2026-08-05 — Proof-mode stock plate mode + Unsplash attribution
 
 **Decision:** Add `plateMediaMode` on Studio orientation intake (`photography-first` | `generated` | `references-only`). Hi-fi `bakeZineVisualPlates` resolves Unsplash stock via server `/api/inspo/search` when mode is photography-first; skips AI generation for `references-only`. Stock attribution lands on `ZinePageSpec` and `SpecimenPage` footer.
 

@@ -39,8 +39,8 @@ Algorithm: `taste-intel-v2.0.0`
 | --- | --- | --- |
 | 1 | Calibration Lab | **shipped** (`/tailor/calibrate`) |
 | 2 | Active learning | **shipped** (`selectCalibrationPair.ts`) |
-| 3 | Negative taste | **logic shipped**, UI partial (refusal API + scoring) |
-| 4 | Graph model editing | **logic shipped** (`modelEdits.ts`), UI extends Pattern Graph |
+| 3 | Negative taste | **shipped** (refusal API + Pattern Graph refine sheet) |
+| 4 | Graph model editing | **shipped** (`modelEdits.ts` + Pattern Graph inspector) |
 | 5 | Counterfactuals | **shipped** (deterministic) |
 | 6 | Taste Compiler | **shipped** (`compileGenerationContract.ts`) |
 | 7 | Taste Critic | **shipped** (deterministic stage 2; AI extraction server-only path stubbed via rule extract) |
@@ -159,7 +159,7 @@ npm run verify:collective
 
 - Full Scry UI “why matched” panels not yet wired in `ScryView`.
 - AI-assisted critic feature extraction route pending dedicated operation registration.
-- Graph editor UI for merge/split/connect is partial — edit events persist, advanced graph ops need visualization work.
+- Graph editor UI for merge/split/connect is partial — merge/split behind `TASTE_GRAPH_MERGE_SPLIT=1`; connect/disconnect/rename/refine shipped in Pattern Graph.
 - Collaborative contract workspace UI is API-ready, not a full chamber yet.
 - Neon required for Calibration Lab persistence in production; local dev falls back gracefully.
 
