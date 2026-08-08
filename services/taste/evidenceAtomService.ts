@@ -26,6 +26,10 @@ function createAtomId(): string {
   return `ev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function withoutUndefined<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 export async function createEvidenceAtom(
   userId: string,
   input: CreateEvidenceAtomInput,
@@ -62,8 +66,9 @@ export async function createEvidenceAtom(
     updatedAt: now,
   };
 
-  await setDoc(evidenceRef(userId, id), atom);
-  return atom;
+  const persisted = withoutUndefined(atom);
+  await setDoc(evidenceRef(userId, id), persisted);
+  return persisted;
 }
 
 export async function getEvidenceAtom(
@@ -79,10 +84,13 @@ export async function updateEvidenceAtom(
   atomId: string,
   patch: Partial<Omit<EvidenceAtom, "id" | "userId" | "createdAt">>,
 ): Promise<void> {
-  await updateDoc(evidenceRef(userId, atomId), {
-    ...patch,
-    updatedAt: Date.now(),
-  });
+  await updateDoc(
+    evidenceRef(userId, atomId),
+    withoutUndefined({
+      ...patch,
+      updatedAt: Date.now(),
+    }),
+  );
 }
 
 export async function listRecentEvidenceAtoms(
