@@ -85,6 +85,7 @@
 | **Sovereign data plane** | partial | `hardening` in canon; Vercel needs Postgres URL | Neon path + SSE on long-lived host |
 | **Sovereign search** | shipped | Reindex ops (`npm run sovereign:reindex`) | — |
 | **AI Gateway embeddings** | shipped | Model catalog drift | Re-verify against `https://ai-gateway.vercel.sh/v1/models` on bumps |
+| **AI Gateway TTS + live** | shipped | Gateway realtime visualizer uses output bus (no analyser tap yet) | Re-verify `AI_GATEWAY_TTS_MODEL` / `AI_GATEWAY_LIVE_MODEL` on catalog bumps |
 | **Shadow memory migration** | shipped | UID-gated reindex | — |
 | **Gateway entitlements** | shipped | Stripe + promo paths | — |
 | **Serverless lazy graphs** | shipped | CI: `verify:api-lazy-graphs` | — |
