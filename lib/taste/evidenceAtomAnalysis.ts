@@ -190,9 +190,20 @@ export async function runEvidenceAtomAnalysis(
 
   try {
     const { semanticDescription, confidence } = await interpretEvidenceAtom(atom, key);
+    let embeddingRef: string | undefined;
+    const embedText = semanticDescription.trim() || atom.originalSource.trim();
+    if (embedText) {
+      try {
+        const { embedAndStoreEvidenceAtom } = await import("./evidenceAtomEmbedding.js");
+        embeddingRef = await embedAndStoreEvidenceAtom(db, userId, atomId, embedText, key);
+      } catch (embedErr) {
+        console.warn("MIMI // Evidence atom embedding failed (non-blocking):", embedErr);
+      }
+    }
     await ref.update({
       semanticDescription,
       confidence,
+      ...(embeddingRef ? { embeddingRef } : {}),
       processingState: "analyzed",
       updatedAt: Date.now(),
     });
