@@ -44,9 +44,19 @@ Existing collections **remain** in Phase 1:
 
 ## Ingest paths
 
-1. **API** — `POST /api/mimi/evidence` (preferred for server-side ingest)
-2. **Client** — `createEvidenceAtom(userId, input)`
-3. **Tailor bridge** — `addEvidenceNode` → `evidenceNodeToAtomInput` → `createEvidenceAtom` (fire-and-forget)
+1. **API** — `POST /api/mimi/evidence` (preferred for server-side ingest) → queues analysis when `AI_GATEWAY_API_KEY` is set
+2. **Analyze** — `POST /api/mimi/evidence/analyze` `{ atomId }` (session + funded gateway)
+3. **Client** — `createEvidenceAtom(userId, input)` → schedules analyze via API
+4. **Tailor bridge** — `addEvidenceNode` → `evidenceNodeToAtomInput` → `createEvidenceAtom` (fire-and-forget)
+
+## Generation context
+
+Signed-in requests to these routes receive `TASTE INTELLIGENCE` in the system prompt when taste data exists:
+
+- `POST /api/mimi/generate-text` (optional `tasteContext` in body)
+- `POST /api/mimi/create-zine` (optional `tasteContext` in body)
+
+Read path: `GET /api/mimi/taste-state?context=editorial`
 
 ## Known debt (Phase 1.5+)
 
