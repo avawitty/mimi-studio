@@ -413,6 +413,14 @@ service cloud.firestore {
       match /tasteGraphs/{document=**} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
+      match /tasteLearningEvents/{document=**} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update, delete: if false;
+      }
+      match /tasteModelSnapshots/{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
 
       // Residue Engine (private owner-scoped research runs + artifacts)
       match /residueRuns/{document=**} {

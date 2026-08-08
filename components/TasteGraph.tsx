@@ -34,6 +34,7 @@ import {
   ArchiveContextPanel,
 } from './chambers/ArchiveChamberShell';
 import { GraphSettle } from './motion/GraphSettle';
+import { TasteEvidenceAtomsPanel } from './taste/TasteEvidenceAtomsPanel';
 
 type TabType = 'map' | 'radar' | 'clusters' | 'report';
 type RadarAxis = { axis: string; value: number; desc: string };
@@ -1314,6 +1315,13 @@ export const TasteGraph: React.FC = () => {
                           <p>● COHESION MULTIPLIER: 1.48x (Strong clustering tendency)</p>
                           <p>● DEFENSIVE LATENCY: 12ms (Secure routing active)</p>
                           <p>● ALIGNMENT STABILITY: STABLE (0.04% entropy divergence)</p>
+                        </div>
+
+                        <div className="pt-4">
+                          <p className="font-mono text-[9px] uppercase tracking-wider font-extrabold text-amber-600 dark:text-amber-400 mb-3">
+                            III. Evidence atoms · correction loop
+                          </p>
+                          <TasteEvidenceAtomsPanel userId={user?.uid ?? ""} />
                         </div>
                       </div>
 

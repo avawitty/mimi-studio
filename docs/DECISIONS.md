@@ -6,7 +6,99 @@ For full architecture narrative see [`mimi-system-architecture.md`](./mimi-syste
 
 ---
 
-## 2026-08-05 — Studio plate media mode + Unsplash stock resolver (v1)
+---
+
+## 2026-08-08 — Taste Intelligence OS v2 (Neon operational layer + Calibration Lab)
+
+**Decision:** Extend the v1 computational taste model into a coherent intelligence layer without a second Taste Graph. New operational writes go to Neon (`mimi.taste_*` tables) via authenticated `/api/mimi/taste-intelligence/*` routes; `services/tasteModelService.ts` dual-writes/dual-reads during Firestore migration. Calibration Lab lives at `/tailor/calibrate` with deterministic active-learning pair selection and Bradley-Terry-style calibration deltas. Sentinel memory policy is a separate headless layer (`lib/tasteIntelligence/sentinelPolicy.ts` + `SentinelMemoryReview`) — `CaptiveSentinel` remains the in-app browser guard only.
+
+**Alternatives rejected:** (1) Second canonical taste graph. (2) Replacing Tailor Profile v2. (3) LLM as hidden scoring function. (4) React → Neon direct connections. (5) Repurposing CaptiveSentinel for agent memory.
+
+**Why:** ADR 001 alignment, explainable learning loop, and vertical-slice delivery (persistence + API + UI + tests) over mock-only screens.
+
+**Ref:** `docs/taste-intelligence-os-v2.md`, `lib/tasteIntelligence/`, `schemas/tasteIntelligenceContracts.ts`, migration `0001_taste_intelligence`
+
+---
+
+## 2026-08-08 — Scry taste rerank + visible why-matched
+
+**Decision:** After the four Scry evidence lanes settle, `runSpecimenScry` loads the latest taste snapshot + refusals (graceful no-op when unsigned out or API unavailable) and reranks hits **within each lane** via `lib/scry/tasteScryRerank.ts` → `rerankTasteSearchResults`. Each `ResearchResult` may carry `tasteScore` and `whyMatched` (semantic fit, linked features, trajectory, refusal contradiction). ScryView merges lanes sorted by taste score and exposes an expandable “Why matched” panel per card.
+
+**Alternatives rejected:** (1) New schema columns for search provenance. (2) Cross-lane overwrite into a single blended blob. (3) Client-only rerank in ScryView without service-layer attachment.
+
+**Why:** Completes the search vertical slice with explainable retrieval tied to the approved taste model; preserves lane honesty from ADR 2026-08-02.
+
+**Ref:** `lib/scry/tasteScryRerank.ts`, `services/scryService.ts`, `components/ScryView.tsx`, `schemas/scryContracts.ts`
+
+---
+
+## 2026-08-08 — Client taste model sync via API (not Neon imports)
+
+**Decision:** `services/tasteModelService.ts` must not import `infrastructure/database/neon/*` — even dynamic imports get bundled into the Vite client graph and break Vercel builds (`node:crypto` in `creditRepository`). Neon snapshot persist/read goes through `/api/mimi/taste-intelligence/snapshot/*` via `tasteIntelligenceClient`.
+
+**Alternatives rejected:** Vite `external` hacks for the whole neon tree; keeping dual-write in client service.
+
+**Why:** React must never connect to Neon; client bundles must stay server-free.
+
+**Ref:** `services/tasteModelService.ts`, `lib/tasteIntelligenceRoute.ts`, `services/tasteIntelligenceClient.ts`
+
+---
+
+## 2026-08-08 — Taste Calibration MVP (parallel PR — superseded by Taste Intelligence OS v2)
+
+**Decision:** A parallel `lib/tasteCalibration/*` stack with normalized Neon columns (`taste_calibration_*` migration `0001_taste_calibration`) was prototyped on branch `metaste-calibration-mvp-278f`. **Merged into main by adopting the existing Taste Intelligence OS v2 architecture** (`lib/tasteIntelligence/*`, JSONB payload columns, `/api/mimi/taste-intelligence/calibration/*`, `CalibrationLab.tsx`) rather than maintaining duplicate repositories and API surfaces.
+
+**Alternatives rejected:** Running two calibration persistence stacks side-by-side.
+
+**Why:** Same product surface (`/tailor/calibrate`), same ADR-001 constraints, but main already shipped the broader OS v2 spine; duplicate schema/API would fork operational truth.
+
+**Ref:** `docs/taste-calibration-lab.md` (algorithm notes retained), `docs/taste-intelligence-os-v2.md` (canonical architecture)
+
+---
+
+## 2026-08-08 — Taste model hotfix: idempotent events + scoped compilation
+
+**Decision:** (1) Use stable dedupe keys as Firestore document IDs for explicit curation events (`event.id === dedupeKey`). (2) Default `compileAndSaveTasteModel` scope to `project` when `projectId` is set — project recompilation must not overwrite `tasteModelSnapshots/global`.
+
+**Alternatives rejected:** (1) Append-only events with post-hoc dedupe at compile time only. (2) Always recompiling both global and project on every curation. (3) Time-bucketed dedupe for explicit corrections (allows double-weight on replay).
+
+**Why:** Replay-safe curation and isolated project models are correctness requirements for trustworthy taste learning; global snapshot is a cross-project aggregate and must only be rebuilt from all events.
+
+**Ref:** `services/tasteModelService.ts`, `__tests__/tasteModelService.test.ts`, `docs/computational-taste-model.md`
+
+---
+
+## 2026-08-08 — EvidenceAtom/TasteState vs TasteModelSnapshot (single truth boundary)
+
+**Decision:** Maintain **one canonical evidence/assertion plane** and **one derived computational cache**:
+
+| Layer | Role | Canonical? |
+| --- | --- | --- |
+| `EvidenceAtom` + `TasteState` / taste assertions | Canonical evidence intake, analysis, corrections, semantic retrieval | **Yes** |
+| Tailor graph (`EvidenceNode`, `Observation`, `PatternCluster`, `CreativeLaw`) | Project-scoped interpretive graph (migrating toward atom linkage) | Canonical per project |
+| `TasteModelSnapshot` | Deterministic compiled taste weights, trajectories, interaction rules | **Derived cache only** |
+
+No duplicate preference truth stores. Migration/adapter boundary lives at `lib/taste/evidenceNodeBridge.ts` + `lib/tasteModel/normalizeTasteEvents.ts` — atoms and graph entities feed compilation; snapshots never write back to canonical stores.
+
+**Alternatives rejected:** (1) Parallel taste preference collections in Firestore. (2) Making `TasteModelSnapshot` authoritative for generation. (3) Merging EvidenceAtom and TasteEventV2 into one schema prematurely.
+
+**Why:** Preserves traceable evidence → assertion → derived model flow; enables Phase 1–3 Taste Intelligence without forking the computational model from #224.
+
+**Ref:** `docs/taste-intelligence-phase1.md`, `docs/computational-taste-model.md`, `lib/taste/`, `lib/tasteModel/`
+
+---
+
+## 2026-08-08 — Computational Taste Model (derived snapshot, v1)
+
+**Decision:** Introduce `TasteModelSnapshot` as a **derived cache** compiled deterministically from canonical Tailor graph entities (`EvidenceNode`, `Observation`, `PatternCluster`, `CreativeLaw`) plus immutable `TasteEventV2` learning events. Pure compilation in `lib/tasteModel/`; persistence at `users/{uid}/tasteLearningEvents` and `users/{uid}/tasteModelSnapshots/{global|project-{id}}`. Legacy `TasteEvent` normalized additively via `normalizeTasteEvent()`. Candidate scoring returns fit score (0–100, not probability), confidence, and evidence-linked explanation — no LLM in the scoring path.
+
+**Alternatives rejected:** (1) A third canonical taste source separate from the WO-7 graph. (2) Replacing Tailor Profile v2. (3) LLM-generated scores without provenance. (4) Silent migration of existing Firestore documents. (5) Making TasteGraphNode/Edge canonical.
+
+**Why:** Closes the product loop: evidence → curation → explainable taste model → candidate scoring → user correction. Deterministic, versioned, and correctable beats a black-box classifier. Presentation projection via `projectTasteModelToGraph()` keeps existing Taste Graph UI compatible.
+
+**Ref:** `lib/tasteModel/`, `services/tasteModelService.ts`, `docs/computational-taste-model.md`, `components/taste/TasteModelInspector.tsx`
+
+---
 
 **Decision:** Add `plateMediaMode` on Studio orientation intake (`photography-first` | `generated` | `references-only`). Hi-fi `bakeZineVisualPlates` resolves Unsplash stock via server `/api/inspo/search` when mode is photography-first; skips AI generation for `references-only`. Stock attribution lands on `ZinePageSpec` and `SpecimenPage` footer.
 
@@ -297,3 +389,27 @@ Fish and Rip are public faces, not separate products. Identity and studio chrome
 **Why:** Lovable queue is long but parallel messages preserve phased delivery; production canon (Tailor contract, colophon, Press, Scry lanes) maps cleanly onto TanStack stack; Scry can use existing research.server + credits.
 
 **Ref:** Lovable messages `umsg_01kzetkx9…` (P0), `umsg_01kzetm5…` (P2), `umsg_01kzetrb0…` (P3 Scry/colophon), `umsg_01kzetra4…` (P3 Press); `prd/aesthetic-05-provenance-colophon.md`, `prd/doll-staple-shell.md`
+
+---
+
+## 2026-08-08 — Taste Intelligence Phase 1 (EvidenceAtom spine)
+
+**Decision:** Introduce canonical `EvidenceAtom`, `TasteAssertion`, `TasteConcept`, and computed `TasteState` under `users/{uid}/` Firestore subcollections. Ingest via `POST /api/mimi/evidence` (session-verified) and client `createEvidenceAtom`. Mirror Tailor `EvidenceNode` writes non-blockingly into `evidenceAtoms`. Corrections write `interactionEvents` audit rows. First UI surface: `TasteEvidenceAtomsPanel` on Taste Graph Intel Memo tab.
+
+**Alternatives rejected:** (1) Store taste atoms in Neon on day one — memory approvals live in Neon but taste evidence is still Firebase-scoped in Phase 1. (2) Replace Tailor `EvidenceNode` immediately — bridge only until migration Phase 2.
+
+**Why:** Unifies taste-relevant evidence with explicit source vs inference separation, correction loop, and a single `getTasteState()` interface for generation — without blocking on full Tailor/Pocket migration.
+
+**Ref:** `docs/taste-intelligence-phase1.md`, `lib/taste/`, `services/taste/`, `lib/mimiEvidenceRoute.ts`
+
+---
+
+## 2026-08-08 — Taste Intelligence Phase 1.5 hooks
+
+**Decision:** After evidence ingest, queue server-side interpretation (`queueEvidenceAtomAnalysis`) when AI Gateway is configured. Client creates call `POST /api/mimi/evidence/analyze`. Inject `getServerTastePromptContext()` into `generate-text` and `create-zine` for signed-in users. Expose `GET /api/mimi/taste-state`.
+
+**Alternatives rejected:** (1) Client-only analysis — cannot access Admin Firestore or reliably fund gateway on mirror path. (2) Blocking ingest on analysis — keeps ingest fast; honest pending/failed states in UI.
+
+**Why:** Closes the loop from capture → interpretation → correction → generation without requiring a separate analyze step from the user.
+
+**Ref:** `lib/taste/evidenceAtomAnalysis.ts`, `lib/taste/serverTasteState.ts`, `lib/mimiGenerateTextRoute.ts`

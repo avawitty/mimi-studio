@@ -1,6 +1,6 @@
 # Mimi Studio — Module State
 
-**Last updated:** 2026-08-07  
+**Last updated:** 2026-08-08  
 **Source of truth for routes:** `lib/productCanon.ts` · **Validation:** `npm run validate:canon`
 
 ## Status legend
@@ -26,7 +26,10 @@
 | **Pocket** | `/pocket` | shipped | Ghost IndexedDB vs Firestore sync edge cases | Continue Sovereign mirror when online |
 | **The Stand** | `/stand` | partial | Sovereign Floor preferred but Firestore fallback remains | Finish Stand/Floor/Mine ownership clarity (Update 21 open items) |
 | **Taste Signature** | `/signature` | shipped | — | Public-face mobile review after chrome changes |
-| **Taste Graph** | `/taste-graph` | shipped | Embedding space migrations on model change | Run shadow audit after Gateway model bumps |
+| **Taste Graph** | `/taste-graph` | partial | Phase 1 `EvidenceAtom` layer + correction UI; embedding space migrations on model change | Complete atom migration; run shadow audit after Gateway model bumps |
+| **Computational Taste Model** | — (derived) | **shipped** | MVP: deterministic compiler + scoring; no embedding similarity in candidate score yet | Wire embedding similarity into `scoreTasteCandidate`; server-side recompile trigger |
+| **Taste Intelligence (EvidenceAtom)** | — | partial | Analysis pipeline + TasteState; legacy graph coexists | Semantic retrieval (#223); embedding backfill |
+| **Taste Intelligence OS v2** | `/tailor/calibrate` | **partial** | Calibration Lab + Neon APIs shipped; Scry taste rerank + why-matched shipped; Pocket/Studio integration partial | Studio compiler cards + Pocket why-saved; expand graph editor ops UI |
 
 ---
 
@@ -34,7 +37,7 @@
 
 | Module | Route | Status | Known debt | Next action |
 | --- | --- | --- | --- | --- |
-| **Scry** | `/scry` | shipped | Unified retrieval service deferred | Keep lane honesty tests in `verify:*` scripts |
+| **Scry** | `/scry` | shipped | Unified retrieval service deferred; taste rerank uses snapshot + refusals when signed in | Keep lane honesty + taste rerank tests in `verify:*` / unit suite |
 | **IntelHub** | `/intelhub` | shipped | Does not publish directly | Document Press handoff in chamber empty states |
 | **GeoEngine** | `/geoengine` | shipped | Opt-in location only | — |
 | **Residue** | `/residue` | partial | Offline heuristics first; live Apify acquisition token-gated | Phase 9 acquisition UX + adapter handoffs to Edit/Forecast |
@@ -85,7 +88,7 @@
 | **Shadow memory migration** | shipped | UID-gated reindex | — |
 | **Gateway entitlements** | shipped | Stripe + promo paths | — |
 | **Serverless lazy graphs** | shipped | CI: `verify:api-lazy-graphs` | — |
-| **Data plane ownership map** | shipped | Stand vs Floor vs Mine distinctions still debated | Document in sovereign-archive when resolved |
+| **Taste Intelligence (Phase 1)** | infrastructure | Analysis queue on ingest; `GET /api/mimi/taste-state`; taste context in generate-text + create-zine | Pocket mirror; embed pipeline |
 | **Taste Corpus explorer** | `/taste-corpus` | shipped | Demonstration seed manifest (20 specimens) | Wire `--from-sovereign` export; expand corpus from Floor covers |
 | **Public face kit** | — | shipped | `PublicField` + `isPublicEditorialFlowMode` single-scroll contract | Audit remaining dark-plate chambers for nested scroll only if reported |
 
